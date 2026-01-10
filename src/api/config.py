@@ -1,19 +1,18 @@
+# Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
+# Copyright (C) 2024-2025 Chernov Denys
 
-    # Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
-    # Copyright (C) 2024-2025 Chernov Denys
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-    # This program is free software: you can redistribute it and/or modify
-    # it under the terms of the GNU Affero General Public License as published by
-    # the Free Software Foundation, either version 3 of the License, or
-    # (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
 
-    # This program is distributed in the hope that it will be useful,
-    # but WITHOUT ANY WARRANTY; without even the implied warranty of
-    # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    # GNU Affero General Public License for more details.
-
-    # You should have received a copy of the GNU Affero General Public License
-    # along with this program. If not, see <https://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 
 """
@@ -80,10 +79,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 100
 
     # Axiom Runtime
-    NEUROGRAPH_BOOTSTRAP_PATH: str = os.path.expanduser("~/data/glove.6B.50d.txt")
-    NEUROGRAPH_BOOTSTRAP_LIMIT: int = 50000
-    NEUROGRAPH_DIMENSIONS: int = 50
-    NEUROGRAPH_GRID_SIZE: int = 1000
+    AXIOM_BOOTSTRAP_PATH: str = os.path.expanduser("~/data/glove.6B.50d.txt")
+    AXIOM_BOOTSTRAP_LIMIT: int = 50000
+    AXIOM_DIMENSIONS: int = 50
+    AXIOM_GRID_SIZE: int = 1000
 
     # Storage Backend (v0.51.0 - RuntimeStorage by default)
     STORAGE_BACKEND: str = "runtime"  # "memory" or "runtime"

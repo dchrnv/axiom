@@ -1,19 +1,18 @@
+# Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
+# Copyright (C) 2024-2025 Chernov Denys
 
-    # Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
-    # Copyright (C) 2024-2025 Chernov Denys
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-    # This program is free software: you can redistribute it and/or modify
-    # it under the terms of the GNU Affero General Public License as published by
-    # the Free Software Foundation, either version 3 of the License, or
-    # (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
 
-    # This program is distributed in the hope that it will be useful,
-    # but WITHOUT ANY WARRANTY; without even the implied warranty of
-    # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    # GNU Affero General Public License for more details.
-
-    # You should have received a copy of the GNU Affero General Public License
-    # along with this program. If not, see <https://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """
 FastAPI Dependencies
@@ -26,21 +25,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import logging
 
-from .storage import (
-    TokenStorageInterface,
-    GridStorageInterface,
-    CDNAStorageInterface
-)
+from .storage import TokenStorageInterface, GridStorageInterface, CDNAStorageInterface
 from .storage.memory import (
     InMemoryTokenStorage,
     InMemoryGridStorage,
-    InMemoryCDNAStorage
+    InMemoryCDNAStorage,
 )
-from .storage.runtime import (
-    RuntimeTokenStorage,
-    RuntimeGridStorage,
-    RuntimeCDNAStorage
-)
+from .storage.runtime import RuntimeTokenStorage, RuntimeGridStorage, RuntimeCDNAStorage
 from .config import settings
 
 logger = logging.getLogger(__name__)
@@ -75,23 +66,24 @@ def get_runtime():
 
             # Initialize runtime with default config
             config = Config(
-                grid_size=settings.NEUROGRAPH_GRID_SIZE,
-                dimensions=settings.NEUROGRAPH_DIMENSIONS
+                grid_size=settings.AXIOM_GRID_SIZE, dimensions=settings.AXIOM_DIMENSIONS
             )
             _runtime_instance = Runtime(config)
-            logger.info(f"Runtime initialized: grid_size={settings.NEUROGRAPH_GRID_SIZE}, "
-                       f"dimensions={settings.NEUROGRAPH_DIMENSIONS}")
+            logger.info(
+                f"Runtime initialized: grid_size={settings.AXIOM_GRID_SIZE}, "
+                f"dimensions={settings.AXIOM_DIMENSIONS}"
+            )
         except ImportError as e:
             logger.error(f"Failed to import axiom: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="axiom package not available. Build with: maturin develop --release --features python-bindings"
+                detail="axiom package not available. Build with: maturin develop --release --features python-bindings",
             )
         except Exception as e:
             logger.error(f"Failed to initialize runtime: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Runtime initialization failed: {str(e)}"
+                detail=f"Runtime initialization failed: {str(e)}",
             )
 
     return _runtime_instance
@@ -105,7 +97,7 @@ def set_runtime(runtime):
 
 
 async def verify_token(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[str]:
     """
     Verify JWT token (optional for development mode).
@@ -148,7 +140,7 @@ async def require_admin(user_id: Optional[str] = Depends(verify_token)) -> str:
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin authentication required"
+            detail="Admin authentication required",
         )
 
     # TODO: Check if user is admin
@@ -158,6 +150,7 @@ async def require_admin(user_id: Optional[str] = Depends(verify_token)) -> str:
 # =============================================================================
 # Storage Dependencies
 # =============================================================================
+
 
 def get_token_storage() -> TokenStorageInterface:
     """
@@ -259,6 +252,7 @@ def reset_storage():
 # Grid Availability Check
 # =============================================================================
 
+
 def check_grid_available() -> bool:
     """
     Check if Grid V2.0 (Rust FFI) is available.
@@ -269,6 +263,7 @@ def check_grid_available() -> bool:
     try:
         # Try to import Rust Grid V2.0
         import axiom_grid_v2  # noqa: F401
+
         return True
     except ImportError:
         return False

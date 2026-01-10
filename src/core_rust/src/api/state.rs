@@ -47,22 +47,22 @@ impl ApiConfig {
     /// Load from environment variables
     pub fn from_env() -> Self {
         Self {
-            host: std::env::var("NEUROGRAPH_HOST")
+            host: std::env::var("AXIOM_HOST")
                 .unwrap_or_else(|_| "127.0.0.1".to_string()),
-            port: std::env::var("NEUROGRAPH_PORT")
+            port: std::env::var("AXIOM_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(3000),
-            enable_cors: std::env::var("NEUROGRAPH_CORS")
+            enable_cors: std::env::var("AXIOM_CORS")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            api_key: std::env::var("NEUROGRAPH_API_KEY").ok(),
-            request_timeout_ms: std::env::var("NEUROGRAPH_TIMEOUT_MS")
+            api_key: std::env::var("AXIOM_API_KEY").ok(),
+            request_timeout_ms: std::env::var("AXIOM_TIMEOUT_MS")
                 .ok()
                 .and_then(|t| t.parse().ok())
                 .unwrap_or(30000),
-            rate_limit_per_minute: std::env::var("NEUROGRAPH_RATE_LIMIT")
+            rate_limit_per_minute: std::env::var("AXIOM_RATE_LIMIT")
                 .ok()
                 .and_then(|r| r.parse().ok()),
         }
