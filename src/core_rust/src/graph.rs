@@ -1,0 +1,1966 @@
+// Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
+// Copyright (C) 2024-2025 Chernov Denys
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+/// Graph V2.0 - Topological navigation for Axiom OS
+///
+/// Graph provides topological indexing and navigation over Token connections.
+/// Unlike Grid (spatial indexing), Graph handles topology: paths, neighbors, subgraphs.
+///
+/// # Architecture
+///
+/// - NodeId: u32 (references Token.id)
+/// - EdgeId: u64 (hash of connection identifier)
+/// - Adjacency lists for O(1) neighbor access
+/// - Directed graph support (in/out edges)
+/// - Integration with Grid and Connection
+///
+/// # Key Operations
+///
+/// - Topology: add_node, add_edge, get_neighbors
+/// - Traversal: BFS, DFS
+/// - Pathfinding: shortest_path (BFS), dijkstra
+/// - Subgraphs: extract_subgraph, extract_neighborhood
+///
+/// # Memory Layout
+///
+/// - adjacency_out: HashMap<NodeId, Vec<EdgeId>> - outgoing edges
+/// - adjacency_in: HashMap<NodeId, Vec<EdgeId>> - incoming edges
+/// - edge_map: HashMap<EdgeId, EdgeInfo> - edge metadata
+///
+/// Total memory: ~50 bytes per node + ~40 bytes per edge
+use std::collections::{HashMap, HashSet, VecDeque, BinaryHeap};
+use std::cmp::Ordering;
+
+/// Node identifier (Token.id)
+pub type NodeId = u32;
+
+/// Edge identifier (hash of connection)
+pub type EdgeId = u64;
+
+/// Direction for neighbor queries
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Outgoing,  // Only outgoing edges
+    Incoming,  // Only incoming edges
+    Both,      // Both directions
+}
+
+/// Edge metadata stored in graph
+#[derive(Debug, Clone)]
+pub struct EdgeInfo {
+    pub from_id: NodeId,
+    pub to_id: NodeId,
+    pub edge_type: u8,      // Connection type
+    pub weight: f32,        // Connection weight (for pathfinding)
+    pub bidirectional: bool, // Whether edge can be traversed both ways
+}
+
+/// Path through the graph
+#[derive(Debug, Clone)]
+pub struct Path {
+    pub nodes: Vec<NodeId>,
+    pub edges: Vec<EdgeId>,
+    pub total_cost: f32,
+    pub length: usize,  // Number of hops
+}
+
+impl Path {
+    /// Create empty path
+    pub fn empty() -> Self {
+        Self {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            total_cost: 0.0,
+            length: 0,
+        }
+    }
+
+    /// Check if path is empty
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    /// Check if path is valid (edges.len() == nodes.len() - 1)
+    pub fn is_valid(&self) -> bool {
+        if self.nodes.is_empty() {
+            return self.edges.is_empty();
+        }
+        self.edges.len() == self.nodes.len() - 1
+    }
+
+    /// Check if path contains node
+    pub fn contains_node(&self, node_id: NodeId) -> bool {
+        self.nodes.contains(&node_id)
+    }
+
+    /// Check if path contains edge
+    pub fn contains_edge(&self, edge_id: EdgeId) -> bool {
+        self.edges.contains(&edge_id)
+    }
+}
+
+/// Subgraph (induced subgraph from node set)
+#[derive(Debug, Clone)]
+pub struct Subgraph {
+    pub nodes: HashSet<NodeId>,
+    pub edges: HashSet<EdgeId>,
+}
+
+impl Default for Subgraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Subgraph {
+    /// Create empty subgraph
+    pub fn new() -> Self {
+        Self {
+            nodes: HashSet::new(),
+            edges: HashSet::new(),
+        }
+    }
+
+    /// Get number of nodes
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// Get number of edges
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
+    /// Check if contains node
+    pub fn contains_node(&self, node_id: NodeId) -> bool {
+        self.nodes.contains(&node_id)
+    }
+
+    /// Check if contains edge
+    pub fn contains_edge(&self, edge_id: EdgeId) -> bool {
+        self.edges.contains(&edge_id)
+    }
+}
+
+/// Graph configuration
+#[derive(Debug, Clone)]
+pub struct GraphConfig {
+    /// Enable edge deduplication (slower insert, less memory)
+    pub deduplicate_edges: bool,
+    /// Pre-allocate capacity for nodes
+    pub initial_capacity: usize,
+}
+
+impl Default for GraphConfig {
+    fn default() -> Self {
+        Self {
+            deduplicate_edges: false,
+            initial_capacity: 1000,
+        }
+    }
+}
+
+/// State for Dijkstra's algorithm priority queue
+#[derive(Debug, Clone)]
+struct DijkstraState {
+    cost: f32,
+    node: NodeId,
+}
+
+// Implement Ord for min-heap (reverse order for BinaryHeap)
+impl Ord for DijkstraState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Reverse order: lower cost = higher priority
+        other.cost.partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| self.node.cmp(&other.node))
+    }
+}
+
+impl PartialOrd for DijkstraState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for DijkstraState {
+    fn eq(&self, other: &Self) -> bool {
+        self.cost == other.cost && self.node == other.node
+    }
+}
+
+impl Eq for DijkstraState {}
+
+// ============================================================================
+// SignalSystem v1.0 - Neural Dynamics for Graph
+// ============================================================================
+
+/// Accumulation mode for node activation energy
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AccumulationMode {
+    /// Energy accumulates (sum)
+    #[default]
+    Sum,
+    /// Take maximum energy
+    Max,
+    /// Weighted average based on activation count
+    WeightedAverage,
+}
+
+/// Activation state of a node in the graph
+#[derive(Debug, Clone)]
+pub struct NodeActivation {
+    /// Current energy level [0.0, 1.0+]
+    pub energy: f32,
+    /// Timestamp of last activation (microseconds)
+    pub last_activated: u64,
+    /// Number of times this node was activated in current cycle
+    pub activation_count: u32,
+    /// Source node that triggered this activation
+    pub source_id: Option<NodeId>,
+}
+
+impl Default for NodeActivation {
+    fn default() -> Self {
+        Self {
+            energy: 0.0,
+            last_activated: 0,
+            activation_count: 0,
+            source_id: None,
+        }
+    }
+}
+
+impl NodeActivation {
+    /// Create new activation with given energy
+    pub fn new(energy: f32, source_id: Option<NodeId>) -> Self {
+        Self {
+            energy,
+            last_activated: Self::current_timestamp_us(),
+            activation_count: 1,
+            source_id,
+        }
+    }
+
+    /// Get current timestamp in microseconds
+    fn current_timestamp_us() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_micros() as u64
+    }
+}
+
+/// Configuration for spreading activation algorithm
+#[derive(Debug, Clone)]
+pub struct SignalConfig {
+    /// Minimum energy threshold to continue spreading (default: 0.01)
+    pub min_energy: f32,
+    /// Energy decay rate per hop [0.0, 1.0] (default: 0.2)
+    pub decay_rate: f32,
+    /// Maximum depth of spreading (default: 5)
+    pub max_depth: usize,
+    /// Activation threshold for a node to be considered "activated" (default: 0.1)
+    pub activation_threshold: f32,
+    /// How to accumulate energy when node receives multiple signals
+    pub accumulation_mode: AccumulationMode,
+}
+
+impl Default for SignalConfig {
+    fn default() -> Self {
+        Self {
+            min_energy: 0.01,
+            decay_rate: 0.2,
+            max_depth: 5,
+            activation_threshold: 0.1,
+            accumulation_mode: AccumulationMode::Sum,
+        }
+    }
+}
+
+impl SignalConfig {
+    /// Validate configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.min_energy < 0.0 || self.min_energy > 1.0 {
+            return Err(format!("min_energy must be in [0.0, 1.0], got {}", self.min_energy));
+        }
+        if self.decay_rate < 0.0 || self.decay_rate > 1.0 {
+            return Err(format!("decay_rate must be in [0.0, 1.0], got {}", self.decay_rate));
+        }
+        if self.max_depth == 0 {
+            return Err("max_depth must be > 0".to_string());
+        }
+        if self.activation_threshold < 0.0 {
+            return Err(format!("activation_threshold must be >= 0.0, got {}", self.activation_threshold));
+        }
+        Ok(())
+    }
+}
+
+/// Result of spreading activation algorithm
+#[derive(Debug, Clone, Default)]
+pub struct ActivationResult {
+    /// List of activated nodes with their energies
+    pub activated_nodes: Vec<ActivatedNode>,
+    /// Total number of nodes visited during spreading
+    pub nodes_visited: usize,
+    /// Maximum depth reached during spreading
+    pub max_depth_reached: usize,
+    /// Execution time in microseconds
+    pub execution_time_us: u64,
+    /// Path with strongest activation (if any)
+    pub strongest_path: Option<Path>,
+}
+
+/// Single activated node with metadata
+#[derive(Debug, Clone)]
+pub struct ActivatedNode {
+    /// Node identifier
+    pub node_id: NodeId,
+    /// Final energy at this node
+    pub energy: f32,
+    /// Depth from source (number of hops)
+    pub depth: usize,
+    /// Path from source to this node
+    pub path_from_source: Vec<NodeId>,
+}
+
+// ============================================================================
+// End of SignalSystem structures
+// ============================================================================
+
+/// Graph V2.0 - Topological indexing and navigation
+///
+/// # Example
+///
+/// ```rust
+/// use axiom_core::{Graph, GraphConfig};
+///
+/// let mut graph = Graph::new();
+///
+/// // Add nodes
+/// graph.add_node(1);
+/// graph.add_node(2);
+///
+/// // Add edge
+/// let edge_id = Graph::compute_edge_id(1, 2, 0);
+/// graph.add_edge(edge_id, 1, 2, 0, 1.0, false);
+///
+/// // Find neighbors
+/// let neighbors = graph.get_neighbors(1, Direction::Outgoing);
+/// assert_eq!(neighbors.len(), 1);
+/// ```
+pub struct Graph {
+    config: GraphConfig,
+    /// Outgoing edges for each node
+    adjacency_out: HashMap<NodeId, Vec<EdgeId>>,
+    /// Incoming edges for each node
+    adjacency_in: HashMap<NodeId, Vec<EdgeId>>,
+    /// Edge metadata
+    edge_map: HashMap<EdgeId, EdgeInfo>,
+    /// Node activation states (SignalSystem v1.0)
+    activations: HashMap<NodeId, NodeActivation>,
+    /// Spreading activation configuration (SignalSystem v1.0)
+    signal_config: SignalConfig,
+}
+
+impl Graph {
+    /// Create new empty graph
+    pub fn new() -> Self {
+        Self::with_config(GraphConfig::default())
+    }
+
+    /// Create graph with custom configuration
+    pub fn with_config(config: GraphConfig) -> Self {
+        let capacity = config.initial_capacity;
+        Self {
+            config,
+            adjacency_out: HashMap::with_capacity(capacity),
+            adjacency_in: HashMap::with_capacity(capacity),
+            edge_map: HashMap::new(),
+            activations: HashMap::new(),
+            signal_config: SignalConfig::default(),
+        }
+    }
+
+    /// Compute edge ID from connection parameters
+    /// Uses FNV-1a hash for speed
+    pub fn compute_edge_id(from_id: NodeId, to_id: NodeId, edge_type: u8) -> EdgeId {
+        // FNV-1a hash
+        const FNV_OFFSET: u64 = 14695981039346656037;
+        const FNV_PRIME: u64 = 1099511628211;
+
+        let mut hash = FNV_OFFSET;
+
+        // Hash from_id
+        hash ^= (from_id & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((from_id >> 8) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((from_id >> 16) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((from_id >> 24) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+
+        // Hash to_id
+        hash ^= (to_id & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((to_id >> 8) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((to_id >> 16) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((to_id >> 24) & 0xFF) as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+
+        // Hash edge_type
+        hash ^= edge_type as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+
+        hash
+    }
+
+    /// Add node to graph
+    /// Returns true if node was added, false if already exists
+    pub fn add_node(&mut self, node_id: NodeId) -> bool {
+        if self.adjacency_out.contains_key(&node_id) {
+            return false;
+        }
+
+        self.adjacency_out.insert(node_id, Vec::new());
+        self.adjacency_in.insert(node_id, Vec::new());
+        true
+    }
+
+    /// Remove node from graph
+    /// Also removes all edges connected to this node
+    /// Returns true if node was removed
+    pub fn remove_node(&mut self, node_id: NodeId) -> bool {
+        if !self.adjacency_out.contains_key(&node_id) {
+            return false;
+        }
+
+        // Collect all edges to remove
+        let mut edges_to_remove = Vec::new();
+
+        if let Some(out_edges) = self.adjacency_out.get(&node_id) {
+            edges_to_remove.extend(out_edges.iter().copied());
+        }
+
+        if let Some(in_edges) = self.adjacency_in.get(&node_id) {
+            edges_to_remove.extend(in_edges.iter().copied());
+        }
+
+        // Remove all edges
+        for edge_id in edges_to_remove {
+            self.remove_edge(edge_id);
+        }
+
+        // Remove node
+        self.adjacency_out.remove(&node_id);
+        self.adjacency_in.remove(&node_id);
+
+        true
+    }
+
+    /// Check if node exists in graph
+    pub fn contains_node(&self, node_id: NodeId) -> bool {
+        self.adjacency_out.contains_key(&node_id)
+    }
+
+    /// Get number of nodes
+    pub fn node_count(&self) -> usize {
+        self.adjacency_out.len()
+    }
+
+    /// Add edge to graph
+    /// Both nodes must already exist
+    /// Returns true if edge was added
+    pub fn add_edge(
+        &mut self,
+        edge_id: EdgeId,
+        from_id: NodeId,
+        to_id: NodeId,
+        edge_type: u8,
+        weight: f32,
+        bidirectional: bool,
+    ) -> Result<bool, String> {
+        // Check nodes exist
+        if !self.contains_node(from_id) {
+            return Err(format!("Node {} does not exist", from_id));
+        }
+        if !self.contains_node(to_id) {
+            return Err(format!("Node {} does not exist", to_id));
+        }
+
+        // Check if edge already exists
+        if self.edge_map.contains_key(&edge_id) {
+            return Ok(false);
+        }
+
+        // Add edge metadata
+        let edge_info = EdgeInfo {
+            from_id,
+            to_id,
+            edge_type,
+            weight,
+            bidirectional,
+        };
+        self.edge_map.insert(edge_id, edge_info);
+
+        // Add to adjacency lists
+        self.adjacency_out
+            .get_mut(&from_id)
+            .unwrap()
+            .push(edge_id);
+
+        self.adjacency_in
+            .get_mut(&to_id)
+            .unwrap()
+            .push(edge_id);
+
+        Ok(true)
+    }
+
+    /// Remove edge from graph
+    /// Returns true if edge was removed
+    pub fn remove_edge(&mut self, edge_id: EdgeId) -> bool {
+        if let Some(edge_info) = self.edge_map.remove(&edge_id) {
+            // Remove from adjacency lists
+            if let Some(out_edges) = self.adjacency_out.get_mut(&edge_info.from_id) {
+                out_edges.retain(|&e| e != edge_id);
+            }
+
+            if let Some(in_edges) = self.adjacency_in.get_mut(&edge_info.to_id) {
+                in_edges.retain(|&e| e != edge_id);
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Check if edge exists
+    pub fn contains_edge(&self, edge_id: EdgeId) -> bool {
+        self.edge_map.contains_key(&edge_id)
+    }
+
+    /// Get edge metadata
+    pub fn get_edge(&self, edge_id: EdgeId) -> Option<&EdgeInfo> {
+        self.edge_map.get(&edge_id)
+    }
+
+    /// Get number of edges
+    pub fn edge_count(&self) -> usize {
+        self.edge_map.len()
+    }
+
+    /// Get neighbors of a node
+    /// Returns list of (neighbor_id, edge_id) tuples
+    pub fn get_neighbors(&self, node_id: NodeId, direction: Direction) -> Vec<(NodeId, EdgeId)> {
+        let mut neighbors = Vec::new();
+
+        match direction {
+            Direction::Outgoing => {
+                if let Some(edges) = self.adjacency_out.get(&node_id) {
+                    for &edge_id in edges {
+                        if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                            neighbors.push((edge_info.to_id, edge_id));
+                        }
+                    }
+                }
+            }
+            Direction::Incoming => {
+                if let Some(edges) = self.adjacency_in.get(&node_id) {
+                    for &edge_id in edges {
+                        if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                            neighbors.push((edge_info.from_id, edge_id));
+                        }
+                    }
+                }
+            }
+            Direction::Both => {
+                // Outgoing
+                if let Some(edges) = self.adjacency_out.get(&node_id) {
+                    for &edge_id in edges {
+                        if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                            neighbors.push((edge_info.to_id, edge_id));
+                        }
+                    }
+                }
+                // Incoming (for bidirectional edges)
+                if let Some(edges) = self.adjacency_in.get(&node_id) {
+                    for &edge_id in edges {
+                        if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                            if edge_info.bidirectional {
+                                neighbors.push((edge_info.from_id, edge_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        neighbors
+    }
+
+    /// Get degree of a node (number of edges)
+    pub fn get_degree(&self, node_id: NodeId, direction: Direction) -> usize {
+        match direction {
+            Direction::Outgoing => {
+                self.adjacency_out.get(&node_id).map_or(0, |e| e.len())
+            }
+            Direction::Incoming => {
+                self.adjacency_in.get(&node_id).map_or(0, |e| e.len())
+            }
+            Direction::Both => {
+                let out = self.adjacency_out.get(&node_id).map_or(0, |e| e.len());
+                let in_count = self.adjacency_in.get(&node_id).map_or(0, |edges| {
+                    edges.iter().filter(|&&e| {
+                        self.edge_map.get(&e).is_some_and(|info| info.bidirectional)
+                    }).count()
+                });
+                out + in_count
+            }
+        }
+    }
+
+    /// Get all node IDs
+    pub fn get_nodes(&self) -> Vec<NodeId> {
+        self.adjacency_out.keys().copied().collect()
+    }
+
+    /// Clear all nodes and edges
+    pub fn clear(&mut self) {
+        self.adjacency_out.clear();
+        self.adjacency_in.clear();
+        self.edge_map.clear();
+    }
+
+    // ==================== TRAVERSAL ALGORITHMS ====================
+
+    /// Breadth-First Search (BFS) traversal
+    /// Visits nodes level by level starting from start_id
+    /// Calls visitor function for each visited node with (node_id, depth)
+    ///
+    /// # Arguments
+    ///
+    /// * `start_id` - Starting node
+    /// * `max_depth` - Maximum depth to traverse (None = unlimited)
+    /// * `visitor` - Function called for each visited node
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// graph.bfs(1, Some(3), |node_id, depth| {
+    ///     println!("Visited node {} at depth {}", node_id, depth);
+    /// });
+    /// ```
+    pub fn bfs<F>(&self, start_id: NodeId, max_depth: Option<usize>, mut visitor: F)
+    where
+        F: FnMut(NodeId, usize),
+    {
+        if !self.contains_node(start_id) {
+            return;
+        }
+
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+
+        queue.push_back((start_id, 0));
+        visited.insert(start_id);
+
+        while let Some((current_id, depth)) = queue.pop_front() {
+            visitor(current_id, depth);
+
+            // Check max depth
+            if let Some(max_d) = max_depth {
+                if depth >= max_d {
+                    continue;
+                }
+            }
+
+            // Visit neighbors
+            let neighbors = self.get_neighbors(current_id, Direction::Both);
+            for (neighbor_id, _edge_id) in neighbors {
+                if !visited.contains(&neighbor_id) {
+                    visited.insert(neighbor_id);
+                    queue.push_back((neighbor_id, depth + 1));
+                }
+            }
+        }
+    }
+
+    /// BFS iterator for lazy traversal
+    /// Returns iterator over (node_id, depth) pairs
+    pub fn bfs_iter(&self, start_id: NodeId, max_depth: Option<usize>) -> BFSIterator<'_> {
+        BFSIterator::new(self, start_id, max_depth)
+    }
+
+    /// Depth-First Search (DFS) traversal
+    /// Visits nodes depth-first starting from start_id
+    /// Calls visitor function for each visited node with (node_id, depth)
+    ///
+    /// # Arguments
+    ///
+    /// * `start_id` - Starting node
+    /// * `max_depth` - Maximum depth to traverse (None = unlimited)
+    /// * `visitor` - Function called for each visited node
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// graph.dfs(1, Some(5), |node_id, depth| {
+    ///     println!("Visited node {} at depth {}", node_id, depth);
+    /// });
+    /// ```
+    pub fn dfs<F>(&self, start_id: NodeId, max_depth: Option<usize>, mut visitor: F)
+    where
+        F: FnMut(NodeId, usize),
+    {
+        if !self.contains_node(start_id) {
+            return;
+        }
+
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+
+        stack.push((start_id, 0));
+
+        while let Some((current_id, depth)) = stack.pop() {
+            if visited.contains(&current_id) {
+                continue;
+            }
+
+            visited.insert(current_id);
+            visitor(current_id, depth);
+
+            // Check max depth
+            if let Some(max_d) = max_depth {
+                if depth >= max_d {
+                    continue;
+                }
+            }
+
+            // Visit neighbors (in reverse order to maintain left-to-right traversal)
+            let neighbors = self.get_neighbors(current_id, Direction::Both);
+            for (neighbor_id, _edge_id) in neighbors.into_iter().rev() {
+                if !visited.contains(&neighbor_id) {
+                    stack.push((neighbor_id, depth + 1));
+                }
+            }
+        }
+    }
+
+    /// DFS iterator for lazy traversal
+    /// Returns iterator over (node_id, depth) pairs
+    pub fn dfs_iter(&self, start_id: NodeId, max_depth: Option<usize>) -> DFSIterator<'_> {
+        DFSIterator::new(self, start_id, max_depth)
+    }
+
+    // ==================== PATHFINDING ====================
+
+    /// Find shortest path between two nodes (unweighted BFS)
+    /// Returns None if no path exists
+    ///
+    /// # Arguments
+    ///
+    /// * `from_id` - Starting node
+    /// * `to_id` - Target node
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// if let Some(path) = graph.find_path(1, 5) {
+    ///     println!("Path length: {}", path.length);
+    ///     println!("Nodes: {:?}", path.nodes);
+    /// }
+    /// ```
+    pub fn find_path(&self, from_id: NodeId, to_id: NodeId) -> Option<Path> {
+        // Same node
+        if from_id == to_id {
+            return Some(Path {
+                nodes: vec![from_id],
+                edges: Vec::new(),
+                total_cost: 0.0,
+                length: 0,
+            });
+        }
+
+        // Check nodes exist
+        if !self.contains_node(from_id) || !self.contains_node(to_id) {
+            return None;
+        }
+
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        let mut predecessors: HashMap<NodeId, (NodeId, EdgeId)> = HashMap::new();
+
+        queue.push_back(from_id);
+        visited.insert(from_id);
+
+        // BFS
+        while let Some(current_id) = queue.pop_front() {
+            if current_id == to_id {
+                // Found! Reconstruct path
+                return Some(self.reconstruct_path(from_id, to_id, &predecessors));
+            }
+
+            let neighbors = self.get_neighbors(current_id, Direction::Both);
+            for (neighbor_id, edge_id) in neighbors {
+                if !visited.contains(&neighbor_id) {
+                    visited.insert(neighbor_id);
+                    predecessors.insert(neighbor_id, (current_id, edge_id));
+                    queue.push_back(neighbor_id);
+                }
+            }
+        }
+
+        None // No path found
+    }
+
+    /// Find shortest weighted path using Dijkstra's algorithm
+    /// Uses edge weights from EdgeInfo
+    /// Returns None if no path exists
+    ///
+    /// # Arguments
+    ///
+    /// * `from_id` - Starting node
+    /// * `to_id` - Target node
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// if let Some(path) = graph.dijkstra(1, 5) {
+    ///     println!("Total cost: {}", path.total_cost);
+    ///     println!("Path length: {}", path.length);
+    /// }
+    /// ```
+    pub fn dijkstra(&self, from_id: NodeId, to_id: NodeId) -> Option<Path> {
+        // Same node
+        if from_id == to_id {
+            return Some(Path {
+                nodes: vec![from_id],
+                edges: Vec::new(),
+                total_cost: 0.0,
+                length: 0,
+            });
+        }
+
+        // Check nodes exist
+        if !self.contains_node(from_id) || !self.contains_node(to_id) {
+            return None;
+        }
+
+        let mut distances: HashMap<NodeId, f32> = HashMap::new();
+        let mut predecessors: HashMap<NodeId, (NodeId, EdgeId)> = HashMap::new();
+        let mut heap = BinaryHeap::new();
+
+        distances.insert(from_id, 0.0);
+        heap.push(DijkstraState {
+            cost: 0.0,
+            node: from_id,
+        });
+
+        while let Some(DijkstraState { cost, node }) = heap.pop() {
+            // Found target
+            if node == to_id {
+                return Some(self.reconstruct_path(from_id, to_id, &predecessors));
+            }
+
+            // Skip if we already found better path
+            if cost > *distances.get(&node).unwrap_or(&f32::INFINITY) {
+                continue;
+            }
+
+            // Visit neighbors
+            let neighbors = self.get_neighbors(node, Direction::Both);
+            for (neighbor_id, edge_id) in neighbors {
+                if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                    // Edge cost (inverse of weight, or 1.0 if weight is 0)
+                    let edge_cost = if edge_info.weight > 0.0 {
+                        1.0 / edge_info.weight
+                    } else {
+                        1.0
+                    };
+
+                    let new_cost = cost + edge_cost;
+                    let current_best = *distances.get(&neighbor_id).unwrap_or(&f32::INFINITY);
+
+                    if new_cost < current_best {
+                        distances.insert(neighbor_id, new_cost);
+                        predecessors.insert(neighbor_id, (node, edge_id));
+                        heap.push(DijkstraState {
+                            cost: new_cost,
+                            node: neighbor_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        None // No path found
+    }
+
+    /// Reconstruct path from predecessors map
+    fn reconstruct_path(
+        &self,
+        from_id: NodeId,
+        to_id: NodeId,
+        predecessors: &HashMap<NodeId, (NodeId, EdgeId)>,
+    ) -> Path {
+        let mut path_nodes = Vec::new();
+        let mut path_edges = Vec::new();
+        let mut current = to_id;
+
+        // Trace back from target to source
+        while current != from_id {
+            path_nodes.push(current);
+
+            if let Some(&(prev_node, edge_id)) = predecessors.get(&current) {
+                path_edges.push(edge_id);
+                current = prev_node;
+            } else {
+                // Should not happen if path exists
+                break;
+            }
+        }
+
+        path_nodes.push(from_id);
+
+        // Reverse to get from->to order
+        path_nodes.reverse();
+        path_edges.reverse();
+
+        // Calculate total cost
+        let total_cost = path_edges
+            .iter()
+            .filter_map(|&edge_id| self.edge_map.get(&edge_id))
+            .map(|edge_info| {
+                if edge_info.weight > 0.0 {
+                    1.0 / edge_info.weight
+                } else {
+                    1.0
+                }
+            })
+            .sum();
+
+        Path {
+            nodes: path_nodes.clone(),
+            edges: path_edges.clone(),
+            total_cost,
+            length: path_edges.len(),
+        }
+    }
+
+    // ==================== SUBGRAPHS ====================
+
+    /// Extract induced subgraph from node set
+    /// Subgraph contains all nodes and all edges between them
+    ///
+    /// # Arguments
+    ///
+    /// * `node_ids` - Set of node IDs to include
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut nodes = HashSet::new();
+    /// nodes.insert(1);
+    /// nodes.insert(2);
+    /// nodes.insert(3);
+    ///
+    /// let subgraph = graph.extract_subgraph(&nodes);
+    /// println!("Subgraph has {} nodes and {} edges",
+    ///          subgraph.node_count(), subgraph.edge_count());
+    /// ```
+    pub fn extract_subgraph(&self, node_ids: &HashSet<NodeId>) -> Subgraph {
+        let mut subgraph = Subgraph::new();
+        subgraph.nodes = node_ids.clone();
+
+        // Find all edges between nodes in the set
+        for &node_id in node_ids {
+            if let Some(outgoing) = self.adjacency_out.get(&node_id) {
+                for &edge_id in outgoing {
+                    if let Some(edge_info) = self.edge_map.get(&edge_id) {
+                        if node_ids.contains(&edge_info.to_id) {
+                            subgraph.edges.insert(edge_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        subgraph
+    }
+
+    /// Extract ego-network (neighborhood) around a node
+    /// Returns subgraph containing center node and all nodes within radius hops
+    ///
+    /// # Arguments
+    ///
+    /// * `center_id` - Center node
+    /// * `radius` - Maximum number of hops
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// // Extract 2-hop neighborhood around node 10
+    /// let neighborhood = graph.extract_neighborhood(10, 2);
+    /// ```
+    pub fn extract_neighborhood(&self, center_id: NodeId, radius: usize) -> Subgraph {
+        let mut nodes_within = HashSet::new();
+        nodes_within.insert(center_id);
+
+        // BFS to find all nodes within radius
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+
+        queue.push_back((center_id, 0));
+        visited.insert(center_id);
+
+        while let Some((current_id, depth)) = queue.pop_front() {
+            if depth < radius {
+                let neighbors = self.get_neighbors(current_id, Direction::Both);
+                for (neighbor_id, _edge_id) in neighbors {
+                    if !visited.contains(&neighbor_id) {
+                        visited.insert(neighbor_id);
+                        nodes_within.insert(neighbor_id);
+                        queue.push_back((neighbor_id, depth + 1));
+                    }
+                }
+            }
+        }
+
+        self.extract_subgraph(&nodes_within)
+    }
+
+    // ============================================================================
+    // SignalSystem v1.0 - Spreading Activation Methods
+    // ============================================================================
+
+    /// Perform spreading activation from a source node
+    ///
+    /// Uses BFS with energy decay to propagate activation through the graph.
+    /// Energy decreases with each hop based on edge weights and decay rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `source_id` - Starting node for activation
+    /// * `initial_energy` - Initial energy at source [0.0, inf]
+    /// * `custom_config` - Optional custom configuration (uses graph's signal_config if None)
+    ///
+    /// # Returns
+    ///
+    /// ActivationResult containing:
+    /// - List of activated nodes with energies
+    /// - Performance metrics
+    /// - Strongest activation path
+    pub fn spreading_activation(
+        &mut self,
+        source_id: NodeId,
+        initial_energy: f32,
+        custom_config: Option<SignalConfig>,
+    ) -> ActivationResult {
+        let start_time = std::time::Instant::now();
+
+        // Use custom config or default
+        let config = custom_config.unwrap_or_else(|| self.signal_config.clone());
+
+        // Validate config
+        if let Err(e) = config.validate() {
+            eprintln!("Invalid SignalConfig: {}", e);
+            return ActivationResult::default();
+        }
+
+        // Check if source node exists
+        if !self.contains_node(source_id) {
+            eprintln!("Source node {} does not exist", source_id);
+            return ActivationResult::default();
+        }
+
+        // Clear previous activations
+        self.clear_activations();
+
+        // Initialize result
+        let mut result = ActivationResult::default();
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+
+        // Activate source node
+        self.activate_node(source_id, initial_energy, None, &config);
+        queue.push_back((source_id, initial_energy, 0_usize, vec![source_id]));
+        visited.insert(source_id);
+
+        // BFS with energy decay
+        while let Some((current_id, current_energy, depth, path)) = queue.pop_front() {
+            result.nodes_visited += 1;
+            result.max_depth_reached = result.max_depth_reached.max(depth);
+
+            // Check max depth
+            if depth >= config.max_depth {
+                continue;
+            }
+
+            // Get outgoing neighbors
+            let neighbors = self.get_neighbors(current_id, Direction::Outgoing);
+
+            for (neighbor_id, edge_id) in neighbors {
+                // Skip already visited nodes
+                if visited.contains(&neighbor_id) {
+                    continue;
+                }
+
+                // Get edge info for weight
+                let edge_weight = self.edge_map
+                    .get(&edge_id)
+                    .map(|e| e.weight)
+                    .unwrap_or(1.0);
+
+                // Compute transmitted energy
+                let transmitted_energy = self.compute_transmitted_energy(
+                    current_energy,
+                    edge_weight,
+                    &config,
+                );
+
+                // Check energy threshold
+                if transmitted_energy < config.min_energy {
+                    continue;
+                }
+
+                // Activate neighbor node
+                self.activate_node(neighbor_id, transmitted_energy, Some(current_id), &config);
+
+                // Build path
+                let mut new_path = path.clone();
+                new_path.push(neighbor_id);
+
+                // Add to queue
+                queue.push_back((neighbor_id, transmitted_energy, depth + 1, new_path.clone()));
+                visited.insert(neighbor_id);
+
+                // Record activated node
+                if transmitted_energy >= config.activation_threshold {
+                    result.activated_nodes.push(ActivatedNode {
+                        node_id: neighbor_id,
+                        energy: transmitted_energy,
+                        depth: depth + 1,
+                        path_from_source: new_path,
+                    });
+                }
+            }
+        }
+
+        // Sort activated nodes by energy (descending)
+        result.activated_nodes.sort_by(|a, b| {
+            b.energy.partial_cmp(&a.energy).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Find strongest path
+        if let Some(strongest) = result.activated_nodes.first() {
+            result.strongest_path = Some(Path {
+                nodes: strongest.path_from_source.clone(),
+                edges: Vec::new(), // TODO: populate edges
+                total_cost: strongest.energy,
+                length: strongest.depth,
+            });
+        }
+
+        result.execution_time_us = start_time.elapsed().as_micros() as u64;
+        result
+    }
+
+    /// Compute energy transmitted to neighbor node
+    ///
+    /// Formula: E_transmitted = E_source * edge_weight * (1 - decay_rate)
+    fn compute_transmitted_energy(
+        &self,
+        source_energy: f32,
+        edge_weight: f32,
+        config: &SignalConfig,
+    ) -> f32 {
+        source_energy * edge_weight * (1.0 - config.decay_rate)
+    }
+
+    /// Activate a node with given energy
+    ///
+    /// Handles different accumulation modes (Sum, Max, WeightedAverage)
+    fn activate_node(
+        &mut self,
+        node_id: NodeId,
+        energy: f32,
+        source_id: Option<NodeId>,
+        config: &SignalConfig,
+    ) {
+        let activation = self.activations.entry(node_id).or_default();
+
+        // Apply accumulation mode
+        match config.accumulation_mode {
+            AccumulationMode::Sum => {
+                activation.energy += energy;
+            }
+            AccumulationMode::Max => {
+                activation.energy = activation.energy.max(energy);
+            }
+            AccumulationMode::WeightedAverage => {
+                let count = activation.activation_count as f32;
+                if count > 0.0 {
+                    activation.energy = (activation.energy * count + energy) / (count + 1.0);
+                } else {
+                    activation.energy = energy;
+                }
+            }
+        }
+
+        activation.activation_count += 1;
+        activation.last_activated = NodeActivation::current_timestamp_us();
+        if source_id.is_some() {
+            activation.source_id = source_id;
+        }
+    }
+
+    /// Clear all activation states
+    pub fn clear_activations(&mut self) {
+        self.activations.clear();
+    }
+
+    /// Get activation energy of a node
+    pub fn get_activation(&self, node_id: NodeId) -> Option<f32> {
+        self.activations.get(&node_id).map(|a| a.energy)
+    }
+
+    /// Get full activation state of a node
+    pub fn get_activation_state(&self, node_id: NodeId) -> Option<&NodeActivation> {
+        self.activations.get(&node_id)
+    }
+
+    /// Set signal configuration
+    pub fn set_signal_config(&mut self, config: SignalConfig) -> Result<(), String> {
+        config.validate()?;
+        self.signal_config = config;
+        Ok(())
+    }
+
+    /// Get current signal configuration
+    pub fn get_signal_config(&self) -> &SignalConfig {
+        &self.signal_config
+    }
+
+    // ============================================================================
+    // End of SignalSystem methods
+    // ============================================================================
+}
+
+impl Default for Graph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ==================== ITERATORS ====================
+
+/// BFS Iterator
+pub struct BFSIterator<'a> {
+    graph: &'a Graph,
+    visited: HashSet<NodeId>,
+    queue: VecDeque<(NodeId, usize)>,
+    max_depth: Option<usize>,
+}
+
+impl<'a> BFSIterator<'a> {
+    fn new(graph: &'a Graph, start_id: NodeId, max_depth: Option<usize>) -> Self {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+
+        if graph.contains_node(start_id) {
+            queue.push_back((start_id, 0));
+            visited.insert(start_id);
+        }
+
+        Self {
+            graph,
+            visited,
+            queue,
+            max_depth,
+        }
+    }
+}
+
+impl<'a> Iterator for BFSIterator<'a> {
+    type Item = (NodeId, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((current_id, depth)) = self.queue.pop_front() {
+            // Check max depth before adding neighbors
+            if self.max_depth.is_none() || depth < self.max_depth.unwrap() {
+                let neighbors = self.graph.get_neighbors(current_id, Direction::Both);
+                for (neighbor_id, _edge_id) in neighbors {
+                    if !self.visited.contains(&neighbor_id) {
+                        self.visited.insert(neighbor_id);
+                        self.queue.push_back((neighbor_id, depth + 1));
+                    }
+                }
+            }
+
+            Some((current_id, depth))
+        } else {
+            None
+        }
+    }
+}
+
+/// DFS Iterator
+pub struct DFSIterator<'a> {
+    graph: &'a Graph,
+    visited: HashSet<NodeId>,
+    stack: Vec<(NodeId, usize)>,
+    max_depth: Option<usize>,
+}
+
+impl<'a> DFSIterator<'a> {
+    fn new(graph: &'a Graph, start_id: NodeId, max_depth: Option<usize>) -> Self {
+        let mut stack = Vec::new();
+
+        if graph.contains_node(start_id) {
+            stack.push((start_id, 0));
+        }
+
+        Self {
+            graph,
+            visited: HashSet::new(),
+            stack,
+            max_depth,
+        }
+    }
+}
+
+impl<'a> Iterator for DFSIterator<'a> {
+    type Item = (NodeId, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some((current_id, depth)) = self.stack.pop() {
+            if self.visited.contains(&current_id) {
+                continue;
+            }
+
+            self.visited.insert(current_id);
+
+            // Add neighbors to stack if not at max depth
+            if self.max_depth.is_none() || depth < self.max_depth.unwrap() {
+                let neighbors = self.graph.get_neighbors(current_id, Direction::Both);
+                for (neighbor_id, _edge_id) in neighbors.into_iter().rev() {
+                    if !self.visited.contains(&neighbor_id) {
+                        self.stack.push((neighbor_id, depth + 1));
+                    }
+                }
+            }
+
+            return Some((current_id, depth));
+        }
+
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_graph_creation() {
+        let graph = Graph::new();
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn test_add_remove_node() {
+        let mut graph = Graph::new();
+
+        // Add node
+        assert!(graph.add_node(1));
+        assert_eq!(graph.node_count(), 1);
+        assert!(graph.contains_node(1));
+
+        // Add duplicate
+        assert!(!graph.add_node(1));
+        assert_eq!(graph.node_count(), 1);
+
+        // Remove node
+        assert!(graph.remove_node(1));
+        assert_eq!(graph.node_count(), 0);
+        assert!(!graph.contains_node(1));
+
+        // Remove non-existent
+        assert!(!graph.remove_node(1));
+    }
+
+    #[test]
+    fn test_add_remove_edge() {
+        let mut graph = Graph::new();
+        graph.add_node(1);
+        graph.add_node(2);
+
+        let edge_id = Graph::compute_edge_id(1, 2, 0);
+
+        // Add edge
+        assert!(graph.add_edge(edge_id, 1, 2, 0, 1.0, false).unwrap());
+        assert_eq!(graph.edge_count(), 1);
+        assert!(graph.contains_edge(edge_id));
+
+        // Add duplicate
+        assert!(!graph.add_edge(edge_id, 1, 2, 0, 1.0, false).unwrap());
+        assert_eq!(graph.edge_count(), 1);
+
+        // Remove edge
+        assert!(graph.remove_edge(edge_id));
+        assert_eq!(graph.edge_count(), 0);
+        assert!(!graph.contains_edge(edge_id));
+    }
+
+    #[test]
+    fn test_get_neighbors() {
+        let mut graph = Graph::new();
+        graph.add_node(1);
+        graph.add_node(2);
+        graph.add_node(3);
+
+        let edge1 = Graph::compute_edge_id(1, 2, 0);
+        let edge2 = Graph::compute_edge_id(1, 3, 0);
+
+        graph.add_edge(edge1, 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(edge2, 1, 3, 0, 1.0, false).unwrap();
+
+        // Outgoing neighbors
+        let neighbors = graph.get_neighbors(1, Direction::Outgoing);
+        assert_eq!(neighbors.len(), 2);
+
+        // Incoming neighbors
+        let neighbors = graph.get_neighbors(2, Direction::Incoming);
+        assert_eq!(neighbors.len(), 1);
+        assert_eq!(neighbors[0].0, 1);
+    }
+
+    #[test]
+    fn test_get_degree() {
+        let mut graph = Graph::new();
+        graph.add_node(1);
+        graph.add_node(2);
+
+        let edge_id = Graph::compute_edge_id(1, 2, 0);
+        graph.add_edge(edge_id, 1, 2, 0, 1.0, false).unwrap();
+
+        assert_eq!(graph.get_degree(1, Direction::Outgoing), 1);
+        assert_eq!(graph.get_degree(1, Direction::Incoming), 0);
+        assert_eq!(graph.get_degree(2, Direction::Outgoing), 0);
+        assert_eq!(graph.get_degree(2, Direction::Incoming), 1);
+    }
+
+    #[test]
+    fn test_path() {
+        let path = Path::empty();
+        assert!(path.is_empty());
+        assert!(path.is_valid());
+
+        let path = Path {
+            nodes: vec![1, 2, 3],
+            edges: vec![100, 101],
+            total_cost: 2.0,
+            length: 2,
+        };
+        assert!(!path.is_empty());
+        assert!(path.is_valid());
+        assert!(path.contains_node(2));
+        assert!(path.contains_edge(100));
+    }
+
+    #[test]
+    fn test_remove_node_removes_edges() {
+        let mut graph = Graph::new();
+        graph.add_node(1);
+        graph.add_node(2);
+        graph.add_node(3);
+
+        let edge1 = Graph::compute_edge_id(1, 2, 0);
+        let edge2 = Graph::compute_edge_id(2, 3, 0);
+
+        graph.add_edge(edge1, 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(edge2, 2, 3, 0, 1.0, false).unwrap();
+
+        assert_eq!(graph.edge_count(), 2);
+
+        // Remove node 2 should remove both edges
+        graph.remove_node(2);
+        assert_eq!(graph.edge_count(), 0);
+        assert!(!graph.contains_edge(edge1));
+        assert!(!graph.contains_edge(edge2));
+    }
+
+    #[test]
+    fn test_bfs() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Create simple chain: 1 -> 2 -> 3 -> 4 -> 5
+        let edge1 = Graph::compute_edge_id(1, 2, 0);
+        let edge2 = Graph::compute_edge_id(2, 3, 0);
+        let edge3 = Graph::compute_edge_id(3, 4, 0);
+        let edge4 = Graph::compute_edge_id(4, 5, 0);
+
+        graph.add_edge(edge1, 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(edge2, 2, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(edge3, 3, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(edge4, 4, 5, 0, 1.0, false).unwrap();
+
+        // BFS from node 1
+        let mut visited = Vec::new();
+        graph.bfs(1, None, |node_id, depth| {
+            visited.push((node_id, depth));
+        });
+
+        assert_eq!(visited.len(), 5);
+        assert_eq!(visited[0], (1, 0)); // Start node
+        assert_eq!(visited[1], (2, 1)); // Direct neighbor
+    }
+
+    #[test]
+    fn test_dfs() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Create tree: 1 -> 2, 1 -> 3, 2 -> 4, 2 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(1, 3, 0), 1, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 4, 0), 2, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 5, 0), 2, 5, 0, 1.0, false).unwrap();
+
+        // DFS from node 1
+        let mut visited = Vec::new();
+        graph.dfs(1, None, |node_id, _depth| {
+            visited.push(node_id);
+        });
+
+        assert_eq!(visited.len(), 5);
+        assert_eq!(visited[0], 1); // Start node
+    }
+
+    #[test]
+    fn test_find_path() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Chain: 1 -> 2 -> 3 -> 4 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(4, 5, 0), 4, 5, 0, 1.0, false).unwrap();
+
+        // Find path 1 -> 5
+        let path = graph.find_path(1, 5).unwrap();
+        assert_eq!(path.length, 4);
+        assert_eq!(path.nodes, vec![1, 2, 3, 4, 5]);
+        assert!(path.is_valid());
+
+        // No path to isolated node
+        graph.add_node(100);
+        assert!(graph.find_path(1, 100).is_none());
+
+        // Same node
+        let path = graph.find_path(1, 1).unwrap();
+        assert_eq!(path.length, 0);
+        assert_eq!(path.nodes, vec![1]);
+    }
+
+    #[test]
+    fn test_dijkstra() {
+        let mut graph = Graph::new();
+        for i in 1..=4 {
+            graph.add_node(i);
+        }
+
+        // Diamond shape with different weights
+        // 1 -> 2 (weight 1.0)
+        // 1 -> 3 (weight 0.5)
+        // 2 -> 4 (weight 1.0)
+        // 3 -> 4 (weight 1.0)
+        // Best path: 1 -> 3 -> 4 (cost = 1.0 + 1.0 = 2.0)
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(1, 3, 0), 1, 3, 0, 2.0, false).unwrap(); // Higher weight = lower cost
+        graph.add_edge(Graph::compute_edge_id(2, 4, 0), 2, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+
+        let path = graph.dijkstra(1, 4).unwrap();
+        assert!(path.is_valid());
+        assert_eq!(path.nodes[0], 1);
+        assert_eq!(path.nodes[path.nodes.len() - 1], 4);
+    }
+
+    #[test]
+    fn test_extract_subgraph() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Chain: 1 -> 2 -> 3 -> 4 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(4, 5, 0), 4, 5, 0, 1.0, false).unwrap();
+
+        // Extract subgraph with nodes 2, 3, 4
+        let mut nodes = HashSet::new();
+        nodes.insert(2);
+        nodes.insert(3);
+        nodes.insert(4);
+
+        let subgraph = graph.extract_subgraph(&nodes);
+        assert_eq!(subgraph.node_count(), 3);
+        assert_eq!(subgraph.edge_count(), 2); // Edges 2->3 and 3->4
+    }
+
+    #[test]
+    fn test_extract_neighborhood() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Chain: 1 -> 2 -> 3 -> 4 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(4, 5, 0), 4, 5, 0, 1.0, false).unwrap();
+
+        // 2-hop neighborhood around node 3
+        let neighborhood = graph.extract_neighborhood(3, 2);
+        // In a directed chain 1->2->3->4->5, from node 3 with radius 2:
+        // - depth 0: node 3
+        // - depth 1: node 4 (3->4)
+        // - depth 2: node 5 (3->4->5)
+        // Total: 3 nodes (3, 4, 5) in directed graph
+        assert_eq!(neighborhood.node_count(), 3); // Nodes reachable within 2 hops (directed)
+    }
+
+    #[test]
+    fn test_bfs_iterator() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+
+        let visited: Vec<_> = graph.bfs_iter(1, Some(2)).collect();
+        assert!(visited.len() >= 1);
+        assert_eq!(visited[0].0, 1); // First node is start
+    }
+
+    #[test]
+    fn test_dfs_iterator() {
+        let mut graph = Graph::new();
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 1.0, false).unwrap();
+
+        let visited: Vec<_> = graph.dfs_iter(1, None).collect();
+        assert!(visited.len() >= 1);
+        assert_eq!(visited[0].0, 1); // First node is start
+    }
+
+    // ============================================================================
+    // SignalSystem v1.0 Tests
+    // ============================================================================
+
+    #[test]
+    fn test_spreading_activation_basic() {
+        // Test basic spreading on simple chain: 1 -> 2 -> 3 -> 4
+        let mut graph = Graph::new();
+
+        // Build chain
+        for i in 1..=4 {
+            graph.add_node(i);
+        }
+
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 0.8, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 3, 0), 2, 3, 0, 0.8, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 0.8, false).unwrap();
+
+        // Activate from node 1
+        let result = graph.spreading_activation(1, 1.0, None);
+
+        // Should activate nodes 2, 3, 4
+        assert!(result.activated_nodes.len() >= 2, "Should activate at least 2 nodes");
+        assert!(result.nodes_visited >= 4, "Should visit at least 4 nodes");
+        assert!(result.execution_time_us > 0, "Should track execution time");
+
+        // Nodes should be sorted by energy (descending)
+        for i in 1..result.activated_nodes.len() {
+            assert!(
+                result.activated_nodes[i-1].energy >= result.activated_nodes[i].energy,
+                "Nodes should be sorted by energy"
+            );
+        }
+
+        // Energy should decay with distance
+        if result.activated_nodes.len() >= 2 {
+            let first = &result.activated_nodes[0];
+            let second = &result.activated_nodes[1];
+            assert!(first.depth <= second.depth || first.energy >= second.energy,
+                "Higher energy nodes should be closer or have higher energy");
+        }
+    }
+
+    #[test]
+    fn test_spreading_activation_accumulation_sum() {
+        // Test sum accumulation mode with diamond: 1 -> 2,3 -> 4
+        let mut graph = Graph::new();
+
+        for i in 1..=4 {
+            graph.add_node(i);
+        }
+
+        // Create diamond pattern
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 0.5, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(1, 3, 0), 1, 3, 0, 0.5, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 4, 0), 2, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+
+        // Configure for sum accumulation
+        let mut config = SignalConfig::default();
+        config.accumulation_mode = crate::graph::AccumulationMode::Sum;
+
+        let result = graph.spreading_activation(1, 1.0, Some(config));
+
+        // Node 4 should receive energy from both paths (2 and 3)
+        // So its energy should be higher than if it came from single path
+        let node4_activation = graph.get_activation(4);
+        assert!(node4_activation.is_some(), "Node 4 should be activated");
+
+        // Energy at node 4 should be sum of both paths
+        let energy = node4_activation.unwrap();
+        assert!(energy > 0.2, "Node 4 should have significant energy from both paths: {}", energy);
+    }
+
+    #[test]
+    fn test_spreading_activation_accumulation_max() {
+        // Test max accumulation mode
+        let mut graph = Graph::new();
+
+        for i in 1..=4 {
+            graph.add_node(i);
+        }
+
+        // Diamond with different weights
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 0.8, false).unwrap(); // Strong path
+        graph.add_edge(Graph::compute_edge_id(1, 3, 0), 1, 3, 0, 0.3, false).unwrap(); // Weak path
+        graph.add_edge(Graph::compute_edge_id(2, 4, 0), 2, 4, 0, 1.0, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 1.0, false).unwrap();
+
+        // Configure for max accumulation
+        let mut config = SignalConfig::default();
+        config.accumulation_mode = crate::graph::AccumulationMode::Max;
+
+        let result = graph.spreading_activation(1, 1.0, Some(config));
+
+        // Node 4 should have energy from stronger path (via node 2)
+        let node4_activation = graph.get_activation(4);
+        assert!(node4_activation.is_some(), "Node 4 should be activated");
+    }
+
+    #[test]
+    fn test_spreading_activation_max_depth() {
+        // Test max depth limiting
+        let mut graph = Graph::new();
+
+        // Create long chain: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+        for i in 1..=6 {
+            graph.add_node(i);
+        }
+
+        for i in 1..=5 {
+            let edge_id = Graph::compute_edge_id(i, i+1, 0);
+            graph.add_edge(edge_id, i, i+1, 0, 1.0, false).unwrap();
+        }
+
+        // Limit to depth 3
+        let mut config = SignalConfig::default();
+        config.max_depth = 3;
+        config.min_energy = 0.0; // Disable energy cutoff
+
+        let result = graph.spreading_activation(1, 1.0, Some(config));
+
+        // Should reach at most depth 3
+        assert_eq!(result.max_depth_reached, 3, "Should respect max_depth");
+
+        // Should not activate nodes beyond depth 3
+        for node in &result.activated_nodes {
+            assert!(node.depth <= 3, "Node {} at depth {} exceeds max_depth", node.node_id, node.depth);
+        }
+    }
+
+    #[test]
+    fn test_spreading_activation_energy_cutoff() {
+        // Test min_energy cutoff
+        let mut graph = Graph::new();
+
+        // Chain with low weights (causes fast decay)
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        for i in 1..=4 {
+            let edge_id = Graph::compute_edge_id(i, i+1, 0);
+            graph.add_edge(edge_id, i, i+1, 0, 0.3, false).unwrap(); // Low weight
+        }
+
+        // Configure high decay and cutoff
+        let mut config = SignalConfig::default();
+        config.decay_rate = 0.5; // 50% decay per hop
+        config.min_energy = 0.05; // Stop when energy < 0.05
+        let min_energy_threshold = config.min_energy;
+
+        let result = graph.spreading_activation(1, 1.0, Some(config));
+
+        // Should stop early due to energy cutoff
+        // With 50% decay and 0.3 weight: 1.0 -> 0.15 -> 0.0225 (stops)
+        assert!(result.activated_nodes.len() < 4, "Should stop due to energy cutoff");
+
+        // All activated nodes should have energy >= min_energy
+        for node in &result.activated_nodes {
+            assert!(node.energy >= min_energy_threshold,
+                "Node {} has energy {} below min_energy {}",
+                node.node_id, node.energy, min_energy_threshold);
+        }
+    }
+
+    #[test]
+    fn test_spreading_activation_strongest_path() {
+        // Test strongest path detection
+        let mut graph = Graph::new();
+
+        // Create network with multiple paths
+        for i in 1..=5 {
+            graph.add_node(i);
+        }
+
+        // Strong path: 1 -> 2 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 0.9, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(2, 5, 0), 2, 5, 0, 0.9, false).unwrap();
+
+        // Weak path: 1 -> 3 -> 4 -> 5
+        graph.add_edge(Graph::compute_edge_id(1, 3, 0), 1, 3, 0, 0.4, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(3, 4, 0), 3, 4, 0, 0.4, false).unwrap();
+        graph.add_edge(Graph::compute_edge_id(4, 5, 0), 4, 5, 0, 0.4, false).unwrap();
+
+        let result = graph.spreading_activation(1, 1.0, None);
+
+        // Should have strongest path
+        assert!(result.strongest_path.is_some(), "Should detect strongest path");
+
+        let path = result.strongest_path.unwrap();
+        assert!(path.nodes.len() >= 2, "Strongest path should have multiple nodes");
+        assert_eq!(path.nodes[0], 1, "Path should start at source");
+
+        // Strongest node should be in the result
+        if let Some(strongest) = result.activated_nodes.first() {
+            assert!(strongest.energy > 0.0, "Strongest node should have energy");
+        }
+    }
+
+    #[test]
+    fn test_spreading_activation_empty_graph() {
+        // Test with non-existent source
+        let mut graph = Graph::new();
+
+        let result = graph.spreading_activation(999, 1.0, None);
+
+        // Should return empty result
+        assert_eq!(result.activated_nodes.len(), 0, "Should not activate any nodes");
+        assert_eq!(result.nodes_visited, 0, "Should not visit any nodes");
+    }
+
+    #[test]
+    fn test_spreading_activation_isolated_node() {
+        // Test with isolated node (no outgoing edges)
+        let mut graph = Graph::new();
+        graph.add_node(1);
+
+        let result = graph.spreading_activation(1, 1.0, None);
+
+        // Should activate only source
+        assert_eq!(result.activated_nodes.len(), 0, "Should not activate neighbors (none exist)");
+        assert_eq!(result.nodes_visited, 1, "Should visit only source");
+    }
+
+    #[test]
+    fn test_clear_activations() {
+        let mut graph = Graph::new();
+
+        for i in 1..=3 {
+            graph.add_node(i);
+        }
+
+        graph.add_edge(Graph::compute_edge_id(1, 2, 0), 1, 2, 0, 1.0, false).unwrap();
+
+        // Activate
+        graph.spreading_activation(1, 1.0, None);
+
+        // Should have activations
+        assert!(graph.get_activation(1).is_some(), "Node 1 should be activated");
+
+        // Clear
+        graph.clear_activations();
+
+        // Should have no activations
+        assert!(graph.get_activation(1).is_none(), "Node 1 should not be activated after clear");
+        assert!(graph.get_activation(2).is_none(), "Node 2 should not be activated after clear");
+    }
+
+    #[test]
+    fn test_signal_config_validation() {
+        // Valid config
+        let config = SignalConfig::default();
+        assert!(config.validate().is_ok(), "Default config should be valid");
+
+        // Invalid min_energy
+        let mut config = SignalConfig::default();
+        config.min_energy = 1.5;
+        assert!(config.validate().is_err(), "min_energy > 1.0 should be invalid");
+
+        // Invalid decay_rate
+        let mut config = SignalConfig::default();
+        config.decay_rate = -0.1;
+        assert!(config.validate().is_err(), "Negative decay_rate should be invalid");
+
+        // Invalid max_depth
+        let mut config = SignalConfig::default();
+        config.max_depth = 0;
+        assert!(config.validate().is_err(), "max_depth = 0 should be invalid");
+    }
+}

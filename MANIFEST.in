@@ -1,0 +1,33 @@
+# Include documentation
+include README.md
+include CHANGELOG.md
+include LICENSE
+
+# Include configuration
+include pyproject.toml
+
+# Include source code directories
+recursive-include src *.py
+recursive-include src *.rs
+recursive-include src *.toml
+
+# Include Jupyter integration
+recursive-include src/axiom_jupyter *.py
+
+# Include API modules
+recursive-include src/api *.py
+
+# Exclude unwanted files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude .git*
+
+# Exclude build artifacts
+prune build
+prune dist
+prune target
+prune .venv
+prune node_modules

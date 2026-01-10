@@ -1,0 +1,130 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "axiom-core"
+version = "0.63.1"
+description = "Axiom - High-performance cognitive platform with Rust Core, WebSocket API, and Jupyter integration"
+authors = [{name = "Chernov Denys", email = "denys@axiom.org"}]
+license = {text = "AGPL-3.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Core dependencies (minimal for base package)
+    "pydantic>=2.5.0",
+    "typing-extensions>=4.0.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: FastAPI",
+    "Framework :: IPython",
+    "Framework :: Jupyter",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+]
+keywords = [
+    "axiom",
+    "cognitive-architecture",
+    "spatial-computing",
+    "ai",
+    "ml",
+    "jupyter",
+    "websocket",
+    "real-time",
+    "rust",
+    "fastapi",
+]
+
+[project.optional-dependencies]
+# Jupyter notebook integration
+jupyter = [
+    "ipython>=8.0.0",
+    "jupyter>=1.0.0",
+    "notebook>=6.4.0",
+    "jupyterlab>=3.0.0",
+    "pandas>=1.3.0",
+    "networkx>=2.6.0",
+    "matplotlib>=3.5.0",
+    "plotly>=5.0.0",
+]
+
+# Full API server with WebSocket support
+api = [
+    "fastapi==0.109.0",
+    "uvicorn[standard]==0.27.0",
+    "pydantic==2.5.3",
+    "pydantic-settings==2.1.0",
+    "python-multipart==0.0.6",
+    "python-dotenv==1.0.0",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "websockets>=12.0",
+    "prometheus-client>=0.19.0",
+]
+
+# All features (full installation)
+all = [
+    "ipython>=8.0.0",
+    "jupyter>=1.0.0",
+    "notebook>=6.4.0",
+    "jupyterlab>=3.0.0",
+    "pandas>=1.3.0",
+    "networkx>=2.6.0",
+    "matplotlib>=3.5.0",
+    "plotly>=5.0.0",
+    "fastapi==0.109.0",
+    "uvicorn[standard]==0.27.0",
+    "pydantic==2.5.3",
+    "pydantic-settings==2.1.0",
+    "python-multipart==0.0.6",
+    "python-dotenv==1.0.0",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "websockets>=12.0",
+    "prometheus-client>=0.19.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.25.2",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "black>=23.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dchrnv/axiom"
+Repository = "https://github.com/dchrnv/axiom"
+Documentation = "https://github.com/dchrnv/axiom/blob/main/README.md"
+Changelog = "https://github.com/dchrnv/axiom/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dchrnv/axiom/issues"
+
+[project.scripts]
+axiom = "axiom_jupyter.cli:main"
+
+[project.entry-points."jupyter_nbextensions_dirs"]
+axiom_jupyter = "axiom_jupyter:_jupyter_nbextension_paths"
+
+[tool.maturin]
+python-source = "python"
+module-name = "axiom._core"
+features = ["python-bindings"]
+manifest-path = "src/core_rust/Cargo.toml"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

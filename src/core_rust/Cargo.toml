@@ -1,0 +1,190 @@
+[package]
+name = "axiom-core"
+version = "0.47.0"
+edition = "2021"
+authors = ["Axiom Team"]
+description = "Axiom: Cognitive architecture with emergent knowledge structures in 8D semantic space"
+
+[dependencies]
+# PyO3 for Python FFI bindings (v0.40.0)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+numpy = { version = "0.22", optional = true }
+
+# Parking lot for efficient RwLock
+parking_lot = "0.12"
+
+# Tokio for async runtime
+tokio = { version = "1.42", features = ["sync", "macros", "rt", "rt-multi-thread", "time"] }
+
+# Async trait support
+async-trait = "0.1"
+
+# Error handling
+thiserror = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# UUID generation
+uuid = { version = "1.0", features = ["v4"] }
+
+# Random number generation (for sampling strategies)
+rand = "0.8"
+
+# DashMap for lock-free concurrent HashMap (IntuitionEngine v3.0)
+dashmap = "6.1"
+
+# SmallVec for stack-allocated vectors (IntuitionEngine v3.0)
+smallvec = "1.13"
+
+# PostgreSQL async driver (optional, for persistence)
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "uuid", "chrono", "json"], optional = true }
+
+# For .env support in persistence
+dotenv = { version = "0.15", optional = true }
+
+# Bootstrap Library v1.2 dependencies
+# Linear algebra and ML
+ndarray = "0.15"
+linfa = "0.7"
+linfa-reduction = "0.7"  # For PCA
+
+# Fast deterministic hashing
+fasthash = "0.4"
+
+# Parallel processing
+rayon = "1.10"
+
+# Crossbeam for concurrent channels (SignalSystem v1.1)
+crossbeam-channel = "0.5"
+
+# WAL (Write-Ahead Log) v0.41.0
+crc32fast = "1.4"
+
+# REST API (v0.39.0)
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures = "0.3"
+
+# Prometheus metrics export (v0.42.0)
+prometheus = "0.13"
+lazy_static = "1.4"
+
+# OpenTelemetry distributed tracing (v0.44.0)
+opentelemetry = "0.21"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.20", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.22"
+
+[dev-dependencies]
+# Testing dependencies
+rand = "0.8"
+tokio = { version = "1.42", features = ["rt", "macros", "time"] }
+tempfile = "3.8"
+
+# Benchmarking with Criterion.rs
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[lib]
+name = "_core"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
+
+[features]
+default = []
+python-bindings = ["pyo3", "numpy"]  # Enable Python bindings with --features python-bindings
+demo-tokio = ["tokio/rt-multi-thread", "tokio/time"]
+persistence = ["sqlx", "dotenv"]  # Enable PostgreSQL persistence with --features persistence
+
+# Temporarily disabled due to packed struct reference errors
+#[[bin]]
+#name = "token-demo"
+#path = "src/bin/demo.rs"
+
+# Temporarily disabled due to RwLock migration (will fix in v0.46.0)
+#[[bin]]
+#name = "axiom-repl"
+#path = "src/bin/repl.rs"
+
+#[[bin]]
+#name = "axiom-api"
+#path = "src/bin/api.rs"
+
+#[[bin]]
+#name = "connection-demo"
+#path = "src/bin/connection-demo.rs"
+
+# Temporarily disabled due to compilation errors - will fix in future update
+#[[bin]]
+#name = "grid-demo"
+#path = "src/bin/grid-demo.rs"
+
+#[[bin]]
+#name = "integration-demo"
+#path = "src/bin/integration-demo.rs"
+
+# Missing file
+#[[bin]]
+#name = "graph-demo"
+#path = "src/bin/graph-demo.rs"
+
+[[bin]]
+name = "experience-stream-demo"
+path = "src/bin/experience-stream-demo.rs"
+required-features = ["demo-tokio"]
+
+[[bin]]
+name = "intuition-demo"
+path = "src/bin/intuition-demo.rs"
+required-features = ["demo-tokio"]
+
+[[bin]]
+name = "learning-loop-demo"
+path = "src/bin/learning-loop-demo.rs"
+required-features = ["demo-tokio"]
+
+[[bin]]
+name = "action-controller-demo"
+path = "src/bin/action-controller-demo.rs"
+required-features = ["demo-tokio"]
+
+[[bin]]
+name = "persistence-demo"
+path = "src/bin/persistence-demo.rs"
+required-features = ["demo-tokio", "persistence"]
+
+[[bench]]
+name = "token_bench"
+harness = false
+
+[[bench]]
+name = "grid_bench"
+harness = false
+
+[[bench]]
+name = "graph_bench"
+harness = false
+
+[[bench]]
+name = "experience_stream_bench"
+harness = false
+
+[[bench]]
+name = "intuition_bench"
+harness = false
+
+[[bench]]
+name = "connection_v3_bench"
+harness = false
+
+[[bench]]
+name = "system_integration_bench"
+harness = false
+
+[[bench]]
+name = "token_1m_bench"
+harness = false

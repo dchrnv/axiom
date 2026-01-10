@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Environment variables (ВАЖНО!)
+.env
+.env.local
+.env.*.local
+
+# Process IDs and runtime files
+*.pid
+.backend.pid
+.frontend.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+backend.log
+frontend.log
+setup.log
+startup.log
+
+# Data
+data/
+*.db
+*.sqlite3
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.jupyter/
+jupyter_notebook_config.py
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Sphinx documentation
+docs/build/
+docs/source/_build/
+
+# Rust
+target/
+Cargo.lock
+
+# Internal documentation (development history and specs)
+docs/arch/
+docs/archive/
+docs/changelogs/
+docs/performance/
+docs/specs/
+docs/benchmarks/
+docs/api/
+docs/client-libraries/
+docs/completion/
+docs/examples/
+docs/jupyter/
+docs/legal/
+
+# Internal development files
+reference-map.md
