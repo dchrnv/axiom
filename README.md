@@ -81,6 +81,7 @@ await client.subscribe("metrics")
 
 - **Docs:** [docs/](docs/)
 - **Guides:** [docs/guides/](docs/guides/)
+- **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ## Development
@@ -120,11 +121,11 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed history.
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+Contributions are welcome! Please read our [contributing guidelines](docs/CONTRIBUTING.md) before submitting PRs.
 
 ## License
 
-AGPL-3.0 - See [LICENSE](LICENSE) file for details.
+AGPL-3.0 - See [LICENSE](LICENSE) and [LICENSE-DATA](docs/LICENSE-DATA) files for details.
 
 ## Links
 
