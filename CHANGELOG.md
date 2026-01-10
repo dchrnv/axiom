@@ -224,8 +224,8 @@ See git history for detailed changes in versions prior to 0.57.0.
 
 ## Version Naming Convention
 
-- **1.xx.00**: Major changes, next versions, or new phases of implementation.
-- **1.00.xx**: Minor additions, patches, or refinements within a specific version or phase.
+- **1.xx.00**: — для следующих версий.
+- **1.00.xx**: — для дополнений, фаз и исправлений.
 - **v 1.00.00**: Starting point for the Axiom project.
 
 ## Links
