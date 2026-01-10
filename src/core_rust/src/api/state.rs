@@ -2,9 +2,9 @@
 //
 // Shared state for API handlers
 
-use crate::gateway::Gateway;
 use crate::curiosity::CuriosityDrive;
 use crate::feedback::FeedbackProcessor;
+use crate::gateway::Gateway;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -47,8 +47,7 @@ impl ApiConfig {
     /// Load from environment variables
     pub fn from_env() -> Self {
         Self {
-            host: std::env::var("AXIOM_HOST")
-                .unwrap_or_else(|_| "127.0.0.1".to_string()),
+            host: std::env::var("AXIOM_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
             port: std::env::var("AXIOM_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -134,7 +133,7 @@ impl ApiState {
     pub fn validate_api_key(&self, provided_key: Option<&str>) -> bool {
         match (&self.config.api_key, provided_key) {
             (Some(expected), Some(provided)) => expected == provided,
-            (None, _) => true, // No API key required
+            (None, _) => true,        // No API key required
             (Some(_), None) => false, // API key required but not provided
         }
     }
@@ -159,12 +158,16 @@ mod tests {
         let state = ApiState {
             gateway: Arc::new(Gateway::new(
                 tokio::sync::mpsc::channel(100).0,
-                Arc::new(parking_lot::RwLock::new(crate::bootstrap::BootstrapLibrary::new(Default::default()))),
+                Arc::new(parking_lot::RwLock::new(
+                    crate::bootstrap::BootstrapLibrary::new(Default::default()),
+                )),
                 Default::default(),
             )),
             feedback_processor: Arc::new(FeedbackProcessor::new(
-                Arc::new(parking_lot::RwLock::new(crate::bootstrap::BootstrapLibrary::new(Default::default()))),
-                Arc::new(parking_lot::RwLock::new(crate::experience_stream::ExperienceStream::new(1000, 10))),
+                Arc::new(parking_lot::RwLock::new(
+                    crate::bootstrap::BootstrapLibrary::new(Default::default()),
+                )),
+                Arc::new(crate::experience_stream::ExperienceStream::new(1000, 10)),
                 Arc::new(parking_lot::RwLock::new(crate::IntuitionEngine::new(
                     Default::default(),
                     Arc::new(crate::experience_stream::ExperienceStream::new(1000, 10)),

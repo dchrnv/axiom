@@ -137,7 +137,7 @@ pub struct FeedbackProcessor {
     bootstrap: Arc<RwLock<BootstrapLibrary>>,
 
     /// Experience stream for reward updates
-    experience_stream: Arc<RwLock<ExperienceStream>>,
+    experience_stream: Arc<ExperienceStream>,
 
     /// Intuition engine for reflex updates
     intuition_engine: Arc<RwLock<IntuitionEngine>>,
@@ -150,7 +150,7 @@ impl FeedbackProcessor {
     /// Create new feedback processor
     pub fn new(
         bootstrap: Arc<RwLock<BootstrapLibrary>>,
-        experience_stream: Arc<RwLock<ExperienceStream>>,
+        experience_stream: Arc<ExperienceStream>,
         intuition_engine: Arc<RwLock<IntuitionEngine>>,
     ) -> Self {
         Self {
@@ -255,7 +255,7 @@ impl FeedbackProcessor {
     /// Apply positive feedback
     async fn apply_positive(&self, signal_id: u64, strength: f32) -> Result<String, FeedbackError> {
         // Update experience stream reward
-        let _stream = self.experience_stream.write();
+        let _stream = &self.experience_stream;
 
         // Find experience by signal_id and update reward
         // For now, just return success message
@@ -267,7 +267,7 @@ impl FeedbackProcessor {
     /// Apply negative feedback
     async fn apply_negative(&self, signal_id: u64, strength: f32) -> Result<String, FeedbackError> {
         // Update experience stream with negative reward
-        let _stream = self.experience_stream.write();
+        let _stream = &self.experience_stream;
 
         // Find experience by signal_id and update reward
         // For now, just return success message

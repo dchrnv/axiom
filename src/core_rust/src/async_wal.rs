@@ -322,6 +322,7 @@ pub struct AsyncWalStatsSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::wal::WalEntryType;
     use tempfile::tempdir;
 
     #[tokio::test]

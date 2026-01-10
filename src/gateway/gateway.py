@@ -6,6 +6,11 @@ It normalizes, encodes, and routes signals to the Core.
 """
 
 import time
+
+try:
+    import axiom_core as _core
+except ImportError:
+    _core = None
 from typing import Optional, Dict, Any, List
 
 from .models import (
@@ -378,8 +383,8 @@ class SignalGateway:
 
         energy = EnergyProfile(
             magnitude=1.0,  # TODO: compute from data
-            valence=0.0,    # TODO: sentiment analysis
-            arousal=0.5,    # TODO: compute from urgency
+            valence=0.0,  # TODO: sentiment analysis
+            arousal=0.5,  # TODO: compute from urgency
             urgency=priority / 255.0,  # Normalize priority to [0, 1]
         )
 
@@ -393,7 +398,7 @@ class SignalGateway:
         if isinstance(data, (bytes, bytearray)):
             size_bytes = len(data)
         elif isinstance(data, str):
-            size_bytes = len(data.encode('utf-8'))
+            size_bytes = len(data.encode("utf-8"))
         else:
             size_bytes = 0
 

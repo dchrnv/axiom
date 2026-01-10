@@ -61,6 +61,17 @@ def get_runtime():
     global _runtime_instance
 
     if _runtime_instance is None:
+        import sys
+        from pathlib import Path
+
+        # Force src/python into path to find core axiom package
+        src_python = Path(__file__).parent.parent.parent / "src" / "python"
+        if str(src_python) not in sys.path:
+            sys.path.insert(0, str(src_python))
+
+        logger.info(f"DEBUG: STORAGE_BACKEND={settings.STORAGE_BACKEND}")
+        logger.info(f"DEBUG: sys.path[0]={sys.path[0]}")
+
         try:
             from axiom import Runtime, Config
 
@@ -74,12 +85,22 @@ def get_runtime():
                 f"dimensions={settings.AXIOM_DIMENSIONS}"
             )
         except ImportError as e:
+            if settings.STORAGE_BACKEND == "memory":
+                logger.warning(
+                    f"axiom package not available, but running in memory mode: {e}"
+                )
+                return None
             logger.error(f"Failed to import axiom: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="axiom package not available. Build with: maturin develop --release --features python-bindings",
             )
         except Exception as e:
+            if settings.STORAGE_BACKEND == "memory":
+                logger.warning(
+                    f"Runtime initialization failed, but running in memory mode: {e}"
+                )
+                return None
             logger.error(f"Failed to initialize runtime: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

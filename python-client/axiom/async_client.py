@@ -200,19 +200,62 @@ class AsyncTokensClient:
     def __init__(self, client: AsyncAxiomClient):
         self._client = client
 
-    async def create(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> Token:
+    async def create(
+        self,
+        entity_type: int = 0,
+        domain: int = 0,
+        weight: float = 0.5,
+        field_radius: float = 1.0,
+        field_strength: float = 1.0,
+        persistent: bool = False,
+        l1_physical: Optional[Dict[str, float]] = None,
+        l2_sensory: Optional[Dict[str, float]] = None,
+        l3_motor: Optional[Dict[str, float]] = None,
+        l4_emotional: Optional[Dict[str, float]] = None,
+        l5_cognitive: Optional[Dict[str, float]] = None,
+        l6_social: Optional[Dict[str, float]] = None,
+        l7_temporal: Optional[Dict[str, float]] = None,
+        l8_abstract: Optional[Dict[str, float]] = None,
+    ) -> Token:
         """Create a new token."""
+        payload = {
+            "entity_type": entity_type,
+            "domain": domain,
+            "weight": weight,
+            "field_radius": field_radius,
+            "field_strength": field_strength,
+            "persistent": persistent,
+        }
+        if l1_physical:
+            payload["l1_physical"] = l1_physical
+        if l2_sensory:
+            payload["l2_sensory"] = l2_sensory
+        if l3_motor:
+            payload["l3_motor"] = l3_motor
+        if l4_emotional:
+            payload["l4_emotional"] = l4_emotional
+        if l5_cognitive:
+            payload["l5_cognitive"] = l5_cognitive
+        if l6_social:
+            payload["l6_social"] = l6_social
+        if l7_temporal:
+            payload["l7_temporal"] = l7_temporal
+        if l8_abstract:
+            payload["l8_abstract"] = l8_abstract
+
         response = await self._client._request(
             "POST",
             "/api/v1/tokens",
-            json={"text": text, "metadata": metadata},
+            json=payload,
         )
-        return Token(**response.json())
+        data = response.json().get("data", {})
+        return Token(**data)
 
     async def get(self, token_id: int) -> Token:
         """Get token by ID."""
         response = await self._client._request("GET", f"/api/v1/tokens/{token_id}")
-        return Token(**response.json())
+        data = response.json().get("data", {})
+        return Token(**data)
 
     async def list(self, limit: int = 100, offset: int = 0) -> List[Token]:
         """List tokens."""
@@ -221,31 +264,56 @@ class AsyncTokensClient:
             "/api/v1/tokens",
             params={"limit": limit, "offset": offset},
         )
-        data = response.json()
+        data = response.json().get("data", {})
         return [Token(**item) for item in data.get("tokens", [])]
 
     async def update(
         self,
         token_id: int,
-        text: Optional[str] = None,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        weight: Optional[float] = None,
+        field_radius: Optional[float] = None,
+        field_strength: Optional[float] = None,
+        l1_physical: Optional[Dict[str, float]] = None,
+        l2_sensory: Optional[Dict[str, float]] = None,
+        l3_motor: Optional[Dict[str, float]] = None,
+        l4_emotional: Optional[Dict[str, float]] = None,
+        l5_cognitive: Optional[Dict[str, float]] = None,
+        l6_social: Optional[Dict[str, float]] = None,
+        l7_temporal: Optional[Dict[str, float]] = None,
+        l8_abstract: Optional[Dict[str, float]] = None,
     ) -> Token:
         """Update token."""
         update_data = {}
-        if text is not None:
-            update_data["text"] = text
-        if embedding is not None:
-            update_data["embedding"] = embedding
-        if metadata is not None:
-            update_data["metadata"] = metadata
+        if weight is not None:
+            update_data["weight"] = weight
+        if field_radius is not None:
+            update_data["field_radius"] = field_radius
+        if field_strength is not None:
+            update_data["field_strength"] = field_strength
+        if l1_physical:
+            update_data["l1_physical"] = l1_physical
+        if l2_sensory:
+            update_data["l2_sensory"] = l2_sensory
+        if l3_motor:
+            update_data["l3_motor"] = l3_motor
+        if l4_emotional:
+            update_data["l4_emotional"] = l4_emotional
+        if l5_cognitive:
+            update_data["l5_cognitive"] = l5_cognitive
+        if l6_social:
+            update_data["l6_social"] = l6_social
+        if l7_temporal:
+            update_data["l7_temporal"] = l7_temporal
+        if l8_abstract:
+            update_data["l8_abstract"] = l8_abstract
 
         response = await self._client._request(
             "PUT",
             f"/api/v1/tokens/{token_id}",
             json=update_data,
         )
-        return Token(**response.json())
+        data = response.json().get("data", {})
+        return Token(**data)
 
     async def delete(self, token_id: int) -> bool:
         """Delete token."""
@@ -254,25 +322,29 @@ class AsyncTokensClient:
 
     async def query(
         self,
-        query_vector: List[float],
-        top_k: int = 10,
-        threshold: Optional[float] = None,
+        text: str,
+        limit: int = 10,
+        threshold: float = 0.0,
+        spaces: Optional[List[str]] = None,
+        include_connections: bool = False,
     ) -> List[TokenQueryResult]:
         """Query similar tokens."""
         query_data = {
-            "query_vector": query_vector,
-            "top_k": top_k,
+            "text": text,
+            "limit": limit,
+            "threshold": threshold,
+            "include_connections": include_connections,
         }
-        if threshold is not None:
-            query_data["threshold"] = threshold
+        if spaces:
+            query_data["spaces"] = spaces
 
         response = await self._client._request(
             "POST",
-            "/api/v1/tokens/query",
+            "/api/v1/query",
             json=query_data,
         )
-        data = response.json()
-        return [TokenQueryResult(**item) for item in data.get("results", [])]
+        data = response.json().get("data", {})
+        return [TokenQueryResult(**item) for item in data.get("tokens", [])]
 
 
 class AsyncAPIKeysClient:
@@ -297,18 +369,20 @@ class AsyncAPIKeysClient:
                 "expires_in_days": expires_in_days,
             },
         )
-        return APIKeyCreated(**response.json())
+        data = response.json().get("data", {})
+        return APIKeyCreated(**data)
 
     async def list(self) -> List[APIKey]:
         """List all API keys."""
         response = await self._client._request("GET", "/api/v1/api-keys")
-        data = response.json()
-        return [APIKey(**item) for item in data.get("api_keys", [])]
+        data = response.json().get("data", {})
+        return [APIKey(**item) for item in data.get("keys", [])]
 
     async def get(self, key_id: str) -> APIKey:
         """Get API key by ID."""
         response = await self._client._request("GET", f"/api/v1/api-keys/{key_id}")
-        return APIKey(**response.json())
+        data = response.json().get("data", {})
+        return APIKey(**data)
 
     async def revoke(self, key_id: str) -> bool:
         """Revoke API key."""
@@ -330,9 +404,11 @@ class AsyncHealthClient:
     async def check(self) -> HealthStatus:
         """Check API health."""
         response = await self._client._request("GET", "/api/v1/health")
-        return HealthStatus(**response.json())
+        data = response.json().get("data", {})
+        return HealthStatus(**data)
 
     async def status(self) -> SystemStatus:
         """Get system status."""
         response = await self._client._request("GET", "/api/v1/status")
-        return SystemStatus(**response.json())
+        data = response.json().get("data", {})
+        return SystemStatus(**data)

@@ -14,7 +14,13 @@ numpy = { version = "0.22", optional = true }
 parking_lot = "0.12"
 
 # Tokio for async runtime
-tokio = { version = "1.42", features = ["sync", "macros", "rt", "rt-multi-thread", "time"] }
+tokio = { version = "1.42", features = [
+    "sync",
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "time",
+] }
 
 # Async trait support
 async-trait = "0.1"
@@ -39,7 +45,14 @@ dashmap = "6.1"
 smallvec = "1.13"
 
 # PostgreSQL async driver (optional, for persistence)
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "uuid", "chrono", "json"], optional = true }
+sqlx = { version = "0.7", features = [
+    "postgres",
+    "runtime-tokio",
+    "macros",
+    "uuid",
+    "chrono",
+    "json",
+], optional = true }
 
 # For .env support in persistence
 dotenv = { version = "0.15", optional = true }
@@ -48,7 +61,7 @@ dotenv = { version = "0.15", optional = true }
 # Linear algebra and ML
 ndarray = "0.15"
 linfa = "0.7"
-linfa-reduction = "0.7"  # For PCA
+linfa-reduction = "0.7" # For PCA
 
 # Fast deterministic hashing
 fasthash = "0.4"
@@ -90,15 +103,21 @@ tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [lib]
-name = "_core"
+name = "axiom_core"
 path = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
+crate-type = ["cdylib", "rlib"] # cdylib for Python, rlib for Rust
 
 [features]
 default = []
-python-bindings = ["pyo3", "numpy"]  # Enable Python bindings with --features python-bindings
+python-bindings = [
+    "pyo3",
+    "numpy",
+] # Enable Python bindings with --features python-bindings
 demo-tokio = ["tokio/rt-multi-thread", "tokio/time"]
-persistence = ["sqlx", "dotenv"]  # Enable PostgreSQL persistence with --features persistence
+persistence = [
+    "sqlx",
+    "dotenv",
+] # Enable PostgreSQL persistence with --features persistence
 
 # Temporarily disabled due to packed struct reference errors
 #[[bin]]

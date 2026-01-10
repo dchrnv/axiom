@@ -17,10 +17,7 @@ router = APIRouter()
 
 
 @router.post("/query", response_model=ApiResponse)
-async def query(
-    request: QueryRequest,
-    runtime=Depends(get_runtime)
-):
+async def query(request: QueryRequest, runtime=Depends(get_runtime)):
     """
     Execute semantic query.
 
@@ -39,10 +36,13 @@ async def query(
     start_time = time.time()
 
     # Check if runtime is available
-    if runtime is None:
+    # Check if runtime is available
+    from ..config import settings
+
+    if runtime is None and settings.STORAGE_BACKEND != "memory":
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Runtime not initialized. Bootstrap required."
+            detail="Runtime not initialized. Bootstrap required.",
         )
 
     try:
@@ -59,7 +59,7 @@ async def query(
                 token_id=None,
                 label=f"result_{i}",
                 score=0.9 - (i * 0.05),
-                entity_type="Concept"
+                entity_type="Concept",
             )
             for i in range(min(request.limit, 5))
         ]
@@ -74,17 +74,16 @@ async def query(
             interpretation="semantic_query",
             tokens=tokens,
             connections=[] if not request.include_connections else None,
-            total_candidates=len(tokens)
+            total_candidates=len(tokens),
         )
 
         return ApiResponse.success_response(
-            response_data.dict(),
-            processing_time_ms=processing_time
+            response_data.dict(), processing_time_ms=processing_time
         )
 
     except Exception as e:
         logger.error(f"Query failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Query execution failed: {str(e)}"
+            detail=f"Query execution failed: {str(e)}",
         )

@@ -103,8 +103,9 @@ class Runtime:
 
         # Initialize PyO3 FFI wrapper
         try:
-            from axiom import _core
-            self._core = _core.PyRuntime(self._config.to_dict())
+            import axiom_core
+
+            self._core = axiom_core.PyRuntime(self._config.to_dict())
         except ImportError:
             # FFI not built yet - use stub mode
             self._core = None

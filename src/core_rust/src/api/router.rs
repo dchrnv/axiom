@@ -88,7 +88,7 @@ mod tests {
         let bootstrap = Arc::new(RwLock::new(BootstrapLibrary::new(Default::default())));
         let gateway = Arc::new(Gateway::new(signal_tx, bootstrap.clone(), Default::default()));
 
-        let experience_stream = Arc::new(RwLock::new(ExperienceStream::new(1000, 10)));
+        let experience_stream = Arc::new(ExperienceStream::new(1000, 10));
         let adna = Arc::new(InMemoryADNAReader::new(Default::default()));
         let (proposal_tx, _proposal_rx) = mpsc::channel(100);
         let intuition = Arc::new(RwLock::new(IntuitionEngine::new(

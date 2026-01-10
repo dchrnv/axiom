@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ConfigDict
 # Authentication Models
 # ============================================================================
 
+
 class User(BaseModel):
     """User model."""
 
@@ -42,6 +43,7 @@ class LoginResponse(BaseModel):
 # API Key Models
 # ============================================================================
 
+
 class APIKey(BaseModel):
     """API Key model."""
 
@@ -52,7 +54,8 @@ class APIKey(BaseModel):
     created_at: datetime
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
-    is_active: bool = True
+    disabled: bool = False
+    api_key: Optional[str] = None  # Only populated on creation
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -75,20 +78,40 @@ class APIKeyCreated(BaseModel):
     scopes: List[str]
     created_at: datetime
     expires_at: Optional[datetime] = None
+    disabled: bool = False
+    last_used_at: Optional[datetime] = None
 
 
 # ============================================================================
 # Token Models
 # ============================================================================
 
+
+class Coordinates(BaseModel):
+    """Coordinates for a single dimension."""
+
+    x: Optional[float] = None
+    y: Optional[float] = None
+    z: Optional[float] = None
+
+
 class Token(BaseModel):
     """Token model."""
 
-    id: int = Field(..., description="Token ID")
-    text: Optional[str] = Field(None, description="Token text")
-    embedding: List[float] = Field(..., description="Token embedding vector")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Token metadata")
-    created_at: Optional[datetime] = None
+    id: int = Field(..., description="Token ID (32-bit)")
+    id_hex: str = Field(..., description="Token ID in hex format")
+    local_id: int = Field(..., description="Local ID (24 bits)")
+    entity_type: int = Field(..., description="Entity type (4 bits)")
+    domain: int = Field(..., description="Domain (4 bits)")
+    weight: float = Field(..., description="Token weight")
+    field_radius: float = Field(..., description="Field radius")
+    field_strength: float = Field(..., description="Field strength")
+    timestamp: int = Field(..., description="Creation timestamp")
+    age_seconds: int = Field(..., description="Age in seconds")
+    flags: Dict[str, bool] = Field(..., description="Token flags")
+    coordinates: Dict[str, Optional[List[float]]] = Field(
+        ..., description="Coordinates in 8 spaces"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -96,16 +119,40 @@ class Token(BaseModel):
 class TokenCreate(BaseModel):
     """Request to create a token."""
 
-    text: str = Field(..., description="Text to create token from")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
+    entity_type: int = Field(default=0, ge=0, le=15, description="Entity type (0-15)")
+    domain: int = Field(default=0, ge=0, le=15, description="Domain (0-15)")
+    weight: float = Field(default=0.5, ge=0.0, le=1.0, description="Token weight")
+    field_radius: float = Field(default=1.0, ge=0.0, le=2.55, description="Field radius")
+    field_strength: float = Field(default=1.0, ge=0.0, le=1.0, description="Field strength")
+    persistent: bool = Field(default=False, description="Should token persist")
+
+    # 8 levels of coordinates
+    l1_physical: Optional[Coordinates] = None
+    l2_sensory: Optional[Coordinates] = None
+    l3_motor: Optional[Coordinates] = None
+    l4_emotional: Optional[Coordinates] = None
+    l5_cognitive: Optional[Coordinates] = None
+    l6_social: Optional[Coordinates] = None
+    l7_temporal: Optional[Coordinates] = None
+    l8_abstract: Optional[Coordinates] = None
 
 
 class TokenUpdate(BaseModel):
     """Request to update a token."""
 
-    text: Optional[str] = Field(None, description="New text")
-    embedding: Optional[List[float]] = Field(None, description="New embedding")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="New metadata")
+    weight: Optional[float] = Field(None, ge=0.0, le=1.0, description="Token weight")
+    field_radius: Optional[float] = Field(None, ge=0.0, le=2.55, description="Field radius")
+    field_strength: Optional[float] = Field(None, ge=0.0, le=1.0, description="Field strength")
+
+    # 8 levels of coordinates
+    l1_physical: Optional[Coordinates] = None
+    l2_sensory: Optional[Coordinates] = None
+    l3_motor: Optional[Coordinates] = None
+    l4_emotional: Optional[Coordinates] = None
+    l5_cognitive: Optional[Coordinates] = None
+    l6_social: Optional[Coordinates] = None
+    l7_temporal: Optional[Coordinates] = None
+    l8_abstract: Optional[Coordinates] = None
 
 
 class TokenQuery(BaseModel):
@@ -119,14 +166,17 @@ class TokenQuery(BaseModel):
 class TokenQueryResult(BaseModel):
     """Token query result with similarity."""
 
-    token: Token
-    similarity: float = Field(..., description="Cosine similarity score")
-    distance: Optional[float] = Field(None, description="Distance metric")
+    token_id: Optional[int] = None
+    label: str
+    score: float
+    entity_type: str = "Concept"
+    coordinates: Optional[Dict[str, Optional[List[float]]]] = None
 
 
 # ============================================================================
 # Grid Models
 # ============================================================================
+
 
 class GridCell(BaseModel):
     """Grid cell model."""
@@ -160,6 +210,7 @@ class GridQueryResult(BaseModel):
 # CDNA Models
 # ============================================================================
 
+
 class CDNAConfig(BaseModel):
     """CDNA configuration model."""
 
@@ -182,6 +233,7 @@ class CDNAUpdate(BaseModel):
 # ============================================================================
 # Response Models
 # ============================================================================
+
 
 class SuccessResponse(BaseModel):
     """Generic success response."""
@@ -212,6 +264,7 @@ class PaginatedResponse(BaseModel):
 # Health & Status Models
 # ============================================================================
 
+
 class HealthStatus(BaseModel):
     """Health check response."""
 
@@ -224,9 +277,13 @@ class HealthStatus(BaseModel):
 class SystemStatus(BaseModel):
     """System status response."""
 
-    api_version: str
-    runtime_version: str
-    tokens_count: int
+    state: str
     uptime_seconds: float
+    tokens: Dict[str, int]
+    connections: Dict[str, int]
     memory_usage_mb: float
-    requests_total: int
+    cpu_usage_percent: float
+    components: Dict[str, str]
+    version: Optional[str] = None
+    storage_backend: Optional[str] = None
+    cdna_profile: Optional[str] = None

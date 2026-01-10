@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from axiom import _core  # PyO3 bindings
+import axiom_core as _core  # PyO3 bindings
 
 from ..models.modules import (
     ModuleInfo,

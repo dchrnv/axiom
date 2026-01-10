@@ -6,16 +6,14 @@ Prometheus-compatible metrics for monitoring Axiom API.
 Version: v0.52.0 - Enhanced with prometheus_client
 """
 
+import axiom_core
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 from ..models.response import ApiResponse
 from ..models.auth import User
 from ..dependencies import get_runtime
 from ..auth.dependencies import get_current_active_user
 from ..auth.permissions import Permission
-from ..metrics_prometheus import (
-    get_metrics_response,
-    update_system_metrics
-)
+from ..metrics_prometheus import get_metrics_response, update_system_metrics
 from ..logging_config import get_logger
 import time
 
@@ -26,8 +24,7 @@ logger = get_logger(__name__, component="metrics")
 
 @router.get("/metrics", response_class=Response)
 async def get_prometheus_metrics(
-    runtime=Depends(get_runtime),
-    current_user: User = Depends(get_current_active_user)
+    runtime=Depends(get_runtime), current_user: User = Depends(get_current_active_user)
 ):
     """
     Get Prometheus-compatible metrics.
@@ -48,7 +45,7 @@ async def get_prometheus_metrics(
     if Permission.READ_METRICS.value not in current_user.scopes:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied: {Permission.READ_METRICS.value} required"
+            detail=f"Permission denied: {Permission.READ_METRICS.value} required",
         )
 
     try:
@@ -63,7 +60,7 @@ async def get_prometheus_metrics(
         update_system_metrics(
             token_count=token_count,
             connection_count=connection_count,
-            memory_bytes=estimated_memory
+            memory_bytes=estimated_memory,
         )
 
         # Generate and return Prometheus metrics
@@ -71,9 +68,7 @@ async def get_prometheus_metrics(
 
     except Exception as e:
         logger.error(
-            "Failed to generate metrics",
-            extra={"error": str(e)},
-            exc_info=True
+            "Failed to generate metrics", extra={"error": str(e)}, exc_info=True
         )
         # Return empty metrics on error to avoid breaking Prometheus scraping
         return Response(content="", media_type="text/plain; version=0.0.4")
@@ -81,8 +76,7 @@ async def get_prometheus_metrics(
 
 @router.get("/metrics/json", response_model=ApiResponse)
 async def get_metrics_json(
-    runtime=Depends(get_runtime),
-    current_user: User = Depends(get_current_active_user)
+    runtime=Depends(get_runtime), current_user: User = Depends(get_current_active_user)
 ):
     """
     Get metrics in JSON format (human-readable alternative to /metrics).
@@ -98,7 +92,7 @@ async def get_metrics_json(
     if Permission.READ_METRICS.value not in current_user.scopes:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied: {Permission.READ_METRICS.value} required"
+            detail=f"Permission denied: {Permission.READ_METRICS.value} required",
         )
 
     try:
@@ -122,23 +116,20 @@ async def get_metrics_json(
             "storage": {
                 "backend": "RuntimeStorage",
                 "rust_core": "v0.50.0",
-            }
+            },
         }
 
         logger.info(
             "Metrics JSON requested",
-            extra={"token_count": token_count, "uptime": round(uptime, 2)}
+            extra={"token_count": token_count, "uptime": round(uptime, 2)},
         )
 
         return ApiResponse.success_response(metrics)
 
     except Exception as e:
         logger.error(
-            "Failed to generate JSON metrics",
-            extra={"error": str(e)},
-            exc_info=True
+            "Failed to generate JSON metrics", extra={"error": str(e)}, exc_info=True
         )
         return ApiResponse.error_response(
-            code="METRICS_ERROR",
-            message="Failed to generate metrics"
+            code="METRICS_ERROR", message="Failed to generate metrics"
         )

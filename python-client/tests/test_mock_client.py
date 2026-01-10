@@ -11,23 +11,25 @@ def test_mock_client_create_token():
     """Test creating token with mock client."""
     client = MockAxiomClient()
 
-    token = client.tokens.create(text="test token")
+    token = client.tokens.create(
+        entity_type=1, weight=0.8, l1_physical={"x": 1.0, "y": 2.0, "z": 3.0}
+    )
 
     assert token.id == 1
-    assert token.text == "test token"
-    assert len(token.embedding) == 768
-    assert token.metadata == {}
+    assert token.entity_type == 1
+    assert token.weight == 0.8
+    assert token.coordinates["L1"] == [1.0, 2.0, 3.0]
 
 
 def test_mock_client_get_token():
     """Test getting token with mock client."""
     client = MockAxiomClient()
 
-    created = client.tokens.create(text="test")
+    created = client.tokens.create(entity_type=2)
     retrieved = client.tokens.get(created.id)
 
     assert retrieved.id == created.id
-    assert retrieved.text == created.text
+    assert retrieved.entity_type == 2
 
 
 def test_mock_client_get_nonexistent_token():
@@ -44,7 +46,7 @@ def test_mock_client_list_tokens():
 
     # Create some tokens
     for i in range(5):
-        client.tokens.create(text=f"token {i}")
+        client.tokens.create(entity_type=i)
 
     tokens = client.tokens.list()
 
@@ -55,18 +57,18 @@ def test_mock_client_update_token():
     """Test updating token with mock client."""
     client = MockAxiomClient()
 
-    token = client.tokens.create(text="original")
-    updated = client.tokens.update(token.id, metadata={"updated": True})
+    token = client.tokens.create(weight=0.5)
+    updated = client.tokens.update(token.id, weight=0.9)
 
     assert updated.id == token.id
-    assert updated.metadata == {"updated": True}
+    assert updated.weight == 0.9
 
 
 def test_mock_client_delete_token():
     """Test deleting token with mock client."""
     client = MockAxiomClient()
 
-    token = client.tokens.create(text="to delete")
+    token = client.tokens.create(entity_type=5)
     result = client.tokens.delete(token.id)
 
     assert result is True
@@ -81,34 +83,28 @@ def test_mock_client_query_tokens():
 
     # Create some tokens
     for i in range(10):
-        client.tokens.create(text=f"token {i}")
+        client.tokens.create(entity_type=i)
 
     # Query
-    results = client.tokens.query(
-        query_vector=[0.1] * 768,
-        top_k=5
-    )
+    results = client.tokens.query(text="test", limit=5)
 
     assert len(results) <= 5
-    assert all(hasattr(r, 'token') for r in results)
-    assert all(hasattr(r, 'similarity') for r in results)
-    assert all(0.0 <= r.similarity <= 1.0 for r in results)
+    assert all(hasattr(r, "token_id") for r in results)
+    assert all(hasattr(r, "score") for r in results)
+    assert all(0.0 <= r.score <= 1.0 for r in results)
 
 
 def test_mock_client_create_api_key():
     """Test creating API key with mock client."""
     client = MockAxiomClient()
 
-    api_key = client.api_keys.create(
-        name="test key",
-        scopes=["tokens:read"]
-    )
+    api_key = client.api_keys.create(name="test key", scopes=["tokens:read"])
 
     assert api_key.key_id.startswith("key_")
     assert api_key.api_key.startswith("ng_mock_")
     assert api_key.name == "test key"
     assert api_key.scopes == ["tokens:read"]
-    assert api_key.is_active is True
+    assert api_key.disabled is False
 
 
 def test_mock_client_list_api_keys():
@@ -117,10 +113,7 @@ def test_mock_client_list_api_keys():
 
     # Create some keys
     for i in range(3):
-        client.api_keys.create(
-            name=f"key {i}",
-            scopes=["tokens:read"]
-        )
+        client.api_keys.create(name=f"key {i}", scopes=["tokens:read"])
 
     keys = client.api_keys.list()
 
@@ -133,25 +126,19 @@ def test_mock_client_revoke_api_key():
     """Test revoking API key with mock client."""
     client = MockAxiomClient()
 
-    api_key = client.api_keys.create(
-        name="test",
-        scopes=["tokens:read"]
-    )
+    api_key = client.api_keys.create(name="test", scopes=["tokens:read"])
 
     client.api_keys.revoke(api_key.key_id)
 
     retrieved = client.api_keys.get(api_key.key_id)
-    assert retrieved.is_active is False
+    assert retrieved.disabled is True
 
 
 def test_mock_client_delete_api_key():
     """Test deleting API key with mock client."""
     client = MockAxiomClient()
 
-    api_key = client.api_keys.create(
-        name="test",
-        scopes=["tokens:read"]
-    )
+    api_key = client.api_keys.create(name="test", scopes=["tokens:read"])
 
     client.api_keys.delete(api_key.key_id)
 
@@ -174,30 +161,29 @@ def test_mock_client_system_status():
     client = MockAxiomClient()
 
     # Create some data
-    client.tokens.create(text="test")
+    client.tokens.create(entity_type=1)
     client.api_keys.create(name="test", scopes=["tokens:read"])
 
     status = client.health.status()
 
-    assert status.status == "healthy"
-    assert status.tokens_count == 1
-    assert status.api_keys_count == 1
+    assert status.state == "running"
+    assert status.tokens["total"] == 1
 
 
 def test_mock_client_context_manager():
     """Test mock client as context manager."""
     with MockAxiomClient() as client:
-        token = client.tokens.create(text="test")
+        token = client.tokens.create(entity_type=1)
         assert token.id == 1
 
 
 def test_mock_token_factory():
     """Test mock token factory function."""
-    token = mock_token(text="custom", id=123)
+    token = mock_token(entity_type=5, id=123)
 
     assert token.id == 123
-    assert token.text == "custom"
-    assert len(token.embedding) == 768
+    assert token.entity_type == 5
+    assert token.weight == 0.5  # default
 
 
 def test_mock_api_key_factory():

@@ -5,22 +5,22 @@
 
 use pyo3::prelude::*;
 
-mod token;
 mod intuition;
+pub mod modules;
 mod runtime;
 mod signal_system;
-pub mod modules;
+mod token;
 
-use token::PyToken;
-use intuition::{PyIntuitionEngine, PyIntuitionConfig};
+use intuition::{PyIntuitionConfig, PyIntuitionEngine};
 use runtime::PyRuntime;
 use signal_system::PySignalSystem;
+use token::PyToken;
 
-/// Axiom OS Python Module (_core)
+/// Axiom OS Python Module (axiom_core)
 ///
 /// This is the low-level FFI module. Users should import `axiom` instead.
 #[pymodule]
-fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn axiom_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Module metadata
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "Axiom Team")?;

@@ -9,9 +9,9 @@
 //! 3. Known situation → Fast Path (Reflex hit)
 //! 4. Performance verification
 
+use axiom_core::connection_v3::{ConnectionMutability, ConnectionV3};
+use axiom_core::reflex_layer::{compute_grid_hash, AssociativeMemory, ShiftConfig};
 use axiom_core::token::Token;
-use axiom_core::reflex_layer::{ShiftConfig, AssociativeMemory, compute_grid_hash};
-use axiom_core::connection_v3::{ConnectionV3, ConnectionMutability};
 
 #[test]
 fn test_reflex_learning_cycle() {
@@ -21,20 +21,23 @@ fn test_reflex_learning_cycle() {
 
     // Step 1: Unknown situation (new state)
     let mut state = Token::new(1000);
-    state.coordinates[0] = [100, 200, 300];  // Physical location
-    state.coordinates[4] = [500, 600, 700];  // Cognitive state
+    state.coordinates[0] = [100, 200, 300]; // Physical location
+    state.coordinates[4] = [500, 600, 700]; // Cognitive state
 
     let hash = compute_grid_hash(&state, &shift_config);
 
     // Step 2: No reflex exists yet (miss)
-    assert!(memory.lookup(hash).is_none(), "New situation should have no reflex");
+    assert!(
+        memory.lookup(hash).is_none(),
+        "New situation should have no reflex"
+    );
 
     // Step 3: Simulate ADNA decision → Create Connection
     let mut connection = ConnectionV3::new(1000, 2000);
     connection.mutability = ConnectionMutability::Learnable as u8;
-    connection.confidence = 128;  // 0.5 (medium confidence)
+    connection.confidence = 128; // 0.5 (medium confidence)
 
-    let conn_id = 42u64;  // Simulated connection ID
+    let conn_id = 42u64; // Simulated connection ID
 
     // Step 4: Consolidate reflex (Experience → AssociativeMemory)
     memory.insert(hash, conn_id);
@@ -45,7 +48,10 @@ fn test_reflex_learning_cycle() {
 
     let candidates = candidates.unwrap();
     assert_eq!(candidates.len(), 1, "Should have exactly one reflex");
-    assert_eq!(candidates[0], conn_id, "Should return correct connection ID");
+    assert_eq!(
+        candidates[0], conn_id,
+        "Should return correct connection ID"
+    );
 
     // Step 6: Verify stats
     let stats = memory.stats();
@@ -68,9 +74,9 @@ fn test_collision_resolution() {
     // (This happens when states are close but not identical)
     let hash = compute_grid_hash(&state1, &shift_config);
 
-    memory.insert(hash, 100);  // First reflex
-    memory.insert(hash, 200);  // Second reflex (collision)
-    memory.insert(hash, 300);  // Third reflex
+    memory.insert(hash, 100); // First reflex
+    memory.insert(hash, 200); // Second reflex (collision)
+    memory.insert(hash, 300); // Third reflex
 
     // Lookup should return all candidates
     let candidates = memory.lookup(hash).expect("Should find reflexes");
@@ -89,7 +95,7 @@ fn test_collision_resolution() {
 #[test]
 fn test_spatial_locality() {
     // Test that nearby states produce same hash (spatial locality)
-    let shift_config = ShiftConfig::uniform(4);  // shift=4 means 16-unit grid cells
+    let shift_config = ShiftConfig::uniform(4); // shift=4 means 16-unit grid cells
 
     let mut state_a = Token::new(1);
     state_a.coordinates[0] = [1000, 2000, 3000];
@@ -101,7 +107,10 @@ fn test_spatial_locality() {
     let hash_a = compute_grid_hash(&state_a, &shift_config);
     let hash_b = compute_grid_hash(&state_b, &shift_config);
 
-    assert_eq!(hash_a, hash_b, "Nearby states should produce same hash (spatial locality)");
+    assert_eq!(
+        hash_a, hash_b,
+        "Nearby states should produce same hash (spatial locality)"
+    );
 
     // State C is 20 units away (different grid cell)
     let mut state_c = Token::new(3);
@@ -126,12 +135,15 @@ fn test_adaptive_shift_configuration() {
     let hash_coarse = compute_grid_hash(&state, &config_coarse);
 
     // Hashes should differ (different quantization)
-    assert_ne!(hash_fine, hash_coarse, "Different shift configs should produce different hashes");
+    assert_ne!(
+        hash_fine, hash_coarse,
+        "Different shift configs should produce different hashes"
+    );
 
     // Test per-dimension configuration
     let mut config_mixed = ShiftConfig::default();
-    config_mixed.set_shift_for_dimension(0, 4);  // Physical: fine
-    config_mixed.set_shift_for_dimension(7, 8);  // Abstract: coarse
+    config_mixed.set_shift_for_dimension(0, 4); // Physical: fine
+    config_mixed.set_shift_for_dimension(7, 8); // Abstract: coarse
 
     let hash_mixed = compute_grid_hash(&state, &config_mixed);
     assert_ne!(hash_mixed, hash_fine);
@@ -165,7 +177,11 @@ fn test_reflex_performance_target() {
     // Note: This is a rough check, use benchmarks for precise measurement
     // In debug mode (~2000ns is normal, release mode achieves ~70ns)
     println!("Average Fast Path latency: {} ns", avg_ns);
-    assert!(avg_ns < 5000, "Fast Path should be reasonable even in debug mode (measured: {} ns)", avg_ns);
+    assert!(
+        avg_ns < 5000,
+        "Fast Path should be reasonable even in debug mode (measured: {} ns)",
+        avg_ns
+    );
 }
 
 #[test]
@@ -184,7 +200,11 @@ fn test_memory_growth() {
 
     // Add duplicate (same hash)
     memory.insert(50, 999);
-    assert_eq!(memory.stats().total_entries, 100, "Duplicate hash should not increase memory count");
+    assert_eq!(
+        memory.stats().total_entries,
+        100,
+        "Duplicate hash should not increase memory count"
+    );
 
     // Verify lookup returns both candidates for hash=50
     let candidates = memory.lookup(50).unwrap();
@@ -239,7 +259,7 @@ fn test_concurrent_access() {
     // Spawn 4 threads inserting reflexes concurrently
     let mut handles = vec![];
     for thread_id in 0..4 {
-        let mem = Arc::clone(&memory);
+        let mem: Arc<AssociativeMemory> = Arc::clone(&memory);
         let handle = thread::spawn(move || {
             for i in 0..100 {
                 let hash = (thread_id * 1000 + i) as u64;
@@ -256,5 +276,8 @@ fn test_concurrent_access() {
 
     // Verify all reflexes inserted
     let stats = memory.stats();
-    assert_eq!(stats.total_entries, 400, "Should have 400 reflexes from 4 threads");
+    assert_eq!(
+        stats.total_entries, 400,
+        "Should have 400 reflexes from 4 threads"
+    );
 }

@@ -22,16 +22,19 @@ def test_status_performance():
 
     latencies = []
 
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInNjb3BlcyI6WyJhZG1pbiIsInN0YXR1czpyZWFkIiwibWV0cmljczpyZWFkIl0sImV4cCI6MTc2ODA1OTI5OCwiaWF0IjoxNzY4MDU1Njk4LCJ0b2tlbl90eXBlIjoiYWNjZXNzIn0.H9MKtOa3hlPKMaZXGr1IM47NKOOCnp0FcgHkruFalAA"
+    headers = {"Authorization": f"Bearer {token}"}
+
     for i in range(NUM_REQUESTS):
         start = time.perf_counter()
-        response = requests.get(f"{BASE_URL}/status", timeout=5)
+        response = requests.get(f"{BASE_URL}/status", headers=headers, timeout=5)
         latency = (time.perf_counter() - start) * 1000  # Convert to ms
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         latencies.append(latency)
 
         if (i + 1) % 10 == 0:
-            print(f"  Progress: {i+1}/{NUM_REQUESTS}")
+            print(f"  Progress: {i + 1}/{NUM_REQUESTS}")
 
     # Calculate statistics
     mean_latency = statistics.mean(latencies)

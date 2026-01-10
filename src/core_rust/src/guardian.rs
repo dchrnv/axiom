@@ -38,7 +38,7 @@
 /// - **Transparency**: All actions are logged and tracked
 /// - **Immutability**: CDNA changes are versioned and reversible
 use crate::cdna::CDNA;
-use crate::{Token, Connection, ConnectionV3};
+use crate::{Connection, ConnectionV3, Token};
 use std::collections::{HashMap, VecDeque};
 
 /// Event types that can be emitted by Guardian
@@ -196,10 +196,10 @@ impl Default for GuardianConfig {
             max_history_size: 100,
 
             // Resource Quotas (v0.41.0) - Safe defaults for production
-            max_tokens: Some(10_000_000),  // 10M tokens max (~640MB)
-            max_memory_bytes: Some(1_024_000_000),  // 1GB max
+            max_tokens: Some(10_000_000), // 10M tokens max (~640MB)
+            max_memory_bytes: Some(1_024_000_000), // 1GB max
             enable_aggressive_cleanup: true,
-            memory_threshold: 0.8,  // Cleanup at 80% memory usage
+            memory_threshold: 0.8, // Cleanup at 80% memory usage
         }
     }
 }
@@ -452,7 +452,10 @@ impl Guardian {
     }
 
     /// Validate Connection against CDNA rules
-    pub fn validate_connection(&mut self, connection: &Connection) -> Result<(), Vec<ValidationError>> {
+    pub fn validate_connection(
+        &mut self,
+        connection: &Connection,
+    ) -> Result<(), Vec<ValidationError>> {
         if !self.config.enable_validation || !self.cdna.validation_enabled() {
             return Ok(());
         }
@@ -474,7 +477,10 @@ impl Guardian {
             errors.push(ValidationError::new(
                 "pull_strength",
                 "Connection pull_strength below minimum",
-                &format!("{} < {}", connection.pull_strength, self.cdna.min_connection_weight),
+                &format!(
+                    "{} < {}",
+                    connection.pull_strength, self.cdna.min_connection_weight
+                ),
             ));
         }
 
@@ -482,7 +488,10 @@ impl Guardian {
             errors.push(ValidationError::new(
                 "pull_strength",
                 "Connection pull_strength above maximum",
-                &format!("{} > {}", connection.pull_strength, self.cdna.max_connection_weight),
+                &format!(
+                    "{} > {}",
+                    connection.pull_strength, self.cdna.max_connection_weight
+                ),
             ));
         }
 
@@ -518,7 +527,10 @@ impl Guardian {
             if self.config.enable_events {
                 let event = Event::new(EventType::ValidationFailed)
                     .with_connection(connection.token_a_id, connection.token_b_id)
-                    .with_data(format!("Connection validation failed: {} errors", errors.len()));
+                    .with_data(format!(
+                        "Connection validation failed: {} errors",
+                        errors.len()
+                    ));
                 self.emit_event(event);
             }
         }
@@ -603,7 +615,11 @@ impl Guardian {
     // ==================== EVENT SYSTEM ====================
 
     /// Subscribe module to events
-    pub fn subscribe(&mut self, module_id: ModuleId, event_types: Vec<EventType>) -> Result<(), String> {
+    pub fn subscribe(
+        &mut self,
+        module_id: ModuleId,
+        event_types: Vec<EventType>,
+    ) -> Result<(), String> {
         if !self.config.enable_events {
             return Err("Event system is disabled".to_string());
         }
@@ -681,8 +697,7 @@ impl Guardian {
             if self.resource_stats.tokens_created >= max_tokens {
                 return Err(format!(
                     "Token quota exceeded: {} >= {} (max_tokens)",
-                    self.resource_stats.tokens_created,
-                    max_tokens
+                    self.resource_stats.tokens_created, max_tokens
                 ));
             }
         }
@@ -693,8 +708,7 @@ impl Guardian {
                 if current_memory >= max_memory {
                     return Err(format!(
                         "Memory quota exceeded: {} >= {} bytes",
-                        current_memory,
-                        max_memory
+                        current_memory, max_memory
                     ));
                 }
 
@@ -723,8 +737,7 @@ impl Guardian {
                 if current_memory >= max_memory {
                     return Err(format!(
                         "Memory quota exceeded: {} >= {} bytes",
-                        current_memory,
-                        max_memory
+                        current_memory, max_memory
                     ));
                 }
 
@@ -766,8 +779,10 @@ impl Guardian {
         crate::metrics::QUOTA_EXCEEDED.inc();
         // Record in Black Box (v0.42.0)
         crate::black_box::record_event(
-            crate::black_box::Event::new(crate::black_box::EventType::QuotaExceeded)
-                .with_data("count", self.resource_stats.quota_exceeded_count.to_string())
+            crate::black_box::Event::new(crate::black_box::EventType::QuotaExceeded).with_data(
+                "count",
+                self.resource_stats.quota_exceeded_count.to_string(),
+            ),
         );
     }
 
@@ -779,7 +794,7 @@ impl Guardian {
         // Record in Black Box (v0.42.0)
         crate::black_box::record_event(
             crate::black_box::Event::new(crate::black_box::EventType::AggressiveCleanup)
-                .with_data("count", self.resource_stats.aggressive_cleanups.to_string())
+                .with_data("count", self.resource_stats.aggressive_cleanups.to_string()),
         );
     }
 
@@ -904,7 +919,7 @@ impl Default for Guardian {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CoordinateSpace;
+    use crate::{CoordinateSpace, ProfileId};
 
     #[test]
     fn test_guardian_creation() {
@@ -974,10 +989,12 @@ mod tests {
         let mut guardian = Guardian::new();
 
         // Subscribe to events
-        guardian.subscribe(
-            "test_module".to_string(),
-            vec![EventType::TokenCreated, EventType::CDNAUpdated],
-        ).unwrap();
+        guardian
+            .subscribe(
+                "test_module".to_string(),
+                vec![EventType::TokenCreated, EventType::CDNAUpdated],
+            )
+            .unwrap();
 
         assert!(guardian.is_subscribed(&"test_module".to_string()));
         assert_eq!(guardian.subscriber_count(), 1);
@@ -991,10 +1008,9 @@ mod tests {
     fn test_event_emission() {
         let mut guardian = Guardian::new();
 
-        guardian.subscribe(
-            "test_module".to_string(),
-            vec![EventType::TokenCreated],
-        ).unwrap();
+        guardian
+            .subscribe("test_module".to_string(), vec![EventType::TokenCreated])
+            .unwrap();
 
         // Emit event
         let event = Event::new(EventType::TokenCreated).with_token(42);
@@ -1054,10 +1070,10 @@ mod tests {
 
         // Create valid reflex: high confidence, Learnable, stable
         let mut connection = ConnectionV3::new(1, 2);
-        connection.confidence = 200;  // ~78% confidence
-        connection.mutability = 1;    // Learnable
+        connection.confidence = 200; // ~78% confidence
+        connection.mutability = 1; // Learnable
         connection.pull_strength = 5.0;
-        connection.rigidity = 180;    // ~70% rigidity
+        connection.rigidity = 180; // ~70% rigidity
 
         assert!(guardian.validate_reflex(&connection).is_ok());
     }
@@ -1068,7 +1084,7 @@ mod tests {
 
         // Low confidence (<50%)
         let mut connection = ConnectionV3::new(1, 2);
-        connection.confidence = 100;  // ~39% - too low!
+        connection.confidence = 100; // ~39% - too low!
         connection.pull_strength = 5.0;
         connection.rigidity = 180;
 
@@ -1084,13 +1100,16 @@ mod tests {
         // Hypothesis connections not allowed in reflexes
         let mut connection = ConnectionV3::new(1, 2);
         connection.confidence = 200;
-        connection.mutability = 2;  // Hypothesis - not allowed!
+        connection.mutability = 2; // Hypothesis - not allowed!
         connection.pull_strength = 5.0;
         connection.rigidity = 180;
 
         let result = guardian.validate_reflex(&connection);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Reflex must be Immutable or Learnable (no Hypothesis)");
+        assert_eq!(
+            result.unwrap_err(),
+            "Reflex must be Immutable or Learnable (no Hypothesis)"
+        );
     }
 
     #[test]
@@ -1101,11 +1120,14 @@ mod tests {
         let mut connection = ConnectionV3::new(1, 2);
         connection.confidence = 200;
         connection.pull_strength = 5.0;
-        connection.rigidity = 100;  // ~39% - too low!
+        connection.rigidity = 100; // ~39% - too low!
 
         let result = guardian.validate_reflex(&connection);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Reflex rigidity too low (<0.5) - connection unstable");
+        assert_eq!(
+            result.unwrap_err(),
+            "Reflex rigidity too low (<0.5) - connection unstable"
+        );
     }
 
     #[test]
@@ -1130,7 +1152,7 @@ mod tests {
         // Zero pull strength
         let mut connection = ConnectionV3::new(1, 2);
         connection.confidence = 200;
-        connection.pull_strength = 0.0;  // Invalid!
+        connection.pull_strength = 0.0; // Invalid!
         connection.rigidity = 180;
 
         let result = guardian.validate_reflex(&connection);
@@ -1138,10 +1160,13 @@ mod tests {
         assert_eq!(result.unwrap_err(), "Reflex pull_strength must be positive");
 
         // Excessive pull strength
-        connection.pull_strength = 150.0;  // Too high!
+        connection.pull_strength = 150.0; // Too high!
         let result = guardian.validate_reflex(&connection);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Reflex pull_strength exceeds safe maximum (100.0)");
+        assert_eq!(
+            result.unwrap_err(),
+            "Reflex pull_strength exceeds safe maximum (100.0)"
+        );
     }
 
     #[test]
@@ -1150,10 +1175,10 @@ mod tests {
 
         // Immutable connections are also valid for reflexes
         let mut connection = ConnectionV3::new(1, 2);
-        connection.confidence = 255;  // 100% confidence
-        connection.mutability = 0;    // Immutable
+        connection.confidence = 255; // 100% confidence
+        connection.mutability = 0; // Immutable
         connection.pull_strength = 10.0;
-        connection.rigidity = 255;    // 100% rigidity
+        connection.rigidity = 255; // 100% rigidity
 
         assert!(guardian.validate_reflex(&connection).is_ok());
     }

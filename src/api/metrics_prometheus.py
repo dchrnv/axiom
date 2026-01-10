@@ -18,11 +18,16 @@ from prometheus_client import (
     Info,
     generate_latest,
     CONTENT_TYPE_LATEST,
-    CollectorRegistry
+    CollectorRegistry,
 )
 from fastapi import Response
 from typing import Optional
 import time
+
+try:
+    import axiom_core as _core
+except ImportError:
+    _core = None
 
 # Create custom registry to avoid conflicts
 registry = CollectorRegistry()
@@ -32,25 +37,41 @@ registry = CollectorRegistry()
 # ============================================================================
 
 http_requests_total = Counter(
-    'axiom_http_requests_total',
-    'Total HTTP requests by method, path, and status',
-    ['method', 'path', 'status_code'],
-    registry=registry
+    "axiom_http_requests_total",
+    "Total HTTP requests by method, path, and status",
+    ["method", "path", "status_code"],
+    registry=registry,
 )
 
 http_request_duration_seconds = Histogram(
-    'axiom_http_request_duration_seconds',
-    'HTTP request latency in seconds',
-    ['method', 'path'],
-    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0),
-    registry=registry
+    "axiom_http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "path"],
+    buckets=(
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+        2.5,
+        5.0,
+        7.5,
+        10.0,
+    ),
+    registry=registry,
 )
 
 http_requests_in_progress = Gauge(
-    'axiom_http_requests_in_progress',
-    'Number of HTTP requests currently being processed',
-    ['method', 'path'],
-    registry=registry
+    "axiom_http_requests_in_progress",
+    "Number of HTTP requests currently being processed",
+    ["method", "path"],
+    registry=registry,
 )
 
 # ============================================================================
@@ -58,36 +79,32 @@ http_requests_in_progress = Gauge(
 # ============================================================================
 
 token_operations_total = Counter(
-    'axiom_token_operations_total',
-    'Total token operations by type',
-    ['operation'],  # create, get, update, delete, list
-    registry=registry
+    "axiom_token_operations_total",
+    "Total token operations by type",
+    ["operation"],  # create, get, update, delete, list
+    registry=registry,
 )
 
 token_operation_duration_seconds = Histogram(
-    'axiom_token_operation_duration_seconds',
-    'Token operation duration in seconds',
-    ['operation'],
+    "axiom_token_operation_duration_seconds",
+    "Token operation duration in seconds",
+    ["operation"],
     buckets=(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0),
-    registry=registry
+    registry=registry,
 )
 
 tokens_created_total = Counter(
-    'axiom_tokens_created_total',
-    'Total number of tokens created',
-    registry=registry
+    "axiom_tokens_created_total", "Total number of tokens created", registry=registry
 )
 
 tokens_deleted_total = Counter(
-    'axiom_tokens_deleted_total',
-    'Total number of tokens deleted',
-    registry=registry
+    "axiom_tokens_deleted_total", "Total number of tokens deleted", registry=registry
 )
 
 tokens_active_count = Gauge(
-    'axiom_tokens_active_count',
-    'Current number of active tokens in RuntimeStorage',
-    registry=registry
+    "axiom_tokens_active_count",
+    "Current number of active tokens in RuntimeStorage",
+    registry=registry,
 )
 
 # ============================================================================
@@ -95,26 +112,26 @@ tokens_active_count = Gauge(
 # ============================================================================
 
 grid_queries_total = Counter(
-    'axiom_grid_queries_total',
-    'Total grid queries by type',
-    ['query_type'],  # range, nearest, field_influence
-    registry=registry
+    "axiom_grid_queries_total",
+    "Total grid queries by type",
+    ["query_type"],  # range, nearest, field_influence
+    registry=registry,
 )
 
 grid_query_duration_seconds = Histogram(
-    'axiom_grid_query_duration_seconds',
-    'Grid query duration in seconds',
-    ['query_type'],
+    "axiom_grid_query_duration_seconds",
+    "Grid query duration in seconds",
+    ["query_type"],
     buckets=(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0),
-    registry=registry
+    registry=registry,
 )
 
 grid_query_results_count = Histogram(
-    'axiom_grid_query_results_count',
-    'Number of results returned by grid queries',
-    ['query_type'],
+    "axiom_grid_query_results_count",
+    "Number of results returned by grid queries",
+    ["query_type"],
     buckets=(1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000, 10000),
-    registry=registry
+    registry=registry,
 )
 
 # ============================================================================
@@ -122,18 +139,18 @@ grid_query_results_count = Histogram(
 # ============================================================================
 
 cdna_operations_total = Counter(
-    'axiom_cdna_operations_total',
-    'Total CDNA operations by type',
-    ['operation'],  # get_config, update_scales, get_profile, etc.
-    registry=registry
+    "axiom_cdna_operations_total",
+    "Total CDNA operations by type",
+    ["operation"],  # get_config, update_scales, get_profile, etc.
+    registry=registry,
 )
 
 cdna_operation_duration_seconds = Histogram(
-    'axiom_cdna_operation_duration_seconds',
-    'CDNA operation duration in seconds',
-    ['operation'],
+    "axiom_cdna_operation_duration_seconds",
+    "CDNA operation duration in seconds",
+    ["operation"],
     buckets=(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1),
-    registry=registry
+    registry=registry,
 )
 
 # ============================================================================
@@ -141,64 +158,62 @@ cdna_operation_duration_seconds = Histogram(
 # ============================================================================
 
 auth_login_attempts_total = Counter(
-    'axiom_auth_login_attempts_total',
-    'Total login attempts by status',
-    ['status'],  # success, failed, invalid_credentials, user_not_found
-    registry=registry
+    "axiom_auth_login_attempts_total",
+    "Total login attempts by status",
+    ["status"],  # success, failed, invalid_credentials, user_not_found
+    registry=registry,
 )
 
 auth_login_duration_seconds = Histogram(
-    'axiom_auth_login_duration_seconds',
-    'Login operation duration in seconds',
+    "axiom_auth_login_duration_seconds",
+    "Login operation duration in seconds",
     buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
-    registry=registry
+    registry=registry,
 )
 
 auth_token_operations_total = Counter(
-    'axiom_auth_token_operations_total',
-    'Total JWT token operations by type',
-    ['operation'],  # generate, refresh, validate, revoke
-    registry=registry
+    "axiom_auth_token_operations_total",
+    "Total JWT token operations by type",
+    ["operation"],  # generate, refresh, validate, revoke
+    registry=registry,
 )
 
 auth_token_validation_duration_seconds = Histogram(
-    'axiom_auth_token_validation_duration_seconds',
-    'Token validation duration in seconds',
+    "axiom_auth_token_validation_duration_seconds",
+    "Token validation duration in seconds",
     buckets=(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1),
-    registry=registry
+    registry=registry,
 )
 
 auth_active_sessions_gauge = Gauge(
-    'axiom_auth_active_sessions',
-    'Current number of active user sessions',
-    registry=registry
+    "axiom_auth_active_sessions",
+    "Current number of active user sessions",
+    registry=registry,
 )
 
 auth_api_key_operations_total = Counter(
-    'axiom_auth_api_key_operations_total',
-    'Total API key operations by type',
-    ['operation'],  # create, revoke, validate, delete
-    registry=registry
+    "axiom_auth_api_key_operations_total",
+    "Total API key operations by type",
+    ["operation"],  # create, revoke, validate, delete
+    registry=registry,
 )
 
 auth_api_keys_active_gauge = Gauge(
-    'axiom_auth_api_keys_active',
-    'Current number of active API keys',
-    registry=registry
+    "axiom_auth_api_keys_active", "Current number of active API keys", registry=registry
 )
 
 auth_permission_denials_total = Counter(
-    'axiom_auth_permission_denials_total',
-    'Total permission denials by endpoint and role',
-    ['endpoint', 'role', 'permission'],
-    registry=registry
+    "axiom_auth_permission_denials_total",
+    "Total permission denials by endpoint and role",
+    ["endpoint", "role", "permission"],
+    registry=registry,
 )
 
 auth_password_change_attempts_total = Counter(
-    'axiom_auth_password_change_attempts_total',
-    'Total password change attempts by status',
-    ['status'],  # success, failed, weak_password
-    registry=registry
+    "axiom_auth_password_change_attempts_total",
+    "Total password change attempts by status",
+    ["status"],  # success, failed, weak_password
+    registry=registry,
 )
 
 # ============================================================================
@@ -206,25 +221,25 @@ auth_password_change_attempts_total = Counter(
 # ============================================================================
 
 ffi_calls_total = Counter(
-    'axiom_ffi_calls_total',
-    'Total FFI calls to Rust RuntimeStorage',
-    ['method'],
-    registry=registry
+    "axiom_ffi_calls_total",
+    "Total FFI calls to Rust RuntimeStorage",
+    ["method"],
+    registry=registry,
 )
 
 ffi_call_duration_seconds = Histogram(
-    'axiom_ffi_call_duration_seconds',
-    'FFI call duration in seconds',
-    ['method'],
+    "axiom_ffi_call_duration_seconds",
+    "FFI call duration in seconds",
+    ["method"],
     buckets=(0.000001, 0.000005, 0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01),
-    registry=registry
+    registry=registry,
 )
 
 ffi_errors_total = Counter(
-    'axiom_ffi_errors_total',
-    'Total FFI errors',
-    ['method', 'error_type'],
-    registry=registry
+    "axiom_ffi_errors_total",
+    "Total FFI errors",
+    ["method", "error_type"],
+    registry=registry,
 )
 
 # ============================================================================
@@ -232,37 +247,36 @@ ffi_errors_total = Counter(
 # ============================================================================
 
 runtime_memory_bytes = Gauge(
-    'axiom_runtime_memory_bytes',
-    'RuntimeStorage memory usage in bytes',
-    registry=registry
+    "axiom_runtime_memory_bytes",
+    "RuntimeStorage memory usage in bytes",
+    registry=registry,
 )
 
 connections_active_count = Gauge(
-    'axiom_connections_active_count',
-    'Current number of active connections',
-    registry=registry
+    "axiom_connections_active_count",
+    "Current number of active connections",
+    registry=registry,
 )
 
 # ============================================================================
 # Application Info
 # ============================================================================
 
-app_info = Info(
-    'axiom_app',
-    'Axiom application information',
-    registry=registry
-)
+app_info = Info("axiom_app", "Axiom application information", registry=registry)
 
-app_info.info({
-    'version': '0.52.0',
-    'rust_core': '0.50.0',
-    'python_library': '0.50.0',
-    'rest_api': '0.52.0',
-})
+app_info.info(
+    {
+        "version": "0.52.0",
+        "rust_core": "0.50.0",
+        "python_library": "0.50.0",
+        "rest_api": "0.52.0",
+    }
+)
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def track_http_request(method: str, path: str, status_code: int, duration: float):
     """
@@ -292,9 +306,9 @@ def track_token_operation(operation: str, duration: Optional[float] = None):
         token_operation_duration_seconds.labels(operation=operation).observe(duration)
 
     # Update specific counters
-    if operation == 'create':
+    if operation == "create":
         tokens_created_total.inc()
-    elif operation == 'delete':
+    elif operation == "delete":
         tokens_deleted_total.inc()
 
 
@@ -400,9 +414,7 @@ def track_auth_permission_denial(endpoint: str, role: str, permission: str):
         permission: Permission that was required
     """
     auth_permission_denials_total.labels(
-        endpoint=endpoint,
-        role=role,
-        permission=permission
+        endpoint=endpoint, role=role, permission=permission
     ).inc()
 
 
@@ -436,15 +448,13 @@ def get_metrics_response() -> Response:
         FastAPI Response with Prometheus metrics in text format
     """
     metrics_output = generate_latest(registry)
-    return Response(
-        content=metrics_output,
-        media_type=CONTENT_TYPE_LATEST
-    )
+    return Response(content=metrics_output, media_type=CONTENT_TYPE_LATEST)
 
 
 # ============================================================================
 # Context Managers for Timing
 # ============================================================================
+
 
 class TimedOperation:
     """
@@ -468,14 +478,14 @@ class TimedOperation:
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration = time.perf_counter() - self.start_time
 
-        if self.category == 'token':
+        if self.category == "token":
             track_token_operation(self.operation, duration)
-        elif self.category == 'grid':
+        elif self.category == "grid":
             # For grid, we need result count - should be passed differently
             pass
-        elif self.category == 'cdna':
+        elif self.category == "cdna":
             track_cdna_operation(self.operation, duration)
-        elif self.category == 'ffi':
+        elif self.category == "ffi":
             error = type(exc_val).__name__ if exc_val else None
             track_ffi_call(self.operation, duration, error)
 
@@ -490,7 +500,9 @@ if __name__ == "__main__":
     track_grid_query("range", 0.0001, 15)
     track_cdna_operation("get_config", 0.0000005)
     track_ffi_call("get_token", 0.0000008)
-    update_system_metrics(token_count=1250, connection_count=45, memory_bytes=22_500_000)
+    update_system_metrics(
+        token_count=1250, connection_count=45, memory_bytes=22_500_000
+    )
 
     # Generate metrics output
-    print(generate_latest(registry).decode('utf-8'))
+    print(generate_latest(registry).decode("utf-8"))

@@ -47,7 +47,7 @@ if [ "$RUST_CORE_ENABLED" = true ]; then
 
     echo ""
     echo "✅ Verifying Rust Core..."
-    run_cmd ".venv/bin/python -c 'import _core; print(\"✅ Rust Core (_core) loaded successfully\")'"
+    run_cmd ".venv/bin/python -c 'import axiom_core; print(\"✅ Rust Core (axiom_core) loaded successfully\")'"
 fi
 
 echo ""

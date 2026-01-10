@@ -9,7 +9,16 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import random
 
-from .models import Token, TokenCreate, APIKey, APIKeyCreate, HealthCheck, SystemStatus, QueryResult
+from .models import (
+    Token,
+    TokenCreate,
+    APIKey,
+    APIKeyCreate,
+    APIKeyCreated,
+    HealthStatus,
+    SystemStatus,
+    TokenQueryResult,
+)
 
 
 class MockAxiomClient:
@@ -54,21 +63,88 @@ class MockAxiomClient:
         def __init__(self, parent):
             self.parent = parent
 
-        def create(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> Token:
+        def create(
+            self,
+            entity_type: int = 0,
+            domain: int = 0,
+            weight: float = 0.5,
+            field_radius: float = 1.0,
+            field_strength: float = 1.0,
+            persistent: bool = False,
+            l1_physical: Optional[Dict[str, float]] = None,
+            l2_sensory: Optional[Dict[str, float]] = None,
+            l3_motor: Optional[Dict[str, float]] = None,
+            l4_emotional: Optional[Dict[str, float]] = None,
+            l5_cognitive: Optional[Dict[str, float]] = None,
+            l6_social: Optional[Dict[str, float]] = None,
+            l7_temporal: Optional[Dict[str, float]] = None,
+            l8_abstract: Optional[Dict[str, float]] = None,
+        ) -> Token:
             """Create mock token."""
             token_id = self.parent._next_token_id
             self.parent._next_token_id += 1
 
-            # Generate fake embedding
-            embedding = [random.random() for _ in range(768)]
+            # Generate mock coordinates
+            coordinates = {
+                "L1": [
+                    l1_physical.get("x", 0.0),
+                    l1_physical.get("y", 0.0),
+                    l1_physical.get("z", 0.0),
+                ]
+                if l1_physical
+                else None,
+                "L2": [l2_sensory.get("x", 0.0), l2_sensory.get("y", 0.0), l2_sensory.get("z", 0.0)]
+                if l2_sensory
+                else None,
+                "L3": [l3_motor.get("x", 0.0), l3_motor.get("y", 0.0), l3_motor.get("z", 0.0)]
+                if l3_motor
+                else None,
+                "L4": [
+                    l4_emotional.get("x", 0.0),
+                    l4_emotional.get("y", 0.0),
+                    l4_emotional.get("z", 0.0),
+                ]
+                if l4_emotional
+                else None,
+                "L5": [
+                    l5_cognitive.get("x", 0.0),
+                    l5_cognitive.get("y", 0.0),
+                    l5_cognitive.get("z", 0.0),
+                ]
+                if l5_cognitive
+                else None,
+                "L6": [l6_social.get("x", 0.0), l6_social.get("y", 0.0), l6_social.get("z", 0.0)]
+                if l6_social
+                else None,
+                "L7": [
+                    l7_temporal.get("x", 0.0),
+                    l7_temporal.get("y", 0.0),
+                    l7_temporal.get("z", 0.0),
+                ]
+                if l7_temporal
+                else None,
+                "L8": [
+                    l8_abstract.get("x", 0.0),
+                    l8_abstract.get("y", 0.0),
+                    l8_abstract.get("z", 0.0),
+                ]
+                if l8_abstract
+                else None,
+            }
 
             token = Token(
                 id=token_id,
-                text=text,
-                embedding=embedding,
-                metadata=metadata or {},
-                created_at=datetime.utcnow().isoformat(),
-                updated_at=datetime.utcnow().isoformat()
+                id_hex=f"0x{token_id:08X}",
+                local_id=token_id,
+                entity_type=entity_type,
+                domain=domain,
+                weight=weight,
+                field_radius=field_radius,
+                field_strength=field_strength,
+                timestamp=int(datetime.utcnow().timestamp()),
+                age_seconds=0,
+                flags={"active": True, "persistent": persistent},
+                coordinates=coordinates,
             )
 
             self.parent._tokens_store[token_id] = token
@@ -79,36 +155,90 @@ class MockAxiomClient:
             from .exceptions import NotFoundError
 
             if token_id not in self.parent._tokens_store:
-                raise NotFoundError(
-                    f"Token {token_id} not found",
-                    "TOKEN_NOT_FOUND"
-                )
+                raise NotFoundError(f"Token {token_id} not found", "TOKEN_NOT_FOUND")
 
             return self.parent._tokens_store[token_id]
 
         def list(self, limit: int = 100, offset: int = 0) -> List[Token]:
             """List mock tokens."""
             tokens = list(self.parent._tokens_store.values())
-            return tokens[offset:offset + limit]
+            return tokens[offset : offset + limit]
 
         def update(
             self,
             token_id: int,
-            text: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None
+            weight: Optional[float] = None,
+            field_radius: Optional[float] = None,
+            field_strength: Optional[float] = None,
+            l1_physical: Optional[Dict[str, float]] = None,
+            l2_sensory: Optional[Dict[str, float]] = None,
+            l3_motor: Optional[Dict[str, float]] = None,
+            l4_emotional: Optional[Dict[str, float]] = None,
+            l5_cognitive: Optional[Dict[str, float]] = None,
+            l6_social: Optional[Dict[str, float]] = None,
+            l7_temporal: Optional[Dict[str, float]] = None,
+            l8_abstract: Optional[Dict[str, float]] = None,
         ) -> Token:
             """Update mock token."""
             token = self.get(token_id)
 
-            if text is not None:
-                token.text = text
-                # Re-generate embedding for new text
-                token.embedding = [random.random() for _ in range(768)]
+            if weight is not None:
+                token.weight = weight
+            if field_radius is not None:
+                token.field_radius = field_radius
+            if field_strength is not None:
+                token.field_strength = field_strength
 
-            if metadata is not None:
-                token.metadata = metadata
+            # Update coordinates if provided
+            if l1_physical:
+                token.coordinates["L1"] = [
+                    l1_physical.get("x", 0.0),
+                    l1_physical.get("y", 0.0),
+                    l1_physical.get("z", 0.0),
+                ]
+            if l2_sensory:
+                token.coordinates["L2"] = [
+                    l2_sensory.get("x", 0.0),
+                    l2_sensory.get("y", 0.0),
+                    l2_sensory.get("z", 0.0),
+                ]
+            if l3_motor:
+                token.coordinates["L3"] = [
+                    l3_motor.get("x", 0.0),
+                    l3_motor.get("y", 0.0),
+                    l3_motor.get("z", 0.0),
+                ]
+            if l4_emotional:
+                token.coordinates["L4"] = [
+                    l4_emotional.get("x", 0.0),
+                    l4_emotional.get("y", 0.0),
+                    l4_emotional.get("z", 0.0),
+                ]
+            if l5_cognitive:
+                token.coordinates["L5"] = [
+                    l5_cognitive.get("x", 0.0),
+                    l5_cognitive.get("y", 0.0),
+                    l5_cognitive.get("z", 0.0),
+                ]
+            if l6_social:
+                token.coordinates["L6"] = [
+                    l6_social.get("x", 0.0),
+                    l6_social.get("y", 0.0),
+                    l6_social.get("z", 0.0),
+                ]
+            if l7_temporal:
+                token.coordinates["L7"] = [
+                    l7_temporal.get("x", 0.0),
+                    l7_temporal.get("y", 0.0),
+                    l7_temporal.get("z", 0.0),
+                ]
+            if l8_abstract:
+                token.coordinates["L8"] = [
+                    l8_abstract.get("x", 0.0),
+                    l8_abstract.get("y", 0.0),
+                    l8_abstract.get("z", 0.0),
+                ]
 
-            token.updated_at = datetime.utcnow().isoformat()
             self.parent._tokens_store[token_id] = token
             return token
 
@@ -117,26 +247,25 @@ class MockAxiomClient:
             from .exceptions import NotFoundError
 
             if token_id not in self.parent._tokens_store:
-                raise NotFoundError(
-                    f"Token {token_id} not found",
-                    "TOKEN_NOT_FOUND"
-                )
+                raise NotFoundError(f"Token {token_id} not found", "TOKEN_NOT_FOUND")
 
             del self.parent._tokens_store[token_id]
             return True
 
         def query(
             self,
-            query_vector: List[float],
-            top_k: int = 10,
-            threshold: Optional[float] = None
-        ) -> List[QueryResult]:
+            text: str,
+            limit: int = 10,
+            threshold: float = 0.0,
+            spaces: Optional[List[str]] = None,
+            include_connections: bool = False,
+        ) -> List[TokenQueryResult]:
             """Query mock tokens."""
             # Simple mock: return random tokens with random similarities
             tokens = list(self.parent._tokens_store.values())
 
-            # Limit to top_k
-            tokens = tokens[:top_k]
+            # Limit to limit
+            tokens = tokens[:limit]
 
             # Generate results with mock similarities
             results = []
@@ -144,13 +273,18 @@ class MockAxiomClient:
                 similarity = random.uniform(0.7, 1.0)
 
                 if threshold is None or similarity >= threshold:
-                    results.append(QueryResult(
-                        token=token,
-                        similarity=similarity
-                    ))
+                    results.append(
+                        TokenQueryResult(
+                            token_id=token.id,
+                            label=f"token_{token.id}",
+                            score=similarity,
+                            entity_type="Concept",
+                            coordinates=token.coordinates,
+                        )
+                    )
 
-            # Sort by similarity descending
-            results.sort(key=lambda r: r.similarity, reverse=True)
+            # Sort by score descending
+            results.sort(key=lambda r: r.score, reverse=True)
             return results
 
     class MockAPIKeysClient:
@@ -160,11 +294,8 @@ class MockAxiomClient:
             self.parent = parent
 
         def create(
-            self,
-            name: str,
-            scopes: List[str],
-            expires_in_days: Optional[int] = None
-        ) -> APIKey:
+            self, name: str, scopes: List[str], expires_in_days: Optional[int] = None
+        ) -> APIKeyCreated:
             """Create mock API key."""
             key_id = f"key_{self.parent._next_key_id:08d}"
             self.parent._next_key_id += 1
@@ -174,21 +305,32 @@ class MockAxiomClient:
             expires_at = None
             if expires_in_days:
                 from datetime import timedelta
+
                 expires_at = (datetime.utcnow() + timedelta(days=expires_in_days)).isoformat()
 
-            api_key = APIKey(
+            # Store as APIKey
+            api_key_obj = APIKey(
                 key_id=key_id,
                 name=name,
+                key_prefix=api_key_str[:7],
                 scopes=scopes,
                 created_at=datetime.utcnow().isoformat(),
                 expires_at=expires_at,
                 last_used_at=None,
-                is_active=True,
-                api_key=api_key_str  # Only returned on creation
+                disabled=False,
             )
+            self.parent._api_keys_store[key_id] = api_key_obj
 
-            self.parent._api_keys_store[key_id] = api_key
-            return api_key
+            # Return as APIKeyCreated
+            return APIKeyCreated(
+                key_id=key_id,
+                name=name,
+                api_key=api_key_str,
+                key_prefix=api_key_str[:7],
+                scopes=scopes,
+                created_at=api_key_obj.created_at,
+                expires_at=expires_at,
+            )
 
         def list(self) -> List[APIKey]:
             """List mock API keys."""
@@ -197,12 +339,13 @@ class MockAxiomClient:
                 APIKey(
                     key_id=k.key_id,
                     name=k.name,
+                    key_prefix=k.key_prefix,
                     scopes=k.scopes,
                     created_at=k.created_at,
                     expires_at=k.expires_at,
                     last_used_at=k.last_used_at,
-                    is_active=k.is_active,
-                    api_key=None
+                    disabled=k.disabled,
+                    api_key=None,
                 )
                 for k in self.parent._api_keys_store.values()
             ]
@@ -212,38 +355,33 @@ class MockAxiomClient:
             from .exceptions import NotFoundError
 
             if key_id not in self.parent._api_keys_store:
-                raise NotFoundError(
-                    f"API key {key_id} not found",
-                    "API_KEY_NOT_FOUND"
-                )
+                raise NotFoundError(f"API key {key_id} not found", "API_KEY_NOT_FOUND")
 
             key = self.parent._api_keys_store[key_id]
             # Return without api_key field
             return APIKey(
                 key_id=key.key_id,
                 name=key.name,
+                key_prefix=key.key_prefix,
                 scopes=key.scopes,
                 created_at=key.created_at,
                 expires_at=key.expires_at,
                 last_used_at=key.last_used_at,
-                is_active=key.is_active,
-                api_key=None
+                disabled=key.disabled,
+                api_key=None,
             )
 
         def revoke(self, key_id: str) -> None:
             """Revoke mock API key."""
             key = self.get(key_id)
-            self.parent._api_keys_store[key_id].is_active = False
+            self.parent._api_keys_store[key_id].disabled = True
 
         def delete(self, key_id: str) -> None:
             """Delete mock API key."""
             from .exceptions import NotFoundError
 
             if key_id not in self.parent._api_keys_store:
-                raise NotFoundError(
-                    f"API key {key_id} not found",
-                    "API_KEY_NOT_FOUND"
-                )
+                raise NotFoundError(f"API key {key_id} not found", "API_KEY_NOT_FOUND")
 
             del self.parent._api_keys_store[key_id]
 
@@ -253,23 +391,34 @@ class MockAxiomClient:
         def __init__(self, parent):
             self.parent = parent
 
-        def check(self) -> HealthCheck:
+        def check(self) -> HealthStatus:
             """Mock health check."""
-            return HealthCheck(
-                status="healthy",
-                version="0.59.0-mock",
-                timestamp=datetime.utcnow().isoformat()
+            return HealthStatus(
+                status="healthy", version="0.59.0-mock", timestamp=datetime.utcnow().isoformat()
             )
 
         def status(self) -> SystemStatus:
             """Mock system status."""
             return SystemStatus(
-                status="healthy",
+                state="running",
+                uptime_seconds=12345.0,
+                tokens={
+                    "total": len(self.parent._tokens_store),
+                    "active": len(self.parent._tokens_store),
+                },
+                connections={"total": 0, "active": 0},
+                memory_usage_mb=128.5,
+                cpu_usage_percent=5.0,
+                components={
+                    "runtime": "running",
+                    "runtime_storage": "running",
+                    "token_storage": "running",
+                    "grid_storage": "running",
+                    "cdna_storage": "running",
+                },
                 version="0.59.0-mock",
-                timestamp=datetime.utcnow().isoformat(),
-                uptime_seconds=12345,
-                tokens_count=len(self.parent._tokens_store),
-                api_keys_count=len(self.parent._api_keys_store)
+                storage_backend="runtime",
+                cdna_profile="explorer",
             )
 
 
@@ -301,17 +450,23 @@ def mock_token(**kwargs) -> Token:
     """
     defaults = {
         "id": 1,
-        "text": "mock token text",
-        "embedding": [random.random() for _ in range(768)],
-        "metadata": {},
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "id_hex": "0x00000001",
+        "local_id": 1,
+        "entity_type": 0,
+        "domain": 0,
+        "weight": 0.5,
+        "field_radius": 1.0,
+        "field_strength": 1.0,
+        "timestamp": int(datetime.utcnow().timestamp()),
+        "age_seconds": 0,
+        "flags": {"active": True, "persistent": False},
+        "coordinates": {f"L{i + 1}": None for i in range(8)},
     }
     defaults.update(kwargs)
     return Token(**defaults)
 
 
-def mock_api_key(**kwargs) -> APIKey:
+def mock_api_key(**kwargs) -> APIKeyCreated:
     """
     Create a mock API key for testing.
 
@@ -325,12 +480,13 @@ def mock_api_key(**kwargs) -> APIKey:
     defaults = {
         "key_id": "key_00000001",
         "name": "mock api key",
+        "key_prefix": "ng_mock",
         "scopes": ["tokens:read", "tokens:write"],
         "created_at": datetime.utcnow().isoformat(),
         "expires_at": None,
         "last_used_at": None,
-        "is_active": True,
-        "api_key": "ng_mock_key_12345"
+        "disabled": False,
+        "api_key": "ng_mock_key_12345",
     }
     defaults.update(kwargs)
-    return APIKey(**defaults)
+    return APIKeyCreated(**defaults)
