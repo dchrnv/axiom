@@ -55,7 +55,7 @@ else
 
     # Start backend in background
     echo "🔧 Starting backend..."
-    "$PROJECT_ROOT/scripts/start-backend.sh" > "$PROJECT_ROOT/backend.log" 2>&1 &
+    "$PROJECT_ROOT/scripts/start-backend.sh" > "$PROJECT_ROOT/tmp/backend.log" 2>&1 &
     BACKEND_PID=$!
     echo "   Backend PID: $BACKEND_PID"
 
@@ -64,7 +64,7 @@ else
 
     # Start frontend in background
     echo "🔧 Starting frontend..."
-    "$PROJECT_ROOT/scripts/start-frontend.sh" > "$PROJECT_ROOT/frontend.log" 2>&1 &
+    "$PROJECT_ROOT/scripts/start-frontend.sh" > "$PROJECT_ROOT/tmp/frontend.log" 2>&1 &
     FRONTEND_PID=$!
     echo "   Frontend PID: $FRONTEND_PID"
 
@@ -76,8 +76,8 @@ else
     echo "   Frontend: $FRONTEND_PID"
     echo ""
     echo "📝 Logs:"
-    echo "   Backend:  tail -f $PROJECT_ROOT/backend.log"
-    echo "   Frontend: tail -f $PROJECT_ROOT/frontend.log"
+    echo "   Backend:  tail -f $PROJECT_ROOT/tmp/backend.log"
+    echo "   Frontend: tail -f $PROJECT_ROOT/tmp/frontend.log"
     echo ""
     echo "🛑 To stop services:"
     echo "   ./stop-all.sh"
@@ -89,13 +89,13 @@ else
     echo ""
 
     # Save PIDs to file for easy cleanup
-    echo "$BACKEND_PID" > "$PROJECT_ROOT/.backend.pid"
-    echo "$FRONTEND_PID" > "$PROJECT_ROOT/.frontend.pid"
+    echo "$BACKEND_PID" > "$PROJECT_ROOT/tmp/.backend.pid"
+    echo "$FRONTEND_PID" > "$PROJECT_ROOT/tmp/.frontend.pid"
 
     # Wait for user interrupt
     echo "Press Ctrl+C to view logs (services will continue running)..."
     trap 'echo ""; echo "Services still running. To stop: ./stop-all.sh"; exit 0' INT
 
     # Show logs
-    tail -f "$PROJECT_ROOT/backend.log" "$PROJECT_ROOT/frontend.log"
+    tail -f "$PROJECT_ROOT/tmp/backend.log" "$PROJECT_ROOT/tmp/frontend.log"
 fi

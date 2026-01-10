@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/chrnv/axiom-os-mvp"
+PROJECT_ROOT="/home/chrnv/Axiom"
 
 echo "🛑 Stopping Axiom services..."
 
@@ -27,18 +27,18 @@ if command -v tmux &> /dev/null; then
 fi
 
 # Kill processes from PID files
-if [ -f "$PROJECT_ROOT/.backend.pid" ]; then
-    BACKEND_PID=$(cat "$PROJECT_ROOT/.backend.pid")
+if [ -f "$PROJECT_ROOT/tmp/.backend.pid" ]; then
+    BACKEND_PID=$(cat "$PROJECT_ROOT/tmp/.backend.pid")
     echo "🔧 Stopping backend (PID: $BACKEND_PID)..."
     kill_process "$BACKEND_PID"
-    rm "$PROJECT_ROOT/.backend.pid"
+    rm "$PROJECT_ROOT/tmp/.backend.pid"
 fi
 
-if [ -f "$PROJECT_ROOT/.frontend.pid" ]; then
-    FRONTEND_PID=$(cat "$PROJECT_ROOT/.frontend.pid")
+if [ -f "$PROJECT_ROOT/tmp/.frontend.pid" ]; then
+    FRONTEND_PID=$(cat "$PROJECT_ROOT/tmp/.frontend.pid")
     echo "🔧 Stopping frontend (PID: $FRONTEND_PID)..."
     kill_process "$FRONTEND_PID"
-    rm "$PROJECT_ROOT/.frontend.pid"
+    rm "$PROJECT_ROOT/tmp/.frontend.pid"
 fi
 
 # Kill any process on port 8000 (backend)
@@ -58,12 +58,12 @@ else
 fi
 
 # Clean up log files
-if [ -f "$PROJECT_ROOT/backend.log" ]; then
-    rm "$PROJECT_ROOT/backend.log"
+if [ -f "$PROJECT_ROOT/tmp/backend.log" ]; then
+    rm "$PROJECT_ROOT/tmp/backend.log"
 fi
 
-if [ -f "$PROJECT_ROOT/frontend.log" ]; then
-    rm "$PROJECT_ROOT/frontend.log"
+if [ -f "$PROJECT_ROOT/tmp/frontend.log" ]; then
+    rm "$PROJECT_ROOT/tmp/frontend.log"
 fi
 
 echo ""

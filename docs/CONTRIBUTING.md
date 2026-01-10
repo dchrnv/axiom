@@ -1,452 +1,434 @@
-# Участие в разработке Axiom
+# Contributing to Axiom
 
-Спасибо за интерес к проекту! Мы рады любому вкладу.
+Thank you for your interest in contributing to Axiom! This document provides guidelines and standards for contributing to the project.
 
-## Как помочь проекту
+## Table of Contents
 
-### 1. Исследование и обратная связь
+- [Code of Conduct](#code-of-conduct)
+- [Getting Started](#getting-started)
+- [Development Workflow](#development-workflow)
+- [Code Style Guidelines](#code-style-guidelines)
+- [Testing Requirements](#testing-requirements)
+- [Documentation Standards](#documentation-standards)
+- [Pull Request Process](#pull-request-process)
+- [Architecture Decision Records](#architecture-decision-records)
 
-- Тестируйте MVP и сообщайте о багах
-- Предлагайте улучшения в Issues
-- Делитесь идеями по архитектуре
+## Code of Conduct
 
-### 2. Разработка
+- Be respectful and inclusive
+- Focus on constructive feedback
+- Help others learn and grow
+- Maintain professional communication
 
-- Добавляйте новые фичи
-- Исправляйте баги
-- Улучшайте документацию
-- Пишите тесты
+## Getting Started
 
-### 3. Документация
+### Prerequisites
 
-- Улучшайте существующие docs
-- Добавляйте примеры использования
-- Переводите на другие языки
+- Python 3.11+
+- Rust 1.70+
+- Git
 
----
-
-## ⚠️ Contributor License Agreement (CLA)
-
-**ВАЖНО:** Все вклады в Axiom требуют принятия нашего **Contributor License Agreement (CLA)**.
-
-### Что это значит?
-
-CLA позволяет проекту использовать **модель двойного лицензирования** (dual licensing):
-- **Open Source** (бесплатно): AGPLv3 для кода, CC BY-NC-SA 4.0 для данных/моделей
-- **Commercial** (платно): Проприетарные лицензии для коммерческих пользователей
-
-### Что я должен сделать?
-
-**Для вашего первого Pull Request:**
-
-1. Прочитайте CLA: [docs/legal/CLA.md](docs/legal/CLA.md)
-2. Прочитайте про dual licensing: [docs/legal/DUAL_LICENSING.md](docs/legal/DUAL_LICENSING.md)
-3. Добавьте этот комментарий к вашему PR:
-
-```
-I have read and agree to the Axiom Contributor License Agreement (CLA):
-https://github.com/dchrnv/axiom-os/blob/main/docs/legal/CLA.md
-
-I confirm that I have the rights to submit this Contribution and grant the licenses described in the CLA.
-```
-
-### Что дает мне CLA?
-
-- ✅ Вы **сохраняете авторские права** на свой код
-- ✅ Ваше имя будет в **CONTRIBUTORS.md**
-- ✅ Вы получаете **признание** в release notes
-- ✅ Вы можете свободно использовать свой код
-- ✅ Вы помогаете проекту быть **финансово устойчивым**
-
-### Что дает проекту CLA?
-
-- ✅ Право распространять ваш вклад под AGPL/CC (open source)
-- ✅ Право продавать проприетарные лицензии (commercial)
-- ✅ Финансирование для дальнейшей разработки
-
-### Подробнее
-
-См. полную документацию:
-- **[CLA.md](docs/legal/CLA.md)** - полный текст соглашения
-- **[DUAL_LICENSING.md](docs/legal/DUAL_LICENSING.md)** - объяснение бизнес-модели
-- **[.github/CLA_INSTRUCTIONS.md](.github/CLA_INSTRUCTIONS.md)** - пошаговая инструкция
-
----
-
-## Процесс разработки
-
-### Шаг 1: Fork и клонирование
+### Setup Development Environment
 
 ```bash
-# Fork репозитория через GitHub UI
-git clone https://github.com/YOUR_USERNAME/axiom-os-mvp.git
+# Clone repository
+git clone https://github.com/chrnv/axiom-os-mvp.git
 cd axiom-os-mvp
-git remote add upstream https://github.com/dchrnv/axiom-os-mvp.git
-```
 
-### Шаг 2: Создание ветки
+# Install Python dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
-```bash
-git checkout -b feature/your-feature-name
-# или
-git checkout -b bugfix/issue-123
-```
-
-**Naming conventions:**
-
-- `feature/` - новые функции
-- `bugfix/` - исправления багов
-- `docs/` - изменения документации
-- `refactor/` - рефакторинг без изменения API
-
-### Шаг 3: Разработка
-
-```bash
-# Rust core development
-cd src/core_rust
-
-# Build library
-cargo build --lib
+# Build Rust core
+cd src/core
+cargo build --release
+cd ../..
 
 # Run tests
-cargo test --lib
+pytest tests/ -v
 
-# Run benchmarks
-cargo bench
-
-# Run integration tests
-cargo test --tests
+# Start development server
+./run.sh
 ```
 
-### Шаг 4: Тестирование
+## Development Workflow
+
+### 1. Create a Branch
 
 ```bash
-# Запустить все тесты библиотеки
-cd src/core_rust
-cargo test --lib
+# Feature branch
+git checkout -b feature/your-feature-name
 
-# Запустить конкретный тест
-cargo test --lib test_name
+# Bug fix branch
+git checkout -b fix/issue-description
 
-# Запустить с выводом
-cargo test --lib -- --nocapture
-
-# Integration tests
-cargo test --test learning_loop_e2e
-cargo test --test action_controller_e2e
-cargo test --test persistence_e2e
+# Documentation branch
+git checkout -b docs/what-you-are-documenting
 ```
 
-### Шаг 5: Коммит
+### 2. Make Changes
+
+- Write clean, readable code
+- Follow style guidelines (see below)
+- Add tests for new functionality
+- Update documentation as needed
+
+### 3. Run Quality Checks
 
 ```bash
-git add .
-git commit -m "feat: add awesome feature
+# Python linting
+ruff check src/api/
+mypy src/api/
 
-Detailed description of what was changed and why.
+# Rust linting
+cd src/core
+cargo clippy -- -D warnings
+cargo fmt --check
 
-Closes #123"
+# Run tests
+pytest tests/ -v --cov=src/api
+
+# Check test coverage
+pytest --cov=src/api --cov-report=html
 ```
 
-**Commit message format:**
+### 4. Commit Changes
 
-```
-<type>: <short summary>
-
-<optional detailed description>
-
-<optional footer>
-```
-
-**Types:**
-
-- `feat:` - новая функция
-- `fix:` - исправление бага
-- `docs:` - изменения в документации
-- `refactor:` - рефакторинг
-- `test:` - добавление тестов
-- `chore:` - изменения инфраструктуры
-
-### Шаг 6: Push и Pull Request
+Follow conventional commit format:
 
 ```bash
-git push origin feature/your-feature-name
+# Format: <type>(<scope>): <description>
+
+# Examples:
+git commit -m "feat(api): add token batch creation endpoint"
+git commit -m "fix(grid): resolve neighbor search boundary issue"
+git commit -m "docs(tutorials): add performance optimization guide"
+git commit -m "test(tokens): add comprehensive CRUD tests"
+git commit -m "refactor(storage): optimize memory usage"
 ```
 
-Затем создайте Pull Request через GitHub UI:
+**Commit Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `test`: Test additions or modifications
+- `refactor`: Code refactoring
+- `perf`: Performance improvements
+- `style`: Code style changes (formatting)
+- `chore`: Build process, dependencies
 
-1. Опишите что изменили
-2. Укажите связанные Issues
-3. Добавьте скриншоты (если UI)
-4. Отметьте чеклист
+### 5. Push and Create PR
 
----
+```bash
+git push origin your-branch-name
+```
 
-## Checklist для Pull Request
+Then create a Pull Request on GitHub.
 
-- [ ] **CLA подписан** - добавлен комментарий с согласием на CLA (см. выше)
-- [ ] Код работает и протестирован
-- [ ] Добавлены тесты для новой функциональности
-- [ ] Документация обновлена (README, docs/)
-- [ ] Commit messages следуют формату
-- [ ] Нет конфликтов с main веткой
-- [ ] `cargo test --lib` проходит без ошибок
-- [ ] `cargo build --lib` компилируется без warnings
+## Code Style Guidelines
 
----
+### Python (PEP 8 + Project Standards)
 
-## Code Style
+**Formatting:**
+- Use `ruff` for linting and formatting
+- Line length: 100 characters
+- Indentation: 4 spaces
+- Use type hints for all functions
 
-### Rust
+**Example:**
 
-- Следуем Rust API Guidelines
-- Используем `cargo fmt` для форматирования
-- Используем `cargo clippy` для линтинга
-- Документируем публичные API с `///` doc comments
-- Максимальная длина строки: 100 символов
+```python
+from typing import Optional, List
+
+def create_token(
+    position: List[float],
+    radius: float = 1.0,
+    weight: float = 1.0
+) -> Optional[int]:
+    """Create a new token.
+
+    Args:
+        position: 8D coordinate vector
+        radius: Token influence radius
+        weight: Token importance factor
+
+    Returns:
+        Token ID if successful, None otherwise
+
+    Example:
+        >>> token_id = create_token([0.0] * 8, radius=2.0)
+        >>> print(token_id)
+        1
+    """
+    # Implementation
+    pass
+```
+
+**Docstrings:**
+- Use Google style
+- Include Args, Returns, Raises, Example sections
+- Document all public functions and classes
+
+**Naming Conventions:**
+- Functions/variables: `snake_case`
+- Classes: `PascalCase`
+- Constants: `UPPER_SNAKE_CASE`
+- Private members: `_leading_underscore`
+
+### Rust (Rust Style Guide)
+
+**Formatting:**
+- Use `cargo fmt` (rustfmt)
+- Use `cargo clippy` for linting
+
+**Example:**
 
 ```rust
-/// Creates a new token with specified parameters
+/// Calculate distance between two points in N-dimensional space.
 ///
 /// # Arguments
-///
-/// * `id` - Unique token identifier (u32)
+/// * `p1` - First point coordinates
+/// * `p2` - Second point coordinates
 ///
 /// # Returns
-///
-/// New Token instance with default values
+/// Euclidean distance between points
 ///
 /// # Example
-///
 /// ```
-/// let token = Token::new(42);
-/// assert_eq!(token.id, 42);
+/// let dist = calculate_distance(&[0.0, 0.0], &[3.0, 4.0]);
+/// assert_eq!(dist, 5.0);
 /// ```
-pub fn new(id: u32) -> Self {
-    Self {
-        id,
-        weight: 0.0,
-        // ... other fields
-    }
+pub fn calculate_distance(p1: &[f64], p2: &[f64]) -> f64 {
+    p1.iter()
+        .zip(p2.iter())
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 ```
 
-### TypeScript/React (Desktop UI)
+**Naming Conventions:**
+- Functions/variables: `snake_case`
+- Types/Traits: `PascalCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Lifetimes: `'short_lowercase`
 
-- ESLint rules
-- Functional components с hooks
-- Typed props
-- CSS modules или styled-components
+### JavaScript/TypeScript
 
-```typescript
-interface TokenCardProps {
-  token: Token;
-  onDelete: (id: number) => void;
-}
+- Use Prettier for formatting
+- ESLint for linting
+- Follow Airbnb style guide
 
-export const TokenCard: React.FC<TokenCardProps> = ({ token, onDelete }) => {
-  return (
-    <div className="token-card">
-      <h3>Token #{token.id}</h3>
-      <button onClick={() => onDelete(token.id)}>Delete</button>
-    </div>
-  );
-};
+## Testing Requirements
+
+### Test Coverage Targets
+
+- **Critical paths**: 80%+ coverage required
+- **API endpoints**: 70%+ coverage required
+- **Core logic**: 90%+ coverage required
+
+### Writing Tests
+
+**Python (pytest):**
+
+```python
+import pytest
+from src.api.storage.memory import InMemoryTokenStorage
+
+class TestTokenStorage:
+    """Test suite for token storage operations."""
+
+    @pytest.fixture
+    def storage(self):
+        """Create fresh storage instance."""
+        return InMemoryTokenStorage()
+
+    def test_create_token(self, storage):
+        """Test token creation."""
+        token = storage.create(
+            position=[1.0] * 8,
+            radius=1.0,
+            weight=1.0
+        )
+        assert token is not None
+        assert token.radius == 1.0
+
+    def test_get_nonexistent_token(self, storage):
+        """Test retrieving non-existent token."""
+        token = storage.get(999)
+        assert token is None
 ```
 
----
-
-## Тестирование
-
-### Unit Tests (Rust)
+**Rust (built-in test framework):**
 
 ```rust
-// src/core_rust/src/token.rs
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_token_creation() {
-        let token = Token::new(42);
-        let token_id = token.id;
-        assert_eq!(token_id, 42);
+    fn test_distance_calculation() {
+        let p1 = vec![0.0, 0.0];
+        let p2 = vec![3.0, 4.0];
+        let dist = calculate_distance(&p1, &p2);
+        assert!((dist - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    #[should_panic(expected = "mismatched dimensions")]
+    fn test_distance_dimension_mismatch() {
+        let p1 = vec![0.0, 0.0];
+        let p2 = vec![1.0, 2.0, 3.0];
+        calculate_distance(&p1, &p2);
     }
 }
 ```
 
-### Integration Tests (Rust)
+### Running Tests
 
-```rust
-// src/core_rust/tests/integration/learning_loop_e2e.rs
-#[tokio::test]
-async fn test_full_learning_loop() {
-    // Setup components
-    let mut stream = ExperienceStream::new();
-    let intuition = IntuitionEngine::new();
+```bash
+# Python tests
+pytest tests/ -v
 
-    // Test learning loop
-    // ...
-}
+# With coverage
+pytest tests/ --cov=src/api --cov-report=html
+
+# Specific test file
+pytest tests/test_tokens.py -v
+
+# Rust tests
+cd src/core
+cargo test
+cargo test --release  # Release mode
+
+# With output
+cargo test -- --nocapture
 ```
 
-### Benchmarks (Rust)
+## Documentation Standards
 
-```rust
-// src/core_rust/benches/token_bench.rs
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+### Code Documentation
 
-fn bench_token_creation(c: &mut Criterion) {
-    c.bench_function("token_new", |b| {
-        b.iter(|| Token::new(black_box(1)))
-    });
-}
+- **Python**: Google-style docstrings
+- **Rust**: Rustdoc comments (`///`)
+- **All public APIs**: Must be documented
 
-criterion_group!(benches, bench_token_creation);
-criterion_main!(benches);
+### User Documentation
+
+- **Location**: `docs/source/`
+- **Format**: reStructuredText (.rst) or Markdown (.md)
+- **Build**: `make html` in `docs/` directory
+
+### Tutorial Documentation
+
+- **Location**: `docs/tutorials/`
+- **Format**: Jupyter notebooks (.ipynb)
+- **Requirements**: Runnable examples, clear explanations
+
+### Updating Documentation
+
+```bash
+# After changes, rebuild docs
+cd docs
+make clean
+make html
+
+# Check for warnings
+# Fix any broken links or missing references
 ```
 
----
+## Pull Request Process
 
-## Reporting Bugs
+### Before Submitting
 
-При создании Issue для бага, укажите:
+1. ✅ All tests pass
+2. ✅ Code coverage meets requirements
+3. ✅ Linting passes (ruff, clippy)
+4. ✅ Documentation updated
+5. ✅ CHANGELOG.md updated (if applicable)
 
-1. **Описание проблемы** - что произошло
-2. **Ожидаемое поведение** - что должно было быть
-3. **Шаги воспроизведения** - как повторить баг
-4. **Окружение**:
-   - OS: Linux/macOS/Windows
-   - Rust версия: `rustc --version`
-   - Версия Axiom: (из Cargo.toml)
-5. **Логи/Скриншоты** - если есть
-
-**Пример:**
+### PR Description Template
 
 ```markdown
-### Описание
-Token creation fails with panic when coordinates out of bounds
+## Description
+Brief description of changes
 
-### Шаги воспроизведения
-1. Create token: `Token::new(1)`
-2. Set coordinates: `token.set_coordinates(L1Physical, 9999.0, 0.0, 0.0)`
-3. Panic occurs
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
 
-### Ожидаемое поведение
-Should clamp coordinates or return Result<>
+## Testing
+Describe testing performed
 
-### Окружение
-- OS: Ubuntu 22.04
-- Rust: 1.75.0
-- Version: v0.27.0
+## Checklist
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] Linting passes
+- [ ] No breaking changes (or documented)
+
+## Related Issues
+Fixes #123
 ```
 
----
+### Review Process
 
-## Предложение фич
+1. **Automated checks** run on PR
+2. **Maintainer review** (usually within 48 hours)
+3. **Address feedback** if any
+4. **Approval and merge**
 
-При создании Issue для новой фичи, укажите:
+### Merge Requirements
 
-1. **Проблема** - какую задачу решает фича
-2. **Решение** - как вы предлагаете её решить
-3. **Альтернативы** - другие варианты решения
-4. **Приоритет** - насколько это важно
+- ✅ At least 1 approval from maintainer
+- ✅ All CI checks passing
+- ✅ No merge conflicts
+- ✅ Branch up-to-date with main
 
----
+## Architecture Decision Records
 
-## Архитектура проекта
+When making significant architectural decisions, document them as ADRs in `docs/adr/`.
 
-Перед началом разработки, ознакомьтесь с:
+**Template:**
 
-- [README.md](README.md) - общее описание проекта
-- [docs/PROJECT_HISTORY.md](docs/PROJECT_HISTORY.md) - история версий
-- [architecture_blueprint.json](architecture_blueprint.json) - архитектура системы
+```markdown
+# ADR-NNN: Title
 
-**Основные модули:**
+**Status:** Proposed | Accepted | Deprecated | Superseded
 
-- `src/core_rust/src/token.rs` - Token V2.0 (64 bytes)
-- `src/core_rust/src/connection.rs` - Connection V2.0 (32 bytes)
-- `src/core_rust/src/grid.rs` - 8D Spatial indexing
-- `src/core_rust/src/graph.rs` - Topological navigation
-- `src/core_rust/src/cdna.rs` - Constitutional DNA
-- `src/core_rust/src/adna.rs` - Active DNA (Policy Engine)
-- `src/core_rust/src/experience_stream.rs` - Experience tracking
-- `src/core_rust/src/intuition_engine.rs` - Pattern detection
-- `src/core_rust/src/action_controller.rs` - Action selection
+**Date:** YYYY-MM-DD
 
----
+## Context
+What is the issue we're facing?
 
-## Правила документации
+## Decision
+What decision did we make?
 
-### Общие правила:
+## Consequences
+What are the positive and negative consequences?
 
-1. **README.md** - только актуальная версия проекта
-2. **PROJECT_HISTORY.md** - вся история разработки
-3. **CONTRIBUTING.md** - гайд для контрибьюторов
+## Alternatives Considered
+What other options were considered?
+```
 
-### В коде:
+**Existing ADRs:**
+- [ADR-001: Rust Core + PyO3 Architecture](docs/adr/001-rust-pyo3-architecture.md)
+- [ADR-002: 8-Dimensional Coordinate System](docs/adr/002-8d-coordinate-system.md)
+- [ADR-003: WebSocket Event Streaming](docs/adr/003-websocket-streaming.md)
+- [ADR-004: Token-Based Cognitive Architecture](docs/adr/004-token-architecture.md)
+- [ADR-005: CDNA Profile System](docs/adr/005-cdna-profiles.md)
 
-- Rust: используем `///` doc comments для публичных API
-- Пишем примеры в docstrings с `# Example`
-- Документируем сложные алгоритмы
-- Комментируем ПОЧЕМУ, а не ЧТО
+## Questions or Issues?
 
----
+- **Bug reports**: [GitHub Issues](https://github.com/chrnv/axiom-os-mvp/issues)
+- **Feature requests**: [GitHub Discussions](https://github.com/chrnv/axiom-os-mvp/discussions)
+- **Security issues**: Email security@axiom.dev
 
-## Code Review Process
+## License
 
-После создания PR:
-
-1. **Automated checks** - GitHub Actions запустит тесты
-2. **Code review** - мейнтейнеры проверят код
-3. **Discussion** - обсуждение изменений в комментариях
-4. **Approval** - получение approval от мейнтейнеров
-5. **Merge** - слияние в main ветку
+By contributing, you agree that your contributions will be licensed under the GNU AGPL v3 License.
 
 ---
 
-## Признание вклада
-
-Все контрибьюторы будут добавлены в:
-
-- GitHub Contributors list
-- CONTRIBUTORS.md (планируется)
-- Release notes
-
----
-
-## Вопросы?
-
-- **GitHub Issues** - для багов и фич
-- **GitHub Discussions** - для общих вопросов
-- **Email**: <dreeftwood@gmail.com> - для приватных вопросов
-
----
-
-## Лицензия и Dual Licensing
-
-Этот проект использует **модель двойного лицензирования**:
-
-### Open Source (Бесплатно)
-
-- **Код**: GNU Affero General Public License v3.0 (AGPLv3)
-- **Данные/Модели**: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)
-
-Полный текст лицензии: [LICENSE](LICENSE)
-
-### Commercial (Платно)
-
-Проприетарные лицензии доступны для коммерческих пользователей, которым нужно:
-- Закрытый исходный код (без AGPL раскрытия)
-- Коммерческое использование моделей/данных (без CC BY-NC-SA ограничений)
-- Сублицензирование и интеграция в проприетарные продукты
-
-**Подробнее:**
-- [docs/legal/DUAL_LICENSING.md](docs/legal/DUAL_LICENSING.md) - объяснение модели
-- [docs/legal/CLA.md](docs/legal/CLA.md) - соглашение с контрибьюторами
-
-**Контакт для коммерческих лицензий:** <dreeftwood@gmail.com>
-
----
-
-Спасибо за вклад в Axiom!
+**Thank you for contributing to Axiom!** 🚀

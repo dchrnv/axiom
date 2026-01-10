@@ -21,6 +21,7 @@ venv.bak/
 
 # Process IDs and runtime files
 *.pid
+tmp/
 .backend.pid
 .frontend.pid
 
