@@ -1,6 +1,6 @@
 {
   "name": "@axiom/client",
-  "version": "0.59.2",
+  "version": "1.00.00",
   "description": "Official TypeScript/JavaScript client for Axiom - semantic knowledge system",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

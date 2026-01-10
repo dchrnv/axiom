@@ -2,7 +2,7 @@
 
 > High-performance cognitive platform with Rust Core, WebSocket API, and Jupyter integration
 
-[![Version](https://img.shields.io/badge/version-0.65.0-blue.svg)](https://github.com/dchrnv/axiom)
+[![Version](https://img.shields.io/badge/version-v%201.00.00-blue.svg)](https://github.com/dchrnv/axiom)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
 [![Rust](https://img.shields.io/badge/rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
@@ -101,7 +101,7 @@ maturin build --release
 
 ## Project Status
 
-**Current:** v0.63.1 - ~80% complete, ready for PyPI publication
+**Current:** v 1.00.00 - Axiom Phase 1: Foundation
 
 **Completed:**
 

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "axiom-core"
-version = "0.63.1"
+version = "1.00.00"
 description = "Axiom - High-performance cognitive platform with Rust Core, WebSocket API, and Jupyter integration"
 authors = [{name = "Chernov Denys", email = "denys@axiom.org"}]
 license = {text = "AGPL-3.0"}
