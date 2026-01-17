@@ -25,7 +25,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import logging
 
-from .storage import TokenStorageInterface, GridStorageInterface, CDNAStorageInterface
+from typing import Union
+
 from .storage.memory import (
     InMemoryTokenStorage,
     InMemoryGridStorage,
@@ -43,9 +44,9 @@ security = HTTPBearer(auto_error=False)
 _runtime_instance: Optional[object] = None
 
 # Global storage instances (singletons)
-_token_storage: Optional[TokenStorageInterface] = None
-_grid_storage: Optional[GridStorageInterface] = None
-_cdna_storage: Optional[CDNAStorageInterface] = None
+_token_storage: Optional[Union[InMemoryTokenStorage, RuntimeTokenStorage]] = None
+_grid_storage: Optional[Union[InMemoryGridStorage, RuntimeGridStorage]] = None
+_cdna_storage: Optional[Union[InMemoryCDNAStorage, RuntimeCDNAStorage]] = None
 
 
 def get_runtime():
@@ -173,7 +174,7 @@ async def require_admin(user_id: Optional[str] = Depends(verify_token)) -> str:
 # =============================================================================
 
 
-def get_token_storage() -> TokenStorageInterface:
+def get_token_storage() -> Union[InMemoryTokenStorage, RuntimeTokenStorage]:
     """
     Get token storage instance.
 
@@ -200,7 +201,7 @@ def get_token_storage() -> TokenStorageInterface:
     return _token_storage
 
 
-def get_grid_storage() -> GridStorageInterface:
+def get_grid_storage() -> Union[InMemoryGridStorage, RuntimeGridStorage]:
     """
     Get grid storage instance.
 
@@ -227,7 +228,7 @@ def get_grid_storage() -> GridStorageInterface:
     return _grid_storage
 
 
-def get_cdna_storage() -> CDNAStorageInterface:
+def get_cdna_storage() -> Union[InMemoryCDNAStorage, RuntimeCDNAStorage]:
     """
     Get CDNA storage instance.
 

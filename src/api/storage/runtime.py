@@ -1,4 +1,3 @@
-
 # Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
 # Copyright (C) 2024-2025 Chernov Denys
 
@@ -23,7 +22,8 @@ through the Rust core RuntimeStorage.
 """
 
 from typing import List, Optional, Dict, Tuple, Any
-from . import TokenStorageInterface, GridStorageInterface, CDNAStorageInterface
+from typing import List, Optional, Dict, Tuple, Any
+
 import sys
 from pathlib import Path
 import logging
@@ -38,7 +38,7 @@ from core.token.token_v2 import Token
 logger = logging.getLogger(__name__)
 
 
-class RuntimeTokenStorage(TokenStorageInterface):
+class RuntimeTokenStorage:
     """
     Runtime-based token storage (v0.51.0).
 
@@ -56,6 +56,7 @@ class RuntimeTokenStorage(TokenStorageInterface):
         if runtime is None:
             try:
                 from axiom import Runtime, Config
+
                 config = Config(grid_size=1000, dimensions=50)
                 runtime = Runtime(config)
                 logger.info("Created new Runtime instance for TokenStorage")
@@ -77,14 +78,14 @@ class RuntimeTokenStorage(TokenStorageInterface):
 
         # Convert dict to Token object
         return Token(
-            id=token_dict['id'],
-            weight=token_dict['weight'],
-            coordinates=token_dict.get('coordinates', [[0.0, 0.0, 0.0]] * 8)
+            id=token_dict["id"],
+            weight=token_dict["weight"],
+            coordinates=token_dict.get("coordinates", [[0.0, 0.0, 0.0]] * 8),
         )
 
     def create(self, token_data: Dict[str, Any]) -> Token:
         """Create new token in RuntimeStorage."""
-        weight = token_data.get('weight', 1.0)
+        weight = token_data.get("weight", 1.0)
 
         # Create token in Rust runtime
         token_id = self._runtime.tokens.create(weight=weight)
@@ -99,8 +100,8 @@ class RuntimeTokenStorage(TokenStorageInterface):
             return None
 
         # Update weight if provided
-        if 'weight' in token_data:
-            self._runtime.tokens.update(token_id, weight=token_data['weight'])
+        if "weight" in token_data:
+            self._runtime.tokens.update(token_id, weight=token_data["weight"])
 
         # Return updated token
         return self.get(token_id)
@@ -115,15 +116,15 @@ class RuntimeTokenStorage(TokenStorageInterface):
         all_tokens = self._runtime.tokens.list()
 
         # Apply pagination
-        paginated = all_tokens[offset:offset + limit]
+        paginated = all_tokens[offset : offset + limit]
 
         # Convert to Token objects
         result = []
         for token_dict in paginated:
             token = Token(
-                id=token_dict['id'],
-                weight=token_dict['weight'],
-                coordinates=token_dict.get('coordinates', [[0.0, 0.0, 0.0]] * 8)
+                id=token_dict["id"],
+                weight=token_dict["weight"],
+                coordinates=token_dict.get("coordinates", [[0.0, 0.0, 0.0]] * 8),
             )
             result.append(token)
 
@@ -140,7 +141,7 @@ class RuntimeTokenStorage(TokenStorageInterface):
         return self._runtime.tokens.count()
 
 
-class RuntimeGridStorage(GridStorageInterface):
+class RuntimeGridStorage:
     """
     Runtime-based grid storage (v0.51.0).
 
@@ -158,6 +159,7 @@ class RuntimeGridStorage(GridStorageInterface):
         if runtime is None:
             try:
                 from axiom import Runtime, Config
+
                 config = Config(grid_size=1000, dimensions=50)
                 runtime = Runtime(config)
                 logger.info("Created new Runtime instance for GridStorage")
@@ -202,26 +204,20 @@ class RuntimeGridStorage(GridStorageInterface):
         self, grid_id: int, token_id: int, space: int, radius: float, max_results: int
     ) -> List[Tuple[int, float]]:
         """Find neighbors of token in grid."""
-        neighbors = self._runtime.grid.find_neighbors(
-            token_id=token_id,
-            radius=radius
-        )
+        neighbors = self._runtime.grid.find_neighbors(token_id=token_id, radius=radius)
 
         # neighbors is list of dicts: [{'token_id': int, 'distance': float}, ...]
-        result = [(n['token_id'], n['distance']) for n in neighbors[:max_results]]
+        result = [(n["token_id"], n["distance"]) for n in neighbors[:max_results]]
         return result
 
     def range_query(
         self, grid_id: int, space: int, x: float, y: float, z: float, radius: float
     ) -> List[Tuple[int, float]]:
         """Find all tokens within radius of point."""
-        results = self._runtime.grid.range_query(
-            center=[x, y, z],
-            radius=radius
-        )
+        results = self._runtime.grid.range_query(center=[x, y, z], radius=radius)
 
         # results is list of dicts: [{'token_id': int, 'distance': float}, ...]
-        return [(r['token_id'], r['distance']) for r in results]
+        return [(r["token_id"], r["distance"]) for r in results]
 
     def calculate_field_influence(
         self, grid_id: int, space: int, x: float, y: float, z: float, radius: float
@@ -237,11 +233,11 @@ class RuntimeGridStorage(GridStorageInterface):
         """Calculate token density in region."""
         # Use range_query and count results
         results = self.range_query(grid_id, space, x, y, z, radius)
-        volume = (4.0 / 3.0) * 3.14159 * (radius ** 3)  # Sphere volume
+        volume = (4.0 / 3.0) * 3.14159 * (radius**3)  # Sphere volume
         return len(results) / volume if volume > 0 else 0.0
 
 
-class RuntimeCDNAStorage(CDNAStorageInterface):
+class RuntimeCDNAStorage:
     """
     Runtime-based CDNA storage (v0.51.0).
 
@@ -258,6 +254,7 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
         if runtime is None:
             try:
                 from axiom import Runtime, Config
+
                 config = Config(grid_size=1000, dimensions=50)
                 runtime = Runtime(config)
                 logger.info("Created new Runtime instance for CDNAStorage")
@@ -281,30 +278,32 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
             "profile_id": config["profile_id"],
             "flags": config["flags"],
             "scales": scales,
-            "version": "2.1"
+            "version": "2.1",
         }
 
     def update_config(self, config: Dict[str, Any]) -> bool:
         """Update CDNA configuration in RuntimeStorage."""
         try:
             # Update scales if provided
-            if 'scales' in config:
-                self._runtime.cdna.update_scales(config['scales'])
+            if "scales" in config:
+                self._runtime.cdna.update_scales(config["scales"])
 
             # Update profile if provided
-            if 'profile_id' in config:
-                self._runtime.cdna.set_profile(config['profile_id'])
+            if "profile_id" in config:
+                self._runtime.cdna.set_profile(config["profile_id"])
 
             # Update flags if provided
-            if 'flags' in config:
-                self._runtime.cdna.set_flags(config['flags'])
+            if "flags" in config:
+                self._runtime.cdna.set_flags(config["flags"])
 
             # Add to history
-            self.add_history({
-                "action": "update_config",
-                "config": config,
-                "timestamp": __import__('time').time()
-            })
+            self.add_history(
+                {
+                    "action": "update_config",
+                    "config": config,
+                    "timestamp": __import__("time").time(),
+                }
+            )
 
             return True
         except Exception as e:
@@ -320,7 +319,7 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
             return {
                 "profile_id": profile_id,
                 "scales": self._runtime.cdna.get_scales(),
-                "flags": self._runtime.cdna.get_flags()
+                "flags": self._runtime.cdna.get_flags(),
             }
 
         return None
@@ -335,7 +334,7 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
             current_profile: {
                 "profile_id": current_profile,
                 "scales": self._runtime.cdna.get_scales(),
-                "flags": self._runtime.cdna.get_flags()
+                "flags": self._runtime.cdna.get_flags(),
             }
         }
 
@@ -345,11 +344,13 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
             self._runtime.cdna.set_profile(profile_id)
 
             # Add to history
-            self.add_history({
-                "action": "switch_profile",
-                "profile_id": profile_id,
-                "timestamp": __import__('time').time()
-            })
+            self.add_history(
+                {
+                    "action": "switch_profile",
+                    "profile_id": profile_id,
+                    "timestamp": __import__("time").time(),
+                }
+            )
 
             return True
         except Exception as e:
@@ -381,7 +382,9 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
         # Check range
         for i, scale in enumerate(scales):
             if scale < 0.1 or scale > 10.0:
-                warnings.append(f"Scale {i} ({scale}) is outside recommended range [0.1, 10.0]")
+                warnings.append(
+                    f"Scale {i} ({scale}) is outside recommended range [0.1, 10.0]"
+                )
 
         # Validate in Rust
         is_valid = self._runtime.cdna.validate()
@@ -393,7 +396,7 @@ class RuntimeCDNAStorage(CDNAStorageInterface):
         return {
             "active": self._quarantine_active,
             "pending_changes": {},
-            "message": "Quarantine not yet in RuntimeStorage FFI"
+            "message": "Quarantine not yet in RuntimeStorage FFI",
         }
 
     def start_quarantine(self) -> bool:

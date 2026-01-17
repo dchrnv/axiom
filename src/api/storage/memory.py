@@ -1,4 +1,3 @@
-
 # Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
 # Copyright (C) 2024-2025 Chernov Denys
 
@@ -25,7 +24,6 @@ Ported from MVP API with enhancements for production use.
 import threading
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
-from . import TokenStorageInterface, GridStorageInterface, CDNAStorageInterface
 import sys
 from pathlib import Path
 
@@ -39,6 +37,7 @@ from core.token.token_v2 import Token, create_token_id, FLAG_PERSISTENT
 # Try to import Rust Grid (optional)
 try:
     from axiom import Grid, GridConfig, CoordinateSpace
+
     GRID_AVAILABLE = True
 except ImportError:
     GRID_AVAILABLE = False
@@ -51,7 +50,8 @@ except ImportError:
 # Token Storage
 # =============================================================================
 
-class InMemoryTokenStorage(TokenStorageInterface):
+
+class InMemoryTokenStorage:
     """Thread-safe in-memory token storage."""
 
     _instance = None
@@ -99,12 +99,12 @@ class InMemoryTokenStorage(TokenStorageInterface):
         """
         with self._lock:
             # Extract parameters
-            entity_type = token_data.get('entity_type', 0)
-            domain = token_data.get('domain', 0)
-            weight = token_data.get('weight', 0.5)
-            field_radius = token_data.get('field_radius', 1.0)
-            field_strength = token_data.get('field_strength', 1.0)
-            persistent = token_data.get('persistent', False)
+            entity_type = token_data.get("entity_type", 0)
+            domain = token_data.get("domain", 0)
+            weight = token_data.get("weight", 0.5)
+            field_radius = token_data.get("field_radius", 1.0)
+            field_strength = token_data.get("field_strength", 1.0)
+            persistent = token_data.get("persistent", False)
 
             # Generate token ID
             token_id = create_token_id(self._next_local_id, entity_type, domain)
@@ -121,12 +121,12 @@ class InMemoryTokenStorage(TokenStorageInterface):
 
             # Set coordinates for all 8 levels
             for level in range(8):
-                coord_key = f'l{level+1}_{"physical sensory motor emotional cognitive social temporal abstract".split()[level]}'
+                coord_key = f"l{level + 1}_{'physical sensory motor emotional cognitive social temporal abstract'.split()[level]}"
                 coords = token_data.get(coord_key)
                 if coords:
-                    x = coords.get('x')
-                    y = coords.get('y')
-                    z = coords.get('z')
+                    x = coords.get("x")
+                    y = coords.get("y")
+                    z = coords.get("z")
                     if x is not None or y is not None or z is not None:
                         token.set_coordinates(level, x, y, z)
 
@@ -151,21 +151,21 @@ class InMemoryTokenStorage(TokenStorageInterface):
                 return None
 
             # Update fields
-            if 'weight' in token_data:
-                token.weight = token_data['weight']
-            if 'field_radius' in token_data:
-                token.field_radius = token_data['field_radius']
-            if 'field_strength' in token_data:
-                token.field_strength = token_data['field_strength']
+            if "weight" in token_data:
+                token.weight = token_data["weight"]
+            if "field_radius" in token_data:
+                token.field_radius = token_data["field_radius"]
+            if "field_strength" in token_data:
+                token.field_strength = token_data["field_strength"]
 
             # Update coordinates
             for level in range(8):
-                coord_key = f'l{level+1}_{"physical sensory motor emotional cognitive social temporal abstract".split()[level]}'
+                coord_key = f"l{level + 1}_{'physical sensory motor emotional cognitive social temporal abstract'.split()[level]}"
                 coords = token_data.get(coord_key)
                 if coords:
-                    x = coords.get('x')
-                    y = coords.get('y')
-                    z = coords.get('z')
+                    x = coords.get("x")
+                    y = coords.get("y")
+                    z = coords.get("z")
                     if x is not None or y is not None or z is not None:
                         token.set_coordinates(level, x, y, z)
 
@@ -200,7 +200,7 @@ class InMemoryTokenStorage(TokenStorageInterface):
             tokens = list(self._storage.values())
             if limit == 0:  # Special case: return all for counting
                 return tokens
-            return tokens[offset:offset + limit]
+            return tokens[offset : offset + limit]
 
     def clear(self) -> int:
         """Clear all tokens from storage.
@@ -228,7 +228,8 @@ class InMemoryTokenStorage(TokenStorageInterface):
 # Grid Storage
 # =============================================================================
 
-class InMemoryGridStorage(GridStorageInterface):
+
+class InMemoryGridStorage:
     """Thread-safe in-memory grid storage."""
 
     _instance = None
@@ -271,9 +272,9 @@ class InMemoryGridStorage(GridStorageInterface):
             # Create grid with optional config
             if config:
                 grid_config = GridConfig()
-                grid_config.bucket_size = config.get('bucket_size', 10.0)
-                grid_config.density_threshold = config.get('density_threshold', 0.5)
-                grid_config.min_field_nodes = config.get('min_field_nodes', 3)
+                grid_config.bucket_size = config.get("bucket_size", 10.0)
+                grid_config.density_threshold = config.get("density_threshold", 0.5)
+                grid_config.min_field_nodes = config.get("min_field_nodes", 3)
                 grid = Grid(grid_config)
             else:
                 grid = Grid()
@@ -341,7 +342,7 @@ class InMemoryGridStorage(GridStorageInterface):
                 return False
 
             # Convert Python Token to Rust Token
-            rust_token = __import__('axiom').Token(token.id)
+            rust_token = __import__("axiom").Token(token.id)
 
             # Copy coordinates from all spaces
             space_map = [
@@ -358,7 +359,9 @@ class InMemoryGridStorage(GridStorageInterface):
             for level, space_enum in space_map:
                 coords = token.get_coordinates(level)
                 if coords:
-                    rust_token.set_coordinates(space_enum, coords[0], coords[1], coords[2])
+                    rust_token.set_coordinates(
+                        space_enum, coords[0], coords[1], coords[2]
+                    )
 
             # Copy properties
             rust_token.weight = token.weight
@@ -484,7 +487,8 @@ class InMemoryGridStorage(GridStorageInterface):
 # CDNA Storage
 # =============================================================================
 
-class InMemoryCDNAStorage(CDNAStorageInterface):
+
+class InMemoryCDNAStorage:
     """Thread-safe in-memory CDNA storage."""
 
     _instance = None
@@ -497,21 +501,21 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             "scales": [1.0, 1.5, 1.2, 2.0, 3.0, 2.5, 2.0, 5.0],
             "description": "Свободная структура, высокая пластичность",
             "plasticity": 0.8,
-            "evolution_rate": 0.5
+            "evolution_rate": 0.5,
         },
         "analyzer": {
             "name": "Analyzer",
             "scales": [1.0, 1.0, 1.0, 1.5, 10.0, 5.0, 3.0, 20.0],
             "description": "Строгие правила, низкая эволюция",
             "plasticity": 0.2,
-            "evolution_rate": 0.1
+            "evolution_rate": 0.1,
         },
         "creative": {
             "name": "Creative",
             "scales": [1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
             "description": "Экспериментальный режим",
             "plasticity": 0.95,
-            "evolution_rate": 0.8
+            "evolution_rate": 0.8,
         },
         "quarantine": {
             "name": "Quarantine",
@@ -520,8 +524,8 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             "plasticity": 0.1,
             "evolution_rate": 0.0,
             "restricted": True,
-            "max_change": 0.5
-        }
+            "max_change": 0.5,
+        },
     }
 
     def __new__(cls):
@@ -540,17 +544,13 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             "version": "2.1.0",
             "profile": "explorer",
             "dimension_scales": self.PROFILES["explorer"]["scales"].copy(),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
         self._history: List[Dict[str, Any]] = []
         self._quarantine = {
             "active": False,
             "time_left": 300,
-            "metrics": {
-                "memory_growth": 0,
-                "connection_breaks": 0,
-                "token_churn": 0
-            }
+            "metrics": {"memory_growth": 0, "connection_breaks": 0, "token_churn": 0},
         }
         self._lock = threading.RLock()
         self._initialized = True
@@ -574,11 +574,11 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             True if update was successful.
         """
         with self._lock:
-            if 'profile' in config:
-                self._config['profile'] = config['profile']
-            if 'dimension_scales' in config:
-                self._config['dimension_scales'] = config['dimension_scales']
-            self._config['timestamp'] = datetime.now().isoformat()
+            if "profile" in config:
+                self._config["profile"] = config["profile"]
+            if "dimension_scales" in config:
+                self._config["dimension_scales"] = config["dimension_scales"]
+            self._config["timestamp"] = datetime.now().isoformat()
             return True
 
     def get_profile(self, profile_id: str) -> Optional[Dict[str, Any]]:
@@ -614,9 +614,9 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
                 return False
 
             profile = self.PROFILES[profile_id]
-            self._config['profile'] = profile_id
-            self._config['dimension_scales'] = list(profile['scales'])  # type: ignore[call-overload]
-            self._config['timestamp'] = datetime.now().isoformat()
+            self._config["profile"] = profile_id
+            self._config["dimension_scales"] = list(profile["scales"])  # type: ignore[call-overload]
+            self._config["timestamp"] = datetime.now().isoformat()
             return True
 
     def get_history(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -638,7 +638,7 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             entry: History entry dictionary (timestamp will be added automatically).
         """
         with self._lock:
-            entry['timestamp'] = datetime.now().isoformat()
+            entry["timestamp"] = datetime.now().isoformat()
             self._history.insert(0, entry)
 
     def validate_scales(self, scales: List[float]) -> Tuple[bool, List[str], List[str]]:
@@ -658,17 +658,29 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
 
         # Dimension limits
         dimension_limits = [
-            (0, 20), (0, 20), (0, 20), (0, 20),  # Physical, Sensory, Motor, Emotional
-            (0, 30), (0, 20), (0, 20), (0, 50)   # Cognitive, Social, Temporal, Abstract
+            (0, 20),
+            (0, 20),
+            (0, 20),
+            (0, 20),  # Physical, Sensory, Motor, Emotional
+            (0, 30),
+            (0, 20),
+            (0, 20),
+            (0, 50),  # Cognitive, Social, Temporal, Abstract
         ]
 
         for i, (scale, (min_val, max_val)) in enumerate(zip(scales, dimension_limits)):
             if scale < min_val or scale > max_val:
-                errors.append(f"Dimension {i} value {scale} out of range [{min_val}, {max_val}]")
+                errors.append(
+                    f"Dimension {i} value {scale} out of range [{min_val}, {max_val}]"
+                )
             elif scale > max_val * 0.75:
-                warnings.append(f"Dimension {i} value {scale} in danger zone (>{max_val * 0.75})")
+                warnings.append(
+                    f"Dimension {i} value {scale} in danger zone (>{max_val * 0.75})"
+                )
             elif scale > max_val * 0.5:
-                warnings.append(f"Dimension {i} value {scale} in caution zone (>{max_val * 0.5})")
+                warnings.append(
+                    f"Dimension {i} value {scale} in caution zone (>{max_val * 0.5})"
+                )
 
         return (len(errors) == 0, warnings, errors)
 
@@ -696,7 +708,7 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             self._quarantine["metrics"] = {
                 "memory_growth": 0,
                 "connection_breaks": 0,
-                "token_churn": 0
+                "token_churn": 0,
             }
             return True
 
@@ -716,10 +728,12 @@ class InMemoryCDNAStorage(CDNAStorageInterface):
             self._quarantine["active"] = False
 
             if apply:
-                self.add_history({
-                    "action": "quarantine_applied",
-                    "metrics": self._quarantine["metrics"].copy()
-                })
+                self.add_history(
+                    {
+                        "action": "quarantine_applied",
+                        "metrics": self._quarantine["metrics"].copy(),
+                    }
+                )
 
             return True
 
