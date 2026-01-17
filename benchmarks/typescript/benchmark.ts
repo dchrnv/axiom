@@ -4,7 +4,7 @@
  * Compares performance of different operation patterns.
  */
 
-import { AxiomClient } from '../../typescript-client/src';
+import { AxiomClient } from '../../typescript-client/dist/index.js';
 
 interface BenchmarkResult {
   mean: number;
@@ -114,9 +114,9 @@ async function runBenchmarkSuite() {
   console.log();
 
   // Configuration
-  const baseUrl = process.env.NEUROGRAPH_API_URL || 'http://localhost:8000';
-  const username = process.env.NEUROGRAPH_USERNAME || 'developer';
-  const password = process.env.NEUROGRAPH_PASSWORD || 'developer123';
+  const baseUrl = process.env.AXIOM_API_URL || 'http://localhost:8000';
+  const username = process.env.AXIOM_USERNAME || 'developer';
+  const password = process.env.AXIOM_PASSWORD || 'developer123';
   const iterations = 3;
   const tokenCounts = [10, 50, 100];
   const batchSize = 10;

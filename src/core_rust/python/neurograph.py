@@ -1,26 +1,25 @@
+# Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
+# Copyright (C) 2024-2025 Chernov Denys
 
-    # Axiom - Высокопроизводительная система пространственных вычислений на основе токенов.
-    # Copyright (C) 2024-2025 Chernov Denys
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-    # This program is free software: you can redistribute it and/or modify
-    # it under the terms of the GNU Affero General Public License as published by
-    # the Free Software Foundation, either version 3 of the License, or
-    # (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
 
-    # This program is distributed in the hope that it will be useful,
-    # but WITHOUT ANY WARRANTY; without even the implied warranty of
-    # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    # GNU Affero General Public License for more details.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-    # You should have received a copy of the GNU Affero General Public License
-    # along with this program. If not, see <https://www.gnu.org/licenses/>.
-    
 
 """
-Axiom OS - Python Wrapper for Rust Core
+Axiom - Python Wrapper for Rust Core (Legacy)
 
 This module provides a high-level Python interface to the Rust core implementation
-of Axiom OS, including Token V2.0, Connection V1.0, and Grid V2.0 structures.
+of Axiom, including Token V2.0, Connection V1.0, and Grid V2.0 structures.
 
 Usage:
     from axiom import Token, Connection, Grid, CoordinateSpace, ConnectionType
@@ -60,20 +59,21 @@ EntityType = _core.EntityType
 ConnectionType = _core.ConnectionType
 
 __all__ = [
-    'Token',
-    'Connection',
-    'Grid',
-    'GridConfig',
-    'CoordinateSpace',
-    'EntityType',
-    'ConnectionType',
-    'create_example_token',
-    'create_emotional_token',
-    'create_semantic_connection',
-    'create_grid_with_tokens',
+    "Token",
+    "Connection",
+    "Grid",
+    "GridConfig",
+    "CoordinateSpace",
+    "EntityType",
+    "ConnectionType",
+    "create_example_token",
+    "create_emotional_token",
+    "create_semantic_connection",
+    "create_grid_with_tokens",
 ]
 
 # Helper functions for common patterns
+
 
 def create_example_token(
     token_id: int,
@@ -81,7 +81,7 @@ def create_example_token(
     y: float = 0.0,
     z: float = 0.0,
     weight: float = 1.0,
-    entity_type: Optional[EntityType] = None
+    entity_type: Optional[EntityType] = None,
 ) -> Token:
     """
     Create a token with common defaults.
@@ -113,11 +113,7 @@ def create_example_token(
 
 
 def create_emotional_token(
-    token_id: int,
-    valence: float,
-    arousal: float,
-    dominance: float,
-    weight: float = 1.0
+    token_id: int, valence: float, arousal: float, dominance: float, weight: float = 1.0
 ) -> Token:
     """
     Create a token in emotional (VAD) space.
@@ -151,7 +147,7 @@ def create_semantic_connection(
     token_b_id: int,
     connection_type: ConnectionType,
     strength: float = 1.0,
-    bidirectional: bool = False
+    bidirectional: bool = False,
 ) -> Connection:
     """
     Create a semantic connection between two tokens.
@@ -187,7 +183,7 @@ def create_grid_with_tokens(
     num_tokens: int,
     space: int = 0,
     spread: float = 100.0,
-    config: Optional[GridConfig] = None
+    config: Optional[GridConfig] = None,
 ) -> Tuple[Grid, List[Token]]:
     """
     Create a grid populated with random tokens for testing/demos.

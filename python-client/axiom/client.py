@@ -4,7 +4,7 @@ Synchronous Axiom Client
 Main client class for interacting with Axiom REST API.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 import httpx
 
 from .auth import AuthManager
@@ -21,14 +21,9 @@ from .exceptions import (
 )
 from .models import (
     Token,
-    TokenCreate,
-    TokenUpdate,
-    TokenQuery,
     TokenQueryResult,
     APIKey,
-    APIKeyCreate,
     APIKeyCreated,
-    User,
     HealthStatus,
     SystemStatus,
 )

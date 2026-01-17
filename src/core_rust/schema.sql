@@ -2,7 +2,7 @@
 -- Production-ready persistence layer
 --
 -- Created: 2025-01-14
--- Author: Claude Code + Денис Чернов
+-- Author: Axiom Team
 
 -- =============================================================================
 -- 1. EXPERIENCE EVENTS

@@ -22,8 +22,9 @@ curl http://localhost:8080/health
 ```
 
 Expected response:
+
 ```json
-{"status":"healthy","version":"v0.42.0"}
+{ "status": "healthy", "version": "v0.42.0" }
 ```
 
 ### 3. View metrics
@@ -58,16 +59,17 @@ cp .env.example .env
 
 **Available options:**
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RUST_LOG` | `info` | Logging level (trace/debug/info/warn/error) |
-| `NEUROGRAPH_PORT` | `8080` | API server port |
-| `NEUROGRAPH_MAX_TOKENS` | `10000000` | Maximum token count (10M ≈ 640MB) |
-| `NEUROGRAPH_MAX_MEMORY_BYTES` | `1073741824` | Memory limit (1GB) |
+| Variable                 | Default      | Description                                 |
+| ------------------------ | ------------ | ------------------------------------------- |
+| `RUST_LOG`               | `info`       | Logging level (trace/debug/info/warn/error) |
+| `AXIOM_PORT`             | `8080`       | API server port                             |
+| `AXIOM_MAX_TOKENS`       | `10000000`   | Maximum token count (10M ≈ 640MB)           |
+| `AXIOM_MAX_MEMORY_BYTES` | `1073741824` | Memory limit (1GB)                          |
 
 ### Resource Limits
 
 Docker Compose sets default limits:
+
 - **CPU:** 2 cores max, 0.5 core reserved
 - **Memory:** 2GB max, 512MB reserved
 
@@ -86,6 +88,7 @@ docker-compose --profile monitoring up -d
 ```
 
 **Services:**
+
 - **API:** http://localhost:8080
 - **Prometheus:** http://localhost:9090
 - **Grafana:** http://localhost:3000 (admin/admin)
@@ -103,6 +106,7 @@ docker-compose --profile tracing up -d
 ```
 
 **Services:**
+
 - **API:** http://localhost:8080 (with tracing enabled)
 - **Jaeger UI:** http://localhost:16686
 
@@ -114,6 +118,7 @@ docker-compose --profile monitoring --profile tracing up -d
 ```
 
 **All services:**
+
 - **API:** http://localhost:8080
 - **Prometheus:** http://localhost:9090
 - **Grafana:** http://localhost:3000
@@ -144,6 +149,7 @@ docker run -d \
 For production, consider:
 
 1. **Use external volumes** for persistence:
+
 ```yaml
 volumes:
   axiom-data:
@@ -155,6 +161,7 @@ volumes:
 ```
 
 2. **Set production secrets** (not in .env):
+
 ```bash
 docker secret create grafana_password /run/secrets/grafana_password
 ```
@@ -162,6 +169,7 @@ docker secret create grafana_password /run/secrets/grafana_password
 3. **Enable TLS** (use reverse proxy like nginx/traefik)
 
 4. **Horizontal scaling** (multiple replicas):
+
 ```bash
 docker-compose up -d --scale axiom-api=3
 ```
@@ -173,11 +181,13 @@ docker-compose up -d --scale axiom-api=3
 ### Multi-stage Build
 
 **Stage 1: Builder** (rust:1.83-alpine)
+
 - Installs build dependencies
 - Compiles Rust binary with release optimizations
 - Strips debug symbols
 
 **Stage 2: Runtime** (alpine:3.19)
+
 - Minimal base image (~7MB)
 - Only runtime dependencies (ca-certificates, libgcc)
 - Non-root user (`axiom:1000`)
@@ -201,14 +211,14 @@ docker-compose up -d --scale axiom-api=3
 
 ### Core Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check (200 OK) |
-| `/metrics` | GET | Prometheus metrics |
-| `/api/v1/status` | GET | System status |
-| `/api/v1/stats` | GET | Statistics |
-| `/api/v1/query` | POST | Query API |
-| `/api/v1/feedback` | POST | Feedback API |
+| Endpoint           | Method | Description           |
+| ------------------ | ------ | --------------------- |
+| `/health`          | GET    | Health check (200 OK) |
+| `/metrics`         | GET    | Prometheus metrics    |
+| `/api/v1/status`   | GET    | System status         |
+| `/api/v1/stats`    | GET    | Statistics            |
+| `/api/v1/query`    | POST   | Query API             |
+| `/api/v1/feedback` | POST   | Feedback API          |
 
 ### Example Query
 
@@ -225,22 +235,26 @@ curl -X POST http://localhost:8080/api/v1/query \
 ### Container won't start
 
 **Check logs:**
+
 ```bash
 docker-compose logs axiom-api
 ```
 
 **Common issues:**
-- Port 8080 already in use → Change `NEUROGRAPH_PORT` in .env
+
+- Port 8080 already in use → Change `AXIOM_PORT` in .env
 - Out of memory → Increase `deploy.resources.limits.memory`
 
 ### Health check failing
 
 **Manual check:**
+
 ```bash
 docker exec axiom-api wget -O- http://localhost:8080/health
 ```
 
 **Verify network:**
+
 ```bash
 docker network inspect axiom-network
 ```
@@ -248,11 +262,13 @@ docker network inspect axiom-network
 ### Build fails
 
 **Clear Docker cache:**
+
 ```bash
 docker builder prune -a
 ```
 
 **Build with verbose output:**
+
 ```bash
 docker-compose build --progress=plain
 ```
@@ -260,11 +276,13 @@ docker-compose build --progress=plain
 ### Performance issues
 
 **Check resource usage:**
+
 ```bash
 docker stats axiom-api
 ```
 
 **View metrics:**
+
 ```bash
 curl http://localhost:8080/metrics | grep axiom_memory
 ```
@@ -281,12 +299,14 @@ Docker volumes persist data across container restarts:
 - **axiom-logs:** Application logs
 
 **Backup volumes:**
+
 ```bash
 docker run --rm -v axiom-data:/data -v $(pwd):/backup alpine \
   tar czf /backup/axiom-data-backup.tar.gz /data
 ```
 
 **Restore volumes:**
+
 ```bash
 docker run --rm -v axiom-data:/data -v $(pwd):/backup alpine \
   tar xzf /backup/axiom-data-backup.tar.gz -C /
@@ -301,6 +321,7 @@ docker exec axiom-api ls -la /app/data/axiom_crash_dump_*.json
 ```
 
 Copy dump to host:
+
 ```bash
 docker cp axiom-api:/app/data/axiom_crash_dump_1234567890.json .
 ```
@@ -405,12 +426,12 @@ Configure Prometheus alerts in `prometheus.yml`:
 
 ```yaml
 rule_files:
-  - 'alerts.yml'
+  - "alerts.yml"
 
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
+        - targets: ["alertmanager:9093"]
 ```
 
 ---
@@ -423,15 +444,15 @@ alerting:
 deploy:
   resources:
     limits:
-      cpus: '4.0'
+      cpus: "4.0"
       memory: 4G
 ```
 
 ### 2. Optimize token/memory quotas
 
 ```bash
-NEUROGRAPH_MAX_TOKENS=50000000
-NEUROGRAPH_MAX_MEMORY_BYTES=4294967296
+AXIOM_MAX_TOKENS=50000000
+AXIOM_MAX_MEMORY_BYTES=4294967296
 ```
 
 ### 3. Enable aggressive cleanup earlier

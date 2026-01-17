@@ -102,12 +102,12 @@ export async function retryWithBackoff<T>(
 /**
  * Decorator for automatic retry with backoff.
  */
-export function withRetry<T extends (...args: any[]) => Promise<any>>(
+export function withRetry<_T extends (...args: any[]) => Promise<any>>(
   config: Partial<RetryConfig> = {}
 ) {
   return function (
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ): PropertyDescriptor {
     const originalMethod = descriptor.value;

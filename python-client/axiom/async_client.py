@@ -4,7 +4,7 @@ Asynchronous Axiom Client
 Async client class for interacting with Axiom REST API.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 import httpx
 
 from .exceptions import (

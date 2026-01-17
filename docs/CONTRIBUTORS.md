@@ -7,6 +7,7 @@ This file recognizes everyone who has contributed to the Axiom project. Thank yo
 ## Project Creator & Lead Maintainer
 
 **Chernov Denys** ([@dchrnv](https://github.com/dchrnv))
+
 - Role: Creator, Architect, Lead Developer
 - Contributions: Initial architecture, core implementation, documentation
 - Email: dreeftwood@gmail.com
@@ -60,22 +61,17 @@ Contributors who provided datasets, model weights, or ML architectures:
 
 ## Special Thanks
 
-### Claude Code (Anthropic)
+### AI Assistants
 
-**Claude Sonnet 4.5** - AI pair programming assistant
-- Contributions: Implementation assistance, architecture review, documentation generation
+**Antigravity (Google DeepMind)** - AI pair programming assistant
+
+- Contributions: Architecture refactoring, performance optimization, benchmarking, Python client verification
 - Notable features co-developed:
-  - v0.44.3: Adaptive Tracing Sampling
-  - v0.44.4: Head-Based Sampling & Dynamic Rate Adjustment
-  - v0.45.0: Cross-Service Sampling Propagation
-  - Dual Licensing Framework (CLA, documentation)
+  - v0.47.0: Comprehensive Benchmarking Suite
+  - v0.47.0: 64-byte aligned Token architecture verification
 
-**Acknowledgment:** All commits generated with Claude Code assistance include:
-```
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-```
+**Acknowledgment:**
+This project is being developed with the assistance of advanced AI models.
 
 ---
 
@@ -110,6 +106,7 @@ To be added to this list:
 3. **Get your PR merged** - We'll add you to this list!
 
 **Categories:**
+
 - **Core Contributors** - Significant, ongoing contributions to the project
 - **Code Contributors** - Any merged pull request with code changes
 - **Documentation Contributors** - Docs, tutorials, translations
@@ -135,10 +132,12 @@ To be added to this list:
 ### Release v0.45.0 (2025-12-09)
 
 **Contributors:**
+
 - Chernov Denys ([@dchrnv](https://github.com/dchrnv)) - Cross-Service Sampling Propagation
 - Claude Sonnet 4.5 (Anthropic) - Implementation assistance, CLA framework
 
 **Features Implemented:**
+
 - W3C TraceContext integration
 - Parent trace sampling inheritance
 - Complete dual licensing framework (CLA, DUAL_LICENSING.md)
@@ -149,10 +148,12 @@ To be added to this list:
 ### Release v0.44.4 (2025-12-09)
 
 **Contributors:**
+
 - Chernov Denys ([@dchrnv](https://github.com/dchrnv)) - Head-Based Sampling
 - Claude Sonnet 4.5 (Anthropic) - Dynamic Rate Adjustment implementation
 
 **Features Implemented:**
+
 - HTTP header-based sampling control (X-Force-Trace, X-Sampling-Priority)
 - Dynamic rate adjustment based on load (RPS monitoring)
 - Priority-based sampling (High/Normal/Low)
@@ -162,10 +163,12 @@ To be added to this list:
 ### Release v0.44.3 (2025-12-08)
 
 **Contributors:**
+
 - Chernov Denys ([@dchrnv](https://github.com/dchrnv)) - Adaptive Tracing Sampling
 - Claude Sonnet 4.5 (Anthropic) - Performance optimization, testing
 
 **Features Implemented:**
+
 - Adaptive sampling (1% baseline, 100% errors, 50% slow requests)
 - Reduced tracing overhead from 98% → 9%
 - CDNA integration for sampling configuration
@@ -177,12 +180,14 @@ To be added to this list:
 All contributors must accept our [Contributor License Agreement (CLA)](docs/legal/CLA.md) before contributions can be merged.
 
 **Why?** Axiom uses a dual licensing model:
+
 - **Open Source** (Free): AGPLv3 for code, CC BY-NC-SA 4.0 for data/models
 - **Commercial** (Paid): Proprietary licenses for enterprises
 
 The CLA allows us to maintain both paths while ensuring contributors retain copyright and receive proper credit.
 
 **Learn more:**
+
 - [CLA.md](docs/legal/CLA.md) - Full Contributor License Agreement
 - [DUAL_LICENSING.md](docs/legal/DUAL_LICENSING.md) - Explanation of business model
 - [.github/CLA_INSTRUCTIONS.md](.github/CLA_INSTRUCTIONS.md) - How to sign the CLA
@@ -208,4 +213,4 @@ Your contributions—big or small—help build a powerful cognitive architecture
 
 ---
 
-*Last Updated: 2025-12-09 (v0.45.0)*
+_Last Updated: 2025-12-09 (v0.45.0)_

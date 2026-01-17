@@ -1,4 +1,49 @@
-# Axiom Client Performance Benchmarks
+# Axiom Performance Benchmarks
+
+Performance benchmarks for Axiom system - comprehensive testing of all layers.
+
+## Comprehensive Benchmark Suite
+
+**Полный и честный бенчмарк всех слоев системы**
+
+Тестирует все компоненты Axiom с детальной статистикой:
+
+```bash
+cd benchmarks
+python comprehensive_benchmark.py
+```
+
+**Что тестируется:**
+- ✅ **Rust Core** - прямые FFI вызовы (базовая производительность)
+- ✅ **Python FFI** - обертки над Rust (overhead оберток)
+- ✅ **REST API** - HTTP endpoints (полный стек)
+- ✅ **WebSocket** - real-time коммуникация
+- ✅ **Параллельные операции** - многопоточность (1, 4, 8, 16 workers)
+- ✅ **Использование памяти** - для разных масштабов данных
+
+**Масштабы данных:**
+- 100, 1K, 10K, 100K, 1M, 10M элементов
+
+**Статистика:**
+- Min, Max, Mean, Median
+- P95, P99 (перцентили)
+- Standard Deviation
+- Operations per second
+
+**Результаты:**
+- Markdown отчет с таблицами
+- JSON файл для дальнейшего анализа
+- Автоматический сбор системной информации
+
+**Требования:**
+- Python 3.10+
+- Установленные зависимости: `psutil`, `requests`, `websockets`
+- Rust Core собран: `cd src/core_rust && maturin develop --release --features python-bindings`
+- (Опционально) API сервер для REST/WebSocket тестов
+
+---
+
+## Client Benchmarks
 
 Performance benchmarks for Axiom Python and TypeScript clients.
 

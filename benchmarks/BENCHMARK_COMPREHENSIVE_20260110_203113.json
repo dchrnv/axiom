@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-01-10T20:31:13.955098",
+  "system": {
+    "os": "Linux 6.17.8-arch1-1",
+    "python_version": "3.13.7",
+    "cpu_count_physical": 4,
+    "cpu_count_logical": 8,
+    "memory_gb": 5.73,
+    "cpu_freq_mhz": 2220.2602500000003
+  },
+  "config": {
+    "scales": [
+      100,
+      1000,
+      10000,
+      100000,
+      1000000
+    ],
+    "iterations": 5,
+    "warmup_iterations": 3,
+    "parallel_workers": [
+      1,
+      4,
+      8,
+      16
+    ],
+    "api_base_url": "http://localhost:8000/api/v1",
+    "ws_url": "ws://localhost:8000/ws",
+    "grid_radius": 5.0,
+    "dimensions": 50,
+    "grid_size": 1000
+  },
+  "results": {
+    "memory": {}
+  }
+}

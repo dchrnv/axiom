@@ -5,15 +5,13 @@ Provides mock clients and test fixtures for unit testing applications
 that use Axiom without requiring a live API server.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime
 import random
 
 from .models import (
     Token,
-    TokenCreate,
     APIKey,
-    APIKeyCreate,
     APIKeyCreated,
     HealthStatus,
     SystemStatus,
@@ -141,7 +139,7 @@ class MockAxiomClient:
                 weight=weight,
                 field_radius=field_radius,
                 field_strength=field_strength,
-                timestamp=int(datetime.utcnow().timestamp()),
+                timestamp=int(datetime.now(datetime.UTC).timestamp()),
                 age_seconds=0,
                 flags={"active": True, "persistent": persistent},
                 coordinates=coordinates,
@@ -306,7 +304,9 @@ class MockAxiomClient:
             if expires_in_days:
                 from datetime import timedelta
 
-                expires_at = (datetime.utcnow() + timedelta(days=expires_in_days)).isoformat()
+                expires_at = (
+                    datetime.now(datetime.UTC) + timedelta(days=expires_in_days)
+                ).isoformat()
 
             # Store as APIKey
             api_key_obj = APIKey(
@@ -314,7 +314,7 @@ class MockAxiomClient:
                 name=name,
                 key_prefix=api_key_str[:7],
                 scopes=scopes,
-                created_at=datetime.utcnow().isoformat(),
+                created_at=datetime.now(datetime.UTC).isoformat(),
                 expires_at=expires_at,
                 last_used_at=None,
                 disabled=False,
@@ -373,7 +373,7 @@ class MockAxiomClient:
 
         def revoke(self, key_id: str) -> None:
             """Revoke mock API key."""
-            key = self.get(key_id)
+            self.get(key_id)
             self.parent._api_keys_store[key_id].disabled = True
 
         def delete(self, key_id: str) -> None:
@@ -394,7 +394,9 @@ class MockAxiomClient:
         def check(self) -> HealthStatus:
             """Mock health check."""
             return HealthStatus(
-                status="healthy", version="0.59.0-mock", timestamp=datetime.utcnow().isoformat()
+                status="healthy",
+                version="0.59.0-mock",
+                timestamp=datetime.now(datetime.UTC).isoformat(),
             )
 
         def status(self) -> SystemStatus:
@@ -457,7 +459,7 @@ def mock_token(**kwargs) -> Token:
         "weight": 0.5,
         "field_radius": 1.0,
         "field_strength": 1.0,
-        "timestamp": int(datetime.utcnow().timestamp()),
+        "timestamp": int(datetime.now(datetime.UTC).timestamp()),
         "age_seconds": 0,
         "flags": {"active": True, "persistent": False},
         "coordinates": {f"L{i + 1}": None for i in range(8)},
@@ -482,7 +484,7 @@ def mock_api_key(**kwargs) -> APIKeyCreated:
         "name": "mock api key",
         "key_prefix": "ng_mock",
         "scopes": ["tokens:read", "tokens:write"],
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(datetime.UTC).isoformat(),
         "expires_at": None,
         "last_used_at": None,
         "disabled": False,
