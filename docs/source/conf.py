@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath('../../src'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Axiom'
+project = 'NeuroGraph'
 copyright = '2024-2026, Chernov Denys'
 author = 'Chernov Denys'
 
@@ -113,7 +113,7 @@ html_show_copyright = True
 html_context = {
     "display_github": True,
     "github_user": "chrnv",
-    "github_repo": "axiom-os-mvp",
+    "github_repo": "neurograph-os-mvp",
     "github_version": "main",
     "conf_py_path": "/docs/source/",
 }

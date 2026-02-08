@@ -1,6 +1,6 @@
-# Axiom Tutorials
+# NeuroGraph Tutorials
 
-Comprehensive hands-on tutorials for mastering Axiom.
+Comprehensive hands-on tutorials for mastering NeuroGraph.
 
 ## Overview
 
@@ -82,7 +82,7 @@ Performance and production:
 
 - Python 3.11+
 - Jupyter Lab or Jupyter Notebook
-- Axiom server running locally
+- NeuroGraph server running locally
 - Optional: Docker, Kubernetes (for advanced tutorials)
 
 ### Python Packages
@@ -91,7 +91,7 @@ Performance and production:
 pip install jupyter requests websockets numpy matplotlib psutil
 ```
 
-### Starting Axiom
+### Starting NeuroGraph
 
 ```bash
 # Terminal 1: Start the server
@@ -167,7 +167,7 @@ Focus on:
 ## Common Issues
 
 ### Connection Refused
-- **Cause:** Axiom server not running
+- **Cause:** NeuroGraph server not running
 - **Fix:** Start server with `./run.sh`
 
 ### Authentication Failed
@@ -193,7 +193,7 @@ Focus on:
 
 Found an issue or have a suggestion?
 
-- **Bug reports:** [GitHub Issues](https://github.com/chrnv/axiom-os-mvp/issues)
+- **Bug reports:** [GitHub Issues](https://github.com/chrnv/neurograph-os-mvp/issues)
 - **Improvements:** Submit a PR with fixes or new examples
 - **New tutorials:** Propose ideas via GitHub Discussions
 

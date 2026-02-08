@@ -1,4 +1,4 @@
-# Axiom Quick Index
+# NeuroGraph Quick Index
 
 Быстрая навигация по проекту.
 

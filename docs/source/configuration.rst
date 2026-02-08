@@ -1,7 +1,7 @@
 Configuration
 =============
 
-Axiom configuration guide.
+NeuroGraph configuration guide.
 
 Environment Variables
 ---------------------
@@ -135,7 +135,7 @@ Edit ``prometheus.yml``:
 .. code-block:: yaml
 
    scrape_configs:
-     - job_name: 'axiom'
+     - job_name: 'neurograph'
        static_configs:
          - targets: ['localhost:8000']
        metrics_path: '/metrics'
@@ -148,10 +148,10 @@ Import the dashboard from ``docs/monitoring/grafana-dashboard.json``.
 
 Key metrics to monitor:
 
-- ``axiom_http_requests_total``
-- ``axiom_ws_connections_total``
-- ``axiom_tokens_total``
-- ``axiom_grid_operations_duration_seconds``
+- ``neurograph_http_requests_total``
+- ``neurograph_ws_connections_total``
+- ``neurograph_tokens_total``
+- ``neurograph_grid_operations_duration_seconds``
 
 Logging
 -------

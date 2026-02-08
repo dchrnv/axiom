@@ -1,4 +1,4 @@
-# Axiom Web Dashboard - User Guide
+# NeuroGraph Web Dashboard - User Guide
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@
 
 ## Introduction
 
-The Axiom Web Dashboard is a modern, React-based single-page application (SPA) that provides real-time monitoring and management of the Axiom OS cognitive architecture system. Built with TypeScript, Ant Design Pro, and WebSocket technology, it offers an intuitive interface for system administrators, developers, and researchers.
+The NeuroGraph Web Dashboard is a modern, React-based single-page application (SPA) that provides real-time monitoring and management of the NeuroGraph OS cognitive architecture system. Built with TypeScript, Ant Design Pro, and WebSocket technology, it offers an intuitive interface for system administrators, developers, and researchers.
 
 ### Key Features
 
@@ -42,7 +42,7 @@ The Axiom Web Dashboard is a modern, React-based single-page application (SPA) t
 - Chrome Mobile (Android 90+)
 
 **Network Requirements:**
-- HTTP connection to Axiom backend
+- HTTP connection to NeuroGraph backend
 - WebSocket support for real-time updates
 - Recommended: 1 Mbps or faster internet connection
 
@@ -72,7 +72,7 @@ The Axiom Web Dashboard is a modern, React-based single-page application (SPA) t
 2. **Navigate to Web Dashboard Directory**
 
    ```bash
-   cd axiom-os-mvp/src/web
+   cd neurograph-os-mvp/src/web
    ```
 
 3. **Install Dependencies**
@@ -452,7 +452,7 @@ The Configuration page allows you to adjust system-wide settings and CDNA cognit
 
 **Cognitive Dimension Network Architecture (CDNA) Parameters:**
 
-These 8 dimensions control the cognitive behavior of the Axiom system.
+These 8 dimensions control the cognitive behavior of the NeuroGraph system.
 
 #### 1. Sensitivity (0.0 - 1.0)
 
@@ -774,7 +774,7 @@ When bootstrap completes successfully:
 
 ## Chat Interface
 
-The Chat page provides an interactive interface for conversing with the Axiom cognitive system.
+The Chat page provides an interactive interface for conversing with the NeuroGraph cognitive system.
 
 ### Chat Features
 
@@ -887,7 +887,7 @@ The Chat page provides an interactive interface for conversing with the Axiom co
 ```
 You: What is the current system status?
 
-AI: The Axiom system is currently running normally.
+AI: The NeuroGraph system is currently running normally.
 Here are the key metrics:
 - Status: RUNNING
 - Uptime: 3 days, 14 hours
@@ -954,7 +954,7 @@ recommend values between 0.6-0.8 for most use cases.
 
 ## Terminal Emulator
 
-The Terminal page provides a full-featured web-based terminal emulator for command-line interaction with the Axiom system.
+The Terminal page provides a full-featured web-based terminal emulator for command-line interaction with the NeuroGraph system.
 
 ### Terminal Features
 
@@ -985,7 +985,7 @@ The Terminal page provides a full-featured web-based terminal emulator for comma
 2. **Wait for Connection** - Terminal connects to backend automatically
 3. **See Welcome Message** - Displays when ready
    ```
-   Axiom Terminal
+   NeuroGraph Terminal
    Type commands and press Enter to execute.
 
    $
@@ -1007,8 +1007,8 @@ drwxr-xr-x  12 user  staff   384 Dec 30 10:00 .
 drwxr-xr-x   6 user  staff   192 Dec 29 15:30 ..
 -rw-r--r--   1 user  staff  1024 Dec 30 09:00 config.json
 
-$ ps aux | grep axiom
-user    1234  0.5  2.3  456789 98765 ?  Ss   09:00   0:45 axiom-core
+$ ps aux | grep neurograph
+user    1234  0.5  2.3  456789 98765 ?  Ss   09:00   0:45 neurograph-core
 
 $ curl http://localhost:8000/api/v1/health
 {"status": "running", "uptime": 308745, "version": "0.62.0"}
@@ -1088,16 +1088,16 @@ $ curl http://localhost:8000/api/v1/health
 
 **Module Management:**
 ```bash
-$ axiom module list
+$ neurograph module list
 semantic_memory    RUNNING    v1.0.0
 graph_engine       RUNNING    v2.1.0
 backup_service     STOPPED    v1.2.0
 
-$ axiom module start backup_service
+$ neurograph module start backup_service
 Starting backup_service...
 ✓ Module started successfully
 
-$ axiom module status backup_service
+$ neurograph module status backup_service
 Module: backup_service
 Status: RUNNING
 Uptime: 00:05:32
@@ -1107,31 +1107,31 @@ Memory: 45.2 MB
 
 **Configuration:**
 ```bash
-$ axiom config get cdna.sensitivity
+$ neurograph config get cdna.sensitivity
 0.65
 
-$ axiom config set cdna.sensitivity 0.75
+$ neurograph config set cdna.sensitivity 0.75
 ✓ Configuration updated
 
-$ axiom config validate
+$ neurograph config validate
 ✓ Configuration is valid
 ```
 
 **System Monitoring:**
 ```bash
-$ axiom metrics
+$ neurograph metrics
 Tokens: 125,432
 Connections: 42
 Queries/hour: 1,520
 Events/sec: 245.5
 
-$ axiom health
+$ neurograph health
 Status: RUNNING
 Uptime: 3d 14h 23m
 Version: 0.62.0
 All systems operational
 
-$ axiom logs --tail 10 --follow
+$ neurograph logs --tail 10 --follow
 [10:23:15] INFO: Processing query #45231
 [10:23:15] INFO: Cache hit for query #45231
 [10:23:16] INFO: Response sent in 12ms
@@ -1143,12 +1143,12 @@ $ axiom logs --tail 10 --follow
 **Example Script:**
 ```bash
 #!/bin/bash
-# backup.sh - Backup Axiom configuration
+# backup.sh - Backup NeuroGraph configuration
 
 echo "Starting backup..."
-axiom config export > config_backup.json
-axiom module list > modules_backup.txt
-tar -czf axiom_backup_$(date +%Y%m%d).tar.gz \
+neurograph config export > config_backup.json
+neurograph module list > modules_backup.txt
+tar -czf neurograph_backup_$(date +%Y%m%d).tar.gz \
     config_backup.json \
     modules_backup.txt
 echo "Backup complete!"
@@ -1547,7 +1547,7 @@ A: Yes, the dashboard is responsive and works on tablets and phones, though some
 A: Currently no public demo. You need to run the backend and frontend locally.
 
 **Q: Does this work offline?**
-A: No, it requires a connection to the Axiom backend server.
+A: No, it requires a connection to the NeuroGraph backend server.
 
 ### Dashboard Questions
 
@@ -1594,7 +1594,7 @@ A: Some settings require module restart. The UI will indicate when restart is ne
 ### Chat Questions
 
 **Q: Is my chat history saved?**
-A: Yes, in your browser's localStorage. It's not sent to any server except the Axiom backend.
+A: Yes, in your browser's localStorage. It's not sent to any server except the NeuroGraph backend.
 
 **Q: Can I export chat conversations?**
 A: Not yet, but this feature is planned.
@@ -1608,7 +1608,7 @@ A: The frontend doesn't impose a limit, but the backend may have restrictions.
 ### Terminal Questions
 
 **Q: What commands are available?**
-A: All commands provided by the Axiom backend CLI. Run `axiom help` for a list.
+A: All commands provided by the NeuroGraph backend CLI. Run `neurograph help` for a list.
 
 **Q: Can I run interactive commands?**
 A: Limited support currently. Full interactive terminal support planned.
@@ -1677,9 +1677,9 @@ A: Browser console (F12) for frontend logs. Backend logs are on the server.
 
 **Contact:**
 
-- GitHub: [axiom-os-mvp](https://github.com/your-org/axiom-os-mvp)
-- Email: support@axiom.ai (if available)
-- Forum: community.axiom.ai (coming soon)
+- GitHub: [neurograph-os-mvp](https://github.com/your-org/neurograph-os-mvp)
+- Email: support@neurograph.ai (if available)
+- Forum: community.neurograph.ai (coming soon)
 
 ---
 

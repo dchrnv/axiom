@@ -1,11 +1,11 @@
-# Axiom Project Structure
+# NeuroGraph Project Structure
 
 Полная структура проекта с описанием всех компонентов.
 
 ## 📦 Корневая структура
 
 ```
-axiom-os-mvp/
+neurograph-os-mvp/
 ├── 🎯 Конфигурация
 │   ├── .config.sh           # Главный конфигурационный скрипт
 │   ├── config/              # Централизованные настройки
@@ -78,7 +78,7 @@ src/
 │   │
 │   ├── integration/          # Интеграция Python-Rust
 │   │
-│   └── axiom_jupyter/   # Jupyter расширение
+│   └── neurograph_jupyter/   # Jupyter расширение
 │       ├── __init__.py
 │       └── display.py
 │

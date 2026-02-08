@@ -593,6 +593,6 @@ print(f"Novel: {result['is_novel']}")
 ## See Also
 
 - [Gateway Guide](GATEWAY_GUIDE.md) - Sensory interface
-- [ActionController Guide](ACTION_CONTROLLER_GUIDE.md) - Response generation
+- [ActionController v2.0](../specs/ActionController v2.0.md) - Response generation
 - [Getting Started](GETTING_STARTED.md) - Quick start guide
-- [CHANGELOG v0.57.0](../changelogs/CHANGELOG_v0.57.0.md) - Full integration details
+- [CHANGELOG.md](../../CHANGELOG.md) - Full integration details

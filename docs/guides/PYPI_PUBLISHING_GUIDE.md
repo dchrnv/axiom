@@ -1,6 +1,6 @@
 # PyPI Publishing Guide
 
-Пошаговое руководство по публикации Axiom на PyPI.
+Пошаговое руководство по публикации NeuroGraph на PyPI.
 
 ## Предварительные требования
 
@@ -72,7 +72,7 @@ ls -lh dist/
 twine check dist/*
 
 # Проверить метаданные
-tar -tzf dist/axiom-0.63.1.tar.gz | head -20
+tar -tzf dist/neurograph-0.63.1.tar.gz | head -20
 ```
 
 ## Шаг 5: Тестирование локальной установки
@@ -83,13 +83,13 @@ python -m venv test-venv
 source test-venv/bin/activate
 
 # Установить из локального файла
-pip install dist/axiom-0.63.1*.whl
+pip install dist/neurograph-0.63.1*.whl
 
 # Протестировать импорт
-python -c "import axiom; print(axiom.__version__)"
+python -c "import neurograph; print(neurograph.__version__)"
 
 # Тестировать Jupyter integration
-python -c "from axiom_jupyter import AxiomMagics; print('OK')"
+python -c "from neurograph_jupyter import NeuroGraphMagics; print('OK')"
 
 # Деактивировать и удалить тест-окружение
 deactivate
@@ -114,10 +114,10 @@ python -m venv test-testpypi
 source test-testpypi/bin/activate
 
 # Установить из TestPyPI
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ axiom
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ neurograph
 
 # Протестировать
-python -c "import axiom; print('Success!')"
+python -c "import neurograph; print('Success!')"
 
 deactivate
 rm -rf test-testpypi
@@ -145,19 +145,19 @@ python -m venv test-prod
 source test-prod/bin/activate
 
 # Установить из PyPI
-pip install axiom
+pip install neurograph
 
 # Полная установка со всеми фичами
-pip install axiom[all]
+pip install neurograph[all]
 
 # Только Jupyter
-pip install axiom[jupyter]
+pip install neurograph[jupyter]
 
 # Только API server
-pip install axiom[api]
+pip install neurograph[api]
 
 # Тестирование
-python -c "import axiom; print(axiom.__version__)"
+python -c "import neurograph; print(neurograph.__version__)"
 
 deactivate
 rm -rf test-prod
@@ -173,10 +173,10 @@ git tag -a v0.63.1 -m "Release v0.63.1 - PyPI Publication"
 git push origin v0.63.1
 
 # Создать GitHub Release через веб-интерфейс
-# https://github.com/chrnv/axiom-os-mvp/releases/new
+# https://github.com/chrnv/neurograph-os-mvp/releases/new
 #
 # - Tag: v0.63.1
-# - Title: "Axiom OS v0.63.1"
+# - Title: "NeuroGraph OS v0.63.1"
 # - Description: Copy from CHANGELOG.md
 # - Attach: dist/* files
 ```
@@ -230,10 +230,10 @@ source $HOME/.cargo/env
 - Нужно увеличить версию в `pyproject.toml`
 - Например: 0.63.1 → 0.63.2
 
-### Ошибка при сборке: "No such file or directory: python/axiom"
+### Ошибка при сборке: "No such file or directory: python/neurograph"
 
 - Убедитесь что `python-source = "python"` в `[tool.maturin]`
-- Проверьте что директория `python/axiom/` существует
+- Проверьте что директория `python/neurograph/` существует
 
 ### Ошибка: "Invalid classifier"
 

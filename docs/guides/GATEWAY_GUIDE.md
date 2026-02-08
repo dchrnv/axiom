@@ -1,6 +1,6 @@
 # Gateway v2.0 Guide
 
-Полное руководство по работе с сенсорным слоем Axiom OS.
+Полное руководство по работе с сенсорным слоем NeuroGraph OS.
 
 ## Содержание
 
@@ -15,7 +15,7 @@
 
 ## Обзор
 
-**Gateway v2.0** — сенсорный интерфейс Axiom OS, преобразующий внешние сигналы (текст, метрики, события) в унифицированные 8D векторы для обработки в Rust Core.
+**Gateway v2.0** — сенсорный интерфейс NeuroGraph OS, преобразующий внешние сигналы (текст, метрики, события) в унифицированные 8D векторы для обработки в Rust Core.
 
 ### Ключевые возможности
 
@@ -83,7 +83,7 @@ event = gateway.push_text(
 
 ```python
 event = gateway.push_text(
-    text="Hello, Axiom!",
+    text="Hello, NeuroGraph!",
     priority=200,
     sequence_id="conversation_123"
 )
@@ -490,5 +490,5 @@ print(f"Loaded: {event.event_id}")
 ## See Also
 
 - [SignalSystem Guide](SIGNAL_SYSTEM_GUIDE.md) - Rust Core integration
-- [ActionController Guide](ACTION_CONTROLLER_GUIDE.md) - Response generation
+- [ActionController v2.0](../specs/ActionController v2.0.md) - Response generation
 - [Getting Started](GETTING_STARTED.md) - Quick start guide

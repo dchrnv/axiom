@@ -1,7 +1,7 @@
 Contributing
 ============
 
-Thank you for considering contributing to Axiom!
+Thank you for considering contributing to NeuroGraph!
 
 This is a placeholder. Full contributing guidelines will be added in Phase 2.3.
 

@@ -1,6 +1,6 @@
 # Authentication & Security Guide
 
-> Axiom REST API v0.58.0 - Complete authentication system with JWT, API Keys, RBAC, and Rate Limiting
+> NeuroGraph REST API v0.58.0 - Complete authentication system with JWT, API Keys, RBAC, and Rate Limiting
 
 ## Table of Contents
 - [Overview](#overview)
@@ -15,7 +15,7 @@
 
 ## Overview
 
-Axiom API v0.58.0 provides enterprise-grade authentication and authorization:
+NeuroGraph API v0.58.0 provides enterprise-grade authentication and authorization:
 
 - **JWT Tokens** - Stateless authentication for users
 - **API Keys** - Long-lived credentials for bots/integrations
@@ -505,6 +505,6 @@ curl -X POST http://localhost:8000/api/v1/api-keys \
 ---
 
 **For more details:**
-- [API Reference](../API.md)
+- [API Documentation](../../src/api/README.md)
 - [Getting Started](./GETTING_STARTED.md)
-- [MASTER_PLAN v3.0](../MASTER_PLAN_v3.0.md)
+- [ROADMAP.md](../../ROADMAP.md)

@@ -1,12 +1,12 @@
 API Reference
 =============
 
-Complete Python API reference for Axiom.
+Complete Python API reference for NeuroGraph.
 
 Overview
 --------
 
-The Axiom API is organized into the following modules:
+The NeuroGraph API is organized into the following modules:
 
 - **Storage Layer** (:doc:`storage`) - Token, grid, and CDNA storage implementations
 - **Authentication** (:doc:`auth`) - JWT auth and permissions system

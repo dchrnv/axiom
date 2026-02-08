@@ -8,7 +8,7 @@
 
 ## Context
 
-Axiom's 8D space needs **adaptive dimensional behavior** without changing core algorithms. Different use cases require different dimensional weightings:
+NeuroGraph's 8D space needs **adaptive dimensional behavior** without changing core algorithms. Different use cases require different dimensional weightings:
 - Spatial-focused: Emphasize d0-d2
 - Temporal-focused: Emphasize time dimensions
 - Abstract reasoning: Emphasize higher dimensions
@@ -223,7 +223,7 @@ profile = interpolate(explorer, creative, alpha=0.3)
 
 - Cognitive Science: Dimensional attention mechanisms
 - Vector Spaces: Metric learning
-- Axiom: Production usage patterns
+- NeuroGraph: Production usage patterns
 
 ## Revision History
 

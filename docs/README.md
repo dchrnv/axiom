@@ -1,6 +1,6 @@
-# Axiom Documentation
+# NeuroGraph Documentation
 
-Sphinx-based documentation for Axiom.
+Sphinx-based documentation for NeuroGraph.
 
 ## Building Locally
 

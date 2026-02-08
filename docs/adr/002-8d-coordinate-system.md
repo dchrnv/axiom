@@ -8,7 +8,7 @@
 
 ## Context
 
-Axiom tokens exist in a multi-dimensional space representing cognitive relationships. We needed to determine:
+NeuroGraph tokens exist in a multi-dimensional space representing cognitive relationships. We needed to determine:
 - How many dimensions to support
 - Whether dimension count should be fixed or variable
 - How to represent positions in code
@@ -183,7 +183,7 @@ pub fn distance(p1: &[f64; 8], p2: &[f64; 8]) -> f64 {
 
 - Cognitive Science: Multi-dimensional semantic spaces
 - Vector databases: Typical dimensionality (512-2048)
-- Axiom: Balance between expressiveness and performance
+- NeuroGraph: Balance between expressiveness and performance
 
 ## Revision History
 

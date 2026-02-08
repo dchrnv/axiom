@@ -1,7 +1,7 @@
 Testing
 =======
 
-Axiom testing guide.
+NeuroGraph testing guide.
 
 This is a placeholder. Full testing documentation will be added in Phase 2.3.
 

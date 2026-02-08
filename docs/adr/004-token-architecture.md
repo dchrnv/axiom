@@ -8,7 +8,7 @@
 
 ## Context
 
-Axiom needs a fundamental unit for representing cognitive entities and their relationships. This unit must support:
+NeuroGraph needs a fundamental unit for representing cognitive entities and their relationships. This unit must support:
 - Spatial relationships in 8D space
 - Dynamic properties (radius, weight)
 - Connections to other entities
@@ -112,7 +112,7 @@ class Token:
 
 - Cognitive Architecture Literature
 - Spatial Computing Patterns
-- Axiom Core Implementation
+- NeuroGraph Core Implementation
 
 ## Revision History
 

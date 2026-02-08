@@ -1,12 +1,12 @@
 Architecture
 ============
 
-Axiom system architecture overview.
+NeuroGraph system architecture overview.
 
 System Overview
 ---------------
 
-Axiom consists of three main layers:
+NeuroGraph consists of three main layers:
 
 1. **Rust Core** (``src/core/``)
    - Spatial algorithms

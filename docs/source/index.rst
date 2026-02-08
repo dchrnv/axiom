@@ -1,7 +1,7 @@
-Axiom Documentation
+NeuroGraph Documentation
 ========================
 
-**Axiom** is a high-performance spatial computing system based on tokens, combining:
+**NeuroGraph** is a high-performance spatial computing system based on tokens, combining:
 
 - **Rust Core**: Ultra-fast spatial algorithms with 50-100x performance improvements
 - **Python API**: Production-ready FastAPI backend with JWT auth, WebSocket support, and Prometheus metrics
@@ -44,7 +44,7 @@ Quick Links
 
 - :doc:`quickstart` - Get started in 5 minutes
 - :doc:`api/index` - Complete API reference
-- `GitHub Repository <https://github.com/chrnv/axiom-os-mvp>`_
+- `GitHub Repository <https://github.com/chrnv/neurograph-os-mvp>`_
 
 Getting Started
 ---------------

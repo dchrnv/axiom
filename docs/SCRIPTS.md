@@ -1,4 +1,4 @@
-# Axiom Automation Scripts
+# NeuroGraph Automation Scripts
 
 Quick reference for the automated startup scripts in the project root.
 
@@ -74,7 +74,7 @@ Quick reference for the automated startup scripts in the project root.
 **With tmux (recommended):**
 ```bash
 # Attach to session
-tmux attach -t axiom
+tmux attach -t neurograph
 
 # Switch windows
 Ctrl+b, n  # Next window
@@ -84,7 +84,7 @@ Ctrl+b, p  # Previous window
 Ctrl+b, d
 
 # Stop all
-tmux kill-session -t axiom
+tmux kill-session -t neurograph
 # OR
 ./stop-all.sh
 ```
@@ -97,7 +97,7 @@ tmux kill-session -t axiom
 ---
 
 ### 🛑 `stop-all.sh`
-**Purpose:** Stop all running Axiom services
+**Purpose:** Stop all running NeuroGraph services
 
 ```bash
 ./stop-all.sh
@@ -217,4 +217,4 @@ ss -tlnp | grep -E ":8000|:5173"
 ---
 
 **Generated:** 2025-12-30
-**Project:** Axiom OS v0.62.0
+**Project:** NeuroGraph OS v0.62.0

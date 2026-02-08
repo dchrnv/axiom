@@ -1,6 +1,6 @@
-# Getting Started with Axiom
+# Getting Started with NeuroGraph
 
-Полное руководство по началу работы с Axiom OS v0.57.0.
+Полное руководство по началу работы с NeuroGraph OS v0.57.0.
 
 ## Содержание
 
@@ -28,8 +28,8 @@
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/dchrnv/axiom-os-mvp.git
-cd axiom-os-mvp
+git clone https://github.com/dchrnv/neurograph-os-mvp.git
+cd neurograph-os-mvp
 ```
 
 ### 2. Сборка Rust Core
@@ -177,7 +177,7 @@ async def main():
 
     # Обрабатываем текст
     result = await pipeline.process_text(
-        text="Hello, Axiom!",
+        text="Hello, NeuroGraph!",
         user_id="user_123",
         chat_id="chat_456",
         priority=200
@@ -331,7 +331,7 @@ curl -X POST http://localhost:8000/api/v1/tokens \
 curl http://localhost:8000/api/v1/status
 ```
 
-См. [REST API Guide](REST_API_GUIDE.md) для полной документации.
+См. [API README](../../src/api/README.md) для полной документации REST API.
 
 ---
 
@@ -395,10 +395,10 @@ pytest tests/performance/
 ## Следующие шаги
 
 1. **Изучите архитектуру**: [docs/specs/](../specs/)
-2. **Прочитайте Changelogs**: [docs/changelogs/](../changelogs/)
+2. **Прочитайте Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 3. **Попробуйте примеры**: [examples/](../../examples/)
-4. **Создайте свои Actions**: [ActionController Guide](ACTION_CONTROLLER_GUIDE.md)
-5. **Настройте мониторинг**: [Observability Guide](OBSERVABILITY_GUIDE.md)
+4. **Изучите ActionController**: [ActionController v2.0](../specs/ActionController v2.0.md)
+5. **Проверьте статус проекта**: [STATUS.md](../../STATUS.md) и [ROADMAP.md](../../ROADMAP.md)
 
 ---
 
@@ -444,7 +444,7 @@ ModuleNotFoundError: No module named 'src'
 
 ```bash
 # Добавьте project root в PYTHONPATH
-export PYTHONPATH=/path/to/axiom-os-mvp
+export PYTHONPATH=/path/to/neurograph-os-mvp
 python examples/...
 ```
 
@@ -452,6 +452,6 @@ python examples/...
 
 ## Помощь
 
-- **Issues**: https://github.com/dchrnv/axiom-os/issues
+- **Issues**: https://github.com/dchrnv/neurograph-os/issues
 - **Email**: dreeftwood@gmail.com
 - **Contributing**: [CONTRIBUTING.md](../../CONTRIBUTING.md)

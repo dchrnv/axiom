@@ -1,6 +1,6 @@
 # Jupyter Integration Guide
 
-**Quick practical guide for using Axiom in Jupyter notebooks**
+**Quick practical guide for using NeuroGraph in Jupyter notebooks**
 
 Version: v0.61.1
 
@@ -22,19 +22,19 @@ Version: v0.61.1
 ### 1. Install
 
 ```bash
-pip install axiom[jupyter]
+pip install neurograph[jupyter]
 ```
 
 ### 2. Load Extension
 
 ```python
-%load_ext axiom_jupyter
+%load_ext neurograph_jupyter
 ```
 
 ### 3. Initialize
 
 ```python
-%axiom init --path ./my_graph.db
+%neurograph init --path ./my_graph.db
 ```
 
 ---
@@ -43,33 +43,33 @@ pip install axiom[jupyter]
 
 ### Auto-completion (NEW in v0.61.1)
 
-Press **TAB** after `%axiom` for auto-completion:
+Press **TAB** after `%neurograph` for auto-completion:
 - Command names (init, query, status, subscribe, emit)
 - Channel names for subscribe/emit
 - Query templates and node types
 - Property names from database
 
 ```python
-%axiom <TAB>          # Shows available commands
-%axiom query <TAB>    # Shows query templates
-%axiom subscribe <TAB> # Shows available channels
+%neurograph <TAB>          # Shows available commands
+%neurograph query <TAB>    # Shows query templates
+%neurograph subscribe <TAB> # Shows available channels
 ```
 
 ### Initialize Database
 
 ```python
-%axiom init --path ./my_graph.db
+%neurograph init --path ./my_graph.db
 ```
 
 Creates:
-- `axiom_db` - GraphOperations
-- `axiom_signals` - SignalEngine
-- `axiom_ws` - ConnectionManager
+- `neurograph_db` - GraphOperations
+- `neurograph_signals` - SignalEngine
+- `neurograph_ws` - ConnectionManager
 
 ### Check Status
 
 ```python
-%axiom status
+%neurograph status
 ```
 
 Shows:
@@ -81,9 +81,9 @@ Shows:
 ### Query Data
 
 ```python
-%axiom query "find all nodes"
-%axiom query "find all nodes where type='user'"
-%axiom query "find all nodes where age > 30"
+%neurograph query "find all nodes"
+%neurograph query "find all nodes where type='user'"
+%neurograph query "find all nodes where age > 30"
 ```
 
 Results display as beautiful HTML tables automatically.
@@ -92,12 +92,12 @@ Results display as beautiful HTML tables automatically.
 
 **Subscribe:**
 ```python
-%axiom subscribe metrics
+%neurograph subscribe metrics
 ```
 
 **Emit:**
 ```python
-%axiom emit metrics "{'cpu': 85, 'memory': 70}"
+%neurograph emit metrics "{'cpu': 85, 'memory': 70}"
 ```
 
 ### Define Signal Handler
@@ -119,21 +119,21 @@ def handler(data):
 
 ```python
 # Using direct API
-user = axiom_db.create_node(
+user = neurograph_db.create_node(
     "user",
     {"name": "Alice", "age": 30, "city": "San Francisco"}
 )
 
-project = axiom_db.create_node(
+project = neurograph_db.create_node(
     "project",
-    {"name": "Axiom", "status": "active"}
+    {"name": "NeuroGraph", "status": "active"}
 )
 ```
 
 ### Create Edges
 
 ```python
-axiom_db.create_edge(
+neurograph_db.create_edge(
     user.id,
     project.id,
     "works_on",
@@ -145,10 +145,10 @@ axiom_db.create_edge(
 
 ```python
 # Magic command (quick)
-%axiom query "find all nodes where type='user'"
+%neurograph query "find all nodes where type='user'"
 
 # Direct API (for processing)
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 for node in result.nodes:
     print(f"{node.id}: {node.properties}")
 ```
@@ -160,9 +160,9 @@ for node in result.nodes:
 ### Static Matplotlib Visualization
 
 ```python
-from axiom_jupyter.display import render_graph_visualization
+from neurograph_jupyter.display import render_graph_visualization
 
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 render_graph_visualization(result, layout="spring")
 ```
 
@@ -175,7 +175,7 @@ render_graph_visualization(result, layout="spring")
 
 **2D Interactive Graph:**
 ```python
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 
 # Interactive 2D graph with zoom/pan
 fig = result.plot_interactive(layout="spring")
@@ -223,14 +223,14 @@ fig.show()
 Build queries programmatically with a fluent API:
 
 ```python
-from axiom_jupyter.query_builder import QueryBuilder
+from neurograph_jupyter.query_builder import QueryBuilder
 
 # Simple query
-q = QueryBuilder(axiom_db)
+q = QueryBuilder(neurograph_db)
 q.find("nodes").where("type", "=", "user").execute()
 
 # Multiple conditions
-q = QueryBuilder(axiom_db)
+q = QueryBuilder(neurograph_db)
 result = (q.find("nodes")
            .where("type", "=", "user")
            .where("age", ">", 30)
@@ -243,7 +243,7 @@ query_string = q.find("nodes").where("type", "=", "user").build()
 print(query_string)  # "find all nodes where type = 'user'"
 
 # Convenience function
-from axiom_jupyter.query_builder import query
+from neurograph_jupyter.query_builder import query
 
 result = query("nodes").where("status", "in", ["active", "pending"]).build()
 ```
@@ -255,7 +255,7 @@ result = query("nodes").where("status", "in", ["active", "pending"]).build()
 QueryResult now has built-in DataFrame methods:
 
 ```python
-result = axiom_db.query("find all nodes where type='user'")
+result = neurograph_db.query("find all nodes where type='user'")
 
 # Convert to pandas DataFrame (automatic property expansion)
 df = result.to_dataframe()
@@ -284,7 +284,7 @@ result.plot_distribution("age", bins=20)
 ```python
 import pandas as pd
 
-result = axiom_db.query("find all nodes where type='user'")
+result = neurograph_db.query("find all nodes where type='user'")
 df = pd.DataFrame([
     {"id": node.id, "name": node.properties.get("name"), "age": node.properties.get("age")}
     for node in result.nodes
@@ -303,10 +303,10 @@ Interactive widgets for real-time monitoring and exploration:
 Live-updating metrics display with auto-refresh:
 
 ```python
-from axiom_jupyter.widgets import MetricsWidget
+from neurograph_jupyter.widgets import MetricsWidget
 
 # Create widget
-widget = MetricsWidget(axiom_ws, refresh_interval=2.0)
+widget = MetricsWidget(neurograph_ws, refresh_interval=2.0)
 widget.subscribe("metrics")
 display(widget)
 
@@ -321,10 +321,10 @@ widget.add_metric({"cpu": 75, "memory": 1024, "requests": 1500})
 Interactive graph browsing with search and filtering:
 
 ```python
-from axiom_jupyter.widgets import GraphExplorerWidget
+from neurograph_jupyter.widgets import GraphExplorerWidget
 
 # Create explorer
-explorer = GraphExplorerWidget(axiom_db)
+explorer = GraphExplorerWidget(neurograph_db)
 display(explorer)
 
 # Use UI to:
@@ -338,10 +338,10 @@ display(explorer)
 Real-time log display with level filtering:
 
 ```python
-from axiom_jupyter.widgets import LogViewerWidget
+from neurograph_jupyter.widgets import LogViewerWidget
 
 # Create log viewer
-logs = LogViewerWidget(axiom_ws, max_logs=100)
+logs = LogViewerWidget(neurograph_ws, max_logs=100)
 logs.subscribe("logs")
 display(logs)
 
@@ -368,7 +368,7 @@ logs.add_log("ERROR", "Connection failed")
 
 ```python
 # Subscribe
-%axiom subscribe metrics
+%neurograph subscribe metrics
 
 # Define handler
 %%signal process_metrics
@@ -376,7 +376,7 @@ def handler(data):
     import time
 
     # Store metric
-    metric = axiom_db.create_node(
+    metric = neurograph_db.create_node(
         "metric",
         {
             "timestamp": time.time(),
@@ -392,7 +392,7 @@ def handler(data):
     return {"stored": metric.id}
 
 # Test
-%axiom emit metrics "{'cpu': 85, 'memory': 70}"
+%neurograph emit metrics "{'cpu': 85, 'memory': 70}"
 ```
 
 ---
@@ -404,7 +404,7 @@ import time
 
 # Measure query performance
 start = time.perf_counter()
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 duration = time.perf_counter() - start
 
 print(f"Nodes: {len(result.nodes)}")
@@ -421,17 +421,17 @@ print(f"Throughput: {len(result.nodes)/duration:.0f} nodes/sec")
 
 ```python
 # Load extension
-%load_ext axiom_jupyter
+%load_ext neurograph_jupyter
 
 # Initialize
-%axiom init --path ./data.db
+%neurograph init --path ./data.db
 
 # Quick queries
-%axiom query "find all nodes"
-%axiom query "find all nodes where type='user'"
+%neurograph query "find all nodes"
+%neurograph query "find all nodes where type='user'"
 
 # Visualize
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 render_graph_visualization(result)
 ```
 
@@ -441,7 +441,7 @@ render_graph_visualization(result)
 # Create multiple nodes
 users = []
 for i in range(100):
-    user = axiom_db.create_node(
+    user = neurograph_db.create_node(
         "user",
         {"name": f"user_{i}", "index": i}
     )
@@ -449,7 +449,7 @@ for i in range(100):
 
 # Create edges
 for i in range(len(users) - 1):
-    axiom_db.create_edge(
+    neurograph_db.create_edge(
         users[i].id,
         users[i+1].id,
         "knows"
@@ -464,7 +464,7 @@ print(f"✅ Created {len(users)} users and {len(users)-1} edges")
 import pandas as pd
 
 # Query data
-result = axiom_db.query("find all nodes where type='user'")
+result = neurograph_db.query("find all nodes where type='user'")
 
 # Convert to DataFrame
 df = pd.DataFrame([
@@ -493,7 +493,7 @@ import matplotlib.pyplot as plt
 
 # Collect metrics over time
 for i in range(30):
-    axiom_db.create_node(
+    neurograph_db.create_node(
         "metric",
         {
             "timestamp": time.time(),
@@ -503,7 +503,7 @@ for i in range(30):
     time.sleep(1)
 
 # Query and visualize
-result = axiom_db.query("find all nodes where type='metric'")
+result = neurograph_db.query("find all nodes where type='metric'")
 
 timestamps = [n.properties["timestamp"] for n in result.nodes]
 values = [n.properties["value"] for n in result.nodes]
@@ -523,24 +523,24 @@ plt.show()
 
 **Problem:**
 ```
-ModuleNotFoundError: No module named 'axiom_jupyter'
+ModuleNotFoundError: No module named 'neurograph_jupyter'
 ```
 
 **Solution:**
 ```bash
-pip install axiom[jupyter]
+pip install neurograph[jupyter]
 ```
 
 ### Database not initialized
 
 **Problem:**
 ```
-❌ Axiom not initialized
+❌ NeuroGraph not initialized
 ```
 
 **Solution:**
 ```python
-%axiom init --path ./my_graph.db
+%neurograph init --path ./my_graph.db
 ```
 
 ### Rich display not working
@@ -549,7 +549,7 @@ pip install axiom[jupyter]
 
 **Solution:**
 ```python
-%reload_ext axiom_jupyter
+%reload_ext neurograph_jupyter
 ```
 
 ### Visualization missing
@@ -572,22 +572,22 @@ pip install networkx matplotlib
 
 Put at the start of your notebook:
 ```python
-%load_ext axiom_jupyter
-%axiom init --path ./my_graph.db
+%load_ext neurograph_jupyter
+%neurograph init --path ./my_graph.db
 ```
 
 ### 2. Use Magic Commands for Quick Queries
 
 ```python
 # Good for exploration
-%axiom query "find all nodes where type='user'"
+%neurograph query "find all nodes where type='user'"
 ```
 
 ### 3. Use Direct API for Complex Logic
 
 ```python
 # Good for processing
-result = axiom_db.query("find all nodes")
+result = neurograph_db.query("find all nodes")
 for node in result.nodes:
     # Complex processing
     ...
@@ -608,7 +608,7 @@ df.plot()
 # Track slow queries
 import time
 start = time.perf_counter()
-result = axiom_db.query("...")
+result = neurograph_db.query("...")
 duration = time.perf_counter() - start
 if duration > 1.0:
     print(f"⚠️ Slow query: {duration:.2f}s")
@@ -628,18 +628,18 @@ if duration > 1.0:
 
 ```python
 # Setup
-%load_ext axiom_jupyter
-%axiom init --path ./db.db
+%load_ext neurograph_jupyter
+%neurograph init --path ./db.db
 
 # Auto-completion (NEW)
-%axiom <TAB>
+%neurograph <TAB>
 
 # Query
-%axiom query "find all nodes"
-result = axiom_db.query("...")
+%neurograph query "find all nodes"
+result = neurograph_db.query("...")
 
 # Query Builder (NEW)
-from axiom_jupyter.query_builder import query
+from neurograph_jupyter.query_builder import query
 result = query("nodes").where("type", "=", "user").execute()
 
 # DataFrame Helpers (NEW)
@@ -653,12 +653,12 @@ result.plot_interactive()            # 2D Interactive (NEW)
 result.plot_3d()                     # 3D Interactive (NEW)
 
 # Real-time
-%axiom subscribe channel
-%axiom emit channel "data"
+%neurograph subscribe channel
+%neurograph emit channel "data"
 
 # Widgets (NEW)
-from axiom_jupyter.widgets import MetricsWidget, LogViewerWidget
-widget = MetricsWidget(axiom_ws)
+from neurograph_jupyter.widgets import MetricsWidget, LogViewerWidget
+widget = MetricsWidget(neurograph_ws)
 display(widget)
 ```
 

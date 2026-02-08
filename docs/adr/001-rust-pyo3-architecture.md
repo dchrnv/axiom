@@ -8,7 +8,7 @@
 
 ## Context
 
-Axiom requires high-performance spatial computations for 8-dimensional token operations. Python alone cannot achieve the required performance (< 1μs latency for core operations), especially for:
+NeuroGraph requires high-performance spatial computations for 8-dimensional token operations. Python alone cannot achieve the required performance (< 1μs latency for core operations), especially for:
 - Distance calculations in 8D space
 - Neighbor finding algorithms
 - Grid cell lookups
@@ -162,7 +162,7 @@ Grid lookup             ~5.0μs         ~0.1μs         ~50x
 
 - [PyO3 Documentation](https://pyo3.rs/)
 - [Rust FFI Performance](https://doc.rust-lang.org/nomicon/ffi.html)
-- Axiom Performance Benchmarks (internal)
+- NeuroGraph Performance Benchmarks (internal)
 
 ## Revision History
 

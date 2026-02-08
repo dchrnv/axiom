@@ -1,11 +1,11 @@
-# Axiom Configuration Guide
+# NeuroGraph Configuration Guide
 
 Полное руководство по настройке и конфигурации проекта.
 
 ## Архитектура конфигурации
 
 ```
-axiom-os-mvp/
+neurograph-os-mvp/
 ├── .config.sh              # Главный конфигурационный скрипт
 ├── config/                 # Централизованные настройки
 │   ├── project.env         # Основные настройки проекта
@@ -75,15 +75,15 @@ METRICS_ENABLED=true       # Prometheus метрики
 
 Выведет:
 ```
-📋 Axiom Configuration
+📋 NeuroGraph Configuration
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Project:     axiom v0.63.0
-Root:        /home/user/axiom-os-mvp
+Project:     neurograph v0.63.0
+Root:        /home/user/neurograph-os-mvp
 Environment: development
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Python:      Python 3.13.7
 Flatpak:     true
-VirtualEnv:  /home/user/axiom-os-mvp/.venv
+VirtualEnv:  /home/user/neurograph-os-mvp/.venv
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Backend:     http://localhost:8000
 Frontend:    http://localhost:5173

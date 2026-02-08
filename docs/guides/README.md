@@ -1,6 +1,6 @@
-# Axiom OS Guides
+# NeuroGraph OS Guides
 
-Подробные руководства по работе с Axiom OS.
+Подробные руководства по работе с NeuroGraph OS.
 
 ## Содержание
 
@@ -15,7 +15,7 @@
 ### Основные компоненты
 
 - **[Jupyter Integration Guide](JUPYTER_GUIDE.md)** — Работа в Jupyter notebooks ⭐ NEW
-  - Magic commands (%axiom)
+  - Magic commands (%neurograph)
   - Rich HTML display
   - Graph visualization
   - Real-time signals
@@ -52,7 +52,7 @@
 ### v0.61.0 (Current)
 
 - **Jupyter Integration** — Полная интеграция с Jupyter notebooks
-- IPython magic commands (%axiom)
+- IPython magic commands (%neurograph)
 - Rich HTML display и graph visualization
 - Real-time signals в notebook
 - DataFrame export для анализа
@@ -91,14 +91,14 @@
 
 **Jupyter (рекомендуется для исследований):**
 ```bash
-pip install axiom[jupyter]
+pip install neurograph[jupyter]
 jupyter notebook
 ```
 
 ```python
-%load_ext axiom_jupyter
-%axiom init --path ./my_graph.db
-%axiom query "find all nodes"
+%load_ext neurograph_jupyter
+%neurograph init --path ./my_graph.db
+%neurograph query "find all nodes"
 ```
 
 **Telegram Bot:**
@@ -135,6 +135,6 @@ python examples/telegram_bot_with_core.py
 
 ## Помощь
 
-- **Issues**: https://github.com/dchrnv/axiom-os/issues
+- **Issues**: https://github.com/dchrnv/neurograph-os/issues
 - **Email**: dreeftwood@gmail.com
 - **Contributing**: [CONTRIBUTING.md](../../CONTRIBUTING.md)

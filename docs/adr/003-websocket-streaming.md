@@ -8,7 +8,7 @@
 
 ## Context
 
-Axiom needs real-time notification of state changes (token creation/updates, grid changes, CDNA updates). Clients need to react to these changes with minimal latency.
+NeuroGraph needs real-time notification of state changes (token creation/updates, grid changes, CDNA updates). Clients need to react to these changes with minimal latency.
 
 Requirements:
 - Low latency (< 10ms preferred)
@@ -206,11 +206,11 @@ class ConnectionManager:
 ## Monitoring
 
 **Prometheus Metrics:**
-- `axiom_ws_connections_total` - Active connections
-- `axiom_ws_messages_sent_total` - Events broadcast
-- `axiom_ws_message_latency_seconds` - Delivery latency
-- `axiom_ws_buffer_overflow_total` - Dropped events
-- `axiom_ws_disconnects_total` - Disconnection reasons
+- `neurograph_ws_connections_total` - Active connections
+- `neurograph_ws_messages_sent_total` - Events broadcast
+- `neurograph_ws_message_latency_seconds` - Delivery latency
+- `neurograph_ws_buffer_overflow_total` - Dropped events
+- `neurograph_ws_disconnects_total` - Disconnection reasons
 
 ## Future Enhancements
 
@@ -251,7 +251,7 @@ class ConnectionManager:
 
 - [WebSocket RFC 6455](https://tools.ietf.org/html/rfc6455)
 - [FastAPI WebSocket Documentation](https://fastapi.tiangolo.com/advanced/websockets/)
-- Axiom WebSocket Metrics (production)
+- NeuroGraph WebSocket Metrics (production)
 
 ## Revision History
 

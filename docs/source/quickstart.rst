@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-Get Axiom up and running in 5 minutes.
+Get NeuroGraph up and running in 5 minutes.
 
 Prerequisites
 -------------
@@ -17,8 +17,8 @@ Installation
 
    .. code-block:: bash
 
-      git clone https://github.com/chrnv/axiom-os-mvp.git
-      cd axiom-os-mvp
+      git clone https://github.com/chrnv/neurograph-os-mvp.git
+      cd neurograph-os-mvp
 
 2. **Install Python dependencies**:
 
