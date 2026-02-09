@@ -5,7 +5,11 @@
 
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
 [![Rust](https://img.shields.io/badge/rust-core-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)](#licensing)
+
+«Свобода для людей, для корпораций за деньги».
 
 ---
 
@@ -104,6 +108,24 @@ A machine built to find the edge of what structured cognition can be.
 <a href="https://buymeacoffee.com/dreeftwood" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;">
 </a>
+
+---
+
+### 📜 Licensing & Commercial Use
+
+**Axiom follows a strict Dual License model.**
+
+#### 1. Free for Humanity (AGPL-3.0 + CC BY-NC-SA)
+* **Code:** [AGPLv3](LICENSE). Open for research, hacking, and open-source contributions.
+* **Weights:** [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). Open for academic study and non-commercial experiments.
+* **Condition:** If you share, you must share alike. No closed doors.
+
+#### 2. Paid for Business (Commercial License)
+* **Target:** Proprietary software, Enterprise integration, Closed-source SaaS.
+* **Benefit:** You pay for the right to keep your secrets. Removes copyleft and non-commercial restrictions.
+* **Includes:** Legal warranty & Priority support.
+
+📩 **Get a Commercial License:** [dreeftwood@gmail.com]
 
 ---
 
