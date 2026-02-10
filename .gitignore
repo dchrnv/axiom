@@ -70,7 +70,7 @@ Cargo.lock
 
 # Internal documentation (development history and specs)
 docs/arch/
-docs/archive/
+docs/_archive/
 docs/changelogs/
 docs/performance/
 docs/specs/
