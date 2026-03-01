@@ -6,7 +6,7 @@
 use std::f32::consts::PI;
 
 use crate::connection::Connection;
-use crate::token::{Token, STATE_ACTIVE};
+use crate::token::Token;
 
 /// Режим обновления UPO.
 #[derive(Clone, Copy, Debug)]
@@ -54,9 +54,27 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(decay: f32, min_intensity: f32) -> Self {
+        let grid = unsafe {
+            let layout = std::alloc::Layout::new::<[[[f32; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>();
+            let ptr = std::alloc::alloc_zeroed(layout);
+            if ptr.is_null() {
+                std::alloc::handle_alloc_error(layout);
+            }
+            Box::from_raw(ptr as *mut _)
+        };
+
+        let last_event = unsafe {
+            let layout = std::alloc::Layout::new::<[[[u64; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>();
+            let ptr = std::alloc::alloc_zeroed(layout);
+            if ptr.is_null() {
+                std::alloc::handle_alloc_error(layout);
+            }
+            Box::from_raw(ptr as *mut _)
+        };
+
         Self {
-            grid: Box::new([[[0.0_f32; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]),
-            last_event: Box::new([[[0_u64; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]),
+            grid,
+            last_event,
             decay,
             min_intensity,
             current_event: 0,
@@ -69,9 +87,9 @@ impl Screen {
 
     /// Запись DynamicTrace на экран с ленивым затуханием.
     pub fn write(&mut self, trace: &DynamicTrace) {
-        let ix = ((trace.x + 1.0) * 0.5 * (GRID_SIZE as f32 - 0.001)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
-        let iy = ((trace.y + 1.0) * 0.5 * (GRID_SIZE as f32 - 0.001)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
-        let iz = ((trace.z + 1.0) * 0.5 * (GRID_SIZE as f32 - 0.001)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
+        let ix = ((trace.x + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
+        let iy = ((trace.y + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
+        let iz = ((trace.z + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
 
         let last = self.last_event[ix][iy][iz];
         if last < self.current_event {

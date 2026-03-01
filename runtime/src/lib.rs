@@ -11,9 +11,9 @@ pub mod token;
 pub mod upo;
 
 pub use clock::CausalClock;
-pub use connection::{self, Connection};
+pub use connection::Connection;
 pub use event::{Event, EventType, Snapshot};
-pub use token::{self, Token};
+pub use token::Token;
 pub use upo::{DynamicTrace, Screen, UPOConfig, UPO};
 
 #[cfg(test)]
