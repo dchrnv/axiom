@@ -1,0 +1,18 @@
+[package]
+name = "axiom_core"
+version = "0.1.0"
+edition = "2021"
+description = "Axiom core: COM (Causal Order Model) + UPO v2.1"
+license = "AGPL-3.0-or-later"
+
+[lib]
+path = "src/lib.rs"
+
+[[bench]]
+name = "upo_bench"
+harness = false
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.5"
