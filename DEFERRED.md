@@ -13,7 +13,26 @@
 
 ---
 
-## 1. Портирование старых бенчмарков
+## 1. Domain JSON API и конфигурация - КРИТИЧЕСКИЙ
+
+**Где:** `runtime/src/domain.rs`, `runtime/src/domain_config.rs`  
+**Что отложено:** JSON сериализация/десериализация DomainConfig, API для создания/модификации  
+**Почему:** Нужно с самого начала для гибкости и экспериментов  
+**Когда планируется:** Немедленно - блокирует дальнейшую разработку  
+
+**Требуется:**
+- JSON serde derive для DomainConfig
+- Factory методы для стандартных доменов (Logic, Dream, Math...)
+- from_file() для загрузки YAML/JSON конфигов
+- Builder pattern для кастомизации доменов
+- Валидация конфигов при загрузке
+- Примеры конфигов для Ashti_Core доменов
+
+**Приоритет:** КРИТИЧЕСКИЙ - фундамент для всей архитектуры
+
+---
+
+## 2. Портирование старых бенчмарков
 
 **Где:** `runtime/benches/`  
 **Что отложено:** token_bench, connection_v3_bench, grid_bench, graph_bench, intuition_bench, experience_stream_bench, system_integration_bench, token_1m_bench  
@@ -22,21 +41,24 @@
 
 ---
 
-## 2. Миграция runtime кода
+## 3. Оптимизация DomainConfig до 128 байт
 
-**Где:** `runtime/src/`  
-**Что отложено:** обновление структур Token, Connection, COM до новых спецификаций  
-**Почему:** текущий runtime использует UPO v2.1, нужны V5.1/V5.0/V1.0  
-**Когда:** v0.1.0 - Foundation
+**Где:** `runtime/src/domain.rs`  
+**Что отложено:** Оптимизация структуры DomainConfig с 184 до 128 байт  
+**Почему:** Проблема с выравниванием полей в Rust (padding)  
+**Когда планируется:** После реализации JSON API  
 
----
+**Текущий статус:** 184 байта вместо 128  
+**Проблема:** 
+- Выравнивание полей создает padding (~56 байт)
+- Спецификация DomainConfig V1.0 содержит больше полей чем Domain V1.3
+- Нужно выбрать правильную спецификацию
 
-## 3. Реализация Domain V1.3
-
-**Где:** `runtime/src/domain/` (новый модуль)  
-**Что отложено:** Field physics, Membrane filters, Anchor mechanics  
-**Почему:** требует новой архитектуры вычислений  
-**Когда:** v0.2.0 - Domain Engine
+**Возможные решения:** 
+- Использовать спецификацию Domain V1.3 (меньше полей)
+- Пересмотреть порядок полей для минимизации padding
+- Использовать `#[repr(packed)]` с осторожностью
+- Обновить спецификацию DomainConfig V1.0 до 128 байт
 
 ---
 
@@ -49,7 +71,16 @@
 
 ---
 
-## 5. Визуализация и отладка
+## 5. Портирование старых бенчмарков
+
+**Где:** `runtime/benches/`  
+**Что отложено:** token_bench, connection_v3_bench, grid_bench, graph_bench, intuition_bench, experience_stream_bench, system_integration_bench, token_1m_bench  
+**Почему:** используют старый API (CoordinateSpace, EntityType, token::flags и др.), несовместимый с новыми спецификациями  
+**Когда:** после стабилизации нового API Token/Connection V5.x
+
+---
+
+## 6. Визуализация и отладка
 
 **Где:** `tools/visualizer/` (новый инструмент)  
 **Что отложено:** 3D визуализатор Ashti_Core, отладчик COM timeline, профайлер Domain  
@@ -58,7 +89,7 @@
 
 ---
 
-## 6. SDK и экосистема
+## 7. SDK и экосистема
 
 **Где:** `sdk/` (новая директория)  
 **Что отложено:** Python bindings, REST API, язык описания CODEX  

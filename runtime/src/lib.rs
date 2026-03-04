@@ -9,6 +9,7 @@ pub mod token;
 pub mod connection;
 pub mod event;
 pub mod upo;
+pub mod domain;
 
 #[cfg(test)]
 mod debug_sizes;
@@ -20,6 +21,12 @@ pub use upo::{
     DynamicTrace, Screen, UPOConfig, UPO,
     TraceSourceType, OctantStats,
     TRACE_ACTIVE, TRACE_FADING, TRACE_LOCKED, TRACE_ETERNAL
+};
+pub use domain::{
+    DomainConfig, StructuralRole, DomainType,
+    DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
+    PROCESSING_IDLE, PROCESSING_ACTIVE, PROCESSING_FROZEN,
+    MEMBRANE_OPEN, MEMBRANE_CLOSED, MEMBRANE_SEMI
 };
 
 #[cfg(test)]
@@ -160,6 +167,57 @@ mod tests {
         assert_eq!(screen.trace_count, 2);
         assert_eq!(screen.octants[7].trace_count, 1); // +++
         assert_eq!(screen.octants[0].trace_count, 1); // ---
+    }
+
+    #[test]
+    fn domain_v1_3_validation() {
+        let domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        assert!(domain.validate());
+        
+        // Невалидный домен
+        let invalid_domain = DomainConfig::default();
+        assert!(!invalid_domain.validate());
+    }
+
+    #[test]
+    fn domain_membrane_filters() {
+        let mut domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        domain.threshold_mass = 10;
+        domain.threshold_temp = 20;
+        domain.membrane_state = MEMBRANE_OPEN;
+        
+        assert!(domain.can_enter(15, 25));
+        assert!(!domain.can_enter(5, 25));
+        assert!(!domain.can_enter(15, 15));
+        
+        domain.membrane_state = MEMBRANE_CLOSED;
+        assert!(!domain.can_enter(15, 25));
+    }
+
+    #[test]
+    fn domain_complexity_calculation() {
+        let mut domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        domain.token_capacity = 100;
+        domain.connection_capacity = 50;
+        domain.gravity_strength = 2.0;
+        domain.friction_coeff = 0.2;
+        
+        let complexity = domain.calculate_complexity();
+        assert!(complexity > 0.0);
+        
+        // Проверяем формулу: 100*0.1 + 50*0.05 + (2.0+0.2)*10.0 = 10 + 2.5 + 22 = 34.5
+        assert!((complexity - 34.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn domain_metadata_update() {
+        let mut domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        domain.created_at = 100;
+        domain.error_count = 5;
+        
+        domain.update_metadata(150);
+        assert_eq!(domain.last_update, 150);
+        assert_eq!(domain.error_count, 0);
     }
 
     #[test]

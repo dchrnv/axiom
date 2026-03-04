@@ -13,11 +13,13 @@ mod tests {
         println!("Connection size: {} (expected: 64)", std::mem::size_of::<Connection>());
         println!("Event size: {} (expected: 32)", std::mem::size_of::<Event>());
         println!("DynamicTrace size: {} (expected: 32)", std::mem::size_of::<DynamicTrace>());
+        println!("DomainConfig size: {} (expected: 128)", std::mem::size_of::<DomainConfig>());
         
         println!("Token align: {} (expected: 64)", std::mem::align_of::<Token>());
         println!("Connection align: {} (expected: 64)", std::mem::align_of::<Connection>());
         println!("Event align: {} (expected: 32)", std::mem::align_of::<Event>());
         println!("DynamicTrace align: {} (expected: 32)", std::mem::align_of::<DynamicTrace>());
+        println!("DomainConfig align: {} (expected: 128)", std::mem::align_of::<DomainConfig>());
         
         // Token field offsets
         println!("Token sutra_id offset: {}", std::mem::offset_of!(Token, sutra_id));

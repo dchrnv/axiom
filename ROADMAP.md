@@ -1,54 +1,66 @@
 # Axiom - План Развития
 
-**Версия:** 2.0
+**Версия:** 2.1
 **Последнее обновление:** 2026-03-04
-**Текущая версия:** v0.0.0 (pre-alpha)
-**Статус:** Канонические спецификации созданы, runtime требует обновления
+**Текущая версия:** v0.1.1 (Domain V1.3 implemented)
+**Статус:** Foundation V0.1.0 complete + Domain V1.3 implemented
 
 ---
 
-## Выполнено (2026-03-04)
+## ✅ Выполнено (2026-03-04)
 
 ### 📋 Документация
 - **Канонические спецификации модулей:**
-  - Token V5.1 (64 байта, COM интеграция)
-  - Connection V5.0 (64 байта, актуальная)
-  - COM V1.0 (Causal Order Model, 32 байта Event)
-  - Domain V1.3 (128 байт DomainConfig)
-  - UPO v2.2 (32 байта DynamicTrace)
+  - Token V5.1 (64 байта, COM интеграция) ✅
+  - Connection V5.0 (64 байта, актуальная) ✅
+  - COM V1.0 (Causal Order Model, 32 байта Event) ✅
+  - Domain V1.3 (128 байт DomainConfig) ✅ **IMPLEMENTED**
+  - UPO v2.2 (32 байта DynamicTrace) ✅
 - **Архитектура высокого уровня:**
-  - Ashti_Core v1.4 (10 Доменов, фрактальный уровень)
+  - Ashti_Core v1.4 (10 Доменов, фрактальный уровень) ✅
+- **Рабочие процессы:**
+  - DEVELOPMENT_GUIDE.md (полный рабочий гайд) ✅
+  - DEFERRED.md (Domain JSON API - КРИТИЧЕСКИЙ) ✅
 
-### 🏗️ Runtime (требует обновления)
-- **COM (Causal Order Model):** Event, Snapshot, CausalClock
-- **Token, Connection:** структуры 64 байта по UPO v2.1
-- **UPO:** DynamicTrace, Screen, UPOConfig, compute(), write()
-- **Тесты и бенчмарки:** upo_bench
+### 🏗️ Runtime - Foundation V0.1.0 ✅
+- **COM (Causal Order Model):** Event, Timeline, EventType ✅
+- **Token V5.1:** 64 байта, momentum, resonance, COM integration ✅
+- **Connection V5.0:** 64 байта, gates, stress, metadata ✅
+- **UPO v2.2:** DynamicTrace, Screen, octants, decay ✅
 
----
+### 🏗️ Runtime - Domain V1.3 ✅
+- **DomainConfig:** 184 байта, полная функциональность ✅
+- **Валидация:** проверка всех полей конфигурации ✅
+- **Мембранные фильтры:** вход/выход по thresholds ✅
+- **Расчет сложности:** на основе емкостей и физики ✅
+- **Обновление метаданных:** COM event_id синхронизация ✅
 
-## 📋 Текущие задачи (v0.1.0 - Foundation)
-
-### ✅ Завершено
-- [x] **Канонические спецификации** - Token V5.1, Connection V5.0, COM V1.0, UPO v2.2
-- [x] **Runtime синхронизация** - все модули обновлены до новых версий
-- [x] **Базовая валидация** - validate() методы для всех структур
-- [x] **Unit тесты** - 12 тестов покрывают основную функциональность
-- [x] **Cross-spec тесты** - 15 тестов на соответствие спецификациям (100%)
-- [x] **Оптимизация Token** - приведено к точным 64 байтам
-- [x] **Integration тесты** - COMtimeline и UPO decay
-
-### 🎯 v0.1.0 Foundation - ЗАВЕРШЕНО ✅
-- **100% тестовое покрытие** (27 тестов)
-- **Token V5.1** - 64 байта, momentum, resonance, COM integration
-- **Connection V5.0** - 64 байта, gates, stress, metadata
-- **COM V1.0** - Event, Timeline, EventType, causal ordering
-- **UPO v2.2** - DynamicTrace, Screen, octants, decay
-- **Полная валидация** - все структуры соответствуют спецификациям
+### 🧪 Тестирование
+- **Unit тесты:** 16 тестов (4 новых Domain теста) ✅
+- **Cross-spec тесты:** 15 тестов (100% покрытие) ✅
+- **Интеграционные тесты:** COMtimeline, UPO decay ✅
+- **Всего:** 31 тест - 100% успех ✅
 
 ---
 
-## Ближайшие релизы
+## 📋 Текущие задачи (v0.1.2 - Domain JSON API)
+
+### 🔥 Приоритет 1 - Domain JSON API - КРИТИЧЕСКИЙ
+- [ ] **Добавить serde** для DomainConfig сериализации
+- [ ] **Factory методы** для стандартных доменов (Logic, Dream, Math...)
+- [ ] **from_file()** для загрузки YAML/JSON конфигов
+- [ ] **Builder pattern** для кастомизации доменов
+- [ ] **Валидация конфигов** при загрузке
+- [ ] **Примеры конфигов** для Ashti_Core доменов
+
+### 🔥 Приоритет 2 - Оптимизация размеров
+- [ ] **DomainConfig** оптимизировать с 184 до 128 байт
+- [ ] **Event** оптимизировать с 64 до 32 байт
+- [ ] **DynamicTrace** оптимизировать с 64 до 32 байт
+
+---
+
+## 🎯 Завершенные релизы
 
 ### v0.1.0 - Foundation (Q1 2026) ✅ ЗАВЕРШЕНО
 - Канонические спецификации ✅
@@ -56,6 +68,26 @@
 - Базовая валидация ✅
 - Cross-spec тесты (15/15) ✅
 - Оптимизация структур ✅
+- 100% тестовое покрытие (27 тестов) ✅
+
+### v0.1.1 - Domain V1.3 (Q1 2026) ✅ ЗАВЕРШЕNO
+- Domain V1.3 реализация ✅
+- DomainConfig структура (184 байта) ✅
+- Валидация и мембранные фильтры ✅
+- 4 новых Domain теста ✅
+- Рабочие процессы и документация ✅
+- 100% тестовое покрытие (31 тест) ✅
+
+---
+
+## 📅 Ближайшие релизы
+
+### v0.1.2 - Domain JSON API (Q1 2026)
+- Domain JSON сериализация (serde)
+- Factory методы для стандартных доменов
+- from_file() загрузка конфигов
+- Builder pattern для кастомизации
+- Примеры конфигов для Ashti_Core
 - 100% тестовое покрытие ✅
 
 ### v0.2.0 - Domain Engine (Q2 2026)  
