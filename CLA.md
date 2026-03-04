@@ -1,15 +1,15 @@
-# NeuroGraph Contributor License Agreement (CLA)
+# Axiom Contributor License Agreement (CLA)
 
 **Version:** 1.0
-**Effective Date:** December 9, 2025
-**Project:** NeuroGraph Cognitive Architecture
+**Effective Date:** March 4, 2026
+**Project:** Axiom Cognitive Architecture
 **Project Owner:** Chernov Denys
 
 ---
 
 ## Purpose
 
-This Contributor License Agreement ("Agreement") clarifies the intellectual property rights granted with Contributions from any person or entity to the NeuroGraph project. This Agreement enables a dual-licensing business model while ensuring the open-source community retains access under free licenses.
+This Contributor License Agreement ("Agreement") clarifies the intellectual property rights granted with Contributions from any person or entity to the Axiom project. This Agreement enables a dual-licensing business model while ensuring the open-source community retains access under free licenses.
 
 ---
 
@@ -17,7 +17,7 @@ This Contributor License Agreement ("Agreement") clarifies the intellectual prop
 
 ### 1. "Contribution"
 
-Any original work of authorship, including any modifications or additions to existing work, that is submitted by You to the Project Owner for inclusion in the NeuroGraph project. This includes, but is not limited to:
+Any original work of authorship, including any modifications or additions to existing work, that is submitted by You to the Project Owner for inclusion in the Axiom project. This includes, but is not limited to:
 
 #### A. Source Code
 - Rust, Python, JavaScript, or any programming language code
@@ -34,10 +34,10 @@ Any original work of authorship, including any modifications or additions to exi
 - **Model Configurations**: Hyperparameters, training recipes, optimization settings
 
 #### C. Data Assets
-- **CDNA (Constitutional DNA)**: Behavioral rules, constraints, value systems
+- **CDNA (Constitutional DNA)**: Behavioral rules, constraints, value systems, Domain laws
 - **Semantic Graphs**: Knowledge graphs, ontologies, taxonomies
 - **Token Structures**: Semantic tokens, embeddings, vector representations
-- **Pre-configured Systems**: Pre-built NeuroGraph instances with trained structures
+- **Pre-configured Systems**: Pre-built Axiom instances with trained structures
 
 #### D. Documentation & Content
 - Technical specifications, API documentation, tutorials
@@ -62,19 +62,19 @@ The individual or legal entity exercising permissions granted by this Agreement.
 
 ### 3. "Project Owner"
 
-Chernov Denys, the creator and maintainer of the NeuroGraph project, or any successor designated in writing.
+Chernov Denys, the creator and maintainer of the Axiom project, or any successor designated in writing.
 
 ### 4. "Public License"
 
-The current open-source licenses used by the NeuroGraph project:
+The current open-source licenses used by the Axiom project:
 - **Code**: GNU Affero General Public License v3.0 (AGPLv3)
-- **Data/Models**: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+- **Data/Models/Weights**: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
 
 ---
 
 ## Grant of Rights
 
-By submitting a Contribution to the NeuroGraph project, You agree to the following terms:
+By submitting a Contribution to the Axiom project, You agree to the following terms:
 
 ### License Grant 1: Public License (Open Source)
 
@@ -101,8 +101,8 @@ You hereby grant to the Project Owner a **perpetual, worldwide, exclusive, irrev
    - Licenses that remove CC BY-NC-SA non-commercial and share-alike restrictions
 
 5. **Sell or Commercialize** Your Contribution as part of:
-   - Commercial NeuroGraph distributions
-   - Proprietary licensed versions of NeuroGraph
+   - Commercial Axiom distributions
+   - Proprietary licensed versions of Axiom
    - SaaS (Software-as-a-Service) offerings
    - Enterprise licenses with custom terms
    - Closed-source integrations and products
@@ -199,7 +199,7 @@ However, the Project Owner reserves the right to remove attribution in commercia
 
 ## Irrevocability
 
-This Agreement is **irrevocable**. Once You submit a Contribution under this Agreement, You cannot withdraw the licenses granted herein. This ensures the long-term stability and commercial viability of the NeuroGraph project.
+This Agreement is **irrevocable**. Once You submit a Contribution under this Agreement, You cannot withdraw the licenses granted herein. This ensures the long-term stability and commercial viability of the Axiom project.
 
 ---
 
@@ -226,50 +226,3 @@ By submitting a Contribution (via pull request, patch, email, or any other metho
 **Explicit Confirmation (Optional but Recommended):**
 
 Add the following comment to your first pull request:
-
-```
-I have read and agree to the NeuroGraph Contributor License Agreement (CLA):
-https://github.com/dchrnv/neurograph-os/blob/main/docs/legal/CLA.md
-
-I confirm that I have the rights to submit this Contribution and grant the licenses described in the CLA.
-```
-
-### For Corporate Contributors
-
-If You are contributing on behalf of Your employer or a legal entity, Your organization's authorized representative must sign the **Corporate CLA** by emailing:
-
-**Email:** dreeftwood@gmail.com
-**Subject:** NeuroGraph Corporate CLA Agreement
-**Body:**
-```
-Organization Name: [Company Name]
-Authorized Signatory: [Name, Title]
-Date: [Date]
-
-On behalf of [Company Name], I agree to the terms of the NeuroGraph Corporate CLA
-as described at: https://github.com/dchrnv/neurograph-os/blob/main/docs/legal/CLA.md
-
-Authorized Signature: ___________________________
-```
-
----
-
-## Questions?
-
-If You have questions about this Agreement, please contact:
-
-**Project Owner:** Chernov Denys
-**Email:** dreeftwood@gmail.com
-**GitHub:** [@dchrnv](https://github.com/dchrnv)
-
----
-
-## Version History
-
-- **v1.0** (2025-12-09): Initial version with comprehensive ML provisions
-
----
-
-**Thank you for contributing to NeuroGraph!**
-
-Your Contributions help build a powerful cognitive architecture while enabling a sustainable dual-licensing business model. The open-source community benefits from free access under AGPL/CC licenses, while commercial users can obtain proprietary licenses that support continued development.
