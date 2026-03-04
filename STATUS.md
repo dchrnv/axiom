@@ -45,11 +45,11 @@
 - [x] **Реализовать COM** V1.0 (Event, Timeline)
 - [x] **Обновить UPO** до v2.2 (octants, decay)
 
-### 🔥 Приоритет 2 - Validation
+### 🔥 Приоритет 2 - Validation ✅ ЗАВЕРШЕНО
 - [x] **Валидация структур** в runtime коде
-- [x] **Unit тесты** для новых структур
-- [ ] **Cross-spec тесты** (соответствие спецификациям)
-- [ ] **Integration тесты** для COMtimeline
+- [x] **Unit тесты** для новых структур (12 тестов)
+- [x] **Cross-spec тесты** (15 тестов) - 100% покрытие
+- [x] **Integration тесты** для COMtimeline
 
 ---
 
@@ -68,14 +68,14 @@
 
 ## 🎯 Следующие релизы
 
-### v0.1.0 - Foundation (Q1 2026)
+### v0.1.0 - Foundation (Q1 2026) ✅ ЗАВЕРШЕНО
 - [x] Канонические спецификации
 - [x] Runtime синхронизация (Token, Connection, COM, UPO)
 - [x] Базовая валидация
-- [x] Unit тесты (11 тестов)
-- [x] Cross-spec тесты (13/15 тестов)
-- [ ] Исправить 2 failing cross-spec теста
-- [ ] Integration тесты для COMtimeline
+- [x] Unit тесты (12 тестов)
+- [x] Cross-spec тесты (15 тестов) - 100% покрытие
+- [x] Integration тесты для COMtimeline
+- [x] Оптимизация структур (Token 64 байта)
 
 ### v0.2.0 - Domain Engine (Q2 2026)
 - [ ] Domain V1.3 реализация

@@ -8,8 +8,8 @@ pub const STATE_ACTIVE: u8 = 1;
 pub const STATE_SLEEPING: u8 = 2;
 pub const STATE_LOCKED: u8 = 3;
 
-/// Token — 64 байта, выравнивание 64.
-#[repr(C, align(64))]
+/// Token — 64 байта, выравнивание 8.
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Token {
     // --- ИДЕНТИФИКАЦИЯ (8 Байт) ---
@@ -34,7 +34,6 @@ pub struct Token {
     pub momentum: [i32; 3],
     pub resonance: u32,
     pub last_event_id: u64,
-    pub reserved_nav: [u8; 4],
 }
 
 impl Default for Token {
@@ -55,7 +54,6 @@ impl Default for Token {
             momentum: [0; 3],
             resonance: 0,
             last_event_id: 0,
-            reserved_nav: [0; 4],
         }
     }
 }
@@ -101,8 +99,12 @@ impl Token {
         self.last_event_id = event_id;
     }
 
+    pub fn compute_resonance(&self) -> u32 {
+        (self.momentum[0].pow(2) + self.momentum[1].pow(2) + self.momentum[2].pow(2)) as u32
+    }
+
     /// Вычисление резонанса с другим токеном
-    pub fn compute_resonance(&self, other: &Token) -> u32 {
+    pub fn compute_resonance_with(&self, other: &Token) -> u32 {
         let freq_diff = (self.resonance as i32 - other.resonance as i32).abs();
         (1000 - freq_diff.min(999)) as u32
     }

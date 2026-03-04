@@ -169,14 +169,14 @@ impl Screen {
             
             trace.weight = (trace.weight * decay_factor).max(self.min_intensity);
             
-            if trace.weight <= self.min_intensity * 1.1 {
-                trace.flags |= TRACE_FADING;
+            // Вечная память - если вес достиг минимума
+            if trace.weight == self.min_intensity {
+                trace.flags |= TRACE_ETERNAL;
             }
             
-            // Вечная память
-            if trace.weight < self.min_intensity {
-                trace.weight = self.min_intensity;
-                trace.flags |= TRACE_ETERNAL;
+            // Флаг затухания - если вес уменьшился
+            if event_age > 0 {
+                trace.flags |= TRACE_FADING;
             }
         }
     }
