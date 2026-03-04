@@ -1,12 +1,202 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// UPO v2.1 — docs/spec/UPO v2.1.md
-
-use std::f32::consts::PI;
+// UPO v2.2 — docs/spec/UPO v2.2.md
 
 use crate::connection::Connection;
 use crate::token::Token;
+
+/// Источники следа
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TraceSourceType {
+    Token = 1,
+    Connection = 2,
+    Field = 3,
+}
+
+/// Флаги следа
+pub const TRACE_ACTIVE: u8 = 1;
+pub const TRACE_FADING: u8 = 2;
+pub const TRACE_LOCKED: u8 = 4;
+pub const TRACE_ETERNAL: u8 = 8;
+
+/// DynamicTrace — 32 байта. Запись на экране.
+#[repr(C, align(32))]
+#[derive(Clone, Copy, Debug)]
+pub struct DynamicTrace {
+    // --- ПРОСТРАНСТВО (12 Байт) ---
+    pub x: i32,                 // Координата X на экране
+    pub y: i32,                 // Координата Y на экране  
+    pub z: i32,                 // Координата Z на экране
+
+    // --- ХАРАКТЕРИСТИКИ (8 Байт) ---
+    pub weight: f32,            // Вес/интенсивность точки
+    pub frequency: f32,         // Частота колебаний
+
+    // --- ВРЕМЯ (8 Байт) ---
+    pub created_at: u64,        // COM event_id создания следа
+    pub last_update: u64,       // COM event_id последнего обновления
+
+    // --- МЕТАДАННЫЕ (4 Байт) ---
+    pub source_type: u8,        // Источник (Token/Connection/Field)
+    pub source_id: u32,         // ID источника
+    pub flags: u8,              // ACTIVE/FADING/LOCKED
+    pub resonance_class: u8,    // Класс резонанса
+}
+
+impl DynamicTrace {
+    pub fn new(
+        x: i32, y: i32, z: i32,
+        weight: f32, frequency: f32,
+        created_at: u64, last_update: u64,
+        source_type: TraceSourceType,
+        source_id: u32,
+        resonance_class: u8,
+    ) -> Self {
+        Self {
+            x, y, z,
+            weight,
+            frequency,
+            created_at,
+            last_update,
+            source_type: source_type as u8,
+            source_id,
+            flags: TRACE_ACTIVE,
+            resonance_class,
+        }
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.flags & TRACE_ACTIVE != 0
+    }
+
+    pub fn is_fading(&self) -> bool {
+        self.flags & TRACE_FADING != 0
+    }
+
+    pub fn is_eternal(&self) -> bool {
+        self.flags & TRACE_ETERNAL != 0
+    }
+
+    /// Валидация согласно спецификации UPO v2.2
+    pub fn validate(&self, screen: &Screen) -> bool {
+        self.weight >= screen.min_intensity
+        && self.created_at > 0
+        && self.last_update >= self.created_at
+        && self.x >= -screen.size[0]/2 && self.x <= screen.size[0]/2
+        && self.y >= -screen.size[1]/2 && self.y <= screen.size[1]/2
+        && self.z >= -screen.size[2]/2 && self.z <= screen.size[2]/2
+    }
+}
+
+/// Статистика по октанту
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct OctantStats {
+    pub trace_count: u32,       // Количество следов в октанте
+    pub total_energy: f32,       // Общая энергия
+    pub dominant_frequency: f32,  // Доминирующая частота
+    pub last_event_id: u64,      // Последний event_id
+}
+
+/// Экран — 3D пространство следов с затуханием по event_id.
+pub struct Screen {
+    // --- ПАРАМЕТРЫ (32 Байта) ---
+    pub size: [i32; 3],        // Размеры экрана (X, Y, Z)
+    pub resolution: f32,        // Разрешение (единица на пиксель)
+    pub min_intensity: f32,     // Минимальная интенсивность (> 0)
+    pub decay_rate: f32,        // Скорость затухания
+    pub current_event_id: u64,  // Текущий COM event_id
+    pub trace_count: u32,       // Количество следов
+    pub total_energy: f32,       // Общая энергия экрана
+    pub octant_mask: u8,        // Маска активных октантов
+
+    // --- ДАННЫЕ (динамические) ---
+    pub traces: Vec<DynamicTrace>, // Массив следов
+    pub octants: [OctantStats; 8], // Статистика по октантам
+}
+
+impl Screen {
+    pub fn new(size: [i32; 3], min_intensity: f32, decay_rate: f32) -> Self {
+        Self {
+            size,
+            resolution: 1.0,
+            min_intensity,
+            decay_rate,
+            current_event_id: 0,
+            trace_count: 0,
+            total_energy: 0.0,
+            octant_mask: 0xFF, // Все октанты активны
+            traces: Vec::new(),
+            octants: [OctantStats {
+                trace_count: 0,
+                total_energy: 0.0,
+                dominant_frequency: 0.0,
+                last_event_id: 0,
+            }; 8],
+        }
+    }
+
+    pub fn set_current_event(&mut self, event_id: u64) {
+        self.current_event_id = event_id;
+        self.apply_decay();
+    }
+
+    /// Добавление следа на экран
+    pub fn write(&mut self, trace: &DynamicTrace) {
+        if !trace.validate(self) {
+            return;
+        }
+
+        // Обновление октанта
+        let octant = self.get_octant(trace.x, trace.y, trace.z);
+        self.octants[octant].trace_count += 1;
+        self.octants[octant].total_energy += trace.weight;
+        self.octants[octant].dominant_frequency = trace.frequency;
+        self.octants[octant].last_event_id = trace.last_update;
+
+        self.traces.push(*trace);
+        self.trace_count += 1;
+        self.total_energy += trace.weight;
+    }
+
+    /// Применение затухания ко всем следам
+    pub fn apply_decay(&mut self) {
+        for trace in &mut self.traces {
+            let event_age = self.current_event_id - trace.last_update;
+            let decay_factor = (-(event_age as f32) * self.decay_rate).exp();
+            
+            trace.weight = (trace.weight * decay_factor).max(self.min_intensity);
+            
+            if trace.weight <= self.min_intensity * 1.1 {
+                trace.flags |= TRACE_FADING;
+            }
+            
+            // Вечная память
+            if trace.weight < self.min_intensity {
+                trace.weight = self.min_intensity;
+                trace.flags |= TRACE_ETERNAL;
+            }
+        }
+    }
+
+    /// Получение октанта по координатам
+    fn get_octant(&self, x: i32, y: i32, z: i32) -> usize {
+        let x_oct = if x >= 0 { 1 } else { 0 };
+        let y_oct = if y >= 0 { 1 } else { 0 };
+        let z_oct = if z >= 0 { 1 } else { 0 };
+        (x_oct << 2) | (y_oct << 1) | z_oct
+    }
+
+    /// Очистка старых следов
+    pub fn cleanup(&mut self, max_age: u64) {
+        self.traces.retain(|trace| {
+            self.current_event_id - trace.last_update <= max_age || trace.is_eternal()
+        });
+        self.trace_count = self.traces.len() as u32;
+    }
+}
 
 /// Режим обновления UPO.
 #[derive(Clone, Copy, Debug)]
@@ -16,114 +206,17 @@ pub enum UpdateMode {
     OnDemand,
 }
 
-/// DynamicTrace — 32 байта. Запись на экран.
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct DynamicTrace {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-    pub weight: f32,
-    pub event_id: u64,
-    pub _reserved: [u8; 8],
-}
-
-impl DynamicTrace {
-    pub fn new(x: f32, y: f32, z: f32, weight: f32, event_id: u64) -> Self {
-        Self {
-            x: x.clamp(-1.0, 1.0),
-            y: y.clamp(-1.0, 1.0),
-            z: z.clamp(-1.0, 1.0),
-            weight,
-            event_id,
-            _reserved: [0; 8],
-        }
-    }
-}
-
-/// Экран — 256³, ленивое затухание по event_id.
-pub const GRID_SIZE: usize = 256;
-
-pub struct Screen {
-    pub grid: Box<[[[f32; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>,
-    pub last_event: Box<[[[u64; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>,
-    pub decay: f32,
-    pub min_intensity: f32,
-    pub current_event: u64,
-}
-
-impl Screen {
-    pub fn new(decay: f32, min_intensity: f32) -> Self {
-        let grid = unsafe {
-            let layout = std::alloc::Layout::new::<[[[f32; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>();
-            let ptr = std::alloc::alloc_zeroed(layout);
-            if ptr.is_null() {
-                std::alloc::handle_alloc_error(layout);
-            }
-            Box::from_raw(ptr as *mut _)
-        };
-
-        let last_event = unsafe {
-            let layout = std::alloc::Layout::new::<[[[u64; GRID_SIZE]; GRID_SIZE]; GRID_SIZE]>();
-            let ptr = std::alloc::alloc_zeroed(layout);
-            if ptr.is_null() {
-                std::alloc::handle_alloc_error(layout);
-            }
-            Box::from_raw(ptr as *mut _)
-        };
-
-        Self {
-            grid,
-            last_event,
-            decay,
-            min_intensity,
-            current_event: 0,
-        }
-    }
-
-    pub fn set_current_event(&mut self, event_id: u64) {
-        self.current_event = event_id;
-    }
-
-    /// Запись DynamicTrace на экран с ленивым затуханием.
-    pub fn write(&mut self, trace: &DynamicTrace) {
-        let ix = ((trace.x + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
-        let iy = ((trace.y + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
-        let iz = ((trace.z + 1.0) * 0.5 * (GRID_SIZE as f32)).clamp(0.0, (GRID_SIZE - 1) as f32) as usize;
-
-        let last = self.last_event[ix][iy][iz];
-        if last < self.current_event {
-            let steps = self.current_event - last;
-            let decay_factor = self.decay.powi(steps as i32);
-            let v = &mut self.grid[ix][iy][iz];
-            *v *= decay_factor;
-            if v.abs() < self.min_intensity {
-                *v = self.min_intensity * v.signum();
-            }
-        }
-
-        self.grid[ix][iy][iz] += trace.weight;
-        self.last_event[ix][iy][iz] = self.current_event;
-    }
-}
-
 /// Конфигурация UPO.
 #[derive(Clone, Debug)]
 pub struct UPOConfig {
     pub domain_id: u16,
     pub update_mode: UpdateMode,
-    pub event_threshold: f32,
-    pub smoothing: f32,
-    pub alpha1: f32,
-    pub alpha2: f32,
-    pub alpha3: f32,
-    pub beta: f32,
-    pub gamma: f32,
-    pub delta: f32,
-    pub use_connections: bool,
-    pub min_tokens: usize,
-    pub v_max_adaptive: f32,
-    pub stress_max: f32,
+    pub screen_size: [i32; 3],    // Размеры экрана
+    pub min_intensity: f32,        // Минимальная интенсивность
+    pub decay_rate: f32,           // Скорость затухания
+    pub use_connections: bool,      // Использовать Connection
+    pub min_tokens: usize,         // Минимальное количество токенов
+    pub resonance_threshold: f32,   // Порог резонанса
 }
 
 impl Default for UPOConfig {
@@ -131,18 +224,12 @@ impl Default for UPOConfig {
         Self {
             domain_id: 0,
             update_mode: UpdateMode::OnEvent,
-            event_threshold: 0.0,
-            smoothing: 0.5,
-            alpha1: 1.0,
-            alpha2: 0.5,
-            alpha3: 0.5,
-            beta: 1.0,
-            gamma: 1.0,
-            delta: 0.5,
+            screen_size: [256, 256, 256],
+            min_intensity: 0.001,
+            decay_rate: 0.01,
             use_connections: false,
             min_tokens: 1,
-            v_max_adaptive: 1.0,
-            stress_max: 1.0,
+            resonance_threshold: 0.5,
         }
     }
 }
@@ -150,14 +237,12 @@ impl Default for UPOConfig {
 /// UPO — вычисление метрик и генерация DynamicTrace.
 pub struct UPO {
     config: UPOConfig,
-    prev_avg_vel: [f32; 3],
 }
 
 impl UPO {
     pub fn new(config: UPOConfig) -> Self {
         Self {
             config,
-            prev_avg_vel: [0.0; 3],
         }
     }
 
@@ -173,97 +258,123 @@ impl UPO {
             .filter(|t| t.domain_id == self.config.domain_id && t.is_active())
             .collect();
 
-        if active_tokens.is_empty() {
+        if active_tokens.len() < self.config.min_tokens {
             return None;
         }
 
-        let total_mass: u64 = active_tokens.iter().map(|t| t.mass as u64).sum();
-        if total_mass == 0 {
+        // Вычисление Token динамики
+        let token_trace = self.compute_token_dynamics(&active_tokens, event_id)?;
+        
+        // Вычисление Connection стресса если включено
+        let connection_stress = if self.config.use_connections {
+            self.compute_connection_stress(connections)
+        } else {
+            0.0
+        };
+
+        // Комбинированный след
+        let combined_trace = DynamicTrace::new(
+            token_trace.x,
+            token_trace.y,
+            token_trace.z,
+            token_trace.weight + connection_stress,
+            token_trace.frequency,
+            token_trace.created_at,
+            token_trace.last_update,
+            TraceSourceType::Token,
+            active_tokens[0].sutra_id,
+            self.compute_resonance_class(&active_tokens),
+        );
+
+        Some(combined_trace)
+    }
+
+    /// Вычисление динамики Token
+    fn compute_token_dynamics(&self, tokens: &[&Token], event_id: u64) -> Option<DynamicTrace> {
+        if tokens.is_empty() {
             return None;
         }
-        let total_mass_f = total_mass as f32;
 
-        // avg_vel
-        let mut avg_vel = [0.0_f32; 3];
-        for t in &active_tokens {
-            let m = t.mass as f32;
+        // Средняя скорость
+        let avg_velocity = self.compute_average_velocity(tokens);
+        
+        // Позиция на экране
+        let x = (avg_velocity[0] * 100.0) as i32;
+        let y = (avg_velocity[1] * 100.0) as i32;
+        let z = (avg_velocity[2] * 100.0) as i32;
+
+        // Вес и частота
+        let total_mass: f32 = tokens.iter().map(|t| t.mass as f32).sum();
+        let avg_temperature: f32 = tokens.iter().map(|t| t.temperature as f32).sum::<f32>() / tokens.len() as f32;
+        let weight = total_mass * (avg_temperature / 255.0);
+        let frequency = self.compute_average_frequency(tokens);
+
+        Some(DynamicTrace::new(
+            x, y, z,
+            weight,
+            frequency,
+            event_id,
+            event_id,
+            TraceSourceType::Token,
+            tokens[0].sutra_id,
+            0,
+        ))
+    }
+
+    /// Вычисление средней скорости
+    fn compute_average_velocity(&self, tokens: &[&Token]) -> [f32; 3] {
+        let mut sum = [0.0; 3];
+        let total_mass: f32 = tokens.iter().map(|t| t.mass as f32).sum();
+        
+        for token in tokens {
+            let mass = token.mass as f32;
             for i in 0..3 {
-                avg_vel[i] += (t.velocity[i] as f32) * m;
+                sum[i] += (token.velocity[i] as f32) * mass;
             }
         }
+        
         for i in 0..3 {
-            avg_vel[i] /= total_mass_f;
+            sum[i] /= total_mass;
+        }
+        
+        sum
+    }
+
+    /// Вычисление средней частоты
+    fn compute_average_frequency(&self, tokens: &[&Token]) -> f32 {
+        let sum: f32 = tokens.iter().map(|t| t.resonance as f32).sum();
+        sum / tokens.len() as f32
+    }
+
+    /// Вычисление стресса от Connection
+    fn compute_connection_stress(&self, connections: &[Connection]) -> f32 {
+        let active_conns: Vec<_> = connections
+            .iter()
+            .filter(|c| c.domain_id == self.config.domain_id && c.is_active())
+            .collect();
+
+        if active_conns.is_empty() {
+            return 0.0;
         }
 
-        let v = (avg_vel[0].powi(2) + avg_vel[1].powi(2) + avg_vel[2].powi(2)).sqrt();
-        let v_norm = (v / self.config.v_max_adaptive).min(1.0);
+        let total_stress: f32 = active_conns.iter()
+            .map(|c| c.current_stress / c.strength)
+            .sum();
 
-        // кривизна: угол между prev_avg_vel и avg_vel
-        let pv = &self.prev_avg_vel;
-        let pv_norm = (pv[0].powi(2) + pv[1].powi(2) + pv[2].powi(2)).sqrt();
-        let c = if pv_norm > 1e-9 && v > 1e-9 {
-            let dot = pv[0] * avg_vel[0] + pv[1] * avg_vel[1] + pv[2] * avg_vel[2];
-            let cos_angle = (dot / (pv_norm * v)).clamp(-1.0, 1.0);
-            (1.0 - cos_angle) / 2.0
-        } else {
-            0.0
-        };
-        self.prev_avg_vel = avg_vel;
-        let c_norm = (c / PI).min(1.0);
+        total_stress / active_conns.len() as f32
+    }
 
-        // avg_temp (signed)
-        let mut avg_temp = 0.0_f32;
-        for t in &active_tokens {
-            let sign = if t.valence >= 0 { 1.0 } else { -1.0 };
-            let temp_norm = t.temperature as f32 / 255.0;
-            avg_temp += sign * temp_norm * (t.mass as f32);
-        }
-        avg_temp /= total_mass_f;
-
-        let avg_mass = total_mass_f / (active_tokens.len() as f32);
-        let avg_mass_norm = (avg_mass / 255.0).min(1.0);
-
-        let mut stress_norm = 0.0_f32;
-        let mut total_stress_energy = 0.0_f32;
-        let mut total_strength = 0.0_f32;
-
-        if self.config.use_connections {
-            let active_conns: Vec<_> = connections
-                .iter()
-                .filter(|c| c.domain_id == self.config.domain_id && c.is_active())
-                .collect();
-            for conn in &active_conns {
-                total_stress_energy += conn.current_stress * conn.strength;
-                total_strength += conn.strength;
-            }
-            if total_strength > 0.0 {
-                let avg_stress = total_stress_energy / total_strength;
-                stress_norm = (avg_stress / self.config.stress_max).min(1.0);
-            }
+    /// Вычисление класса резонанса
+    fn compute_resonance_class(&self, tokens: &[&Token]) -> u8 {
+        if tokens.is_empty() {
+            return 0;
         }
 
-        let x = (self.config.alpha1 * v_norm + self.config.alpha2 * c_norm
-            + if self.config.use_connections {
-                self.config.alpha3 * stress_norm
-            } else {
-                0.0
-            })
-        .tanh();
-        let y = (self.config.beta * (1.0 - v_norm) * (1.0 + avg_mass_norm)).tanh();
-        let z = (self.config.gamma * avg_temp).tanh();
+        let avg_resonance = tokens.iter()
+            .map(|t| t.resonance)
+            .sum::<u32>() / tokens.len() as u32;
 
-        let confidence = (active_tokens.len() as f32 / self.config.min_tokens as f32).min(1.0);
-        let total_stress_norm = if self.config.stress_max > 0.0 {
-            total_stress_energy / self.config.stress_max
-        } else {
-            0.0
-        };
-        let weight = if self.config.use_connections {
-            (avg_mass_norm * avg_temp + self.config.delta * total_stress_norm) * confidence
-        } else {
-            avg_mass_norm * avg_temp * confidence
-        };
-
-        Some(DynamicTrace::new(x, y, z, weight, event_id))
+        // Классификация резонанса (0-255)
+        (avg_resonance / 1000).min(255) as u8
     }
 }
