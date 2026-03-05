@@ -1,0 +1,76 @@
+# Connection Schema Configuration
+# Semantic structure of Axiom connections
+
+# Connection types definition
+connection_types:
+  - name: "strong"
+    description: "Strong structural connection"
+    default_strength: 1.0
+    max_connections: 1000
+    decay_rate: 0.001
+    
+  - name: "weak"
+    description: "Weak associative connection"
+    default_strength: 0.3
+    max_connections: 5000
+    decay_rate: 0.01
+    
+  - name: "temporal"
+    description: "Time-based connection"
+    default_strength: 0.5
+    max_connections: 2000
+    decay_rate: 0.005
+
+# Connection configuration template
+connection_template:
+  type: object
+  required: ["connection_id", "source_token", "target_token", "connection_type"]
+  properties:
+    connection_id:
+      type: integer
+      minimum: 1
+      maximum: 4294967295
+    source_token:
+      type: integer
+      minimum: 1
+      maximum: 4294967295
+    target_token:
+      type: integer
+      minimum: 1
+      maximum: 4294967295
+    connection_type:
+      type: string
+      enum: ["strong", "weak", "temporal", "custom"]
+    strength:
+      type: number
+      minimum: 0.0
+      maximum: 10.0
+      default: 1.0
+    stress_threshold:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+      default: 0.8
+    decay_rate:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+      default: 0.01
+
+# Topological constraints
+topology_constraints:
+  max_degree:
+    description: "Maximum number of connections per token"
+    rule: "count(connections) <= max_connections"
+    
+  no_self_loops:
+    description: "Tokens cannot connect to themselves"
+    rule: "source_token != target_token"
+    
+  symmetry:
+    description: "Connection symmetry rules"
+    rule: "connection_type == 'strong' implies bidirectional == true"
+    
+  path_length:
+    description: "Maximum path length between tokens"
+    rule: "shortest_path(source, target) <= max_path_length"

@@ -376,3 +376,184 @@ cargo check --warnings
 ---
 
 **Помни:** Проект строится постепенно, с полным покрытием тестов на каждом этапе. Качество важнее скорости! 🚀
+
+## 🎯 **Правила реализации модулей с Configuration System:**
+
+### 📋 **Обязательные шаги при создании модуля:**
+
+#### **1. Интеграция с ConfigLoader**
+```rust
+// В конструкторе модуля
+use crate::config::{ConfigLoader, initialize};
+
+pub struct MyModule {
+    config: MyModuleConfig,
+}
+
+impl MyModule {
+    pub fn new() -> Result<Self, ConfigError> {
+        // Загрузить конфигурацию системы
+        let system_config = initialize()?;
+        
+        // Загрузить схему модуля
+        let mut loader = ConfigLoader::new();
+        let schema_config = loader.load_schema("my_module", 
+            Path::new(&system_config.schema.my_module))?;
+        
+        // Валидировать и применить
+        loader.validate(&config_value, &schema_config)?;
+        
+        Ok(Self { config })
+    }
+}
+```
+
+#### **2. Использование схем из config/schema/**
+```rust
+// Структура модуля должна соответствовать схеме
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyModuleConfig {
+    pub field1: String,  // Должен быть в schema
+    pub field2: u32,      // С валидацией
+    pub field3: bool,      // С ограничениями
+}
+
+impl MyModuleConfig {
+    pub fn from_schema(loader: &mut ConfigLoader) -> Result<Self, ConfigError> {
+        // Загрузка и валидация по схеме
+        let schema = loader.load_schema("my_module", Path::new("config/schema/my_module.yaml"))?;
+        // ... применение схемы
+    }
+}
+```
+
+#### **3. Валидация по правилам из схем**
+```rust
+impl MyModuleConfig {
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        // Использовать правила из config/schema/my_module.yaml
+        if self.field1.is_empty() {
+            return Err(ConfigError::ValidationError("field1 cannot be empty".to_string()));
+        }
+        
+        // Проверять ограничения из схемы
+        if self.field2 > 1000 {
+            return Err(ConfigError::ValidationError("field2 exceeds maximum".to_string()));
+        }
+        
+        Ok(())
+    }
+}
+```
+
+#### **4. Пресеты из типов в схемах**
+```rust
+impl MyModuleConfig {
+    pub fn from_preset(preset_name: &str) -> Self {
+        match preset_name {
+            "development" => Self {
+                field1: "dev".to_string(),
+                field2: 100,
+                field3: true,
+            },
+            "production" => Self {
+                field1: "prod".to_string(),
+                field2: 1000,
+                field3: false,
+            },
+            _ => Self::default(),
+        }
+    }
+}
+```
+
+#### **5. Обработка ошибок конфигураций**
+```rust
+impl MyModule {
+    pub fn new() -> Result<Self, ConfigError> {
+        let system_config = initialize().map_err(|e| {
+            // Логирование ошибки конфигурации
+            eprintln!("Failed to load system config: {}", e);
+            e
+        })?;
+        
+        // Graceful degradation
+        let config = Self::from_schema(&mut loader).unwrap_or_else(|e| {
+            eprintln!("Failed to load module schema, using defaults: {}", e);
+            Self::default()
+        });
+        
+        Ok(Self { config })
+    }
+}
+```
+
+### 📁 **Структура файлов для модуля:**
+
+```
+config/schema/
+├── my_module.yaml          # Схема модуля
+│   ├── my_module_template  # Структура
+│   ├── validation_rules     # Правила валидации
+│   └── preset_types        # Типы пресетов
+
+config/
+├── my_module.yaml          # Конфигурация модуля (опционально)
+└── my_module_presets.yaml  # Пресеты (опционально)
+```
+
+### 🔧 **Интеграция с существующими модулями:**
+
+**Для domain.rs:**
+- Использовать `config/schema/domain.yaml`
+- Применять `domain_template` и `validation_rules`
+- Создавать домены из `domain_types`
+
+**Для token.rs:**
+- Использовать `config/schema/token.yaml`
+- Применять `token_template` и `physics_constraints`
+- Создавать токены из `token_types`
+
+**Для connection.rs:**
+- Использовать `config/schema/connection.yaml`
+- Применять `connection_template` и `topology_constraints`
+- Создавать соединения из `connection_types`
+
+### ⚠️ **Распространенные ошибки:**
+
+1. **Жесткие пути** - использовать относительные пути от корня
+2. **Игнорирование схем** - не валидировать по схемам
+3. **Отсутствие пресетов** - не использовать типы из схем
+4. **Молчаливые ошибки** - не обрабатывать ошибки конфигураций
+5. **Смешение логики** - добавлять логику в конфигурации
+
+### 🧪 **Тестирование модулей:**
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config;
+    
+    #[test]
+    fn test_module_config_loading() {
+        // Тест загрузки конфигурации
+        let config = MyModule::new();
+        assert!(config.is_ok());
+    }
+    
+    #[test]
+    fn test_module_validation() {
+        // Тест валидации
+        let config = MyModuleConfig { /* ... */ };
+        assert!(config.validate().is_ok());
+    }
+    
+    #[test]
+    fn test_module_presets() {
+        // Тест пресетов
+        let dev_config = MyModuleConfig::from_preset("development");
+        assert_eq!(dev_config.field1, "dev");
+    }
+}
+```

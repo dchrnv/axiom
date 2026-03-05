@@ -1,0 +1,31 @@
+# Runtime Configuration
+# System operational parameters
+
+# System resources
+system:
+  threads: 4
+  max_tokens: 100000
+  cache_size: "512mb"
+  memory_limit: "2gb"
+
+# Logging configuration
+logging:
+  level: "info"
+  file: "logs/axiom.log"
+  max_size: "100mb"
+  backup_count: 5
+  format: "json"
+
+# Performance settings
+performance:
+  token_pool_size: 10000
+  connection_pool_size: 5000
+  batch_size: 100
+  gc_interval: 60
+
+# Storage configuration
+storage:
+  data_directory: "data/"
+  backup_directory: "backup/"
+  checkpoint_interval: 300
+  compression: "lz4"

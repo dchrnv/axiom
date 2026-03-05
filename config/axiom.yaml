@@ -1,0 +1,23 @@
+# Axiom Root Configuration
+# Version: 1.0
+# This file references all configuration modules
+
+# Runtime configuration - system operational parameters
+runtime:
+  file: "config/runtime/runtime.yaml"
+  schema: "config/runtime/runtime_schema.yaml"
+
+# Schema configuration - semantic structure of Axiom environment
+schema:
+  domain: "config/schema/domain.yaml"
+  token: "config/schema/token.yaml"
+  connection: "config/schema/connection.yaml"
+  grid: "config/schema/grid.yaml"
+  upo: "config/schema/upo.yaml"
+
+# Configuration loader settings
+loader:
+  format: "yaml"
+  validation: "strict"
+  cache_enabled: true
+  hot_reload: false

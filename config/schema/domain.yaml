@@ -1,0 +1,69 @@
+# Domain Schema Configuration
+# Semantic structure of Axiom domains
+
+# Domain types definition
+domain_types:
+  - name: "logic"
+    description: "Logical reasoning domain"
+    structural_role: "execution"
+    default_field_size: [50.0, 50.0, 50.0]
+    default_gravity: 0.5
+    default_temperature: 273.15
+    
+  - name: "dream"
+    description: "Dream processing domain"
+    structural_role: "shadow"
+    default_field_size: [200.0, 200.0, 200.0]
+    default_gravity: 0.1
+    default_temperature: 310.15
+    
+  - name: "math"
+    description: "Mathematical computation domain"
+    structural_role: "logic"
+    default_field_size: [100.0, 100.0, 100.0]
+    default_gravity: 1.0
+    default_temperature: 293.15
+
+# Domain configuration template
+domain_template:
+  type: object
+  required: ["domain_id", "domain_type", "structural_role"]
+  properties:
+    domain_id:
+      type: integer
+      minimum: 1
+      maximum: 255
+    domain_type:
+      type: string
+      enum: ["logic", "dream", "math", "custom"]
+    structural_role:
+      type: string
+      enum: ["sutra", "execution", "shadow", "codex", "map", "probe", "logic", "dream", "void", "maya"]
+    field_size:
+      type: array
+      items:
+        type: number
+        minimum: 1.0
+        maximum: 1000.0
+      minItems: 3
+      maxItems: 3
+    gravity_strength:
+      type: number
+      minimum: 0.0
+      maximum: 10.0
+      default: 1.0
+    temperature:
+      type: number
+      minimum: 0.0
+      maximum: 1000.0
+      default: 293.15
+
+# Validation rules
+validation_rules:
+  field_size_volume:
+    description: "Field volume must be within limits"
+    rule: "field_size[0] * field_size[1] * field_size[2] <= 1000000"
+  
+  temperature_range:
+    description: "Temperature must be physically plausible"
+    rule: "temperature >= 0.0 AND temperature <= 1000.0"

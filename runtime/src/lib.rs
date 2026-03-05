@@ -10,6 +10,7 @@ pub mod connection;
 pub mod event;
 pub mod upo;
 pub mod domain;
+pub mod config;
 
 #[cfg(test)]
 mod debug_sizes;
@@ -28,6 +29,7 @@ pub use domain::{
     PROCESSING_IDLE, PROCESSING_ACTIVE, PROCESSING_FROZEN,
     MEMBRANE_OPEN, MEMBRANE_CLOSED, MEMBRANE_SEMI
 };
+pub use config::{ConfigLoader, AxiomConfig, initialize};
 
 #[cfg(test)]
 mod tests {

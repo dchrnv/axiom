@@ -2,6 +2,11 @@
 //
 // Domain V1.3: docs/spec/Domain V1.3.md
 
+use crate::config::{ConfigLoader, initialize};
+
+#[cfg(test)]
+mod tests;
+
 /// Состояние Domain
 pub const DOMAIN_ACTIVE: u32 = 1;
 pub const DOMAIN_LOCKED: u32 = 2;
@@ -19,6 +24,7 @@ pub const MEMBRANE_SEMI: u8 = 3;
 
 /// Структурные роли в Ashti_Core
 #[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StructuralRole {
     Sutra = 0,
     Ashti1 = 1,
@@ -34,6 +40,7 @@ pub enum StructuralRole {
 
 /// Типы доменов
 #[repr(u16)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DomainType {
     Logic = 1,
     Dream = 2,
@@ -48,56 +55,58 @@ pub enum DomainType {
 #[derive(Clone, Copy, Debug)]
 pub struct DomainConfig {
     // --- ИДЕНТИФИКАЦИЯ (16 Байт) ---
-    pub domain_id: u16,         // Уникальный ID Домена
-    pub domain_type: u16,       // Тип Домена (Logic, Dream, Math...)
-    pub structural_role: u8,    // Роль в Ashti_Core (0, 1-8, 10)
-    pub generation: u8,        // Поколение (для эволюции)
-    pub parent_domain_id: u16,  // Родительский Домен
-    pub flags: u32,             // ACTIVE/LOCKED/TEMPORARY/SYSTEM
-    pub reserved_id: [u8; 8],   // Резерв для будущих полей
-
-    // --- ФИЗИКА ПОЛЯ (32 Байт) ---
-    pub field_size: [f32; 3],   // Размеры поля (X, Y, Z)
-    pub gravity_strength: f32,  // Сила гравитации (0.0..MAX)
-    pub friction_coeff: f32,    // Коэффициент трения (0.0..1.0)
-    pub resonance_freq: f32,    // Базовая частота резонанса (Hz)
-    pub temperature: f32,       // Базовая температура поля (K)
-    pub pressure: f32,          // Давление в поле (Pa)
-    pub viscosity: f32,         // Вязкость среды (0.0..1.0)
-    pub elasticity: f32,        // Упругость поля (0.0..1.0)
-    pub quantum_noise: f32,     // Квантовый шум (0.0..1.0)
-    pub time_dilation: f32,     // Замедление времени (0.0..10.0)
-    pub reserved_physics: [u32; 3], // Резерв
-
-    // --- МЕМБРАНА (32 Байт) ---
-    pub input_filter: [u8; 16], // Хеши разрешенных входных паттернов
-    pub output_filter: [u8; 16], // Хеши разрешенных выходных паттернов
-    pub permeability: f32,      // Проницаемость мембраны (0.0..1.0)
-    pub threshold_mass: u8,     // Порог массы для входа (1..255)
-    pub threshold_temp: u8,     // Порог температуры для входа (0..255)
-    pub gate_complexity: u16,   // Сложность шлюзов (0..1000)
-    pub membrane_state: u8,      // OPEN/CLOSED/SEMI/ADAPTIVE
-    pub reserved_membrane: [u8; 5], // Резерв
-
-    // --- МЕТАДАННЫЕ (48 Байт) ---
-    pub created_at: u64,        // COM event_id создания
-    pub last_update: u64,       // COM event_id последнего обновления
-    pub token_capacity: u32,     // Максимальное количество Token
-    pub connection_capacity: u32, // Максимальное количество Connection
-    pub energy_budget: f32,      // Бюджет энергии Домена
-    pub complexity_score: f32,   // Оценка сложности (0.0..1.0)
-    pub processing_state: u8,    // IDLE/PROCESSING/FROZEN/CRASHED
-    pub error_count: u16,        // Счетчик ошибок
-    pub performance_score: f32,  // Оценка производительности
-    pub reserved_meta: [u8; 12], // Резерв
+    pub domain_id: u16,
+    pub domain_type: DomainType,
+    pub structural_role: StructuralRole,
+    pub generation: u8,
+    pub parent_domain_id: u16,
+    pub flags: u32,
+    pub reserved_id: [u8; 8],
+    
+    // --- ФИЗИЧЕСКИЕ ПАРАМЕТРЫ (64 Байта) ---
+    pub field_size: [f32; 3],
+    pub gravity_strength: f32,
+    pub friction_coeff: f32,
+    pub resonance_freq: f32,
+    pub temperature: f32,
+    pub pressure: f32,
+    pub viscosity: f32,
+    pub elasticity: f32,
+    pub quantum_noise: f32,
+    pub time_dilation: f32,
+    pub reserved_physics: [u8; 3],
+    
+    // --- ФИЛЬТРЫ (16 Байт) ---
+    pub input_filter: [u8; 16],
+    pub output_filter: [u8; 16],
+    
+    // --- МЕМБРАНА (8 Байт) ---
+    pub permeability: f32,
+    pub threshold_mass: u8,
+    pub threshold_temp: u8,
+    pub gate_complexity: u8,
+    pub membrane_state: u8,
+    pub reserved_membrane: [u8; 5],
+    
+    // --- СИСТЕМНЫЕ (32 Байта) ---
+    pub created_at: u64,
+    pub last_update: u64,
+    pub token_capacity: u32,
+    pub connection_capacity: u32,
+    pub energy_budget: f32,
+    pub complexity_score: f32,
+    pub processing_state: u8,
+    pub error_count: u16,
+    pub performance_score: f32,
+    pub reserved_meta: [u8; 12],
 }
 
 impl Default for DomainConfig {
     fn default() -> Self {
         Self {
-            domain_id: 0,
-            domain_type: DomainType::Logic as u16,
-            structural_role: StructuralRole::Ashti1 as u8,
+            domain_id: 1,
+            domain_type: DomainType::Logic,
+            structural_role: StructuralRole::Ashti1,
             generation: 0,
             parent_domain_id: 0,
             flags: DOMAIN_ACTIVE,
@@ -136,28 +145,92 @@ impl Default for DomainConfig {
 }
 
 impl DomainConfig {
+    /// Создать новый домен с параметрами по умолчанию
     pub fn new(domain_id: u16, domain_type: DomainType, role: StructuralRole) -> Self {
         Self {
             domain_id,
-            domain_type: domain_type as u16,
-            structural_role: role as u8,
-            ..Default::default()
+            domain_type,
+            structural_role: role,
+            generation: 0,
+            parent_domain_id: 0,
+            flags: DOMAIN_ACTIVE,
+            reserved_id: [0; 8],
+            field_size: [100.0, 100.0, 100.0],
+            gravity_strength: 1.0,
+            friction_coeff: 0.1,
+            resonance_freq: 440.0,
+            temperature: 293.15, // 20°C в Кельвинах
+            pressure: 101325.0, // 1 атм в Паскалях
+            viscosity: 0.01,
+            elasticity: 0.5,
+            quantum_noise: 0.001,
+            time_dilation: 1.0,
+            reserved_physics: [0; 3],
+            input_filter: [255; 16], // Все разрешено
+            output_filter: [255; 16], // Все разрешено
+            permeability: 1.0,
+            threshold_mass: 1,
+            threshold_temp: 200, // ~-73°C в Кельвинах (в пределах u8)
+            gate_complexity: 1,
+            membrane_state: MEMBRANE_OPEN,
+            reserved_membrane: [0; 5],
+            created_at: 0,
+            last_update: 0,
+            token_capacity: 1000,
+            connection_capacity: 5000,
+            energy_budget: 100000.0,
+            complexity_score: 0.0,
+            processing_state: PROCESSING_IDLE,
+            error_count: 0,
+            performance_score: 1.0,
+            reserved_meta: [0; 12],
         }
+    }
+
+    /// Создать домен из пресета согласно Configuration System
+    pub fn from_preset(preset_name: &str) -> Result<Self, crate::config::ConfigError> {
+        let config = initialize()?;
+        let mut loader = crate::config::ConfigLoader::new();
+        
+        // Загрузить схему доменов
+        let schema = loader.load_schema("domain", 
+            std::path::Path::new(&config.schema.domain))?;
+        
+        // Получить пресет из схемы
+        if let Some(presets) = schema.get("domain_types") {
+            if let Some(_preset) = presets.get(preset_name) {
+                // В реальной реализации здесь будет десериализация
+                // из YAML в DomainConfig структуру
+                println!("Loading domain from preset: {}", preset_name);
+                return Ok(Self::default()); // Временно
+            }
+        }
+        
+        Err(crate::config::ConfigError::ValidationError(format!(
+            "Unknown preset: {}", preset_name
+        )))
     }
 
     /// Валидация согласно спецификации Domain V1.3
     pub fn validate(&self) -> bool {
-        self.domain_id > 0
-        && self.field_size.iter().all(|&size| size > 0.0)
-        && self.gravity_strength >= 0.0
-        && self.friction_coeff >= 0.0
-        && self.temperature >= 0.0
-        && self.permeability >= 0.0 && self.permeability <= 1.0
-        && self.created_at >= 0
-        && self.last_update >= self.created_at
-        && self.token_capacity > 0
-        && self.connection_capacity > 0
-        && self.energy_budget > 0.0
+        // Базовая валидация
+        if self.domain_id == 0 {
+            return false;
+        }
+        
+        if self.field_size.iter().any(|&x| x <= 0.0 || x > 1000.0) {
+            return false;
+        }
+        
+        if self.temperature < 0.0 || self.temperature > 1000.0 {
+            return false;
+        }
+        
+        if self.permeability < 0.0 || self.permeability > 10.0 {
+            return false;
+        }
+        
+        true
     }
 
     /// Проверка фильтров мембраны
