@@ -13,11 +13,11 @@
 
 ---
 
-### ⚠️ Project Status: Concept & R&D
+### ⚠️ Project Status: Active Development
 
-**Axiom is currently in the early stages of architectural design.**
-We are building the foundation using [Neurograph](https://github.com/dchrnv/neurograph) as the primary storage engine.
-_Current focus: Core implementation and Python bindings._
+**Axiom is in active development with a solid architectural foundation.**
+We are building the system using [Neurograph](https://github.com/dchrnv/neurograph) as the primary storage engine.
+_Current focus: Core architecture and semantic dynamics._
 
 ---
 
@@ -129,11 +129,10 @@ A machine built to find the edge of what structured cognition can be.
 
 ---
 
-### Installation (Dev)
+### 🚀 Quick Start
 
-_Note: This is a pre-alpha build. Expect breaking changes._
+For installation and setup instructions, see [QUICKSTART.md](QUICKSTART.md).
 
-```bash
-git clone [https://github.com/dchrnv/axiom.git](https://github.com/dchrnv/axiom.git)
-cd axiom
-pip install -e ".[dev]"
+For development guidelines and workflow, see [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md).
+
+---
