@@ -14,8 +14,23 @@ pub use loader::{
 pub fn initialize() -> Result<AxiomConfig, ConfigError> {
     let mut loader = ConfigLoader::new();
     
-    // Load root configuration
-    let root_config = loader.load_root(std::path::Path::new("config/axiom.yaml"))?;
+    // Try different paths for root configuration
+    let root_config = if std::path::Path::new("config/axiom.yaml").exists() {
+        loader.load_root(std::path::Path::new("config/axiom.yaml"))?
+    } else if std::path::Path::new("../config/axiom.yaml").exists() {
+        let mut config = loader.load_root(std::path::Path::new("../config/axiom.yaml"))?;
+        // Fix paths for runtime directory
+        config.runtime.file = format!("../{}", config.runtime.file);
+        config.runtime.schema = format!("../{}", config.runtime.schema);
+        config.schema.domain = format!("../{}", config.schema.domain);
+        config.schema.token = format!("../{}", config.schema.token);
+        config.schema.connection = format!("../{}", config.schema.connection);
+        config.schema.grid = format!("../{}", config.schema.grid);
+        config.schema.upo = format!("../{}", config.schema.upo);
+        config
+    } else {
+        return Err(ConfigError::MissingFile("axiom.yaml".to_string()));
+    };
     
     // Validate runtime configuration
     let _runtime_config = loader.load_runtime(std::path::Path::new(&root_config.runtime.file))?;

@@ -122,9 +122,21 @@ impl ConfigLoader {
     pub fn validate(&self, config: &serde_yaml::Value, schema: &serde_yaml::Value) -> Result<(), ConfigError> {
         // Basic validation - in real implementation, use JSON Schema validation
         if let (Some(config_obj), Some(schema_obj)) = (config.as_mapping(), schema.as_mapping()) {
-            for (key, schema_value) in schema_obj {
-                if let Some(config_value) = config_obj.get(key) {
-                    self.validate_field(key.as_str().unwrap(), config_value, schema_value)?;
+            // Check if schema has properties
+            if let Some(properties) = schema_obj.get("properties") {
+                if let Some(props_obj) = properties.as_mapping() {
+                    for (key, schema_value) in props_obj {
+                        if let Some(config_value) = config_obj.get(key) {
+                            self.validate_field(key.as_str().unwrap(), config_value, schema_value)?;
+                        }
+                    }
+                }
+            } else {
+                // Direct field validation for flat schemas
+                for (key, schema_value) in schema_obj {
+                    if let Some(config_value) = config_obj.get(key) {
+                        self.validate_field(key.as_str().unwrap(), config_value, schema_value)?;
+                    }
                 }
             }
         }
@@ -146,6 +158,33 @@ impl ConfigLoader {
                 return Err(ConfigError::ValidationError(format!(
                     "Field '{}' must be of type {}", field, expected_type
                 )));
+            }
+        }
+
+        // Check minimum/maximum constraints for numbers
+        if value.is_number() {
+            if let Some(minimum) = schema.get("minimum") {
+                if let Some(min_val) = minimum.as_i64() {
+                    if let Some(val) = value.as_i64() {
+                        if val < min_val {
+                            return Err(ConfigError::ValidationError(format!(
+                                "Field '{}' must be >= {}", field, min_val
+                            )));
+                        }
+                    }
+                }
+            }
+            
+            if let Some(maximum) = schema.get("maximum") {
+                if let Some(max_val) = maximum.as_i64() {
+                    if let Some(val) = value.as_i64() {
+                        if val > max_val {
+                            return Err(ConfigError::ValidationError(format!(
+                                "Field '{}' must be <= {}", field, max_val
+                            )));
+                        }
+                    }
+                }
             }
         }
 

@@ -8,7 +8,7 @@ mod tests {
     #[test]
     fn test_load_root_config() {
         let mut loader = ConfigLoader::new();
-        let config = loader.load_root(Path::new("config/axiom.yaml"));
+        let config = loader.load_root(Path::new("../config/axiom.yaml"));
         
         assert!(config.is_ok());
         let config = config.unwrap();
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn test_load_runtime_config() {
         let mut loader = ConfigLoader::new();
-        let config = loader.load_runtime(Path::new("config/runtime/runtime.yaml"));
+        let config = loader.load_runtime(Path::new("../config/runtime/runtime.yaml"));
         
         assert!(config.is_ok());
         let config = config.unwrap();
@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn test_load_domain_schema() {
         let mut loader = ConfigLoader::new();
-        let schema = loader.load_schema("domain", Path::new("config/schema/domain.yaml"));
+        let schema = loader.load_schema("domain", Path::new("../config/schema/domain.yaml"));
         
         assert!(schema.is_ok());
         let schema = schema.unwrap();
@@ -86,8 +86,21 @@ mod tests {
         assert!(result.is_ok());
         let config = result.unwrap();
         
-        assert_eq!(config.runtime.file, "config/runtime/runtime.yaml");
-        assert_eq!(config.schema.domain, "config/schema/domain.yaml");
+        // Check that paths are correct (either from root or runtime directory)
+        let expected_runtime = if std::path::Path::new("config/axiom.yaml").exists() {
+            "config/runtime/runtime.yaml"
+        } else {
+            "../config/runtime/runtime.yaml"
+        };
+        
+        let expected_domain = if std::path::Path::new("config/axiom.yaml").exists() {
+            "config/schema/domain.yaml"
+        } else {
+            "../config/schema/domain.yaml"
+        };
+        
+        assert_eq!(config.runtime.file, expected_runtime);
+        assert_eq!(config.schema.domain, expected_domain);
     }
 
     #[test]

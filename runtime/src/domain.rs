@@ -198,11 +198,19 @@ impl DomainConfig {
         
         // Получить пресет из схемы
         if let Some(presets) = schema.get("domain_types") {
-            if let Some(_preset) = presets.get(preset_name) {
-                // В реальной реализации здесь будет десериализация
-                // из YAML в DomainConfig структуру
-                println!("Loading domain from preset: {}", preset_name);
-                return Ok(Self::default()); // Временно
+            if let Some(presets_array) = presets.as_sequence() {
+                for preset in presets_array {
+                    if let Some(name) = preset.get("name") {
+                        if let Some(name_str) = name.as_str() {
+                            if name_str == preset_name {
+                                // В реальной реализации здесь будет десериализация
+                                // из YAML в DomainConfig структуру
+                                println!("Loading domain from preset: {}", preset_name);
+                                return Ok(Self::default()); // Временно
+                            }
+                        }
+                    }
+                }
             }
         }
         

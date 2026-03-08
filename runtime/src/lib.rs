@@ -245,4 +245,104 @@ mod tests {
         conn.flags |= FLAG_INHIBITED;
         assert!(conn.is_inhibited());
     }
+
+    // Интеграционные тесты для Configuration System
+    #[test]
+    fn config_integration_token_and_connection() {
+        // Тест создания токена и соединения из конфигурации
+        let token = Token::from_preset("concept", 1, 1).unwrap();
+        let connection = Connection::from_preset("strong", 1, 2, 1).unwrap();
+        
+        // Проверить валидацию с конфигурацией
+        assert!(token.validate_with_config().is_ok());
+        assert!(connection.validate_with_config().is_ok());
+        
+        // Проверить, что токен и соединение связаны
+        assert_eq!(connection.source_id, token.sutra_id);
+        assert_eq!(connection.domain_id, token.domain_id);
+    }
+
+    #[test]
+    fn config_integration_multiple_presets() {
+        // Тест создания нескольких токенов разных типов
+        let concept_token = Token::from_preset("concept", 1, 1).unwrap();
+        let relation_token = Token::from_preset("relation", 2, 1).unwrap();
+        let context_token = Token::from_preset("context", 3, 1).unwrap();
+        
+        // Тест создания соединений разных типов
+        let strong_conn = Connection::from_preset("strong", 1, 2, 1).unwrap();
+        let weak_conn = Connection::from_preset("weak", 2, 3, 1).unwrap();
+        let temporal_conn = Connection::from_preset("temporal", 3, 1, 1).unwrap();
+        
+        // Проверить разные значения из пресетов
+        assert_eq!(concept_token.resonance, 440);
+        assert_eq!(relation_token.resonance, 220);
+        assert_eq!(context_token.resonance, 880);
+        
+        assert_eq!(strong_conn.strength, 1.0);
+        assert_eq!(weak_conn.strength, 0.3);
+        assert_eq!(temporal_conn.strength, 0.5);
+        
+        // Все должны проходить валидацию
+        assert!(concept_token.validate_with_config().is_ok());
+        assert!(relation_token.validate_with_config().is_ok());
+        assert!(context_token.validate_with_config().is_ok());
+        
+        assert!(strong_conn.validate_with_config().is_ok());
+        assert!(weak_conn.validate_with_config().is_ok());
+        assert!(temporal_conn.validate_with_config().is_ok());
+    }
+
+    #[test]
+    fn config_integration_domain_with_tokens() {
+        // Тест интеграции домена с токенами
+        let domain = DomainConfig::from_preset("logic").unwrap();
+        let token = Token::from_preset("concept", 1, domain.domain_id).unwrap();
+        
+        // Проверить, что токен принадлежит домену
+        assert_eq!(token.domain_id, domain.domain_id);
+        
+        // Проверить валидацию
+        assert!(domain.validate());
+        assert!(token.validate_with_config().is_ok());
+    }
+
+    #[test]
+    fn config_integration_error_handling() {
+        // Тест обработки ошибок конфигурации
+        let unknown_token = Token::from_preset("unknown_type", 1, 1);
+        assert!(unknown_token.is_err());
+        
+        let unknown_connection = Connection::from_preset("unknown_type", 1, 2, 1);
+        assert!(unknown_connection.is_err());
+        
+        let unknown_domain = DomainConfig::from_preset("unknown_domain");
+        assert!(unknown_domain.is_err());
+    }
+
+    #[test]
+    fn config_integration_system_validation() {
+        // Тест комплексной валидации системы
+        let config = initialize().unwrap();
+        
+        // Проверить, что все схемы загружаются
+        assert!(config.schema.domain.contains("domain.yaml"));
+        assert!(config.schema.token.contains("token.yaml"));
+        assert!(config.schema.connection.contains("connection.yaml"));
+        
+        // Создать и валидировать компоненты системы
+        let domain = DomainConfig::from_preset("logic").unwrap();
+        let token = Token::from_preset("concept", 1, domain.domain_id).unwrap();
+        let connection = Connection::from_preset("strong", 1, 2, domain.domain_id).unwrap();
+        
+        // Все компоненты должны быть валидны
+        assert!(domain.validate());
+        assert!(token.validate_with_config().is_ok());
+        assert!(connection.validate_with_config().is_ok());
+        
+        // Проверить целостность системы
+        assert_eq!(token.domain_id, domain.domain_id);
+        assert_eq!(connection.domain_id, domain.domain_id);
+        assert!(connection.source_id != connection.target_id); // no_self_loops
+    }
 }
