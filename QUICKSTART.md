@@ -152,8 +152,13 @@ cargo build --release
 
 1. **Read DEVELOPMENT_GUIDE.md** - for development workflow
 2. **Explore docs/spec/** - for module specifications
-3. **Check STATUS.md** - for current project status
-4. **Join development** - see CONTRIBUTING.md
+3. **Check docs/guides/** - for detailed usage guides
+4. **Check STATUS.md** - for current project status
+5. **Join development** - see CONTRIBUTING.md
+
+### 📖 **Detailed Guides:**
+- **[DomainConfig Guide](docs/guides/DomainConfig_Guide.md)** - Complete DomainConfig V2.0 usage
+- More guides coming soon...
 
 ---
 
