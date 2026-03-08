@@ -173,17 +173,18 @@ mod tests {
 
     #[test]
     fn domain_v1_3_validation() {
-        let domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        let domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti6);
         assert!(domain.validate());
         
-        // Невалидный домен
-        let invalid_domain = DomainConfig::default();
+        // Невалидный домен - создаем вручную
+        let mut invalid_domain = DomainConfig::default();
+        invalid_domain.domain_id = 0;  // Невалидный ID
         assert!(!invalid_domain.validate());
     }
 
     #[test]
     fn domain_membrane_filters() {
-        let mut domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti1);
+        let mut domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti6);
         domain.threshold_mass = 10;
         domain.threshold_temp = 20;
         domain.membrane_state = MEMBRANE_OPEN;

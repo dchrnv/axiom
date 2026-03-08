@@ -222,6 +222,11 @@ impl DomainConfig {
             return false;
         }
         
+        // Проверка размеров поля (не должны быть нулевыми)
+        if self.field_size.iter().any(|&s| s <= 0.0) {
+            return false;
+        }
+        
         // COM синхронизация
         if self.created_at == 0 || self.last_update < self.created_at {
             return false;
