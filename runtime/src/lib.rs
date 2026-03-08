@@ -202,13 +202,13 @@ mod tests {
         domain.token_capacity = 100;
         domain.connection_capacity = 50;
         domain.gravity_strength = 2.0;
-        domain.friction_coeff = 0.2;
+        domain.friction_coeff = 50; // 50/255 ≈ 0.196
         
         let complexity = domain.calculate_complexity();
         assert!(complexity > 0.0);
         
-        // Проверяем формулу: 100*0.1 + 50*0.05 + (2.0+0.2)*10.0 = 10 + 2.5 + 22 = 34.5
-        assert!((complexity - 34.5).abs() < 0.01);
+        // Проверяем формулу: 100*0.1 + 50*0.05 + (50/255)*10.0 = 10 + 2.5 + 1.96 = 14.46
+        assert!((complexity - 14.46).abs() < 0.01);
     }
 
     #[test]

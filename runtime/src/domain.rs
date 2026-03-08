@@ -50,96 +50,116 @@ pub enum DomainType {
     Interface = 6,
 }
 
-/// DomainConfig — 128 байт конфигурация домена
-#[repr(C)]
+/// DomainConfig — 128 байт конфигурация домена (соответствие спецификации V2.0)
+#[repr(C, align(128))]
 #[derive(Clone, Copy, Debug)]
 pub struct DomainConfig {
-    // --- ИДЕНТИФИКАЦИЯ (16 Байт) ---
-    pub domain_id: u16,
-    pub domain_type: DomainType,
-    pub structural_role: StructuralRole,
-    pub generation: u8,
-    pub parent_domain_id: u16,
-    pub flags: u32,
-    pub reserved_id: [u8; 8],
-    
-    // --- ФИЗИЧЕСКИЕ ПАРАМЕТРЫ (64 Байта) ---
-    pub field_size: [f32; 3],
-    pub gravity_strength: f32,
-    pub friction_coeff: f32,
-    pub resonance_freq: f32,
-    pub temperature: f32,
-    pub pressure: f32,
-    pub viscosity: f32,
-    pub elasticity: f32,
-    pub quantum_noise: f32,
-    pub time_dilation: f32,
-    pub reserved_physics: [u8; 3],
-    
-    // --- ФИЛЬТРЫ (16 Байт) ---
-    pub input_filter: [u8; 16],
-    pub output_filter: [u8; 16],
-    
-    // --- МЕМБРАНА (8 Байт) ---
-    pub permeability: f32,
-    pub threshold_mass: u8,
-    pub threshold_temp: u8,
-    pub gate_complexity: u8,
-    pub membrane_state: u8,
-    pub reserved_membrane: [u8; 5],
-    
-    // --- СИСТЕМНЫЕ (32 Байта) ---
-    pub created_at: u64,
-    pub last_update: u64,
-    pub token_capacity: u32,
-    pub connection_capacity: u32,
-    pub energy_budget: f32,
-    pub complexity_score: f32,
-    pub processing_state: u8,
-    pub error_count: u16,
-    pub performance_score: f32,
-    pub reserved_meta: [u8; 12],
+    // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
+    pub reserved_id: u64,       // 8b | Явный резерв для будущих расширений
+    pub domain_id: u16,         // 2b | Уникальный ID Домена
+    pub parent_domain_id: u16,  // 2b | Родительский Домен
+    pub domain_type: u8,        // 1b | Тип (до 255 вариаций)
+    pub structural_role: u8,    // 1b | Роль в Ashti_Core (Sutra, Logic, Dream)
+    pub generation: u8,         // 1b | Поколение (эволюционный индекс)
+    pub flags: u8,              // 1b | Битовая маска состояний (Active, Locked)
+    // Offset: 16 байт
+
+    // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
+    pub field_size: [f32; 3],   // 12b| Размеры поля (X, Y, Z)
+    pub gravity_strength: f32,  // 4b | Гравитация (-MAX..+MAX)
+    pub temperature: f32,       // 4b | Температура поля в Кельвинах
+    pub time_dilation: u16,     // 2b | Замедление времени (х100)
+    pub resonance_freq: u16,    // 2b | Базовая частота (Hz)
+    pub pressure: u16,          // 2b | Давление (Pa)
+    pub reserved_physics: u16,  // 2b | Резерв блока физики
+    pub friction_coeff: u8,     // 1b | Трение (0..255 -> 0.0..1.0)
+    pub viscosity: u8,          // 1b | Вязкость (0..255 -> 0.0..1.0)
+    pub elasticity: u8,         // 1b | Упругость (0..255 -> 0.0..1.0)
+    pub quantum_noise: u8,      // 1b | Квантовый шум (0..255 -> 0.0..1.0)
+    // Offset: 48 байт
+
+    // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
+    pub axis_x_ref: u32,        // 4b | Референс концепции оси X
+    pub axis_y_ref: u32,        // 4b | Референс концепции оси Y  
+    pub axis_z_ref: u32,        // 4b | Референс концепции оси Z
+    pub axis_config: u32,       // 4b | Конфигурация полюсов (Bit-packed u16x2)
+    // Offset: 64 байт
+
+    // --- 4. МЕМБРАНА [32 Байт] ---
+    pub input_filter: u64,      // 8b | 64-bit Bloom Filter или хэш входа
+    pub output_filter: u64,     // 8b | 64-bit Bloom Filter или хэш выхода
+    pub reserved_membrane: u64, // 8b | Резерв мембраны
+    pub gate_complexity: u16,   // 2b | Вычислительная сложность шлюзов
+    pub threshold_mass: u16,    // 2b | Порог массы для прохождения
+    pub threshold_temp: u16,    // 2b | Порог температуры для прохождения
+    pub permeability: u8,       // 1b | Проницаемость (0..255 -> 0.0..1.0)
+    pub membrane_state: u8,     // 1b | OPEN/CLOSED/SEMI/ADAPTIVE
+    // Offset: 96 байт
+
+    // --- 5. МЕТАДАННЫЕ [32 Байт] ---
+    pub created_at: u64,        // 8b | COM event_id (Время создания)
+    pub last_update: u64,       // 8b | COM event_id (Последнее обновление)
+    pub token_capacity: u32,    // 4b | Максимальная емкость токенов
+    pub connection_capacity: u32, // 4b | Максимальная емкость связей
+    pub error_count: u16,       // 2b | Счетчик когнитивных ошибок
+    pub processing_state: u8,   // 1b | IDLE/PROCESSING/FROZEN/CRASHED
+    pub complexity_score: u8,   // 1b | Оценка сложности (0..255 -> 0.0..1.0)
+    pub performance_score: u8,  // 1b | Производительность (0..255 -> 0.0..1.0)
+    pub reserved_meta: [u8; 3], // 3b | Добивка до границы 128 байт
+    // Итого: 128 байт. Offset: 128. Без скрытого паддинга.
 }
 
 impl Default for DomainConfig {
     fn default() -> Self {
         Self {
-            domain_id: 1,
-            domain_type: DomainType::Logic,
-            structural_role: StructuralRole::Ashti1,
-            generation: 0,
-            parent_domain_id: 0,
-            flags: DOMAIN_ACTIVE,
-            reserved_id: [0; 8],
-            field_size: [100.0, 100.0, 100.0],
-            gravity_strength: 1.0,
-            friction_coeff: 0.1,
-            resonance_freq: 440.0,
-            temperature: 293.15, // 20°C в Кельвинах
-            pressure: 101325.0, // 1 атм в Паскалях
-            viscosity: 0.01,
-            elasticity: 0.5,
-            quantum_noise: 0.001,
-            time_dilation: 1.0,
-            reserved_physics: [0; 3],
-            input_filter: [255; 16], // Все разрешено
-            output_filter: [255; 16], // Все разрешено
-            permeability: 1.0,
-            threshold_mass: 1,
-            threshold_temp: 200, // ~-73°C в Кельвинах (в пределах u8)
-            gate_complexity: 1,
-            membrane_state: MEMBRANE_OPEN,
-            reserved_membrane: [0; 5],
-            created_at: 0,
-            last_update: 0,
-            token_capacity: 1000,
-            connection_capacity: 5000,
-            energy_budget: 100000.0,
-            complexity_score: 0.0,
-            processing_state: PROCESSING_IDLE,
-            error_count: 0,
-            performance_score: 1.0,
-            reserved_meta: [0; 12],
+            // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
+            reserved_id: 0,          // Явный резерв для будущих расширений
+            domain_id: 1,             // Уникальный ID Домена
+            parent_domain_id: 0,       // Родительский Домен
+            domain_type: 1,            // DomainType::Logic
+            structural_role: 6,         // StructuralRole::Logic
+            generation: 0,             // Поколение (эволюционный индекс)
+            flags: DOMAIN_ACTIVE as u8, // Битовая маска состояний
+
+            // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
+            field_size: [100.0, 100.0, 100.0], // Размеры поля (X, Y, Z)
+            gravity_strength: 1.0,               // Гравитация
+            temperature: 293.15,                  // Температура поля в Кельвинах (20°C)
+            time_dilation: 100,                    // Замедление времени (х100) = 1.0x
+            resonance_freq: 440,                   // Базовая частота (Hz)
+            pressure: 1013,                          // Давление (Pa) - логарифмическая шкала
+            reserved_physics: 0,                     // Резерв блока физики
+            friction_coeff: 25,                      // Трение (25/255 ≈ 0.098)
+            viscosity: 3,                             // Вязкость (3/255 ≈ 0.012)
+            elasticity: 128,                           // Упругость (128/255 ≈ 0.502)
+            quantum_noise: 1,                          // Квантовый шум (1/255 ≈ 0.004)
+
+            // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
+            axis_x_ref: 1001,         // Референс концепции оси X (WorldSystem)
+            axis_y_ref: 2001,         // Референс концепции оси Y (ActionObservation)
+            axis_z_ref: 3001,         // Референс концепции оси Z (TruthHypothesis)
+            axis_config: 0,            // Конфигурация полюсов
+
+            // --- 4. МЕМБРАНА [32 Байт] ---
+            input_filter: u64::MAX,          // 64-bit Bloom Filter (все разрешено)
+            output_filter: u64::MAX,         // 64-bit Bloom Filter (все разрешено)
+            reserved_membrane: 0,               // Резерв мембраны
+            gate_complexity: 1,                 // Вычислительная сложность шлюзов
+            threshold_mass: 1,                   // Порог массы для прохождения
+            threshold_temp: 200,                  // Порог температуры для прохождения (~-73°C)
+            permeability: 255,                      // Проницаемость (255/255 = 1.0)
+            membrane_state: MEMBRANE_OPEN,        // OPEN/CLOSED/SEMI/ADAPTIVE
+
+            // --- 5. МЕТАДАННЫЕ [32 Байт] ---
+            created_at: 1,              // COM event_id (Время создания)
+            last_update: 1,             // COM event_id (Последнее обновление)
+            token_capacity: 1000,        // Максимальная емкость токенов
+            connection_capacity: 5000,    // Максимальная емкость связей
+            error_count: 0,              // Счетчик когнитивных ошибок
+            processing_state: PROCESSING_IDLE, // IDLE/PROCESSING/FROZEN/CRASHED
+            complexity_score: 0,         // Оценка сложности (0/255 = 0.0)
+            performance_score: 255,      // Производительность (255/255 = 1.0)
+            reserved_meta: [0; 3],        // Добивка до границы 128 байт
         }
     }
 }
@@ -147,44 +167,11 @@ impl Default for DomainConfig {
 impl DomainConfig {
     /// Создать новый домен с параметрами по умолчанию
     pub fn new(domain_id: u16, domain_type: DomainType, role: StructuralRole) -> Self {
-        Self {
-            domain_id,
-            domain_type,
-            structural_role: role,
-            generation: 0,
-            parent_domain_id: 0,
-            flags: DOMAIN_ACTIVE,
-            reserved_id: [0; 8],
-            field_size: [100.0, 100.0, 100.0],
-            gravity_strength: 1.0,
-            friction_coeff: 0.1,
-            resonance_freq: 440.0,
-            temperature: 293.15, // 20°C в Кельвинах
-            pressure: 101325.0, // 1 атм в Паскалях
-            viscosity: 0.01,
-            elasticity: 0.5,
-            quantum_noise: 0.001,
-            time_dilation: 1.0,
-            reserved_physics: [0; 3],
-            input_filter: [255; 16], // Все разрешено
-            output_filter: [255; 16], // Все разрешено
-            permeability: 1.0,
-            threshold_mass: 1,
-            threshold_temp: 200, // ~-73°C в Кельвинах (в пределах u8)
-            gate_complexity: 1,
-            membrane_state: MEMBRANE_OPEN,
-            reserved_membrane: [0; 5],
-            created_at: 0,
-            last_update: 0,
-            token_capacity: 1000,
-            connection_capacity: 5000,
-            energy_budget: 100000.0,
-            complexity_score: 0.0,
-            processing_state: PROCESSING_IDLE,
-            error_count: 0,
-            performance_score: 1.0,
-            reserved_meta: [0; 12],
-        }
+        let mut config = Self::default();
+        config.domain_id = domain_id;
+        config.domain_type = domain_type as u8;
+        config.structural_role = role as u8;
+        config
     }
 
     /// Создать домен из пресета согласно Configuration System
@@ -219,22 +206,24 @@ impl DomainConfig {
         )))
     }
 
-    /// Валидация согласно спецификации Domain V1.3
+    /// Валидация согласно спецификации DomainConfig V2.0
     pub fn validate(&self) -> bool {
-        // Базовая валидация
+        // Базовые проверки
         if self.domain_id == 0 {
             return false;
         }
         
-        if self.field_size.iter().any(|&x| x <= 0.0 || x > 1000.0) {
+        if self.token_capacity == 0 || self.connection_capacity == 0 {
             return false;
         }
         
-        if self.temperature < 0.0 || self.temperature > 1000.0 {
+        // Физические ограничения
+        if self.gravity_strength < 0.0 {
             return false;
         }
         
-        if self.permeability < 0.0 || self.permeability > 10.0 {
+        // COM синхронизация
+        if self.created_at == 0 || self.last_update < self.created_at {
             return false;
         }
         
@@ -242,7 +231,7 @@ impl DomainConfig {
     }
 
     /// Проверка фильтров мембраны
-    pub fn can_enter(&self, mass: u8, temperature: u8) -> bool {
+    pub fn can_enter(&self, mass: u16, temperature: u16) -> bool {
         mass >= self.threshold_mass
         && temperature >= self.threshold_temp
         && self.membrane_state != MEMBRANE_CLOSED
@@ -258,21 +247,21 @@ impl DomainConfig {
     pub fn calculate_complexity(&self) -> f32 {
         let token_factor = self.token_capacity as f32 * 0.1;
         let connection_factor = self.connection_capacity as f32 * 0.05;
-        let physics_factor = (self.gravity_strength + self.friction_coeff) * 10.0;
+        let friction_factor = (self.friction_coeff as f32 / 255.0) * 10.0;
         
-        token_factor + connection_factor + physics_factor
+        token_factor + connection_factor + friction_factor
     }
 
     /// Проверка состояния домена
     pub fn is_active(&self) -> bool {
-        self.flags & DOMAIN_ACTIVE != 0
+        (self.flags & (DOMAIN_ACTIVE as u8)) != 0
     }
 
     pub fn is_locked(&self) -> bool {
-        self.flags & DOMAIN_LOCKED != 0
+        (self.flags & (DOMAIN_LOCKED as u8)) != 0
     }
 
     pub fn is_temporary(&self) -> bool {
-        self.flags & DOMAIN_TEMPORARY != 0
+        (self.flags & (DOMAIN_TEMPORARY as u8)) != 0
     }
 }

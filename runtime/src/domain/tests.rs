@@ -8,6 +8,14 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn test_domain_config_size() {
+        use std::mem;
+        let size = mem::size_of::<DomainConfig>();
+        println!("DomainConfig size: {} bytes", size);
+        assert_eq!(size, 128, "DomainConfig should be exactly 128 bytes according to V2.0 specification");
+    }
+
+    #[test]
     fn test_domain_from_preset() {
         // Установить рабочую директорию в корень проекта
         env::set_current_dir("/home/chrnv/Axiom").ok();
@@ -18,7 +26,7 @@ mod tests {
         
         let domain = result.unwrap();
         assert_eq!(domain.domain_id, 1);
-        assert_eq!(domain.domain_type, DomainType::Logic);
+        assert_eq!(domain.domain_type, DomainType::Logic as u8);
         assert!(domain.validate());
     }
 
@@ -46,6 +54,11 @@ mod tests {
         invalid_domain.domain_id = 1;
         invalid_domain.field_size = [0.0, 100.0, 100.0];
         assert!(!invalid_domain.validate());
+        
+        // Тест невалидной емкости
+        invalid_domain.field_size = [100.0, 100.0, 100.0];
+        invalid_domain.token_capacity = 0;
+        assert!(!invalid_domain.validate());
     }
 
     #[test]
@@ -70,7 +83,7 @@ mod tests {
         
         let domain = result.unwrap();
         assert_eq!(domain.domain_id, 1);
-        assert_eq!(domain.domain_type, DomainType::Logic);
-        assert_eq!(domain.structural_role, StructuralRole::Ashti1);
+        assert_eq!(domain.domain_type, DomainType::Logic as u8);
+        assert_eq!(domain.structural_role, StructuralRole::Ashti6 as u8);
     }
 }
