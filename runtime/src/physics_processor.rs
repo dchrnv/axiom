@@ -1,0 +1,462 @@
+// Copyright (C) 2024-2026 Chernov Denys
+//
+// PhysicsProcessor - обработчик UCL команд
+// Реализует физическую семантику AXIOM
+
+use crate::ucl_command::{UclCommand, UclResult, OpCode, CommandStatus};
+use crate::domain::{DomainConfig, StructuralRole};
+use std::collections::HashMap;
+use std::time::Instant;
+
+/// Ошибки физического процессора
+#[repr(u16)]
+#[derive(Debug, Clone, Copy)]
+pub enum PhysicsError {
+    UnknownOpcode = 1000,
+    InvalidTarget = 1001,
+    PhysicsViolation = 1002,
+    InsufficientEnergy = 1003,
+    MembraneBlocked = 1004,
+    DomainNotFound = 1005,
+    TokenNotFound = 1006,
+    InvalidPayload = 1007,
+}
+
+/// Состояние физического процессора
+pub struct PhysicsProcessor {
+    pub domains: HashMap<u32, DomainConfig>,
+    pub next_domain_id: u32,
+    pub com_counter: u64,
+}
+
+impl PhysicsProcessor {
+    /// Создать новый процессор
+    pub fn new() -> Self {
+        Self {
+            domains: HashMap::new(),
+            next_domain_id: 1000,
+            com_counter: 0,
+        }
+    }
+    
+    /// Главная точка входа - обработка команды
+    pub fn execute(&mut self, command: &UclCommand) -> UclResult {
+        let start_time = Instant::now();
+        
+        // Валидация команды
+        if !command.is_valid() {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::InvalidPayload,
+                PhysicsError::InvalidPayload as u16,
+            );
+        }
+        
+        // Обработка команды
+        let result = match command.opcode {
+            1000 => self.spawn_domain(command),
+            1001 => self.collapse_domain(command),
+            1002 => self.lock_membrane(command),
+            2000 => self.inject_token(command),
+            2001 => self.apply_force(command),
+            2002 => self.annihilate_token(command),
+            3000 => self.tick_forward(command),
+            3001 => self.change_temperature(command),
+            9000 => self.core_shutdown(command),
+            _ => UclResult::error(
+                command.command_id,
+                CommandStatus::UnknownOpcode,
+                PhysicsError::UnknownOpcode as u16,
+            ),
+        };
+        
+        // Обновляем время выполнения
+        let mut final_result = result;
+        final_result.execution_time_us = start_time.elapsed().as_micros() as u32;
+        
+        final_result
+    }
+    
+    /// Рождение домена (SpawnDomain)
+    fn spawn_domain(&mut self, command: &UclCommand) -> UclResult {
+        let payload = command.get_payload::<crate::ucl_command::SpawnDomainPayload>();
+        
+        // Проверяем физические законы
+        // factory_preset = 0 допустим только для SUTRA (structural_role = 0)
+        println!("DEBUG: factory_preset={}, structural_role={}", payload.factory_preset, payload.structural_role);
+        if payload.factory_preset == 0 && payload.structural_role != 0 {
+            println!("ERROR: factory_preset=0 not allowed for structural_role={}", payload.structural_role);
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::InvalidPayload,
+                PhysicsError::InvalidPayload as u16,
+            );
+        }
+        
+        // Создаем домен через factory метод
+        let domain = match payload.structural_role {
+            0 => DomainConfig::factory_sutra(self.next_domain_id as u16),
+            3 => DomainConfig::factory_codex(self.next_domain_id as u16, payload.parent_domain_id),
+            6 => DomainConfig::factory_logic(self.next_domain_id as u16, payload.parent_domain_id),
+            7 => DomainConfig::factory_dream(self.next_domain_id as u16, payload.parent_domain_id),
+            10 => DomainConfig::factory_maya(self.next_domain_id as u16, payload.parent_domain_id),
+            _ => DomainConfig::factory_sutra(self.next_domain_id as u16), // По умолчанию
+        };
+        
+        // Проверяем валидность созданного домена
+        if !domain.validate() {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+        
+        // Сохраняем домен
+        self.domains.insert(self.next_domain_id, domain);
+        
+        let result = UclResult::success(command.command_id);
+        self.next_domain_id += 1;
+        
+        result
+    }
+    
+    /// Уничтожение домена (CollapseDomain)
+    fn collapse_domain(&mut self, command: &UclCommand) -> UclResult {
+        if !self.domains.contains_key(&command.target_id) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Проверяем, можно ли уничтожить домен
+        let domain = self.domains.get(&command.target_id).unwrap();
+        
+        // SUTRA домен нельзя уничтожить (физический закон)
+        if domain.structural_role == StructuralRole::Sutra as u8 {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+        
+        // Удаляем домен
+        self.domains.remove(&command.target_id);
+        
+        UclResult::success(command.command_id)
+    }
+    
+    /// Изменение мембраны (LockMembrane)
+    fn lock_membrane(&mut self, command: &UclCommand) -> UclResult {
+        if !self.domains.contains_key(&command.target_id) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Временно - просто возвращаем успех
+        // TODO: Реализовать изменение мембраны
+        UclResult::success(command.command_id)
+    }
+    
+    /// Вброс токена (InjectToken)
+    fn inject_token(&mut self, command: &UclCommand) -> UclResult {
+        let payload = command.get_payload::<crate::ucl_command::InjectTokenPayload>();
+        
+        if !self.domains.contains_key(&(payload.target_domain_id as u32)) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Проверяем проницаемость мембраны
+        let domain = self.domains.get(&(payload.target_domain_id as u32)).unwrap();
+        
+        if domain.permeability == 0 && (command.flags & 0x04) == 0 {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::MembraneBlocked as u16,
+            );
+        }
+        
+        // Проверяем температуру (токен не может быть горячее домена)
+        if payload.temperature > domain.temperature + 100.0 {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+        
+        // Временно - просто возвращаем успех
+        // TODO: Реализовать создание токена
+        UclResult::success(command.command_id)
+    }
+    
+    /// Применение силы (ApplyForce)
+    fn apply_force(&mut self, command: &UclCommand) -> UclResult {
+        let payload = command.get_payload::<crate::ucl_command::ApplyForcePayload>();
+        
+        if !self.domains.contains_key(&command.target_id) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Проверяем физические законы
+        let domain = self.domains.get(&command.target_id).unwrap();
+        
+        // В домене с нулевой гравитацией сила не работает
+        if domain.gravity_strength == 0.0 && payload.force_type == 1 {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+        
+        // Проверяем энергию
+        let required_energy = payload.magnitude * payload.duration_ticks as f32;
+        if required_energy > 1000.0 { // Временно - максимальная энергия
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::InsufficientEnergy as u16,
+            );
+        }
+        
+        // Временно - просто возвращаем успех
+        // TODO: Реализовать применение силы к токену
+        let mut result = UclResult::success(command.command_id);
+        result.consumed_energy = required_energy;
+        result
+    }
+    
+    /// Уничтожение токена (AnnihilateToken)
+    fn annihilate_token(&mut self, command: &UclCommand) -> UclResult {
+        if !self.domains.contains_key(&command.target_id) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Временно - просто возвращаем успех
+        // TODO: Реализовать уничтожение токена
+        UclResult::success(command.command_id)
+    }
+    
+    /// Шаг симуляции (TickForward)
+    fn tick_forward(&mut self, command: &UclCommand) -> UclResult {
+        self.com_counter += 1;
+        
+        // Временно - просто возвращаем успех
+        // TODO: Реализовать шаг симуляции
+        let mut result = UclResult::success(command.command_id);
+        result.events_generated = 1; // Генерируем событие о шаге
+        result
+    }
+    
+    /// Изменение температуры (ChangeTemperature)
+    fn change_temperature(&mut self, command: &UclCommand) -> UclResult {
+        let payload = command.get_payload::<crate::ucl_command::ChangeTemperaturePayload>();
+        
+        if !self.domains.contains_key(&(payload.target_domain_id as u32)) {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::DomainNotFound as u16,
+            );
+        }
+        
+        // Проверяем физические законы
+        let domain = self.domains.get_mut(&(payload.target_domain_id as u32)).unwrap();
+        
+        // Нельзя изменить температуру SUTRA домена (абсолютный ноль)
+        if domain.structural_role == StructuralRole::Sutra as u8 && payload.delta_temperature != 0.0 {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::PhysicsViolation,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+        
+        // Применяем изменение температуры
+        domain.temperature += payload.delta_temperature;
+        
+        // Температура не может быть отрицательной
+        if domain.temperature < 0.0 {
+            domain.temperature = 0.0;
+        }
+        
+        // Временно - просто возвращаем успех
+        let mut result = UclResult::success(command.command_id);
+        result.consumed_energy = payload.delta_temperature.abs() * payload.transfer_rate;
+        result
+    }
+    
+    /// Остановка реактора (CoreShutdown)
+    fn core_shutdown(&mut self, command: &UclCommand) -> UclResult {
+        // Очищаем все домены
+        self.domains.clear();
+        
+        UclResult::success(command.command_id)
+    }
+    
+    /// Получить домен по ID
+    pub fn get_domain(&self, domain_id: u32) -> Option<&DomainConfig> {
+        self.domains.get(&domain_id)
+    }
+    
+    /// Получить список всех доменов
+    pub fn list_domains(&self) -> Vec<(u32, &DomainConfig)> {
+        self.domains.iter().map(|(&id, domain)| (id, domain)).collect()
+    }
+    
+    /// Получить статистику
+    pub fn get_stats(&self) -> PhysicsStats {
+        PhysicsStats {
+            total_domains: self.domains.len(),
+            com_counter: self.com_counter,
+            next_domain_id: self.next_domain_id,
+        }
+    }
+}
+
+/// Статистика физического процессора
+#[derive(Debug, Clone)]
+pub struct PhysicsStats {
+    pub total_domains: usize,
+    pub com_counter: u64,
+    pub next_domain_id: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ucl_command::UclBuilder;
+    
+    #[test]
+    fn test_physics_processor_creation() {
+        let processor = PhysicsProcessor::new();
+        assert_eq!(processor.domains.len(), 0);
+        assert_eq!(processor.next_domain_id, 1000);
+        assert_eq!(processor.com_counter, 0);
+    }
+    
+    #[test]
+    fn test_spawn_domain() {
+        let mut processor = PhysicsProcessor::new();
+        let command = UclBuilder::spawn_domain(0, 1); // SUTRA
+        
+        let result = processor.execute(&command);
+        assert!(result.is_success());
+        assert_eq!(processor.domains.len(), 1);
+        assert_eq!(processor.next_domain_id, 1001);
+    }
+    
+    #[test]
+    fn test_spawn_different_domains() {
+        let mut processor = PhysicsProcessor::new();
+        
+        // SUTRA
+        let sutra = UclBuilder::spawn_domain(0, 0);
+        let result = processor.execute(&sutra);
+        assert!(result.is_success());
+        
+        // LOGIC
+        let logic = UclBuilder::spawn_domain(0, 6);
+        let result = processor.execute(&logic);
+        assert!(result.is_success());
+        
+        // DREAM
+        let dream = UclBuilder::spawn_domain(0, 7);
+        let result = processor.execute(&dream);
+        assert!(result.is_success());
+        
+        assert_eq!(processor.domains.len(), 3);
+    }
+    
+    #[test]
+    fn test_collapse_domain() {
+        let mut processor = PhysicsProcessor::new();
+        
+        // Создаем домен
+        let create = UclBuilder::spawn_domain(0, 6); // LOGIC
+        let result = processor.execute(&create);
+        assert!(result.is_success());
+        
+        // Уничтожаем домен
+        let collapse = UclCommand::new(OpCode::CollapseDomain, 1000, 100, 0);
+        let result = processor.execute(&collapse);
+        assert!(result.is_success());
+        assert_eq!(processor.domains.len(), 0);
+    }
+    
+    #[test]
+    fn test_collapse_sutra_forbidden() {
+        let mut processor = PhysicsProcessor::new();
+        
+        // Создаем SUTRA
+        let create = UclBuilder::spawn_domain(0, 0);
+        let result = processor.execute(&create);
+        assert!(result.is_success());
+        
+        // Пытаемся уничтожить SUTRA
+        let collapse = UclCommand::new(OpCode::CollapseDomain, 1000, 100, 0);
+        let result = processor.execute(&collapse);
+        assert!(!result.is_success());
+        assert_eq!(result.status, CommandStatus::PhysicsViolation as u8);
+    }
+    
+    #[test]
+    fn test_change_temperature() {
+        let mut processor = PhysicsProcessor::new();
+        
+        // Создаем LOGIC домен
+        let create = UclBuilder::spawn_domain(0, 6);
+        let result = processor.execute(&create);
+        assert!(result.is_success());
+        
+        // Изменяем температуру
+        let payload = crate::ucl_command::ChangeTemperaturePayload {
+            target_domain_id: 1000,
+            delta_temperature: 10.0,
+            transfer_rate: 1.0,
+            source_point: [0.0, 0.0, 0.0],
+            radius: 100.0,
+            duration_ticks: 1,
+            reserved: [0; 14],
+        };
+        
+        let command = UclCommand::new(OpCode::ChangeTemperature, 1000, 100, 0)
+            .with_payload(&payload);
+        
+        let result = processor.execute(&command);
+        assert!(result.is_success());
+        
+        let domain = processor.get_domain(1000).unwrap();
+        assert_eq!(domain.temperature, 283.0); // 273.0 + 10.0
+    }
+    
+    #[test]
+    fn test_unknown_opcode() {
+        let mut processor = PhysicsProcessor::new();
+        let command = UclCommand::new(OpCode::CoreReset, 0, 100, 0);
+        
+        let result = processor.execute(&command);
+        assert!(!result.is_success());
+        assert_eq!(result.status, CommandStatus::UnknownOpcode as u8);
+    }
+}
