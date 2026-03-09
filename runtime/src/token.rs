@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// Token V5.1: docs/spec/Token V5.1.md
+// Token V5.2: docs/spec/Token V5.2.md
 
 use crate::config::{ConfigLoader, initialize};
 
@@ -10,8 +10,8 @@ pub const STATE_ACTIVE: u8 = 1;
 pub const STATE_SLEEPING: u8 = 2;
 pub const STATE_LOCKED: u8 = 3;
 
-/// Token — 64 байта, выравнивание 8.
-#[repr(C)]
+/// Token — 64 байта, выравнивание 64.
+#[repr(C, align(64))]
 #[derive(Clone, Copy, Debug)]
 pub struct Token {
     // --- ИДЕНТИФИКАЦИЯ (8 Байт) ---

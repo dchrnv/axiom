@@ -1,8 +1,8 @@
-# AXIOM MODULE SPECIFICATION: TOKEN V5.1
+# AXIOM MODULE SPECIFICATION: TOKEN V5.2
 
 **Статус:** Актуальная спецификация (core)  
-**Версия:** 5.1.0  
-**Дата:** 2026-03-04  
+**Версия:** 5.2.0  
+**Дата:** 2026-03-09  
 **Формат:** 64 байта, `repr(C, align(64))`  
 **Модель времени:** COM `event_id` (причинный порядок, u64)  
 **Связанные спеки:** COM, Connection V5.0, Domain V1.2, UPO v2.1
@@ -45,12 +45,11 @@ pub struct Token {
     pub temperature: u8,     // Пластичность/мутируемость (0..255)
     pub state: u8,           // Состояние (Active, Sleeping, Locked...)
 
-    // --- ФРАКТАЛЬНАЯ НАВИГАЦИЯ (36 Байт) ---
+    // --- ФРАКТАЛЬНАЯ НАВИГАЦИЯ (32 Байта) ---
     pub lineage_hash: u64,    // Хеш пути: откуда пришел (Sutra -> Logic -> Math...)
     pub momentum: [i32; 3],   // Инерция по осям (накопленный импульс)
     pub resonance: u32,       // Резонанс с другими токенами (частота)
     pub last_event_id: u64,   // Последний COM event_id обновления
-    pub reserved_nav: [u8; 4], // Резерв для будущих расширений
 }
 ```
 
@@ -139,6 +138,7 @@ fn validate_token(token: &Token) -> bool {
 
 ## 8. История изменений
 
+- **V5.2**: Исправлено выравнивание до `align(64)`, убрано `reserved_nav` поле для соответствия коду
 - **V5.1**: Канонизированная версия, добавлена COM синхронизация
 - **V5.0**: Черновик под архитектуру Indrajala
 - **V4.x**: Экспериментальные версии с time_vector и Unix timestamps

@@ -1,14 +1,27 @@
-# Axiom V0.3.0
+# Axiom V0.3.1
 
-**Дата релиза:** 2026-03-08  
-**Версия:** v0.3.0 (UCL V2.0 Protocol Complete)  
-**Статус:** MAJOR MILESTONE - UCL V2.0 Protocol Implemented ✅
+**Дата релиза:** 2026-03-09  
+**Версия:** v0.3.1 (Token V5.2 Specification Sync)  
+**Статус:** MAINTENANCE RELEASE - Token Specification Aligned ✅
 
 ---
 
-## 🎉 **VICTORY: UCL V2.0 Protocol Complete!**
+## 🎉 **Token V5.2 Specification Synchronized!**
 
-### ✅ **Выполнено (2026-03-08):**
+### ✅ **Выполнено (2026-03-09):**
+
+#### **🔧 Token V5.2 Alignment:**
+- [x] **Specification Update** - Token V5.1 → V5.2 
+- [x] **Alignment Fix** - `#[repr(C, align(64))]` в коде
+- [x] **Structure Sync** - убрано отсутствующее `reserved_nav` поле
+- [x] **Size Verification** - 64 байта с выравниванием 64 ✅
+- [x] **Documentation Update** - новая версия спецификации
+
+#### **📋 Technical Changes:**
+- [x] **File Rename** - `Token V5.1.md` → `Token V5.2.md`
+- [x] **Code Comments** - обновлены ссылки на V5.2
+- [x] **Validation** - размер и выравнивание соответствуют спецификации
+- [x] **Build Success** - проект компилируется без ошибок
 
 #### **🚀 UCL V2.0 Core System:**
 - [x] **64-byte Zero-Allocation Commands** - `repr(C, align(64))`
@@ -42,7 +55,7 @@
 
 ### 📋 Документация - Core Foundation
 - **Канонические спецификации модулей:**
-  - [x] Token V5.1 (64 байта, COM интеграция)
+  - [x] Token V5.2 (64 байта, COM интеграция, align(64)) - **UPDATED**
   - [x] Connection V5.0 (64 байта, актуальная)  
   - [x] COM V1.0 (Causal Order Model, 32 байта Event)
   - [x] Domain V2.0 (128 байт DomainConfig) - **IMPLEMENTED**
@@ -65,7 +78,7 @@
 - [x] Архивация устаревших спецификаций
 
 ### 🏗️ Runtime Sync - Foundation V0.1.0 ✅
-- [x] **Token V5.1** - 64 байта, momentum, resonance, COM integration
+- [x] **Token V5.2** - 64 байта, align(64), momentum, resonance, COM integration - **UPDATED**
 - [x] **Connection V5.0** - 64 байта, gates, stress, metadata
 - [x] **COM V1.0** - Event, Timeline, EventType, causal ordering
 - [x] **UPO v2.2** - DynamicTrace, Screen, octants, decay
@@ -134,7 +147,7 @@
 
 | Модуль | Спецификация | Runtime | Конфигурация | Статус |
 |--------|-------------|---------|--------------|--------|
-| Token | V5.1 ✅ | V5.1 ✅ | ConfigLoader ✅ | Полностью интегрирован |
+| Token | V5.2 ✅ | V5.2 ✅ | ConfigLoader ✅ | Полностью интегрирован |
 | Connection | V5.0 ✅ | V5.0 ✅ | ConfigLoader ✅ | Полностью интегрирован |
 | COM | V1.0 ✅ | V1.0 ✅ | - | Реализован |
 | Domain | V2.0 ✅ | V2.0 ✅ | ConfigLoader ✅ | Data Packing оптимизация |
@@ -179,6 +192,14 @@
 - [x] **Высокопроизводительная обработка** пачками доменов
 - [x] **64-bit Bloom фильтры** вместо массивов байт
 - [x] **Квантированные коэффициенты** для оптимальной производительности
+
+### v0.3.1 - Token V5.2 Specification Sync (Q3 2026) ✅ ЗАВЕРШЕН
+- [x] **Token V5.2 Specification** - обновление до V5.2
+- [x] **Alignment Fix** - `#[repr(C, align(64))]` в коде
+- [x] **Structure Sync** - убрано отсутствующее `reserved_nav` поле
+- [x] **Size Verification** - 64 байта с выравниванием 64 ✅
+- [x] **Documentation Update** - новая версия спецификации
+- [x] **File Rename** - `Token V5.1.md` → `Token V5.2.md`
 
 ### v0.3.0 - API и CLI (Q3 2026)
 - [ ] Domain JSON сериализация (serde)
@@ -225,7 +246,7 @@
 
 ---
 
-**Последнее обновление:** 2026-03-08  
+**Последнее обновление:** 2026-03-09  
 **Ответственный:** Cascade AI Assistant  
-**Текущий milestone:** v0.2.0 - Configuration System & Integration ✅
-**Следующий milestone:** v0.2.1 - DomainConfig V1.0 Specification
+**Текущий milestone:** v0.3.1 - Token V5.2 Specification Sync ✅
+**Следующий milestone:** v0.3.0 - API и CLI
