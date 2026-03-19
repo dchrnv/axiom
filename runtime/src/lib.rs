@@ -14,6 +14,9 @@ mod clock;
 mod upo;
 mod config;
 mod experience;
+mod arbiter;
+mod ashti_processor;
+mod maya_processor;
 
 pub use domain::{
     DomainConfig, StructuralRole, DomainType,
@@ -58,6 +61,18 @@ pub use upo::{
 
 pub use experience::{
     Experience, ExperienceTrace, Skill, ResonanceLevel, ResonanceResult
+};
+
+pub use arbiter::{
+    Arbiter, RoutingResult
+};
+
+pub use ashti_processor::{
+    AshtiProcessor
+};
+
+pub use maya_processor::{
+    MayaProcessor
 };
 
 #[cfg(test)]
