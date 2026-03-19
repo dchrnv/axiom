@@ -1,215 +1,78 @@
-# Axiom - План Развития
+# Axiom Roadmap
 
-**Версия:** 3.0
-**Последнее обновление:** 2026-03-19
-**Текущая версия:** v0.3.1 (UCL V2.0 Token Specification Sync)
-**Статус:** Foundation Complete, начинаем реализацию причинной модели
-
----
-
-## 🎯 Текущий фокус: Реализация причинной модели времени
-
-**Философия:** Строить новое на прочном фундаменте. Детерминизм, причинность, качество > скорость.
-
-**Основа:** Time Model V1.0, COM V1.0, Causal Frontier V1, Heartbeat V2.0
+**Версия:** 3.1
+**Дата:** 2026-03-19
+**Текущая:** v0.4.0 Phase 2 - Causal Age
 
 ---
 
-## 📋 План реализации (v0.4.0 - Causal Time System)
+## 🎯 v0.4.0 - Causal Time System
 
-### ~~Фаза 1: COM - Причинный порядок~~ ✅ ЗАВЕРШЕНА (2026-03-19)
-
-**Выполнено:**
-- [x] Реализовать COM Timeline (`runtime/src/com.rs`) ✅
-  - Монотонный генератор `event_id` (u64)
-  - Event log с фильтрацией
-  - Детерминированный порядок
-  - Вычисление causal age
-  - Checkpointing
-- [x] Интегрировать с существующим Event ✅
-  - Добавлен Heartbeat EventType (0x3001)
-  - PhysicsProcessor.com интеграция
-  - Генерация event_id через COM API
-- [x] Написать тесты ✅
-  - 11 комплексных тестов (100% проходят)
-  - Монотонность, доменная изоляция
-  - Валидация событий
-  - Event log операции
-
-**Результат:** COM V1.0 полностью реализован, 35 тестов проходят (было 24) ✅
-
-**Время:** ~30 минут
-
----
-
-### Фаза 2: Causal Age - Возраст сущностей (🔥 В РАБОТЕ)
-
-**Почему вторым:** Causal Age нужен для всех "временных" процессов (decay, gravity, cooling).
+### Phase 2: Causal Age (В РАБОТЕ)
 
 **Задачи:**
 - [ ] Проверить `last_event_id` в структурах
-  - Token V5.2 (уже есть ✅)
+  - Token V5.2 ✅
   - Connection V5.0
   - DomainConfig V2.0
 - [ ] Реализовать `compute_causal_age()`
-  - Функция вычисления возраста
-  - Интеграция с UPO, Domain physics
-- [ ] Написать тесты
-  - Корректность вычисления возраста
-  - Детерминизм decay/gravity через causal_age
+  - Decay через causal age
+  - Thermodynamics через event_id delta
+  - Connection stress
+  - Gravity
+- [ ] Тесты
 
-**Результат:** Все процессы используют `event_id` вместо wall-clock времени
-
-**Спецификация:** [docs/spec/time/Time_Model_V1_0.md](docs/spec/time/Time_Model_V1_0.md)
+**Spec:** `docs/spec/time/Time_Model_V1_0.md`
 
 ---
 
-### Фаза 3: Causal Frontier - Управление вычислениями (🟡 Планируется)
-
-**Почему третьим:** Frontier - это оптимизация. Система может работать без него, но он критичен для масштабируемости.
+### Phase 3: Causal Frontier
 
 **Задачи:**
-- [ ] Базовая структура Frontier (`runtime/src/frontier.rs`)
-  - Queue для Token, Connection, Domain
-  - Visited BitSet для дедупликации
-  - push/pop/contains интерфейс
-- [ ] Интегрировать с PhysicsProcessor
-  - События добавляют affected entities в Frontier
-  - Обработка через Frontier вместо глобального прохода
-- [ ] Написать тесты
-  - Локальность вычислений (O(active_entities))
-  - Детерминизм порядка обработки
-  - Idle state когда frontier пуст
+- [ ] `CausalFrontier` структура
+  - Queue для Token/Connection/Domain
+  - Visited BitSet
+  - push/pop/contains
+- [ ] PhysicsProcessor integration
+- [ ] Storm detection/mitigation
+- [ ] Тесты
 
-**Результат:** Система обрабатывает только активные сущности, масштабируемость гарантирована
-
-**Спецификация:** [docs/spec/time/Causal Frontier System V1.md](docs/spec/time/Causal Frontier System V1.md)
+**Spec:** `docs/spec/time/Causal Frontier System V1.md`
 
 ---
 
-### Фаза 4: Heartbeat - Фоновые процессы (🟡 Планируется)
-
-**Почему четвёртым:** Heartbeat зависит от COM и Frontier. Это последний элемент триады.
+### Phase 4: Heartbeat
 
 **Задачи:**
-- [ ] HeartbeatGenerator (`runtime/src/heartbeat.rs`)
-  - Генерация по счётчику событий
+- [ ] `HeartbeatGenerator`
+  - Генерация по счетчику событий
   - HeartbeatEvent структура
-  - Интеграция с COM (получает event_id)
-- [ ] Интегрировать с Frontier
-  - Heartbeat добавляет сущности в Frontier
-  - Batch processing (batch_size из конфига)
-  - Детерминированный выбор сущностей
-- [ ] Конфигурация
-  - HeartbeatConfig в DomainConfig
-  - Настройка interval, batch_size
-  - Enable/disable разных процессов
-- [ ] Написать тесты
-  - Детерминизм генерации
-  - Правильное распределение нагрузки
-  - Idle state без внешних событий
+  - COM integration
+- [ ] Frontier integration
+- [ ] HeartbeatConfig в DomainConfig
+- [ ] Тесты
 
-**Результат:** Система может обрабатывать фоновые процессы детерминированно и эффективно
-
-**Спецификация:** [docs/spec/time/Heartbeat_V2_0.md](docs/spec/time/Heartbeat_V2_0.md)
+**Spec:** `docs/spec/time/Heartbeat_V2_0.md`
 
 ---
 
-### Фаза 5: Cleanup & Polish (🟢 Финал)
-
-**Почему последним:** Когда основная функциональность работает, можно навести порядок.
+### Phase 5: Cleanup & Polish
 
 **Задачи:**
-- [ ] Исправить падающие тесты
-  - UclCommand/UclResult размеры
-  - FFI тесты (5 failed)
-- [ ] Убрать warnings
-  - Неиспользуемые импорты (~10 warnings)
-  - Dead code
-- [ ] Обновить документацию
-  - STATUS.md - текущий прогресс
-  - DEFERRED.md - обновить приоритеты
-  - Core Invariants - новые термины (COM, Frontier, Heartbeat)
-
-**Результат:** Чистый код, все тесты проходят, документация актуальна
+- [ ] Documentation updates
+- [ ] Performance optimization
+- [ ] Final testing
+- [ ] Release preparation
 
 ---
 
-## 📊 Метрики успеха v0.4.0
+## 📝 Принципы
 
-После реализации всех фаз:
-- ✅ **100% детерминизм** - система воспроизводима
-- ✅ **Причинная модель** - нет wall-clock времени в ядре
-- ✅ **Масштабируемость** - O(active_entities)
-- ✅ **Тестовое покрытие** - все модули покрыты тестами
-- ✅ **Соответствие спецификациям** - Time Model V1.0, COM V1.0, Heartbeat V2.0, Causal Frontier V1
+- **STATUS.md** - только факты, завершенные релизы
+- **ROADMAP.md** - только планы, удалять выполненное
+- **DEFERRED.md** - технический долг и отложенные задачи
+- **Минимализм** - краткость, структура, порядок
 
 ---
 
-## 📋 Завершенные вехи
-
-### ✅ v0.1.0 - Foundation Complete
-- Token V5.1 (64 байта)
-- Connection V5.0 (64 байта)
-- COM V1.0 (Event, Timeline)
-- UPO v2.2 (DynamicTrace, Screen)
-- Полное тестовое покрытие
-
-### ✅ v0.2.0 - Domain V2.0 Data Packing
-- DomainConfig 128 байт с оптимизацией
-- Factory методы (SUTRA, CODEX, LOGIC, DREAM, MAYA)
-- JSON/YAML сериализация
-- Configuration System V1.0
-
-### ✅ v0.3.0 - UCL V2.0 Protocol Complete
-- 64-byte Zero-Allocation Commands
-- PhysicsProcessor с физической семантикой
-- FFI Interface для внешних адаптеров
-- Полное покрытие тестами
-
-### ✅ v0.3.1 - Token V5.2 Specification Sync
-- Синхронизация Token со спецификацией V5.2
-- Исправления предупреждений компиляции
-- Добавлены экспорты модулей в lib.rs
-- Cross-spec validation тесты работают (14/15)
-
----
-
-## 🔄 Следующий релиз: v0.4.0 - Causal Time System
-
-**Цель:** Реализация полной модели причинного времени согласно Time Model V1.0
-
-**Включает:**
-- COM - Причинный порядок событий
-- Causal Age - Вычисление возраста сущностей
-- Causal Frontier - Оптимизация вычислений
-- Heartbeat - Фоновые процессы
-
-**ETA:** По готовности (без жёстких сроков, качество > скорость)
-
----
-
-## 📝 Примечания
-
-**Старые планы** (v0.3.x-v0.4.x адаптеры и интерфейсы) перемещены в [DEFERRED.md](DEFERRED.md)
-
-**Актуальный статус проекта** см. в [STATUS.md](STATUS.md)
-
-**Технический долг** и отложенные задачи см. в [DEFERRED.md](DEFERRED.md)
-
-**Философия времени** см. в [docs/spec/time/Time_Model_V1_0.md](docs/spec/time/Time_Model_V1_0.md)
-
----
-
-## 🎯 Ключевые принципы разработки
-
-1. **Детерминизм превыше всего** - каждый запуск с одинаковыми входными данными даёт одинаковый результат
-2. **Причинность** - время = глубина причинной истории, а не координата
-3. **Спецификация → Реализация → Тесты** - следуем Development Guide
-4. **Качество > Скорость** - лучше потратить больше времени, но сделать правильно
-5. **100% тестовое покрытие** - каждый модуль покрыт тестами
-
----
-
-**Последнее обновление:** 2026-03-19
-**Следующее обновление:** По завершении Фазы 1 (COM)
+**Обновлено:** 2026-03-19
