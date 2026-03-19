@@ -1,7 +1,7 @@
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// DomainConfig V2.0 - 128 байт конфигурация домена
-// Соответствие спецификации DomainConfig V2.0
+// DomainConfig V2.1 - 128 байт конфигурация домена
+// Соответствие спецификации DomainConfig V2.1 (Arbiter Integration)
 
 use serde::{Serialize, Deserialize};
 
@@ -49,7 +49,7 @@ pub enum DomainType {
     Interface = 6,
 }
 
-/// DomainConfig — 128 байт конфигурация домена (соответствие спецификации V2.0)
+/// DomainConfig — 128 байт конфигурация домена (соответствие спецификации V2.1)
 /// Размер: 128 байт, выравнивание: 128 байт
 #[repr(C, align(128))]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -80,15 +80,24 @@ pub struct DomainConfig {
 
     // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
     pub axis_x_ref: u32,        // 4b | Референс концепции оси X
-    pub axis_y_ref: u32,        // 4b | Референс концепции оси Y  
+    pub axis_y_ref: u32,        // 4b | Референс концепции оси Y
     pub axis_z_ref: u32,        // 4b | Референс концепции оси Z
     pub axis_config: u32,       // 4b | Конфигурация полюсов (Bit-packed u16x2)
     // Offset: 64 байт
 
-    // --- 4. МЕМБРАНА [32 Байт] ---
+    // --- 4. МЕМБРАНА И ARBITER [32 Байт] ---
     pub input_filter: u64,      // 8b | 64-bit Bloom Filter или хэш входа
     pub output_filter: u64,     // 8b | 64-bit Bloom Filter или хэш выхода
-    pub reserved_membrane: u64, // 8b | Резерв мембраны
+
+    // -- Блок Arbiter [8 Байт] (V2.1: бывший reserved_membrane) --
+    pub reflex_threshold: u8,   // 1b | Порог рефлекса (0..255 -> 0.0..1.0)
+    pub association_threshold: u8, // 1b | Порог ассоциации (0..255 -> 0.0..1.0)
+    pub arbiter_flags: u8,      // 1b | Битовая маска поведения Arbiter
+    pub reflex_cooldown: u8,    // 1b | Минимальный интервал между рефлексами (в пульсах)
+    pub max_concurrent_hints: u8, // 1b | Макс. кол-во ассоциаций-подсказок одновременно
+    pub feedback_weight_delta: u8, // 1b | Шаг изменения weight при обратной связи (0..255)
+    pub reserved_arbiter: [u8; 2], // 2b | Резерв блока Arbiter
+
     pub gate_complexity: u16,   // 2b | Вычислительная сложность шлюзов
     pub threshold_mass: u16,    // 2b | Порог массы для прохождения
     pub threshold_temp: u16,    // 2b | Порог температуры для прохождения
@@ -141,10 +150,19 @@ impl Default for DomainConfig {
             axis_config: 0,             // Конфигурация осей
             // Offset: 48 байт
 
-            // --- 4. МЕМБРАНА [32 Байт] ---
+            // --- 4. МЕМБРАНА И ARBITER [32 Байт] ---
             input_filter: u64::MAX,     // Bloom фильтр входа (все разрешено)
             output_filter: u64::MAX,    // Bloom фильтр выхода (все разрешено)
-            reserved_membrane: 0,   // Резерв мембраны
+
+            // -- Блок Arbiter (V2.1) --
+            reflex_threshold: 0,        // Рефлексы отключены по умолчанию
+            association_threshold: 0,   // Ассоциации отключены по умолчанию
+            arbiter_flags: 0,           // Все флаги Arbiter выключены
+            reflex_cooldown: 0,         // Без ограничений
+            max_concurrent_hints: 0,    // Подсказки отключены
+            feedback_weight_delta: 0,   // Обратная связь отключена
+            reserved_arbiter: [0; 2],   // Резерв блока Arbiter
+
             gate_complexity: 50,        // Сложность ворот (0..255)
             threshold_mass: 1,           // Порог массы (0..65535)
             threshold_temp: 200,         // Порог температуры (0..65535)
@@ -214,10 +232,19 @@ impl DomainConfig {
             axis_z_ref: 0,
             axis_config: 0,
             
-            // --- 4. МЕМБРАНА [32 Байт] ---
+            // --- 4. МЕМБРАНА И ARBITER [32 Байт] ---
             input_filter: 0,
             output_filter: 0,
-            reserved_membrane: 0,
+
+            // -- Блок Arbiter (V2.1) --
+            reflex_threshold: 0,
+            association_threshold: 0,
+            arbiter_flags: 0,
+            reflex_cooldown: 0,
+            max_concurrent_hints: 0,
+            feedback_weight_delta: 0,
+            reserved_arbiter: [0; 2],
+
             gate_complexity: 0,
             threshold_mass: 0,
             threshold_temp: 0,
@@ -261,11 +288,20 @@ impl DomainConfig {
         
         config.permeability = 0;            // 0.0 - Непроницаемая
         config.membrane_state = 1;          // CLOSED
-        
+
+        // Arbiter настройки для SUTRA (V2.1)
+        // SUTRA — вечная библиотека. Arbiter не взаимодействует с ней напрямую.
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;  // Всё отключено
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
         // Устанавливаем емкости для валидации
         config.token_capacity = 1000;
         config.connection_capacity = 100;
-        
+
         config
     }
 
@@ -290,11 +326,20 @@ impl DomainConfig {
         
         config.permeability = 25;           // ~0.1 - Жесткий пропускной фильтр
         config.membrane_state = 2;          // SEMI (Только для системных токенов)
-        
+
+        // Arbiter настройки для CODEX (V2.1)
+        // CODEX хранит правила и конституцию, не участвует в dual-path routing
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;  // Всё отключено
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
         // Устанавливаем емкости для валидации
         config.token_capacity = 500;
         config.connection_capacity = 50;
-        
+
         config
     }
 
@@ -320,11 +365,19 @@ impl DomainConfig {
         
         config.permeability = 127;          // ~0.5 - Полупроницаемая
         config.membrane_state = 3;          // ADAPTIVE
-        
+
+        // Arbiter настройки для LOGIC (V2.1)
+        config.reflex_threshold = 230;      // ~0.90 - очень высокий порог, рефлекс только при абсолютной уверенности
+        config.association_threshold = 100; // ~0.39 - подсказки только если достаточно релевантны
+        config.arbiter_flags = 0b00011111;  // Всё включено, GUARDIAN обязателен
+        config.reflex_cooldown = 5;         // Не чаще раз в 5 пульсов - логика не торопится
+        config.max_concurrent_hints = 2;    // Минимум шума
+        config.feedback_weight_delta = 50;  // ~0.20 - если логика подтвердила, след усиливается заметно
+
         // Устанавливаем емкости для валидации
         config.token_capacity = 2000;
         config.connection_capacity = 200;
-        
+
         config
     }
 
@@ -347,14 +400,22 @@ impl DomainConfig {
         config.quantum_noise = 200;         // ~0.8 - Вероятность случайной связи
         
         config.time_dilation = 50;          // x0.5 - Время здесь течет быстрее
-        
+
         config.permeability = 200;          // ~0.8 - Впускает почти всё
         config.membrane_state = 0;          // OPEN
-        
+
+        // Arbiter настройки для DREAM (V2.1)
+        config.reflex_threshold = 0;        // Рефлексы отключены - DREAM работает медленно по природе
+        config.association_threshold = 25;  // ~0.10 - принимает даже слабые подсказки (фоновый поиск)
+        config.arbiter_flags = 0b00010010;  // HINTS_ENABLED + SLOW_PATH_MANDATORY
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 8;    // Много подсказок - DREAM ищет неожиданные связи
+        config.feedback_weight_delta = 10;  // ~0.04 - медленное, но устойчивое обучение
+
         // Устанавливаем емкости для валидации
         config.token_capacity = 3000;
         config.connection_capacity = 300;
-        
+
         config
     }
 
@@ -385,6 +446,14 @@ impl DomainConfig {
         config.permeability = 200;          // Высокая проницаемость
         config.membrane_state = 1;          // SEMI - фильтрация входа
 
+        // Arbiter настройки для EXPERIENCE (V2.1)
+        config.reflex_threshold = 0;        // Сам является источником рефлексов, не получателем
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000100;  // Только FEEDBACK_ENABLED
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;   // Управляется внутренней логикой домена 9
+
         config.token_capacity = 100000;     // Много следов (опыт накапливается)
         config.connection_capacity = 50000; // Много связей (ассоциации)
 
@@ -412,11 +481,21 @@ impl DomainConfig {
         
         config.permeability = 255;          // 1.0 - Абсолютно открыто для проекций
         config.membrane_state = 0;          // OPEN
-        
+
+        // Arbiter настройки для MAYA (V2.1)
+        // MAYA не получает рефлексы - она их принимает от Arbiter напрямую
+        // Arbiter не маршрутизирует В MAYA — он маршрутизирует ЧЕРЕЗ MAYA
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;  // Всё отключено
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
         // Устанавливаем емкости для валидации
         config.token_capacity = 5000;
         config.connection_capacity = 500;
-        
+
         config
     }
 
