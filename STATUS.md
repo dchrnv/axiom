@@ -1,21 +1,24 @@
 # Axiom Status
 
-**Версия:** v0.5.0 Phase 1
+**Версия:** v0.5.0 Phase 2
 **Дата:** 2026-03-19
 
 ---
 
-## ✅ v0.5.0 Phase 1: EXPERIENCE Domain
+## ✅ v0.5.0 Phase 2: EXPERIENCE Module
 
 **Выполнено:**
-- StructuralRole::Experience = 9
-- factory_experience() метод
-- 6 domain tests (100% pass)
+- Experience модуль (485 строк)
+- Резонансный поиск (3 уровня)
+- Обучение (reinforcement/weakening)
+- Кристаллизация скиллов
+- 12 experience tests (100% pass)
 
-**Тесты:** 40 pass (было 35), 5 fail (size issues)
+**Тесты:** 52 pass (было 40), 5 fail (size issues)
 
 **Файлы:**
-- `runtime/src/domain.rs` - EXPERIENCE factory + tests
+- `runtime/src/experience.rs` - новый модуль
+- `runtime/src/lib.rs` - exports
 
 ---
 
@@ -34,8 +37,11 @@
 
 ## 🎯 Релизы
 
-### v0.5.0 Phase 1 - EXPERIENCE ✅ (2026-03-19)
-- EXPERIENCE domain (9)
+### v0.5.0 Phase 2 - EXPERIENCE Module ✅ (2026-03-19)
+- Резонансный поиск, обучение, скиллы
+- 12 tests
+
+### v0.5.0 Phase 1 - EXPERIENCE Domain ✅ (2026-03-19)
 - factory_experience() + 6 tests
 
 ### v0.4.0 Phase 1 - COM ✅ (2026-03-19)

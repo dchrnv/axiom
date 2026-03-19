@@ -13,6 +13,7 @@ mod com;
 mod clock;
 mod upo;
 mod config;
+mod experience;
 
 pub use domain::{
     DomainConfig, StructuralRole, DomainType,
@@ -53,6 +54,10 @@ pub use clock::{
 
 pub use upo::{
     DynamicTrace, TraceSourceType, Screen, TRACE_ACTIVE, TRACE_FADING, TRACE_LOCKED, TRACE_ETERNAL
+};
+
+pub use experience::{
+    Experience, ExperienceTrace, Skill, ResonanceLevel, ResonanceResult
 };
 
 #[cfg(test)]
