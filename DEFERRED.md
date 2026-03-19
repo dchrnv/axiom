@@ -48,20 +48,27 @@
 ### 1.1 Падающие тесты размеров структур
 
 **Где:** `runtime/src/ucl_command.rs`, `runtime/src/ffi.rs`
-**Что:** 5 unit тестов падают из-за несоответствия размеров
+**Что:** 6 unit тестов падают из-за несоответствия размеров (v0.5.0 Phase 3)
 **Проблема:**
 - `test_ucl_command_size` - ожидает 64, получает другой размер
 - `test_ucl_result_size` - ожидает 32, получает 64
-- `test_ffi_*` тесты - связаны с размерами структур
+- `test_ffi_*` тесты (4 теста) - PhysicsProcessor изменился (добавлены tokens, arbiter)
 
-**Почему:** Структуры могут иметь неправильное выравнивание или padding
+**Почему:**
+- PhysicsProcessor расширен в v0.5.0 Phase 3 (+3 новых поля)
+- FFI тесты проверяют старые размеры структур
+- Структуры могут иметь неправильное выравнивание
+
+**Статус:** 88 pass, 6 fail (было 82 pass, 6 fail)
+
 **Когда планируется:** Следующая сессия - высокий приоритет
 
 **Действия:**
+- [ ] Обновить FFI тесты для новой структуры PhysicsProcessor
 - [ ] Проверить `repr(C, align())` для UclCommand и UclResult
 - [ ] Проверить размеры через `cargo test debug_print_sizes -- --nocapture`
 - [ ] Исправить выравнивание структур
-- [ ] Убедиться что тесты проходят
+- [ ] Убедиться что все тесты проходят (ожидается 94 pass)
 
 ---
 
@@ -186,14 +193,23 @@ domain.last_update = com.get_current_event_id();
 
 **Где:** `runtime/src/domain.rs`
 **Что отложено:** Factory методы для MAP, PROBE, VOID, BRIDGE доменов
-**Почему:** Только 5 из 10 доменов имеют factory методы
+**Текущий статус:** 6 из 10 доменов имеют factory методы (v0.5.0)
 **Когда планируется:** Когда потребуется
 
+**Реализовано (v0.5.0):**
+- [x] `factory_sutra()` - SUTRA (0)
+- [x] `factory_codex()` - CODEX (3)
+- [x] `factory_logic()` - LOGIC (6)
+- [x] `factory_dream()` - DREAM (7)
+- [x] `factory_experience()` - EXPERIENCE (9) ✅ Добавлено в Phase 3
+- [x] `factory_maya()` - MAYA (10)
+
 **Требуется реализовать:**
-- [ ] `factory_map(domain_id, parent_id)` - Картография и навигация
-- [ ] `factory_probe(domain_id, parent_id)` - Зонды и исследования
-- [ ] `factory_void(domain_id, parent_id)` - Вакуум и пустота
-- [ ] `factory_bridge(domain_id, parent_id)` - Мосты и связи
+- [ ] `factory_execution(domain_id, parent_id)` - EXECUTION (1)
+- [ ] `factory_shadow(domain_id, parent_id)` - SHADOW (2)
+- [ ] `factory_map(domain_id, parent_id)` - MAP (4)
+- [ ] `factory_probe(domain_id, parent_id)` - PROBE (5)
+- [ ] `factory_void(domain_id, parent_id)` - VOID (8)
 
 ---
 
@@ -376,7 +392,7 @@ domain.last_update = com.get_current_event_id();
 ## 📊 СВОДКА ПО ПРИОРИТЕТАМ
 
 ### 🔥 КРИТИЧЕСКИЕ (требуют внимания):
-1. ✅ Падающие тесты размеров структур - **СЛЕДУЮЩАЯ ЗАДАЧА**
+1. Падающие тесты размеров структур (6 fail) - **СЛЕДУЮЩАЯ ЗАДАЧА**
 2. Domain Configuration - TimeStrip Integration
 3. Неиспользуемые предупреждения компиляции
 
@@ -394,12 +410,19 @@ domain.last_update = com.get_current_event_id();
 
 ### 📦 АРХИВНЫЕ ПЛАНЫ:
 - Все детальные планы v0.3.0-v0.4.0 из старого ROADMAP
+- ✅ v0.5.0 Ashti_Core v2.0 - **ЗАВЕРШЕНО** (2026-03-19)
 
 ---
 
 ## 📝 История изменений
 
-**2026-03-19:**
+**2026-03-19 (Phase 3):**
+- Обновлен статус падающих тестов (6 fail вместо 5)
+- Отмечен factory_experience как реализованный (v0.5.0)
+- Архивирован v0.5.0 как завершенный
+- Очищен ROADMAP от выполненных задач
+
+**2026-03-19 (Phase 1-2):**
 - Перемещен весь контент из ROADMAP.md v2.3
 - Добавлены текущие проблемы (падающие тесты, предупреждения)
 - Реструктуризация по приоритетам
