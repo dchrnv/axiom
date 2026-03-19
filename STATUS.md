@@ -1,25 +1,21 @@
 # Axiom Status
 
-**Версия:** v0.4.0 (Phase 1)
+**Версия:** v0.5.0 Phase 1
 **Дата:** 2026-03-19
 
 ---
 
-## ✅ v0.4.0 Phase 1: COM Implementation
+## ✅ v0.5.0 Phase 1: EXPERIENCE Domain
 
 **Выполнено:**
-- COM Module (`runtime/src/com.rs`) - 370 строк
-- Heartbeat EventType (0x3001)
-- PhysicsProcessor integration
-- 11 COM tests (100% pass)
+- StructuralRole::Experience = 9
+- factory_experience() метод
+- 6 domain tests (100% pass)
 
-**Тесты:** 35 pass (было 24), 4 fail (size issues)
+**Тесты:** 40 pass (было 35), 5 fail (size issues)
 
 **Файлы:**
-- `runtime/src/com.rs` - новый модуль
-- `runtime/src/event.rs` - добавлен Heartbeat
-- `runtime/src/physics_processor.rs` - COM интеграция
-- `runtime/src/ffi.rs` - обновлен под COM
+- `runtime/src/domain.rs` - EXPERIENCE factory + tests
 
 ---
 
@@ -38,11 +34,12 @@
 
 ## 🎯 Релизы
 
+### v0.5.0 Phase 1 - EXPERIENCE ✅ (2026-03-19)
+- EXPERIENCE domain (9)
+- factory_experience() + 6 tests
+
 ### v0.4.0 Phase 1 - COM ✅ (2026-03-19)
-- COM Module implementation
-- PhysicsProcessor integration
-- Heartbeat EventType
-- 11 tests
+- COM Module + 11 tests
 
 ### v0.3.1 - UCL V2.0 ✅ (2026-03-09)
 - Token V5.2 Sync

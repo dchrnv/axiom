@@ -20,7 +20,7 @@ pub const MEMBRANE_OPEN: u8 = 1;
 pub const MEMBRANE_CLOSED: u8 = 2;
 pub const MEMBRANE_SEMI: u8 = 3;
 
-/// Структурные роли в Ashti_Core
+/// Структурные роли в Ashti_Core v2.0
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum StructuralRole {
@@ -32,8 +32,9 @@ pub enum StructuralRole {
     Probe = 5,
     Logic = 6,
     Dream = 7,
-    Void = 8, 
-    Maya = 10, // Нейтральное пространство для фабрик
+    Void = 8,
+    Experience = 9, // NEW v2.0: Ассоциативная память
+    Maya = 10,
 }
 
 /// Типы доменов
@@ -358,6 +359,39 @@ impl DomainConfig {
     }
 
     /// -----------------------------------------------------------------------
+    /// EXPERIENCE (9) - Ассоциативная память и рефлексы (v2.0)
+    /// Физика: Низкая гравитация (свободное перемещение следов),
+    /// минимальное затухание (ничего не забывается), высокий резонанс
+    /// (быстрый поиск похожего опыта), средняя температура (пластичность).
+    /// -----------------------------------------------------------------------
+    pub fn factory_experience(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 9; // Experience
+
+        config.created_at = 1715292000;
+        config.last_update = 1715292000;
+
+        // Физика ассоциативной памяти (по спеке v2.0)
+        config.field_size = [5000.0, 5000.0, 5000.0]; // Большое поле для множества следов
+        config.gravity_strength = 0.5;      // Низкая гравитация - свободное перемещение
+        config.temperature = 300.0;         // ~27°C - средняя (пластичность + стабильность)
+        config.resonance_freq = 1000;       // Высокий резонанс - легкий поиск
+        config.friction_coeff = 20;         // Низкое трение
+        config.viscosity = 200;             // Высокая вязкость - медленное перемещение
+        // Минимальное затухание реализуется через Token.min_intensity > 0
+
+        config.permeability = 200;          // Высокая проницаемость
+        config.membrane_state = 1;          // SEMI - фильтрация входа
+
+        config.token_capacity = 100000;     // Много следов (опыт накапливается)
+        config.connection_capacity = 50000; // Много связей (ассоциации)
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
     /// MAYA (10) - Интерфейс и проекция (Иллюзия)
     /// Физика: Мягкое, теплое поле без трения. Это презентационный слой,
     /// где токены собираются в красивые структуры для выдачи ответа.
@@ -448,5 +482,83 @@ impl DomainConfig {
 
     pub fn is_temporary(&self) -> bool {
         (self.flags & (DOMAIN_TEMPORARY as u8)) != 0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_factory_experience_basic() {
+        let config = DomainConfig::factory_experience(9, 0);
+
+        assert_eq!(config.domain_id, 9);
+        assert_eq!(config.parent_domain_id, 0);
+        assert_eq!(config.structural_role, 9); // Experience
+        assert!(config.validate());
+    }
+
+    #[test]
+    fn test_factory_experience_physics() {
+        let config = DomainConfig::factory_experience(9, 0);
+
+        // Проверка физических параметров из спеки v2.0
+        assert_eq!(config.field_size, [5000.0, 5000.0, 5000.0]);
+        assert_eq!(config.gravity_strength, 0.5); // Низкая гравитация
+        assert_eq!(config.temperature, 300.0);    // Средняя температура
+        assert_eq!(config.resonance_freq, 1000);  // Высокий резонанс
+        assert_eq!(config.friction_coeff, 20);    // Низкое трение
+        assert_eq!(config.viscosity, 200);        // Высокая вязкость
+    }
+
+    #[test]
+    fn test_factory_experience_capacities() {
+        let config = DomainConfig::factory_experience(9, 0);
+
+        // Большие емкости для накопления опыта
+        assert_eq!(config.token_capacity, 100000);
+        assert_eq!(config.connection_capacity, 50000);
+        assert_eq!(config.permeability, 200); // Высокая проницаемость
+        assert_eq!(config.membrane_state, 1); // SEMI
+    }
+
+    #[test]
+    fn test_structural_role_experience() {
+        // Проверка что Experience = 9 в enum
+        assert_eq!(StructuralRole::Experience as u8, 9);
+    }
+
+    #[test]
+    fn test_experience_vs_maya_differences() {
+        let experience = DomainConfig::factory_experience(9, 0);
+        let maya = DomainConfig::factory_maya(10, 0);
+
+        // EXPERIENCE - большие емкости, высокий резонанс
+        assert!(experience.token_capacity > maya.token_capacity);
+        assert!(experience.resonance_freq > maya.resonance_freq);
+
+        // MAYA - теплее, более открыта
+        assert!(maya.temperature > experience.temperature);
+        assert!(maya.permeability > experience.permeability);
+    }
+
+    #[test]
+    fn test_all_factory_methods_valid() {
+        // Тестируем все существующие factory методы
+        let configs = vec![
+            DomainConfig::factory_sutra(1),     // SUTRA domain_id не может быть 0
+            DomainConfig::factory_codex(3, 1),
+            DomainConfig::factory_logic(6, 1),
+            DomainConfig::factory_dream(7, 1),
+            DomainConfig::factory_experience(9, 1),
+            DomainConfig::factory_maya(10, 1),
+        ];
+
+        for config in configs {
+            assert!(config.validate(),
+                "Factory method for role {} produced invalid config",
+                config.structural_role);
+        }
     }
 }
