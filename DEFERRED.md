@@ -189,31 +189,58 @@ domain.last_update = com.get_current_event_id();
 
 ## 3. 🔧 ЗАДАЧИ ПО УЛУЧШЕНИЮ - СРЕДНИЙ ПРИОРИТЕТ
 
-### 3.1 Factory Methods для всех доменов
+### 3.1 DomainConfig V2.1 - Примеры конфигураций для всех доменов Ashti_Core
 
-**Где:** `runtime/src/domain.rs`
-**Что отложено:** Factory методы для MAP, PROBE, VOID, BRIDGE доменов
-**Текущий статус:** 6 из 10 доменов имеют factory методы (v0.5.0)
-**Когда планируется:** Когда потребуется
+**Где:** `docs/spec/DomainConfig_V2_1.md` (раздел 4)
+**Что отложено:** Реализация примеров Arbiter конфигураций для всех 11 доменов
+**Текущий статус:** 3 из 11 доменов имеют примеры в спецификации V2.1
+**Когда планируется:** Когда потребуется детальная настройка dual-path архитектуры
 
-**Реализовано (v0.5.0):**
-- [x] `factory_sutra()` - SUTRA (0)
-- [x] `factory_codex()` - CODEX (3)
-- [x] `factory_logic()` - LOGIC (6)
-- [x] `factory_dream()` - DREAM (7)
-- [x] `factory_experience()` - EXPERIENCE (9) ✅ Добавлено в Phase 3
-- [x] `factory_maya()` - MAYA (10)
+**Реализовано в спецификации:**
+- [x] SUTRA (0) - Всё отключено
+- [x] EXPERIENCE (9) - Только FEEDBACK_ENABLED
+- [x] EXECUTION (1) - Полная конфигурация
+- [x] DREAM (7) - Рефлексы отключены, слабые подсказки
+- [x] LOGIC (6) - Высокий порог, строгие подсказки
+- [x] SHADOW (2) - Высокий порог, осторожное обучение
+- [x] MAP (4) - Высокий порог, надёжный опыт
+- [x] MAYA (10) - Всё отключено
 
-**Требуется реализовать:**
-- [ ] `factory_execution(domain_id, parent_id)` - EXECUTION (1)
-- [ ] `factory_shadow(domain_id, parent_id)` - SHADOW (2)
-- [ ] `factory_map(domain_id, parent_id)` - MAP (4)
-- [ ] `factory_probe(domain_id, parent_id)` - PROBE (5)
-- [ ] `factory_void(domain_id, parent_id)` - VOID (8)
+**Требуется добавить примеры для:**
+- [ ] CODEX (3) - Конституция и правила
+- [ ] PROBE (5) - Исследование и анализ
+- [ ] VOID (8) - Аннигиляция и трансформация
+
+**Причина отложения:**
+Спецификация V2.1 содержит примеры для 8 из 11 доменов. Остальные 3 домена (CODEX, PROBE, VOID) требуют дополнительного анализа их роли в dual-path архитектуре.
 
 ---
 
-### 3.2 Events System Integration
+### 3.2 Factory Methods для всех доменов
+
+**Где:** `runtime/src/domain.rs`
+**Что отложено:** Factory методы с Arbiter настройками для остальных доменов
+**Текущий статус:** 6 из 11 доменов имеют factory методы (v0.5.0)
+**Когда планируется:** Когда потребуется
+
+**Реализовано (v0.5.0 + V2.1):**
+- [x] `factory_sutra()` - SUTRA (0) ✅ V2.1 Arbiter настройки
+- [x] `factory_codex()` - CODEX (3) ✅ V2.1 Arbiter настройки
+- [x] `factory_logic()` - LOGIC (6) ✅ V2.1 Arbiter настройки
+- [x] `factory_dream()` - DREAM (7) ✅ V2.1 Arbiter настройки
+- [x] `factory_experience()` - EXPERIENCE (9) ✅ V2.1 Arbiter настройки
+- [x] `factory_maya()` - MAYA (10) ✅ V2.1 Arbiter настройки
+
+**Требуется реализовать:**
+- [ ] `factory_execution(domain_id, parent_id)` - EXECUTION (1) + Arbiter V2.1
+- [ ] `factory_shadow(domain_id, parent_id)` - SHADOW (2) + Arbiter V2.1
+- [ ] `factory_map(domain_id, parent_id)` - MAP (4) + Arbiter V2.1
+- [ ] `factory_probe(domain_id, parent_id)` - PROBE (5) + Arbiter V2.1
+- [ ] `factory_void(domain_id, parent_id)` - VOID (8) + Arbiter V2.1
+
+---
+
+### 3.3 Events System Integration
 
 **Где:** `runtime/src/`
 **Что отложено:** Система событий для COM интеграции
@@ -227,7 +254,7 @@ domain.last_update = com.get_current_event_id();
 
 ---
 
-### 3.3 Configuration System Integration
+### 3.4 Configuration System Integration
 
 **Где:** `runtime/src/token.rs`, `runtime/src/connection.rs`, и т.д.
 **Что отложено:** Полная интеграция с системой конфигураций
@@ -397,16 +424,17 @@ domain.last_update = com.get_current_event_id();
 3. Неиспользуемые предупреждения компиляции
 
 ### 🔧 СРЕДНИЙ:
-4. Factory Methods для всех доменов
-5. Events System Integration
-6. Configuration System Integration
+4. DomainConfig V2.1 - Примеры конфигураций для всех доменов
+5. Factory Methods для всех доменов
+6. Events System Integration
+7. Configuration System Integration
 
 ### 🟢 НИЗКИЙ (по необходимости):
-7. Python Adapter
-8. REST API
-9. Performance Benchmarks
-10. API Documentation
-11. Examples and Tutorials
+8. Python Adapter
+9. REST API
+10. Performance Benchmarks
+11. API Documentation
+12. Examples and Tutorials
 
 ### 📦 АРХИВНЫЕ ПЛАНЫ:
 - Все детальные планы v0.3.0-v0.4.0 из старого ROADMAP
@@ -415,6 +443,12 @@ domain.last_update = com.get_current_event_id();
 ---
 
 ## 📝 История изменений
+
+**2026-03-19 (DomainConfig V2.1):**
+- Добавлен раздел 3.1: DomainConfig V2.1 - Примеры конфигураций для всех доменов
+- Обновлен раздел 3.2: Factory Methods с маркировкой V2.1 Arbiter настроек
+- Перенумерованы секции 3.3 и 3.4
+- Обновлена сводка по приоритетам (добавлен пункт 4)
 
 **2026-03-19 (Phase 3):**
 - Обновлен статус падающих тестов (6 fail вместо 5)
