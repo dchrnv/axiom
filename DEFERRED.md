@@ -1,6 +1,6 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.0
+**Версия:** 3.1
 **Создан:** 2026-02-11
 **Обновлен:** 2026-03-19
 
@@ -10,6 +10,36 @@
 
 Систематический учет всех заглушек, отложенных функций и старых планов для будущих версий.
 Каждая запись: где находится, что отложено, почему, когда планируется.
+
+---
+
+## 0. 📦 ОТЛОЖЕННЫЕ ВЕРСИИ
+
+### 0.1 v0.4.0 - Causal Time System (ОТЛОЖЕНО)
+
+**Почему отложено:** Приоритет сменился на Ashti_Core v2.0 архитектуру
+**Когда планируется:** После v0.5.0
+
+**Задачи Phase 2-5:**
+- [ ] **Phase 2: Causal Age**
+  - Decay через causal age
+  - Thermodynamics через event_id delta
+  - Connection stress
+  - Gravity system
+- [ ] **Phase 3: Causal Frontier**
+  - CausalFrontier структура
+  - Storm detection/mitigation
+  - O(active_entities) complexity
+- [ ] **Phase 4: Heartbeat**
+  - HeartbeatGenerator
+  - Integration с Frontier
+  - HeartbeatConfig
+- [ ] **Phase 5: Cleanup & Polish**
+
+**Спецификации:**
+- `docs/spec/time/Time_Model_V1_0.md`
+- `docs/spec/time/Causal Frontier System V1.md`
+- `docs/spec/time/Heartbeat_V2_0.md`
 
 ---
 

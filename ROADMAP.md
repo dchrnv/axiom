@@ -1,68 +1,45 @@
 # Axiom Roadmap
 
-**Версия:** 3.1
+**Версия:** 3.2
 **Дата:** 2026-03-19
-**Текущая:** v0.4.0 Phase 2 - Causal Age
+**Текущая:** v0.5.0 - Ashti_Core v2.0
 
 ---
 
-## 🎯 v0.4.0 - Causal Time System
+## 🎯 v0.5.0 - Ashti_Core v2.0 Architecture
 
-### Phase 2: Causal Age (В РАБОТЕ)
+### Новая архитектура (В РАБОТЕ)
+
+**Изменения:**
+- **11 доменов** (было 10): добавлен EXPERIENCE (9)
+- **Двухпутевая обработка**: рефлекс (быстро) + полная обработка (медленно)
+- **EXPERIENCE** - ассоциативная память, рефлексы, обучение
+- **ASHTI** - переиндексация доменов 1-8
 
 **Задачи:**
-- [ ] Проверить `last_event_id` в структурах
-  - Token V5.2 ✅
-  - Connection V5.0
-  - DomainConfig V2.0
-- [ ] Реализовать `compute_causal_age()`
-  - Decay через causal age
-  - Thermodynamics через event_id delta
-  - Connection stress
-  - Gravity
+- [ ] Архивировать v1.4 ✅
+- [ ] Изучить v2.0 spec ✅
+- [ ] Обновить DomainConfig
+  - EXPERIENCE (9) конфигурация
+  - Обновить ASHTI (1-8) индексы
+- [ ] Реализовать EXPERIENCE модуль
+  - Резонансный поиск
+  - Рефлексы, ассоциации
+  - Обучение (weight adjustment)
+  - Кристаллизация скиллов
+- [ ] Обновить data bus routing
+  - 0 → 9, 9 → 1-8, 9 → 10
+  - 1-8 → 9, 1-8 → 10
 - [ ] Тесты
 
-**Spec:** `docs/spec/time/Time_Model_V1_0.md`
+**Spec:** `docs/spec/Ashti_Core_v2_0.md`
 
 ---
 
-### Phase 3: Causal Frontier
+## 🔄 v0.4.0 - Causal Time System (ОТЛОЖЕНО)
 
-**Задачи:**
-- [ ] `CausalFrontier` структура
-  - Queue для Token/Connection/Domain
-  - Visited BitSet
-  - push/pop/contains
-- [ ] PhysicsProcessor integration
-- [ ] Storm detection/mitigation
-- [ ] Тесты
-
-**Spec:** `docs/spec/time/Causal Frontier System V1.md`
-
----
-
-### Phase 4: Heartbeat
-
-**Задачи:**
-- [ ] `HeartbeatGenerator`
-  - Генерация по счетчику событий
-  - HeartbeatEvent структура
-  - COM integration
-- [ ] Frontier integration
-- [ ] HeartbeatConfig в DomainConfig
-- [ ] Тесты
-
-**Spec:** `docs/spec/time/Heartbeat_V2_0.md`
-
----
-
-### Phase 5: Cleanup & Polish
-
-**Задачи:**
-- [ ] Documentation updates
-- [ ] Performance optimization
-- [ ] Final testing
-- [ ] Release preparation
+Отложено в пользу v0.5.0 Ashti_Core v2.0.
+Детали в DEFERRED.md.
 
 ---
 
