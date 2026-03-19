@@ -6,6 +6,8 @@
 use crate::ucl_command::{UclCommand, UclResult, CommandStatus};
 use crate::domain::{DomainConfig, StructuralRole};
 use crate::com::COM;
+use crate::arbiter::Arbiter;
+use crate::token::Token;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -28,6 +30,8 @@ pub struct PhysicsProcessor {
     pub domains: HashMap<u32, DomainConfig>,
     pub next_domain_id: u32,
     pub com: COM,
+    /// Arbiter для dual-path маршрутизации (опционально)
+    pub arbiter: Option<Arbiter>,
 }
 
 impl PhysicsProcessor {
@@ -37,7 +41,28 @@ impl PhysicsProcessor {
             domains: HashMap::new(),
             next_domain_id: 1000,
             com: COM::new(),
+            arbiter: None,
         }
+    }
+
+    /// Включить dual-path маршрутизацию через Arbiter
+    ///
+    /// Это активирует full Ashti_Core v2.0 архитектуру:
+    /// SUTRA → EXPERIENCE → [ Arbiter ] → ASHTI(1-8) / MAYA(10)
+    pub fn enable_routing(&mut self) -> Result<(), &'static str> {
+        if self.arbiter.is_some() {
+            return Err("Arbiter already enabled");
+        }
+
+        // Создаем Arbiter с копией domains и новым COM
+        self.arbiter = Some(Arbiter::new(self.domains.clone(), COM::new()));
+
+        Ok(())
+    }
+
+    /// Проверить, активен ли Arbiter
+    pub fn is_routing_enabled(&self) -> bool {
+        self.arbiter.is_some()
     }
     
     /// Главная точка входа - обработка команды
@@ -63,6 +88,8 @@ impl PhysicsProcessor {
             2002 => self.annihilate_token(command),
             3000 => self.tick_forward(command),
             3001 => self.change_temperature(command),
+            4000 => self.process_token_dual_path(command),
+            4001 => self.finalize_comparison(command),
             9000 => self.core_shutdown(command),
             _ => UclResult::error(
                 command.command_id,
@@ -312,10 +339,63 @@ impl PhysicsProcessor {
     fn core_shutdown(&mut self, command: &UclCommand) -> UclResult {
         // Очищаем все домены
         self.domains.clear();
-        
+
         UclResult::success(command.command_id)
     }
-    
+
+    /// Обработка токена через Arbiter dual-path (ProcessTokenDualPath)
+    fn process_token_dual_path(&mut self, command: &UclCommand) -> UclResult {
+        use crate::ucl_command::ProcessTokenPayload;
+
+        // Проверяем, включен ли Arbiter
+        if self.arbiter.is_none() {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::SystemError,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+
+        let _payload = command.get_payload::<ProcessTokenPayload>();
+
+        // TODO: Реализовать полную обработку через Arbiter
+        // 1. Создать Token из payload
+        // 2. Вызвать arbiter.route_token()
+        // 3. Получить RoutingResult с reflex и consolidated
+
+        UclResult::success(command.command_id)
+    }
+
+    /// Финализация сравнения reflex vs ASHTI и обучение (FinalizeComparison)
+    fn finalize_comparison(&mut self, command: &UclCommand) -> UclResult {
+        use crate::ucl_command::FinalizeComparisonPayload;
+
+        // Проверяем, включен ли Arbiter
+        if self.arbiter.is_none() {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::SystemError,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        }
+
+        let payload = command.get_payload::<FinalizeComparisonPayload>();
+
+        // TODO: Реализовать финализацию
+        // 1. Найти PendingComparison по event_id
+        // 2. Сравнить reflex и consolidated
+        // 3. Вызвать experience.learn()
+        // 4. Очистить pending_comparisons
+
+        let mut result = UclResult::success(command.command_id);
+        result.events_generated = 1; // Событие обучения
+
+        // Генерируем событие обучения через COM (domain 9 = EXPERIENCE)
+        let _learning_event_id = self.com.next_event_id(9);
+
+        result
+    }
+
     /// Получить домен по ID
     pub fn get_domain(&self, domain_id: u32) -> Option<&DomainConfig> {
         self.domains.get(&domain_id)

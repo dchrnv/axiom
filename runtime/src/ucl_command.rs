@@ -39,7 +39,11 @@ pub enum OpCode {
     ChangeTemperature = 3001,// Изменение термодинамики
     ApplyGravity = 3002,     // Изменение гравитации
     PhaseTransition = 3003,  // Фазовый переход
-    
+
+    // --- Dual-Path Processing (4000+) ---
+    ProcessTokenDualPath = 4000, // Обработка токена через Arbiter (reflex + ASHTI)
+    FinalizeComparison = 4001,   // Финализация сравнения и обучение
+
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000,     // Остановка реактора
     CoreReset = 9001,        // Сброс состояния
@@ -134,6 +138,24 @@ pub struct ChangeTemperaturePayload {
     pub radius: f32,           // 4b | Радиус воздействия
     pub duration_ticks: u32,    // 4b | Длительность воздействия
     pub reserved: [u8; 14],     // 14b | Резерв
+}
+
+/// Payload для ProcessTokenDualPath (4000)
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ProcessTokenPayload {
+    pub token_id: u32,          // 4b | ID токена для обработки
+    pub source_domain: u8,      // 1b | Домен-источник
+    pub enable_learning: u8,    // 1b | 1=включить обучение, 0=только inference
+    pub reserved: [u8; 42],     // 42b | Резерв
+}
+
+/// Payload для FinalizeComparison (4001)
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct FinalizeComparisonPayload {
+    pub event_id: u64,          // 8b | ID события для финализации
+    pub reserved: [u8; 40],     // 40b | Резерв
 }
 
 impl UclCommand {

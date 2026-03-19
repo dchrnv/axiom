@@ -28,7 +28,8 @@ pub use domain::{
 pub use ucl_command::{
     UclCommand, UclResult, OpCode, CommandStatus,
     UclBuilder, SpawnDomainPayload, ApplyForcePayload,
-    InjectTokenPayload, ChangeTemperaturePayload
+    InjectTokenPayload, ChangeTemperaturePayload,
+    ProcessTokenPayload, FinalizeComparisonPayload
 };
 
 pub use physics_processor::{
