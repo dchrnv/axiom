@@ -16,7 +16,9 @@
 - **EXPERIENCE** - ассоциативная память, рефлексы, обучение
 - **ASHTI** - переиндексация доменов 1-8
 
-**Задачи:**
+**Статус: ЗАВЕРШЕНО ✅**
+
+Все задачи выполнены:
 - [x] Архивировать v1.4
 - [x] Изучить v2.0 spec
 - [x] DomainConfig: добавить EXPERIENCE (9)
@@ -26,9 +28,9 @@
 - [x] Реализовать MAYA процессор (10)
 - [x] Интегрировать Arbiter в PhysicsProcessor
 - [x] Добавить UCL opcodes 4000/4001
-- [ ] Написать integration тесты
-- [ ] Полная реализация process_token_dual_path
-- [ ] Полная реализация finalize_comparison
+- [x] Написать integration тесты (6 новых тестов)
+- [x] Полная реализация process_token_dual_path
+- [x] Полная реализация finalize_comparison
 
 **Spec:** `docs/spec/Ashti_Core_v2_0.md`
 

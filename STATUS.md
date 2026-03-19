@@ -5,30 +5,34 @@
 
 ---
 
-## ✅ v0.5.0 Phase 3: Dual-Path Architecture
+## ✅ v0.5.0 Phase 3: Dual-Path Architecture (ЗАВЕРШЕНО)
 
 **Выполнено:**
 - Arbiter V1.0 (430 строк, 10 tests) - над-доменная маршрутизация
 - ASHTI Processor (360 строк, 13 tests) - 8 physics functions
 - MAYA Processor (270 строк, 12 tests) - консолидация результатов
-- PhysicsProcessor интеграция:
+- PhysicsProcessor полная реализация:
+  - Хранилище токенов (tokens: HashMap<u32, Token>)
   - enable_routing() - включение Arbiter
   - UCL opcodes 4000/4001 (ProcessTokenDualPath, FinalizeComparison)
-  - process_token_dual_path() (TODO: full implementation)
-  - finalize_comparison() (TODO: full implementation)
+  - process_token_dual_path() - ✅ FULL IMPLEMENTATION
+  - finalize_comparison() - ✅ FULL IMPLEMENTATION
+  - inject_token() - создание и сохранение токенов
+  - spawn_domain() - поддержка EXPERIENCE (9)
 
 **Архитектура:**
 - SUTRA(0) → EXPERIENCE(9) → Arbiter → ASHTI(1-8) / MAYA(10)
 - Dual-path: reflex (fast) + ASHTI (slow)
 - Автоматическое сравнение и обучение
+- Token storage и lifecycle management
 
-**Тесты:** 87 pass (было 52), компиляция успешна
+**Тесты:** 88 pass (было 52), 6 integration тестов
 
 **Файлы:**
-- `runtime/src/arbiter.rs` - новый модуль
-- `runtime/src/ashti_processor.rs` - новый модуль
-- `runtime/src/maya_processor.rs` - новый модуль
-- `runtime/src/physics_processor.rs` - интеграция
+- `runtime/src/arbiter.rs` - новый модуль (430 строк)
+- `runtime/src/ashti_processor.rs` - новый модуль (360 строк)
+- `runtime/src/maya_processor.rs` - новый модуль (270 строк)
+- `runtime/src/physics_processor.rs` - расширен (780+ строк)
 - `runtime/src/ucl_command.rs` - opcodes 4000/4001
 - `runtime/src/lib.rs` - exports
 
