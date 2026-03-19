@@ -32,6 +32,10 @@ pub struct PhysicsProcessor {
     pub com: COM,
     /// Arbiter для dual-path маршрутизации (опционально)
     pub arbiter: Option<Arbiter>,
+    /// Хранилище токенов (token_id -> Token)
+    pub tokens: HashMap<u32, Token>,
+    /// Счетчик для генерации token_id
+    pub next_token_id: u32,
 }
 
 impl PhysicsProcessor {
@@ -42,6 +46,8 @@ impl PhysicsProcessor {
             next_domain_id: 1000,
             com: COM::new(),
             arbiter: None,
+            tokens: HashMap::new(),
+            next_token_id: 1,
         }
     }
 
@@ -127,6 +133,7 @@ impl PhysicsProcessor {
             3 => DomainConfig::factory_codex(self.next_domain_id as u16, payload.parent_domain_id),
             6 => DomainConfig::factory_logic(self.next_domain_id as u16, payload.parent_domain_id),
             7 => DomainConfig::factory_dream(self.next_domain_id as u16, payload.parent_domain_id),
+            9 => DomainConfig::factory_experience(self.next_domain_id as u16, payload.parent_domain_id),
             10 => DomainConfig::factory_maya(self.next_domain_id as u16, payload.parent_domain_id),
             _ => DomainConfig::factory_sutra(self.next_domain_id as u16), // По умолчанию
         };
@@ -223,9 +230,39 @@ impl PhysicsProcessor {
                 PhysicsError::PhysicsViolation as u16,
             );
         }
-        
-        // Временно - просто возвращаем успех
-        // TODO: Реализовать создание токена
+
+        // Создаем токен из payload
+        let token = Token {
+            sutra_id: 0, // Будет установлен SUTRA
+            domain_id: payload.target_domain_id,
+            type_flags: payload.token_type as u16,
+            position: [
+                payload.position[0] as i16,
+                payload.position[1] as i16,
+                payload.position[2] as i16,
+            ],
+            velocity: [
+                payload.velocity[0] as i16,
+                payload.velocity[1] as i16,
+                payload.velocity[2] as i16,
+            ],
+            target: [0; 3],
+            reserved_phys: 0,
+            valence: 0,
+            mass: (payload.mass as u8).max(1),
+            temperature: payload.temperature as u8,
+            state: crate::token::STATE_ACTIVE,
+            lineage_hash: 0,
+            momentum: [0; 3],
+            resonance: (payload.semantic_weight as u32),
+            last_event_id: self.com.current_event_id(),
+        };
+
+        // Сохраняем токен в хранилище
+        let token_id = self.next_token_id;
+        self.tokens.insert(token_id, token);
+        self.next_token_id += 1;
+
         UclResult::success(command.command_id)
     }
     
@@ -356,14 +393,41 @@ impl PhysicsProcessor {
             );
         }
 
-        let _payload = command.get_payload::<ProcessTokenPayload>();
+        let payload = command.get_payload::<ProcessTokenPayload>();
 
-        // TODO: Реализовать полную обработку через Arbiter
-        // 1. Создать Token из payload
-        // 2. Вызвать arbiter.route_token()
-        // 3. Получить RoutingResult с reflex и consolidated
+        // 1. Получаем токен из хранилища
+        let token = match self.tokens.get(&payload.token_id) {
+            Some(t) => t.clone(),
+            None => {
+                return UclResult::error(
+                    command.command_id,
+                    CommandStatus::TargetNotFound,
+                    PhysicsError::TokenNotFound as u16,
+                );
+            }
+        };
 
-        UclResult::success(command.command_id)
+        // 2. Маршрутизируем через Arbiter
+        let routing_result = if let Some(ref mut arbiter) = self.arbiter {
+            arbiter.route_token(token, payload.source_domain)
+        } else {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::SystemError,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        };
+
+        // 3. Генерируем результат
+        let mut result = UclResult::success(command.command_id);
+        result.events_generated = routing_result.routed_events.len() as u16;
+
+        // Сохраняем consolidated результат обратно в хранилище (если есть)
+        if let Some(consolidated) = routing_result.consolidated {
+            self.tokens.insert(payload.token_id, consolidated);
+        }
+
+        result
     }
 
     /// Финализация сравнения reflex vs ASHTI и обучение (FinalizeComparison)
@@ -381,11 +445,25 @@ impl PhysicsProcessor {
 
         let payload = command.get_payload::<FinalizeComparisonPayload>();
 
-        // TODO: Реализовать финализацию
-        // 1. Найти PendingComparison по event_id
-        // 2. Сравнить reflex и consolidated
-        // 3. Вызвать experience.learn()
-        // 4. Очистить pending_comparisons
+        // Вызываем finalize_comparison на Arbiter
+        let finalize_result = if let Some(ref mut arbiter) = self.arbiter {
+            arbiter.finalize_comparison(payload.event_id)
+        } else {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::SystemError,
+                PhysicsError::PhysicsViolation as u16,
+            );
+        };
+
+        // Проверяем результат
+        if let Err(_err_msg) = finalize_result {
+            return UclResult::error(
+                command.command_id,
+                CommandStatus::TargetNotFound,
+                PhysicsError::TokenNotFound as u16,
+            );
+        }
 
         let mut result = UclResult::success(command.command_id);
         result.events_generated = 1; // Событие обучения
@@ -536,9 +614,165 @@ mod tests {
     fn test_unknown_opcode() {
         let mut processor = PhysicsProcessor::new();
         let command = UclCommand::new(OpCode::CoreReset, 0, 100, 0);
-        
+
         let result = processor.execute(&command);
         assert!(!result.is_success());
         assert_eq!(result.status, CommandStatus::UnknownOpcode as u8);
+    }
+
+    #[test]
+    fn test_enable_routing() {
+        let mut processor = PhysicsProcessor::new();
+
+        // Изначально routing выключен
+        assert!(!processor.is_routing_enabled());
+
+        // Включаем routing
+        let result = processor.enable_routing();
+        assert!(result.is_ok());
+        assert!(processor.is_routing_enabled());
+
+        // Повторное включение должно вернуть ошибку
+        let result = processor.enable_routing();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_inject_and_store_token() {
+        let mut processor = PhysicsProcessor::new();
+
+        // Создаем домен
+        let create = UclBuilder::spawn_domain(0, 6); // LOGIC
+        let result = processor.execute(&create);
+        assert!(result.is_success());
+
+        // Инжектируем токен
+        let payload = crate::ucl_command::InjectTokenPayload {
+            target_domain_id: 1000,
+            token_type: 1,
+            mass: 10.0,
+            position: [1.0, 2.0, 3.0],
+            velocity: [0.5, 0.5, 0.5],
+            semantic_weight: 50.0,
+            temperature: 20.0,
+            reserved: [0; 6],
+        };
+
+        let command = UclCommand::new(OpCode::InjectToken, 1000, 100, 0)
+            .with_payload(&payload);
+
+        let result = processor.execute(&command);
+        assert!(result.is_success());
+
+        // Проверяем, что токен сохранен
+        assert_eq!(processor.tokens.len(), 1);
+        assert!(processor.tokens.contains_key(&1));
+    }
+
+    #[test]
+    fn test_dual_path_processing() {
+        use crate::ucl_command::ProcessTokenPayload;
+
+        let mut processor = PhysicsProcessor::new();
+
+        // 1. Создаем EXPERIENCE домен
+        let create = UclBuilder::spawn_domain(0, 9); // EXPERIENCE
+        let result = processor.execute(&create);
+        assert!(result.is_success());
+
+        // 2. Включаем routing
+        let result = processor.enable_routing();
+        assert!(result.is_ok());
+
+        // 3. Инжектируем токен
+        let inject_payload = crate::ucl_command::InjectTokenPayload {
+            target_domain_id: 1000,
+            token_type: 1,
+            mass: 10.0,
+            position: [1.0, 2.0, 3.0],
+            velocity: [0.5, 0.5, 0.5],
+            semantic_weight: 50.0,
+            temperature: 20.0,
+            reserved: [0; 6],
+        };
+
+        let command = UclCommand::new(OpCode::InjectToken, 1000, 100, 0)
+            .with_payload(&inject_payload);
+
+        let result = processor.execute(&command);
+        assert!(result.is_success());
+
+        // 4. Обрабатываем через dual-path
+        let process_payload = ProcessTokenPayload {
+            token_id: 1,
+            source_domain: 9, // EXPERIENCE
+            enable_learning: 1,
+            reserved: [0; 42],
+        };
+
+        let command = UclCommand::new(OpCode::ProcessTokenDualPath, 0, 100, 0)
+            .with_payload(&process_payload);
+
+        let result = processor.execute(&command);
+        // Arbiter вернет ошибку если не все домены зарегистрированы,
+        // но opcode должен выполниться без системных ошибок
+        assert!(result.is_success());
+    }
+
+    #[test]
+    fn test_finalize_comparison_opcode() {
+        use crate::ucl_command::FinalizeComparisonPayload;
+
+        let mut processor = PhysicsProcessor::new();
+
+        // Включаем routing
+        let result = processor.enable_routing();
+        assert!(result.is_ok());
+
+        // Пытаемся финализировать несуществующее сравнение
+        let payload = FinalizeComparisonPayload {
+            event_id: 12345,
+            reserved: [0; 40],
+        };
+
+        let command = UclCommand::new(OpCode::FinalizeComparison, 0, 100, 0)
+            .with_payload(&payload);
+
+        let result = processor.execute(&command);
+        // Должно вернуть ошибку, так как event_id не существует
+        assert!(!result.is_success());
+    }
+
+    #[test]
+    fn test_token_storage() {
+        let mut processor = PhysicsProcessor::new();
+
+        assert_eq!(processor.tokens.len(), 0);
+        assert_eq!(processor.next_token_id, 1);
+
+        // Создаем домен и инжектируем несколько токенов
+        let create = UclBuilder::spawn_domain(0, 6);
+        processor.execute(&create);
+
+        for i in 0..5 {
+            let payload = crate::ucl_command::InjectTokenPayload {
+                target_domain_id: 1000,
+                token_type: i,
+                mass: 10.0 + i as f32,
+                position: [i as f32, 0.0, 0.0],
+                velocity: [0.0; 3],
+                semantic_weight: 50.0,
+                temperature: 20.0,
+                reserved: [0; 6],
+            };
+
+            let command = UclCommand::new(OpCode::InjectToken, 1000, 100, 0)
+                .with_payload(&payload);
+
+            processor.execute(&command);
+        }
+
+        assert_eq!(processor.tokens.len(), 5);
+        assert_eq!(processor.next_token_id, 6);
     }
 }
