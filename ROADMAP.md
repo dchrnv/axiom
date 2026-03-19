@@ -21,9 +21,14 @@
 - [x] Изучить v2.0 spec
 - [x] DomainConfig: добавить EXPERIENCE (9)
 - [x] Реализовать EXPERIENCE модуль
-- [ ] Обновить data bus routing
-  - 0 → 9, 9 → 1-8, 9 → 10
-  - 1-8 → 9, 1-8 → 10
+- [x] Реализовать Arbiter V1.0 (над-доменная маршрутизация)
+- [x] Реализовать ASHTI процессоры (1-8)
+- [x] Реализовать MAYA процессор (10)
+- [x] Интегрировать Arbiter в PhysicsProcessor
+- [x] Добавить UCL opcodes 4000/4001
+- [ ] Написать integration тесты
+- [ ] Полная реализация process_token_dual_path
+- [ ] Полная реализация finalize_comparison
 
 **Spec:** `docs/spec/Ashti_Core_v2_0.md`
 
