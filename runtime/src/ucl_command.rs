@@ -3,8 +3,6 @@
 // UCL V2.0 - Unified Command Language (Zero-Allocation FFI Frame)
 // 64 байта, repr(C, align(64))
 
-use crate::domain::StructuralRole;
-
 /// Статус выполнения команды
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -50,6 +48,7 @@ pub enum OpCode {
 }
 
 /// Флаги команд
+#[allow(dead_code)]
 pub mod flags {
     pub const SYNC: u8 = 0x01;           // Синхронное выполнение
     pub const FORCE: u8 = 0x02;           // Принудительное выполнение

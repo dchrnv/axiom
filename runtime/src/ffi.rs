@@ -7,16 +7,11 @@ use crate::ucl_command::{UclCommand, UclResult};
 use crate::physics_processor::{PhysicsProcessor, PhysicsStats};
 use crate::domain::DomainConfig;
 use std::sync::Mutex;
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
 /// Глобальный экземпляр физического процессора
-static PHYSICS_PROCESSOR: std::sync::LazyLock<Mutex<PhysicsProcessor>> = 
-    std::sync::LazyLock::new(|| Mutex::new(PhysicsProcessor { 
-        domains: std::collections::HashMap::new(),
-        next_domain_id: 1000,
-        com_counter: 0,
-    }));
+static PHYSICS_PROCESSOR: std::sync::LazyLock<Mutex<PhysicsProcessor>> =
+    std::sync::LazyLock::new(|| Mutex::new(PhysicsProcessor::new()));
 
 /// # Safety
 /// Выполняет UCL команду через FFI интерфейс
@@ -311,11 +306,7 @@ pub unsafe extern "C" fn ucl_list_domains(
 pub unsafe extern "C" fn ucl_reset() -> i32 {
     match PHYSICS_PROCESSOR.try_lock() {
         Ok(mut processor) => {
-            *processor = PhysicsProcessor { 
-                domains: std::collections::HashMap::new(),
-                next_domain_id: 1000,
-                com_counter: 0,
-            };
+            *processor = PhysicsProcessor::new();
             0
         }
         Err(_) => 1,
@@ -363,6 +354,7 @@ pub unsafe extern "C" fn ucl_get_sizes(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::CStr;
     
     #[test]
     fn test_ffi_spawn_domain() {

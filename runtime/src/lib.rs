@@ -6,6 +6,13 @@ mod domain;
 mod ucl_command;
 mod physics_processor;
 mod ffi;
+mod token;
+mod connection;
+mod event;
+mod com;
+mod clock;
+mod upo;
+mod config;
 
 pub use domain::{
     DomainConfig, StructuralRole, DomainType,
@@ -22,6 +29,30 @@ pub use ucl_command::{
 
 pub use physics_processor::{
     PhysicsProcessor, PhysicsStats, PhysicsError
+};
+
+pub use token::{
+    Token, STATE_ACTIVE, STATE_SLEEPING, STATE_LOCKED
+};
+
+pub use connection::{
+    Connection, FLAG_ACTIVE, FLAG_INHIBITED, FLAG_TEMPORARY, FLAG_CRITICAL
+};
+
+pub use event::{
+    Event, EventType, EventPriority, Timeline
+};
+
+pub use com::{
+    COM
+};
+
+pub use clock::{
+    CausalClock
+};
+
+pub use upo::{
+    DynamicTrace, TraceSourceType, Screen, TRACE_ACTIVE, TRACE_FADING, TRACE_LOCKED, TRACE_ETERNAL
 };
 
 #[cfg(test)]

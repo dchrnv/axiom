@@ -3,8 +3,9 @@
 // PhysicsProcessor - обработчик UCL команд
 // Реализует физическую семантику AXIOM
 
-use crate::ucl_command::{UclCommand, UclResult, OpCode, CommandStatus};
+use crate::ucl_command::{UclCommand, UclResult, CommandStatus};
 use crate::domain::{DomainConfig, StructuralRole};
+use crate::com::COM;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -26,7 +27,7 @@ pub enum PhysicsError {
 pub struct PhysicsProcessor {
     pub domains: HashMap<u32, DomainConfig>,
     pub next_domain_id: u32,
-    pub com_counter: u64,
+    pub com: COM,
 }
 
 impl PhysicsProcessor {
@@ -35,7 +36,7 @@ impl PhysicsProcessor {
         Self {
             domains: HashMap::new(),
             next_domain_id: 1000,
-            com_counter: 0,
+            com: COM::new(),
         }
     }
     
@@ -259,10 +260,11 @@ impl PhysicsProcessor {
     
     /// Шаг симуляции (TickForward)
     fn tick_forward(&mut self, command: &UclCommand) -> UclResult {
-        self.com_counter += 1;
-        
+        // Генерируем event_id через COM для пометки шага симуляции
+        let _event_id = self.com.next_event_id(0);
+
         // Временно - просто возвращаем успех
-        // TODO: Реализовать шаг симуляции
+        // TODO: Реализовать шаг симуляции с генерацией COM Event
         let mut result = UclResult::success(command.command_id);
         result.events_generated = 1; // Генерируем событие о шаге
         result
@@ -328,7 +330,7 @@ impl PhysicsProcessor {
     pub fn get_stats(&self) -> PhysicsStats {
         PhysicsStats {
             total_domains: self.domains.len(),
-            com_counter: self.com_counter,
+            current_event_id: self.com.current_event_id(),
             next_domain_id: self.next_domain_id,
         }
     }
@@ -338,21 +340,21 @@ impl PhysicsProcessor {
 #[derive(Debug, Clone)]
 pub struct PhysicsStats {
     pub total_domains: usize,
-    pub com_counter: u64,
+    pub current_event_id: u64,
     pub next_domain_id: u32,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ucl_command::UclBuilder;
+    use crate::ucl_command::{UclBuilder, OpCode};
     
     #[test]
     fn test_physics_processor_creation() {
         let processor = PhysicsProcessor::new();
         assert_eq!(processor.domains.len(), 0);
         assert_eq!(processor.next_domain_id, 1000);
-        assert_eq!(processor.com_counter, 0);
+        assert_eq!(processor.com.current_event_id(), 0);
     }
     
     #[test]

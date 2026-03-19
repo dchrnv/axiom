@@ -25,6 +25,9 @@ pub enum EventType {
     DomainConfig = 0x2002,
     DomainReset = 0x2003,
 
+    // Time события (0x3000-0x3FFF)
+    Heartbeat = 0x3001,
+
     // Системные события (0xF000-0xFFFF)
     SystemCheckpoint = 0xF001,
     SystemRollback = 0xF002,
@@ -46,6 +49,7 @@ impl From<u16> for EventType {
             0x2001 => EventType::DomainCreate,
             0x2002 => EventType::DomainConfig,
             0x2003 => EventType::DomainReset,
+            0x3001 => EventType::Heartbeat,
             0xF001 => EventType::SystemCheckpoint,
             0xF002 => EventType::SystemRollback,
             0xF003 => EventType::SystemShutdown,
@@ -126,12 +130,13 @@ impl Event {
     }
 
     fn validate_event_type(&self) -> bool {
-        matches!(EventType::from(self.event_type), 
+        matches!(EventType::from(self.event_type),
             EventType::TokenCreate | EventType::TokenUpdate | EventType::TokenDelete |
             EventType::TokenMove | EventType::TokenTransform |
             EventType::ConnectionCreate | EventType::ConnectionUpdate |
             EventType::ConnectionDelete | EventType::ConnectionStress |
             EventType::DomainCreate | EventType::DomainConfig | EventType::DomainReset |
+            EventType::Heartbeat |
             EventType::SystemCheckpoint | EventType::SystemRollback | EventType::SystemShutdown
         )
     }

@@ -3,8 +3,8 @@
 
 pub mod loader;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests; // TODO: Create tests module
 
 pub use loader::{
     ConfigLoader, AxiomConfig, RuntimeConfig, SchemaConfig, LoaderConfig, ConfigError
