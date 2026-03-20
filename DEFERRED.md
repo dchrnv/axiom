@@ -13,66 +13,18 @@
 
 ---
 
-## 0. 📦 ОТЛОЖЕННЫЕ ВЕРСИИ
-
-### 0.1 v0.4.0 - Causal Time System (ОТЛОЖЕНО)
-
-**Почему отложено:** Приоритет сменился на Ashti_Core v2.0 архитектуру
-**Когда планируется:** После v0.5.0
-
-**Задачи Phase 2-5:**
-- [ ] **Phase 2: Causal Age**
-  - Decay через causal age
-  - Thermodynamics через event_id delta
-  - Connection stress
-  - Gravity system
-- [ ] **Phase 3: Causal Frontier**
-  - CausalFrontier структура
-  - Storm detection/mitigation
-  - O(active_entities) complexity
-- [ ] **Phase 4: Heartbeat**
-  - HeartbeatGenerator
-  - Integration с Frontier
-  - HeartbeatConfig
-- [ ] **Phase 5: Cleanup & Polish**
-
-**Спецификации:**
-- `docs/spec/time/Time_Model_V1_0.md`
-- `docs/spec/time/Causal Frontier System V1.md`
-- `docs/spec/time/Heartbeat_V2_0.md`
-
----
-
 ## 1. 🔥 КРИТИЧЕСКИЕ ПРОБЛЕМЫ - ТРЕБУЮТ ВНИМАНИЯ
 
-### 1.1 ✅ Падающие тесты - РЕШЕНО (v0.6.0)
-
-**Где:** `runtime/src/ucl_command.rs`, `runtime/src/ffi.rs`, `runtime/src/arbiter.rs`
-**Что было:** 6 unit тестов падали
-**Решение:**
-- ✅ Переупорядочены поля в UclCommand/UclResult по убыванию размера
-- ✅ UclCommand: 128 → 64 bytes, UclResult: 64 → 32 bytes
-- ✅ Исправлено граничное условие в arbiter::cleanup_old_comparisons (`<` → `<=`)
-- ✅ Добавлен `saturating_sub` для защиты от underflow
-- ✅ Убрана хрупкая проверка в test_ffi_get_stats (shared state issue)
-- ✅ Добавлен token injection в test_ffi_apply_force
-
-**Результат:** 173 pass, 0 fail ✅ (было: 167 pass, 6 fail)
-
-**Коммиты:** 745df1c, 8688439
-**Документация:** [REMAINING_TEST_ISSUES.md](docs/spec/archive/REMAINING_TEST_ISSUES.md)
-
----
-
-
-### 1.2 Неиспользуемые предупреждения компиляции
+### 1.1 Неиспользуемые предупреждения компиляции
 
 **Где:** `runtime/src/token.rs`, `runtime/src/connection.rs`, `runtime/src/config/mod.rs`, `runtime/src/event.rs`, `runtime/src/upo.rs`
-**Что:** ~10 предупреждений о неиспользуемом коде
+**Что:** ~15 предупреждений о неиспользуемом коде
 **Проблема:**
-- Неиспользуемые импорты ConfigLoader
-- Неиспользуемые константы (EVENT_BATCHED)
+- Неиспользуемые импорты (ConfigLoader, EventPriority, Connection, Token)
 - Неиспользуемые структуры (Snapshot, UPOConfig, UPO)
+- Неиспользуемые поля (PendingComparison: input_pattern, ashti_results, trace_index)
+- Неиспользуемые переменные (event_id, domain, cycle)
+- Ненужные mut (token1, generator)
 
 **Почему:** Код в процессе разработки, некоторые части еще не используются
 **Когда планируется:** Постепенно, по мере реализации функционала
@@ -81,6 +33,7 @@
 - [ ] Либо использовать код
 - [ ] Либо пометить `#[allow(dead_code)]`
 - [ ] Либо удалить неиспользуемый код
+- [ ] Применить `cargo fix --lib -p axiom_core`
 
 ---
 
@@ -145,54 +98,17 @@
 
 ## 3. 🔧 ЗАДАЧИ ПО УЛУЧШЕНИЮ - СРЕДНИЙ ПРИОРИТЕТ
 
-### 3.1 DomainConfig V2.1 - Примеры конфигураций для всех доменов Ashti_Core
+### 3.1 DomainConfig V2.1 - Примеры для оставшихся доменов
 
 **Где:** `docs/spec/DomainConfig_V2_1.md` (раздел 4)
-**Что отложено:** Реализация примеров Arbiter конфигураций для всех 11 доменов
-**Текущий статус:** 3 из 11 доменов имеют примеры в спецификации V2.1
-**Когда планируется:** Когда потребуется детальная настройка dual-path архитектуры
-
-**Реализовано в спецификации:**
-- [x] SUTRA (0) - Всё отключено
-- [x] EXPERIENCE (9) - Только FEEDBACK_ENABLED
-- [x] EXECUTION (1) - Полная конфигурация
-- [x] DREAM (7) - Рефлексы отключены, слабые подсказки
-- [x] LOGIC (6) - Высокий порог, строгие подсказки
-- [x] SHADOW (2) - Высокий порог, осторожное обучение
-- [x] MAP (4) - Высокий порог, надёжный опыт
-- [x] MAYA (10) - Всё отключено
+**Что отложено:** Примеры Arbiter конфигураций для 3 доменов
+**Текущий статус:** 8 из 11 доменов имеют примеры в спецификации
+**Когда планируется:** Когда потребуется детальная настройка
 
 **Требуется добавить примеры для:**
 - [ ] CODEX (3) - Конституция и правила
 - [ ] PROBE (5) - Исследование и анализ
 - [ ] VOID (8) - Аннигиляция и трансформация
-
-**Причина отложения:**
-Спецификация V2.1 содержит примеры для 8 из 11 доменов. Остальные 3 домена (CODEX, PROBE, VOID) требуют дополнительного анализа их роли в dual-path архитектуре.
-
----
-
-### 3.2 Factory Methods для всех доменов
-
-**Где:** `runtime/src/domain.rs`
-**Что отложено:** Factory методы с Arbiter настройками для остальных доменов
-**Текущий статус:** 6 из 11 доменов имеют factory методы (v0.5.0)
-**Когда планируется:** Когда потребуется
-
-**Реализовано (v0.5.0 + V2.1):**
-- [x] `factory_sutra()` - SUTRA (0) ✅ V2.1 Arbiter настройки
-- [x] `factory_codex()` - CODEX (3) ✅ V2.1 Arbiter настройки
-- [x] `factory_logic()` - LOGIC (6) ✅ V2.1 Arbiter настройки
-- [x] `factory_dream()` - DREAM (7) ✅ V2.1 Arbiter настройки
-- [x] `factory_experience()` - EXPERIENCE (9) ✅ V2.1 Arbiter настройки
-- [x] `factory_maya()` - MAYA (10) ✅ V2.1 Arbiter настройки
-
-**Требуется реализовать:**
-- [ ] `factory_execution(domain_id, parent_id)` - EXECUTION (1) + Arbiter V2.1
-- [ ] `factory_shadow(domain_id, parent_id)` - SHADOW (2) + Arbiter V2.1
-- [ ] `factory_map(domain_id, parent_id)` - MAP (4) + Arbiter V2.1
-- [ ] `factory_probe(domain_id, parent_id)` - PROBE (5) + Arbiter V2.1
-- [ ] `factory_void(domain_id, parent_id)` - VOID (8) + Arbiter V2.1
 
 ---
 
@@ -212,14 +128,7 @@
 
 ### 3.3 Configuration System Integration
 
-**Статус:** Базовая интеграция завершена, осталась YAML загрузка
-
-**Что реализовано (v0.6.0):**
-- ✅ DomainConfig интегрирован с runtime
-- ✅ HeartbeatConfig пресеты
-- ✅ CausalFrontier конфигурация
-
-**Осталось (низкий приоритет):**
+**Что осталось (низкий приоритет):**
 - [ ] Загрузка из YAML
 - [ ] JSON схемы валидация
 - [ ] Hot reload
@@ -260,20 +169,17 @@
 ## 📊 СВОДКА ПО ПРИОРИТЕТАМ
 
 ### 🔥 КРИТИЧЕСКИЕ:
-1. Падающие тесты размеров структур (5 fail)
-2. Неиспользуемые предупреждения компиляции
+1. Неиспользуемые предупреждения компиляции (~15 warnings)
 
 ### 🔧 СРЕДНИЙ:
-3. DomainConfig V2.1 - Примеры для 3 доменов (CODEX, PROBE, VOID)
-4. Factory Methods - 5 доменов (EXECUTION, SHADOW, MAP, PROBE, VOID)
-5. Events System Integration
-6. Configuration YAML загрузка
+2. DomainConfig V2.1 - Примеры для 3 доменов (CODEX, PROBE, VOID)
+3. Events System Integration
+4. Configuration YAML загрузка
 
 ### 🟢 НИЗКИЙ:
-7. Python Adapter
-8. REST API
-9. Performance Benchmarks
-10. API Documentation
+5. Python Adapter
+6. REST API
+7. Performance Benchmarks
 
 ### 📦 АРХИВНЫЕ:
 - v0.3.0, v0.4.0 планы (отложено)
@@ -282,11 +188,16 @@
 
 ## 📝 История изменений
 
+**2026-03-20 (v0.6.1 завершена):**
+- ✅ Удалено: Секция 0.1 (v0.4.0 Causal Time System - завершено в v0.6.0)
+- ✅ Удалено: Секция 1.1 (Падающие тесты - решено в v0.6.1)
+- ✅ Удалено: Секция 3.2 (Factory Methods - реализовано в v0.6.1)
+- Обновлены приоритеты: убраны завершённые задачи
+- Обновлена секция 1.1: предупреждения компиляции (~15 warnings)
+
 **2026-03-20 (v0.6.0 завершена):**
-- ✅ Решены: 1.2 Domain Configuration - TimeStrip Integration
-- ✅ Решены: 3.4 Configuration System Integration (базовая интеграция)
-- Обновлен статус: 1.1 Падающие тесты (5 fail вместо 6, +1 тест исправлен)
-- Обновлен статус тестов: 168 pass, 5 fail (было 167 pass, 6 fail)
+- ✅ Решены: Domain Configuration, Configuration System Integration
+- Обновлен статус тестов: 168 pass, 5 fail
 
 **2026-03-19 (DomainConfig V2.1):**
 - Добавлен раздел 3.1: DomainConfig V2.1 - Примеры конфигураций для всех доменов
@@ -315,6 +226,7 @@
 
 ---
 
+**Версия:** 3.2
 **Последнее обновление:** 2026-03-20
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
