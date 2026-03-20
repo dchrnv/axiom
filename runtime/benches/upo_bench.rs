@@ -4,7 +4,7 @@
 //! UPO v2.1 benchmarks
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use axiom_core::{Connection, DynamicTrace, Screen, Token, UPO, UPOConfig, token::STATE_ACTIVE};
+use axiom_core::{Connection, DynamicTrace, Screen, Token, UPO, UPOConfig, token::STATE_ACTIVE, TraceSourceType};
 
 fn bench_token_creation(c: &mut Criterion) {
     c.bench_function("token_new", |b| {
@@ -49,9 +49,9 @@ fn bench_upo_compute(c: &mut Criterion) {
 }
 
 fn bench_screen_write(c: &mut Criterion) {
-    let mut screen = Screen::new(0.99, 0.001);
+    let mut screen = Screen::new([1000, 1000, 1000], 0.001, 0.01);
     screen.set_current_event(100);
-    let trace = DynamicTrace::new(0.1, -0.2, 0.5, 0.3, 100);
+    let trace = DynamicTrace::new(10, -20, 50, 1.0, 440.0, 100, TraceSourceType::Token, 1, 0);
 
     c.bench_function("screen_write", |b| {
         b.iter(|| screen.write(black_box(&trace)))

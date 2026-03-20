@@ -1051,6 +1051,99 @@ mod tests {
         assert_eq!(config.token_capacity, 2000);
     }
 
+    #[test]
+    fn test_shadow_domain_simulation() {
+        // SHADOW (2) - Симуляция угроз и теневые сценарии
+        // Физика: изолированная среда для моделирования деструктивных сценариев
+        let config = DomainConfig::factory_shadow(2, 0);
+
+        assert_eq!(config.structural_role, 2);
+        assert_eq!(config.temperature, 250.0);     // Прохладная среда для стабильности
+        assert_eq!(config.gravity_strength, 5.0);  // Средняя гравитация
+        assert_eq!(config.viscosity, 180);         // ~0.7 - замедленное движение
+        assert_eq!(config.membrane_state, 2);      // SEMI - контролируемая изоляция
+
+        // Arbiter активен для быстрого анализа угроз
+        assert_eq!(config.reflex_threshold, 180);  // ~0.71 - высокий порог
+        assert_eq!(config.arbiter_flags, 0b00010111); // Рефлексы + подсказки + feedback + медленный путь
+    }
+
+    #[test]
+    fn test_map_domain_facts() {
+        // MAP (4) - Карта мира и фактов
+        // Физика: стабильная структура для хранения и навигации по фактам
+        let config = DomainConfig::factory_map(4, 0);
+
+        assert_eq!(config.structural_role, 4);
+        assert_eq!(config.temperature, 280.0);     // Умеренная температура - стабильность
+        assert_eq!(config.gravity_strength, 15.0); // Высокая гравитация - факты удерживаются
+        assert_eq!(config.viscosity, 200);         // ~0.78 - медленное изменение
+        assert_eq!(config.membrane_state, 2);      // SEMI
+
+        // Arbiter активен - факты требуют уверенности
+        assert_eq!(config.reflex_threshold, 200);  // ~0.78 - высокий порог
+        assert_eq!(config.arbiter_flags, 0b00011111); // Всё включено
+    }
+
+    #[test]
+    fn test_logic_domain_computation() {
+        // LOGIC (6) - Чистые вычисления и логический вывод
+        // Физика: детерминированная среда без случайности
+        let config = DomainConfig::factory_logic(6, 1);
+
+        assert_eq!(config.structural_role, 6);
+        assert_eq!(config.temperature, 273.0);     // Оптимальная кинетическая энергия
+        assert_eq!(config.gravity_strength, 9.81); // Земная гравитация
+        assert_eq!(config.elasticity, 200);        // ~0.8 - хорошие отскоки
+        assert_eq!(config.friction_coeff, 25);     // ~0.1 - лёгкое трение
+        assert_eq!(config.membrane_state, 3);      // ADAPTIVE
+
+        // Arbiter активен для логических выводов
+        assert_eq!(config.reflex_threshold, 230);  // ~0.90 - очень высокий порог
+        assert_eq!(config.association_threshold, 100); // ~0.39 - подсказки только если релевантны
+    }
+
+    #[test]
+    fn test_dream_domain_optimization() {
+        // DREAM (7) - Фоновая оптимизация и рефлексия
+        // Физика: хаотичная среда для творческих комбинаций
+        let config = DomainConfig::factory_dream(7, 1);
+
+        assert_eq!(config.structural_role, 7);
+        assert_eq!(config.temperature, 500.0);     // Токены движутся хаотично и быстро
+        assert_eq!(config.gravity_strength, 0.0);  // Невесомость
+        assert_eq!(config.quantum_noise, 200);     // ~0.8 - высокая вероятность случайных связей
+        assert_eq!(config.time_dilation, 50);      // x0.5 - время течёт быстрее
+        assert_eq!(config.membrane_state, 0);      // OPEN
+
+        // Arbiter отключён - DREAM работает в фоновом режиме
+        assert_eq!(config.reflex_threshold, 0);
+        assert_eq!(config.association_threshold, 25); // ~0.10 - принимает даже слабые подсказки
+    }
+
+    #[test]
+    fn test_experience_domain_memory() {
+        // EXPERIENCE (9) - Память и опыт
+        // Физика: архив с высокой ёмкостью и стабильностью
+        let config = DomainConfig::factory_experience(9, 1);
+
+        assert_eq!(config.structural_role, 9);
+        assert_eq!(config.temperature, 300.0);     // Средняя температура - активная память
+        assert_eq!(config.gravity_strength, 0.5);  // Низкая гравитация - свободная навигация
+        assert_eq!(config.resonance_freq, 1000);   // Высокий резонанс - ассоциативная память
+        assert_eq!(config.viscosity, 200);         // ~0.78 - высокая вязкость для сохранности
+
+        // Очень большие ёмкости для накопления опыта
+        assert_eq!(config.token_capacity, 100000);
+        assert_eq!(config.connection_capacity, 50000);
+        assert_eq!(config.permeability, 200);      // ~0.78 - высокая проницаемость
+        assert_eq!(config.membrane_state, 1);      // SEMI
+
+        // Arbiter - только FEEDBACK для обучения
+        assert_eq!(config.reflex_threshold, 0);    // Сам источник рефлексов, не получатель
+        assert_eq!(config.arbiter_flags, 0b00000100); // FEEDBACK_ENABLED
+    }
+
     // --- Domain Runtime Tests ---
 
     #[test]

@@ -8,7 +8,7 @@ use axiom_core::*;
 #[test]
 fn token_v5_1_structure_size() {
     assert_eq!(std::mem::size_of::<Token>(), 64); // Точно 64 байта!
-    assert_eq!(std::mem::align_of::<Token>(), 8);
+    assert_eq!(std::mem::align_of::<Token>(), 64); // Cache-line aligned
 }
 
 #[test]
@@ -55,46 +55,50 @@ fn connection_v5_0_field_offsets() {
 }
 
 #[test]
-fn com_v1_0_event_structure_size() {
-    assert_eq!(std::mem::size_of::<Event>(), 64); // Реальный размер из-за выравнивания
-    assert_eq!(std::mem::align_of::<Event>(), 32);
+fn com_v1_1_event_structure_size() {
+    // COM V1.1: Event 64 байта, cache-line aligned
+    assert_eq!(std::mem::size_of::<Event>(), 64);
+    assert_eq!(std::mem::align_of::<Event>(), 64);
 }
 
 #[test]
-fn com_v1_0_event_field_offsets() {
+fn com_v1_1_event_field_offsets() {
+    // COM V1.1: Event 64 байта с pulse_id
     // Проверяем смещения полей согласно спецификации
-    assert_eq!(std::mem::offset_of!(Event, event_id), 0);
-    assert_eq!(std::mem::offset_of!(Event, domain_id), 8);
-    assert_eq!(std::mem::offset_of!(Event, event_type), 10);
-    assert_eq!(std::mem::offset_of!(Event, priority), 12);
-    assert_eq!(std::mem::offset_of!(Event, flags), 13);
-    assert_eq!(std::mem::offset_of!(Event, payload_hash), 24);
-    assert_eq!(std::mem::offset_of!(Event, target_id), 32);
-    assert_eq!(std::mem::offset_of!(Event, source_id), 36);
-    assert_eq!(std::mem::offset_of!(Event, payload_size), 40);
-    assert_eq!(std::mem::offset_of!(Event, parent_event_id), 48);
+    assert_eq!(std::mem::offset_of!(Event, event_id), 0);         // 8b
+    assert_eq!(std::mem::offset_of!(Event, parent_event_id), 8);  // 8b
+    assert_eq!(std::mem::offset_of!(Event, payload_hash), 16);    // 8b
+    assert_eq!(std::mem::offset_of!(Event, target_id), 24);       // 4b
+    assert_eq!(std::mem::offset_of!(Event, source_id), 28);       // 4b
+    assert_eq!(std::mem::offset_of!(Event, domain_id), 32);       // 2b
+    assert_eq!(std::mem::offset_of!(Event, event_type), 34);      // 2b
+    assert_eq!(std::mem::offset_of!(Event, payload_size), 36);    // 2b
+    assert_eq!(std::mem::offset_of!(Event, priority), 38);        // 1b
+    assert_eq!(std::mem::offset_of!(Event, flags), 39);           // 1b
+    assert_eq!(std::mem::offset_of!(Event, pulse_id), 40);        // 8b
 }
 
 #[test]
-fn upo_v2_2_dynamic_trace_structure_size() {
-    assert_eq!(std::mem::size_of::<DynamicTrace>(), 64); // Реальный размер из-за выравнивания
+fn upo_v2_3_dynamic_trace_structure_size() {
+    // UPO V2.3: DynamicTrace 32 байта с i16 координатами
+    assert_eq!(std::mem::size_of::<DynamicTrace>(), 32);
     assert_eq!(std::mem::align_of::<DynamicTrace>(), 32);
 }
 
 #[test]
-fn upo_v2_2_dynamic_trace_field_offsets() {
+fn upo_v2_3_dynamic_trace_field_offsets() {
+    // UPO V2.3: DynamicTrace 32 байта с i16 координатами
     // Проверяем смещения полей согласно спецификации
-    assert_eq!(std::mem::offset_of!(DynamicTrace, x), 0);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, y), 4);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, z), 8);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, weight), 12);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, frequency), 16);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, created_at), 24);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, last_update), 32);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, source_type), 40);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, source_id), 44);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, flags), 48);
-    assert_eq!(std::mem::offset_of!(DynamicTrace, resonance_class), 49);
+    assert_eq!(std::mem::offset_of!(DynamicTrace, last_update), 0);   // u64 - 8b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, weight), 8);        // f32 - 4b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, frequency), 12);    // f32 - 4b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, source_id), 16);    // u32 - 4b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, x), 20);            // i16 - 2b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, y), 22);            // i16 - 2b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, z), 24);            // i16 - 2b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, source_type), 26);  // u8  - 1b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, flags), 27);        // u8  - 1b
+    assert_eq!(std::mem::offset_of!(DynamicTrace, resonance_class), 28); // u8 - 1b
 }
 
 #[test]
@@ -193,14 +197,14 @@ fn upo_v2_2_screen_octants() {
     
     // Проверяем октанты (0-7)
     let traces = [
-        DynamicTrace::new(10, 10, 10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 1, 0), // +++
-        DynamicTrace::new(-10, 10, 10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 2, 0), // -++
-        DynamicTrace::new(10, -10, 10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 3, 0), // +-
-        DynamicTrace::new(-10, -10, 10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 4, 0), // --
-        DynamicTrace::new(10, 10, -10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 5, 0), // ++
-        DynamicTrace::new(-10, 10, -10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 6, 0), // -+
-        DynamicTrace::new(10, -10, -10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 7, 0), // +-
-        DynamicTrace::new(-10, -10, -10, 1.0, 440.0, 1, 1, TraceSourceType::Token, 8, 0), // --
+        DynamicTrace::new(10, 10, 10, 1.0, 440.0, 1, TraceSourceType::Token, 1, 0), // +++
+        DynamicTrace::new(-10, 10, 10, 1.0, 440.0, 1, TraceSourceType::Token, 2, 0), // -++
+        DynamicTrace::new(10, -10, 10, 1.0, 440.0, 1, TraceSourceType::Token, 3, 0), // +-
+        DynamicTrace::new(-10, -10, 10, 1.0, 440.0, 1, TraceSourceType::Token, 4, 0), // --
+        DynamicTrace::new(10, 10, -10, 1.0, 440.0, 1, TraceSourceType::Token, 5, 0), // ++
+        DynamicTrace::new(-10, 10, -10, 1.0, 440.0, 1, TraceSourceType::Token, 6, 0), // -+
+        DynamicTrace::new(10, -10, -10, 1.0, 440.0, 1, TraceSourceType::Token, 7, 0), // +-
+        DynamicTrace::new(-10, -10, -10, 1.0, 440.0, 1, TraceSourceType::Token, 8, 0), // --
     ];
     
     for trace in &traces {
@@ -223,7 +227,7 @@ fn upo_v2_2_screen_octants() {
 fn upo_v2_2_decay_and_eternal_memory() {
     let mut screen = Screen::new([100, 100, 100], 0.001, 0.1);
     
-    let trace = DynamicTrace::new(0, 0, 0, 1.0, 440.0, 1, 1, TraceSourceType::Token, 1, 0);
+    let trace = DynamicTrace::new(0, 0, 0, 1.0, 440.0, 1, TraceSourceType::Token, 1, 0);
     screen.write(&trace);
     
     // Применяем затухание
