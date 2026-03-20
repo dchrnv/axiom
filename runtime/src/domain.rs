@@ -4,6 +4,7 @@
 // Соответствие спецификации DomainConfig V2.1 (Arbiter Integration)
 
 use serde::{Serialize, Deserialize};
+use crate::causal_frontier::CausalFrontier;
 
 /// Состояние Domain
 pub const DOMAIN_ACTIVE: u32 = 1;
@@ -564,6 +565,61 @@ impl DomainConfig {
     }
 }
 
+/// Domain - runtime structure managing state and causal frontier
+///
+/// Causal Frontier V1, раздел 12: Domain isolation
+/// Каждый домен имеет свой frontier для локальных вычислений
+pub struct Domain {
+    /// Конфигурация домена
+    pub config: DomainConfig,
+
+    /// Causal Frontier для управления активными вычислениями
+    pub frontier: CausalFrontier,
+
+    /// Текущее количество активных токенов
+    pub active_tokens: usize,
+
+    /// Текущее количество активных связей
+    pub active_connections: usize,
+}
+
+impl Domain {
+    /// Создает новый домен из конфигурации
+    pub fn new(config: DomainConfig) -> Self {
+        // Создаем frontier с параметрами на основе capacities домена
+        let storm_threshold = (config.token_capacity as usize) / 10; // 10% от capacity
+        let max_frontier_size = (config.token_capacity as usize) / 5; // 20% от capacity
+        let max_events_per_cycle = 1000; // Фиксированный бюджет
+
+        Self {
+            config,
+            frontier: CausalFrontier::with_config(
+                storm_threshold,
+                max_frontier_size,
+                max_events_per_cycle
+            ),
+            active_tokens: 0,
+            active_connections: 0,
+        }
+    }
+
+    /// Обновляет состояние frontier на основе текущих метрик
+    pub fn update_frontier_state(&mut self) {
+        self.frontier.update_state();
+    }
+
+    /// Проверяет достигнут ли лимит емкости
+    pub fn is_at_capacity(&self) -> bool {
+        self.active_tokens >= self.config.token_capacity as usize ||
+        self.active_connections >= self.config.connection_capacity as usize
+    }
+
+    /// Получает текущее использование frontier памяти
+    pub fn frontier_memory_usage(&self) -> f32 {
+        self.frontier.memory_usage()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -639,5 +695,97 @@ mod tests {
                 "Factory method for role {} produced invalid config",
                 config.structural_role);
         }
+    }
+
+    // --- Domain Runtime Tests ---
+
+    #[test]
+    fn test_domain_creation() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let domain = Domain::new(config);
+
+        assert_eq!(domain.config.domain_id, 6);
+        assert_eq!(domain.active_tokens, 0);
+        assert_eq!(domain.active_connections, 0);
+        assert!(domain.frontier.is_empty());
+    }
+
+    #[test]
+    fn test_domain_frontier_integration() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Добавляем токены в frontier
+        assert!(domain.frontier.push_token(1));
+        assert!(domain.frontier.push_token(2));
+        assert_eq!(domain.frontier.size(), 2);
+
+        // Обновляем состояние
+        domain.update_frontier_state();
+        assert_eq!(domain.frontier.state(), crate::causal_frontier::FrontierState::Active);
+    }
+
+    #[test]
+    fn test_domain_capacity_limits() {
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.token_capacity = 10;
+        config.connection_capacity = 5;
+
+        let mut domain = Domain::new(config);
+        domain.active_tokens = 10;
+        domain.active_connections = 5;
+
+        assert!(domain.is_at_capacity());
+    }
+
+    #[test]
+    fn test_domain_storm_threshold() {
+        let mut config = DomainConfig::factory_experience(9, 0);
+        config.token_capacity = 1000; // 100 storm threshold, 200 max frontier
+
+        let mut domain = Domain::new(config);
+
+        // Добавляем токены до порога storm
+        for i in 0..150 {
+            domain.frontier.push_token(i);
+        }
+
+        domain.update_frontier_state();
+        assert_eq!(domain.frontier.state(), crate::causal_frontier::FrontierState::Storm);
+    }
+
+    #[test]
+    fn test_domain_frontier_memory_usage() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Добавляем несколько токенов
+        domain.frontier.push_token(1);
+        domain.frontier.push_token(2);
+        domain.frontier.push_connection(10);
+
+        let usage = domain.frontier_memory_usage();
+        assert!(usage > 0.0);
+        assert!(usage < 100.0);
+    }
+
+    #[test]
+    fn test_domain_isolation() {
+        let config1 = DomainConfig::factory_logic(6, 1);
+        let config2 = DomainConfig::factory_dream(7, 1);
+
+        let mut domain1 = Domain::new(config1);
+        let mut domain2 = Domain::new(config2);
+
+        // Каждый домен имеет свой frontier
+        domain1.frontier.push_token(1);
+        domain2.frontier.push_token(2);
+
+        assert_eq!(domain1.frontier.size(), 1);
+        assert_eq!(domain2.frontier.size(), 1);
+        assert!(domain1.frontier.contains_token(1));
+        assert!(!domain1.frontier.contains_token(2));
+        assert!(domain2.frontier.contains_token(2));
+        assert!(!domain2.frontier.contains_token(1));
     }
 }

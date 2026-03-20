@@ -19,57 +19,70 @@
 
 ---
 
-### Phase 1: Event-Driven Core (базовая инфраструктура)
+### Phase 1: Event-Driven Core ✅ COMPLETED (2026-03-20)
 
-**Задачи:**
+**Реализовано:**
 
-- [ ] Расширить `Event` структуру для event-driven модели
-  - Добавить семантические типы событий (TokenMoved, TokenDecayed, ConnectionWeakened, etc.)
-  - Добавить опциональное поле `pulse_id: u64` для Heartbeat
-  - Обновить тесты Event
+- ✅ Event структура расширена
+  - 12 семантических типов событий (TokenDecayed, TokenMerged, ConnectionWeakened, GravityUpdate, CollisionDetected, etc.)
+  - Поле `pulse_id: u64` для Heartbeat V2.0
+  - Удалено `timestamp` из Snapshot (нарушение Time Model V1.0)
+  - 9 unit тестов
 
-- [ ] Реализовать `EventGenerator` - механизм генерации событий из изменений состояния
-  - Детектор трансформаций (collision, merge, decay triggers)
-  - Правила генерации событий
-  - Тесты детерминизма
+- ✅ EventGenerator реализован ([event_generator.rs](runtime/src/event_generator.rs))
+  - check_decay() - затухание через причинный возраст
+  - check_collision() - детектор столкновений
+  - check_connection_stress() - контроль стресса связей
+  - generate_gravity_update() - гравитационные обновления
+  - Детерминистичные hash функции
+  - 5 unit тестов
 
-- [ ] Обновить `COM` для поддержки event-driven архитектуры
+- ✅ COM обновлен для event-driven архитектуры
   - Интеграция с EventGenerator
-  - Batch event processing
-  - Event aggregation для storm mitigation
+  - Batch event processing (apply_batch, buffer_event, flush_batch)
+  - Event aggregation (aggregate_events)
+  - 7 новых тестов (всего 17)
+
+**Итого:** 21 новый тест, все проходят. Commits: 25e6715, 9c4a9f9
 
 ---
 
-### Phase 2: Causal Frontier System
+### Phase 2: Causal Frontier System ✅ COMPLETED (2026-03-20)
 
-**Задачи:**
+**Реализовано:**
 
-- [ ] Создать `causal_frontier.rs` модуль
-  - Структура `CausalFrontier` с типизированными очередями
-  - `Queue<TokenId>`, `Queue<ConnectionId>`
-  - BitSet для дедупликации (visited tracking)
+- ✅ Создан `causal_frontier.rs` модуль ([causal_frontier.rs](runtime/src/causal_frontier.rs))
+  - Структура `EntityQueue` с дедупликацией через visited BitSet
+  - `CausalFrontier` с типизированными очередями для токенов и связей
+  - Детерминированный порядок обработки (FIFO)
+  - 16 unit тестов
 
-- [ ] Реализовать основной алгоритм обработки Frontier
-  - `push(entity)`, `pop()`, `contains()`, `clear()`, `size()`
-  - Специализированные методы: `push_token()`, `push_connection()`
-  - Детерминированный порядок обработки
+- ✅ Реализован основной алгоритм обработки Frontier
+  - `push_token()`, `push_connection()` - добавление в frontier
+  - `pop_token()`, `pop_connection()` - извлечение из frontier
+  - `contains_token()`, `contains_connection()` - проверка наличия
+  - `clear()`, `size()`, `is_empty()` - управление состоянием
 
-- [ ] Интеграция Frontier с доменами
-  - Каждый домен имеет свой frontier
-  - Междоменное взаимодействие через COM
-  - Lifecycle: empty → active → storm → stabilized → idle
+- ✅ Интеграция Frontier с доменами
+  - Добавлена структура `Domain` с `CausalFrontier` ([domain.rs](runtime/src/domain.rs))
+  - Каждый домен имеет свой frontier (Domain isolation, Causal Frontier V1 §12)
+  - FrontierState lifecycle: Empty → Active → Storm → Stabilized → Idle
+  - 6 integration тестов
 
-- [ ] Causal Storm mitigation
-  - Storm detection (`frontier_size > threshold`)
-  - Batch events
-  - Event aggregation
+- ✅ Causal Storm mitigation
+  - Storm detection (`frontier_size > storm_threshold`)
   - Causal budget (max_events_per_cycle)
+  - Batch processing (интеграция с COM batch_buffer)
+  - Memory limits (max_frontier_size)
+  - Event aggregation (используется aggregate_events из COM)
 
-- [ ] Тесты Causal Frontier
-  - Локальность вычислений
-  - Детерминизм
-  - Storm handling
-  - Idle state
+- ✅ Тесты Causal Frontier
+  - Локальность вычислений (каждый домен — свой frontier)
+  - Детерминизм (FIFO порядок обработки)
+  - Storm handling (порог, stabilization)
+  - Idle state (frontier пуст)
+
+**Итого:** 22 новых теста (16 causal_frontier + 6 domain). Всего: 130 passed. Commit: a6564de
 
 ---
 

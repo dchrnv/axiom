@@ -10,6 +10,7 @@ mod token;
 mod connection;
 mod event;
 mod event_generator;
+mod causal_frontier;
 mod com;
 mod clock;
 mod upo;
@@ -20,7 +21,7 @@ mod ashti_processor;
 mod maya_processor;
 
 pub use domain::{
-    DomainConfig, StructuralRole, DomainType,
+    Domain, DomainConfig, StructuralRole, DomainType,
     DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
     PROCESSING_IDLE, PROCESSING_ACTIVE, PROCESSING_FROZEN,
     MEMBRANE_OPEN, MEMBRANE_CLOSED, MEMBRANE_SEMI
@@ -51,6 +52,10 @@ pub use event::{
 
 pub use event_generator::{
     EventGenerator
+};
+
+pub use causal_frontier::{
+    CausalFrontier, FrontierState
 };
 
 pub use com::{
