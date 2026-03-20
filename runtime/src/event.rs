@@ -4,6 +4,7 @@
 // COM V1.0: docs/spec/COM V1.0.md
 
 /// Тип события (причинный порядок).
+/// Event-Driven V1: семантические события физики и эволюции системы
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
 pub enum EventType {
@@ -13,20 +14,35 @@ pub enum EventType {
     TokenDelete = 0x0003,
     TokenMove = 0x0004,
     TokenTransform = 0x0005,
+    TokenDecayed = 0x0006,      // Затухание токена (Event-Driven V1)
+    TokenMerged = 0x0007,       // Слияние токенов (Event-Driven V1)
+    TokenSplit = 0x0008,        // Разделение токена (Event-Driven V1)
+    TokenActivated = 0x0009,    // Активация токена (Event-Driven V1)
+    TokenDeactivated = 0x000A,  // Деактивация токена (Event-Driven V1)
+    TokenFrozen = 0x000B,       // Заморозка токена (Event-Driven V1)
+    TokenThawed = 0x000C,       // Разморозка токена (Event-Driven V1)
 
     // Connection события (0x1000-0x1FFF)
     ConnectionCreate = 0x1001,
     ConnectionUpdate = 0x1002,
     ConnectionDelete = 0x1003,
     ConnectionStress = 0x1004,
+    ConnectionWeakened = 0x1005,    // Ослабление связи (Event-Driven V1)
+    ConnectionStrengthened = 0x1006, // Усиление связи (Event-Driven V1)
+    ConnectionBroken = 0x1007,      // Разрыв связи (Event-Driven V1)
+    ConnectionFormed = 0x1008,      // Формирование новой связи (Event-Driven V1)
 
     // Domain события (0x2000-0x2FFF)
     DomainCreate = 0x2001,
     DomainConfig = 0x2002,
     DomainReset = 0x2003,
 
-    // Time события (0x3000-0x3FFF)
+    // Physics события (0x3000-0x3FFF)
     Heartbeat = 0x3001,
+    GravityUpdate = 0x3002,         // Обновление гравитации (Event-Driven V1)
+    CollisionDetected = 0x3003,     // Обнаружено столкновение (Event-Driven V1)
+    ResonanceTriggered = 0x3004,    // Триггер резонанса (Event-Driven V1)
+    ThermodynamicsUpdate = 0x3005,  // Обновление температуры (Event-Driven V1)
 
     // Системные события (0xF000-0xFFFF)
     SystemCheckpoint = 0xF001,
@@ -42,14 +58,29 @@ impl From<u16> for EventType {
             0x0003 => EventType::TokenDelete,
             0x0004 => EventType::TokenMove,
             0x0005 => EventType::TokenTransform,
+            0x0006 => EventType::TokenDecayed,
+            0x0007 => EventType::TokenMerged,
+            0x0008 => EventType::TokenSplit,
+            0x0009 => EventType::TokenActivated,
+            0x000A => EventType::TokenDeactivated,
+            0x000B => EventType::TokenFrozen,
+            0x000C => EventType::TokenThawed,
             0x1001 => EventType::ConnectionCreate,
             0x1002 => EventType::ConnectionUpdate,
             0x1003 => EventType::ConnectionDelete,
             0x1004 => EventType::ConnectionStress,
+            0x1005 => EventType::ConnectionWeakened,
+            0x1006 => EventType::ConnectionStrengthened,
+            0x1007 => EventType::ConnectionBroken,
+            0x1008 => EventType::ConnectionFormed,
             0x2001 => EventType::DomainCreate,
             0x2002 => EventType::DomainConfig,
             0x2003 => EventType::DomainReset,
             0x3001 => EventType::Heartbeat,
+            0x3002 => EventType::GravityUpdate,
+            0x3003 => EventType::CollisionDetected,
+            0x3004 => EventType::ResonanceTriggered,
+            0x3005 => EventType::ThermodynamicsUpdate,
             0xF001 => EventType::SystemCheckpoint,
             0xF002 => EventType::SystemRollback,
             0xF003 => EventType::SystemShutdown,
@@ -73,17 +104,18 @@ pub const EVENT_REVERSIBLE: u8 = 1;
 pub const EVENT_CRITICAL: u8 = 2;
 pub const EVENT_BATCHED: u8 = 4;
 
-/// Событие — 32 байта, выравнивание 32.
+/// Событие — 40 байт, выравнивание 32.
+/// Event-Driven V1 + Heartbeat V2.0
 #[repr(C, align(32))]
 #[derive(Clone, Copy, Debug)]
 pub struct Event {
     // --- ИДЕНТИФИКАТОР (8 Байт) ---
-    pub event_id: u64,        // Монотонный причинный индекс
+    pub event_id: u64,        // Монотонный причинный индекс (COM V1.0)
     pub domain_id: u16,       // Домен события
     pub event_type: u16,      // Тип события
     pub priority: u8,         // Приоритет (0..255)
     pub flags: u8,            // Флаги (CRITICAL, REVERSIBLE, etc.)
-    pub _reserved: [u8; 4],   // Резерв
+    pub _reserved: [u8; 2],   // Резерв (уменьшено с 4 до 2)
 
     // --- СОДЕРЖАНИЕ (16 Байт) ---
     pub payload_hash: u64,    // Хеш содержимого (валидация/детерминизм)
@@ -91,8 +123,9 @@ pub struct Event {
     pub source_id: u32,       // ID источника (если применимо)
     pub payload_size: u32,    // Размер данных в байтах
 
-    // --- МЕТАДАННЫЕ (8 Байт) ---
+    // --- МЕТАДАННЫЕ (16 Байт) ---
     pub parent_event_id: u64,  // Предыдущее событие в цепочке
+    pub pulse_id: u64,         // Номер пульса Heartbeat (0 если не применимо, Heartbeat V2.0)
 }
 
 impl Event {
@@ -112,12 +145,41 @@ impl Event {
             event_type: event_type as u16,
             priority: priority as u8,
             flags: 0,
-            _reserved: [0; 4],
+            _reserved: [0; 2],
             payload_hash,
             target_id,
             source_id,
             payload_size: 0,
             parent_event_id,
+            pulse_id: 0, // 0 означает "не привязано к пульсу"
+        }
+    }
+
+    /// Создает событие с привязкой к пульсу Heartbeat
+    pub fn with_pulse(
+        event_id: u64,
+        domain_id: u16,
+        event_type: EventType,
+        priority: EventPriority,
+        payload_hash: u64,
+        target_id: u32,
+        source_id: u32,
+        parent_event_id: u64,
+        pulse_id: u64,
+    ) -> Self {
+        Self {
+            event_id,
+            domain_id,
+            event_type: event_type as u16,
+            priority: priority as u8,
+            flags: 0,
+            _reserved: [0; 2],
+            payload_hash,
+            target_id,
+            source_id,
+            payload_size: 0,
+            parent_event_id,
+            pulse_id,
         }
     }
 
@@ -132,11 +194,16 @@ impl Event {
     fn validate_event_type(&self) -> bool {
         matches!(EventType::from(self.event_type),
             EventType::TokenCreate | EventType::TokenUpdate | EventType::TokenDelete |
-            EventType::TokenMove | EventType::TokenTransform |
+            EventType::TokenMove | EventType::TokenTransform | EventType::TokenDecayed |
+            EventType::TokenMerged | EventType::TokenSplit | EventType::TokenActivated |
+            EventType::TokenDeactivated | EventType::TokenFrozen | EventType::TokenThawed |
             EventType::ConnectionCreate | EventType::ConnectionUpdate |
             EventType::ConnectionDelete | EventType::ConnectionStress |
+            EventType::ConnectionWeakened | EventType::ConnectionStrengthened |
+            EventType::ConnectionBroken | EventType::ConnectionFormed |
             EventType::DomainCreate | EventType::DomainConfig | EventType::DomainReset |
-            EventType::Heartbeat |
+            EventType::Heartbeat | EventType::GravityUpdate | EventType::CollisionDetected |
+            EventType::ResonanceTriggered | EventType::ThermodynamicsUpdate |
             EventType::SystemCheckpoint | EventType::SystemRollback | EventType::SystemShutdown
         )
     }
@@ -184,11 +251,151 @@ impl Timeline {
 }
 
 /// Снапшот состояния после применения событий до snapshot_id.
+/// Time Model V1.0: содержит только причинный порядок, НЕ wall-clock время
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Snapshot {
-    pub snapshot_id: u64,
-    pub state_hash: u64,
-    pub event_count: u32,
-    pub timestamp: u64,  // Wall-clock время для отладки
+    pub snapshot_id: u64,  // Причинный порядок (event_id последнего события)
+    pub state_hash: u64,   // Хеш состояния для валидации
+    pub event_count: u32,  // Количество событий
+    pub _reserved: u32,    // Резерв (было timestamp - УДАЛЕНО согласно Time Model V1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_event_size() {
+        // Event выравнивается до 64 байт из-за align(32)
+        // Фактически занимает 40 байт данных, но padding приводит к 64
+        assert_eq!(std::mem::size_of::<Event>(), 64);
+        assert_eq!(std::mem::align_of::<Event>(), 32);
+    }
+
+    #[test]
+    fn test_semantic_event_types() {
+        // Проверка новых семантических типов Event-Driven V1
+        assert_eq!(EventType::TokenDecayed as u16, 0x0006);
+        assert_eq!(EventType::TokenMerged as u16, 0x0007);
+        assert_eq!(EventType::ConnectionWeakened as u16, 0x1005);
+        assert_eq!(EventType::ConnectionBroken as u16, 0x1007);
+        assert_eq!(EventType::GravityUpdate as u16, 0x3002);
+        assert_eq!(EventType::CollisionDetected as u16, 0x3003);
+    }
+
+    #[test]
+    fn test_event_creation_without_pulse() {
+        let event = Event::new(
+            1,
+            0,
+            EventType::TokenDecayed,
+            EventPriority::Normal,
+            0x1234567890ABCDEF,
+            100,
+            200,
+            0,
+        );
+
+        assert_eq!(event.event_id, 1);
+        assert_eq!(event.domain_id, 0);
+        assert_eq!(event.event_type, EventType::TokenDecayed as u16);
+        assert_eq!(event.pulse_id, 0); // Не привязано к пульсу
+    }
+
+    #[test]
+    fn test_event_creation_with_pulse() {
+        let event = Event::with_pulse(
+            5,
+            1,
+            EventType::GravityUpdate,
+            EventPriority::Low,
+            0xABCDEF1234567890,
+            150,
+            250,
+            4,
+            42, // pulse_id
+        );
+
+        assert_eq!(event.event_id, 5);
+        assert_eq!(event.pulse_id, 42); // Привязано к пульсу 42
+        assert_eq!(event.event_type, EventType::GravityUpdate as u16);
+    }
+
+    #[test]
+    fn test_snapshot_no_timestamp() {
+        // Time Model V1.0: Snapshot не содержит wall-clock timestamp
+        let snapshot = Snapshot {
+            snapshot_id: 1000,
+            state_hash: 0x123456789ABCDEF0,
+            event_count: 1000,
+            _reserved: 0,
+        };
+
+        assert_eq!(snapshot.snapshot_id, 1000);
+        assert_eq!(snapshot.event_count, 1000);
+        // Проверяем что поле timestamp удалено (нет доступа к полю)
+    }
+
+    #[test]
+    fn test_event_type_conversion() {
+        // Проверка From<u16> для новых типов
+        assert_eq!(EventType::from(0x0006), EventType::TokenDecayed);
+        assert_eq!(EventType::from(0x1005), EventType::ConnectionWeakened);
+        assert_eq!(EventType::from(0x3002), EventType::GravityUpdate);
+    }
+
+    #[test]
+    fn test_timeline_monotonicity() {
+        let mut timeline = Timeline::new();
+
+        let id1 = timeline.next_event_id(0);
+        let id2 = timeline.next_event_id(0);
+        let id3 = timeline.next_event_id(1);
+
+        // Монотонность
+        assert!(id2 > id1);
+        assert!(id3 > id2);
+        assert_eq!(timeline.total_events, 3);
+    }
+
+    #[test]
+    fn test_event_validation() {
+        let mut timeline = Timeline::new();
+        let event_id = timeline.next_event_id(0);
+
+        let event = Event::new(
+            event_id,
+            0,
+            EventType::TokenCreate,
+            EventPriority::Normal,
+            0x1234,
+            1,
+            0,
+            0,
+        );
+
+        assert!(event.validate(&timeline));
+    }
+
+    #[test]
+    fn test_heartbeat_event_type() {
+        // Heartbeat V2.0: тип события уже определен
+        assert_eq!(EventType::Heartbeat as u16, 0x3001);
+
+        let heartbeat = Event::with_pulse(
+            10,
+            0,
+            EventType::Heartbeat,
+            EventPriority::Low,
+            0x1111,
+            0,
+            0,
+            9,
+            5, // pulse_number = 5
+        );
+
+        assert_eq!(heartbeat.event_type, EventType::Heartbeat as u16);
+        assert_eq!(heartbeat.pulse_id, 5);
+    }
 }

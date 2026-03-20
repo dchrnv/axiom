@@ -9,6 +9,7 @@ mod ffi;
 mod token;
 mod connection;
 mod event;
+mod event_generator;
 mod com;
 mod clock;
 mod upo;
@@ -46,6 +47,10 @@ pub use connection::{
 
 pub use event::{
     Event, EventType, EventPriority, Timeline
+};
+
+pub use event_generator::{
+    EventGenerator
 };
 
 pub use com::{
