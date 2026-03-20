@@ -11,13 +11,13 @@ mod tests {
     fn debug_print_sizes() {
         println!("Token size: {} (expected: 64)", std::mem::size_of::<Token>());
         println!("Connection size: {} (expected: 64)", std::mem::size_of::<Connection>());
-        println!("Event size: {} (expected: 32)", std::mem::size_of::<Event>());
+        println!("Event size: {} (expected: 64)", std::mem::size_of::<Event>());
         println!("DynamicTrace size: {} (expected: 32)", std::mem::size_of::<DynamicTrace>());
         println!("DomainConfig size: {} (expected: 128)", std::mem::size_of::<DomainConfig>());
         
         println!("Token align: {} (expected: 64)", std::mem::align_of::<Token>());
         println!("Connection align: {} (expected: 64)", std::mem::align_of::<Connection>());
-        println!("Event align: {} (expected: 32)", std::mem::align_of::<Event>());
+        println!("Event align: {} (expected: 64)", std::mem::align_of::<Event>());
         println!("DynamicTrace align: {} (expected: 32)", std::mem::align_of::<DynamicTrace>());
         println!("DomainConfig align: {} (expected: 128)", std::mem::align_of::<DomainConfig>());
         
@@ -55,7 +55,6 @@ mod tests {
         println!("DynamicTrace z offset: {}", std::mem::offset_of!(DynamicTrace, z));
         println!("DynamicTrace weight offset: {}", std::mem::offset_of!(DynamicTrace, weight));
         println!("DynamicTrace frequency offset: {}", std::mem::offset_of!(DynamicTrace, frequency));
-        println!("DynamicTrace created_at offset: {}", std::mem::offset_of!(DynamicTrace, created_at));
         println!("DynamicTrace last_update offset: {}", std::mem::offset_of!(DynamicTrace, last_update));
         println!("DynamicTrace source_type offset: {}", std::mem::offset_of!(DynamicTrace, source_type));
         println!("DynamicTrace source_id offset: {}", std::mem::offset_of!(DynamicTrace, source_id));

@@ -21,49 +21,52 @@ pub const TRACE_FADING: u8 = 2;
 pub const TRACE_LOCKED: u8 = 4;
 pub const TRACE_ETERNAL: u8 = 8;
 
-/// DynamicTrace — 32 байта. Запись на экране.
+/// UPO DynamicTrace — 32 байта
+/// UPO V2.3: координаты i16, один timestamp
 #[repr(C, align(32))]
 #[derive(Clone, Copy, Debug)]
 pub struct DynamicTrace {
-    // --- ПРОСТРАНСТВО (12 Байт) ---
-    pub x: i32,                 // Координата X на экране
-    pub y: i32,                 // Координата Y на экране  
-    pub z: i32,                 // Координата Z на экране
+    // --- ВРЕМЯ [8 байт] ---
+    pub last_update: u64,       // 8b  | COM event_id последнего обновления
 
-    // --- ХАРАКТЕРИСТИКИ (8 Байт) ---
-    pub weight: f32,            // Вес/интенсивность точки
-    pub frequency: f32,         // Частота колебаний
+    // --- ХАРАКТЕРИСТИКИ [8 байт] ---
+    pub weight: f32,            // 4b  | Вес/интенсивность точки
+    pub frequency: f32,         // 4b  | Частота колебаний
 
-    // --- ВРЕМЯ (8 Байт) ---
-    pub created_at: u64,        // COM event_id создания следа
-    pub last_update: u64,       // COM event_id последнего обновления
+    // --- ИСТОЧНИК [8 байт] ---
+    pub source_id: u32,         // 4b  | ID источника (Token/Connection)
+    pub x: i16,                 // 2b  | Координата X на экране
+    pub y: i16,                 // 2b  | Координата Y на экране
 
-    // --- МЕТАДАННЫЕ (4 Байт) ---
-    pub source_type: u8,        // Источник (Token/Connection/Field)
-    pub source_id: u32,         // ID источника
-    pub flags: u8,              // ACTIVE/FADING/LOCKED
-    pub resonance_class: u8,    // Класс резонанса
+    // --- МЕТАДАННЫЕ [8 байт] ---
+    pub z: i16,                 // 2b  | Координата Z на экране
+    pub source_type: u8,        // 1b  | Источник (Token/Connection/Field)
+    pub flags: u8,              // 1b  | ACTIVE/FADING/LOCKED/ETERNAL
+    pub resonance_class: u8,    // 1b  | Класс резонанса
+    pub _pad: [u8; 3],          // 3b  | Явный padding (можно использовать в будущем)
 }
 
 impl DynamicTrace {
     pub fn new(
-        x: i32, y: i32, z: i32,
+        x: i16, y: i16, z: i16,
         weight: f32, frequency: f32,
-        created_at: u64, last_update: u64,
+        last_update: u64,
         source_type: TraceSourceType,
         source_id: u32,
         resonance_class: u8,
     ) -> Self {
         Self {
-            x, y, z,
+            last_update,
             weight,
             frequency,
-            created_at,
-            last_update,
-            source_type: source_type as u8,
             source_id,
+            x,
+            y,
+            z,
+            source_type: source_type as u8,
             flags: TRACE_ACTIVE,
             resonance_class,
+            _pad: [0; 3],
         }
     }
 
@@ -79,14 +82,17 @@ impl DynamicTrace {
         self.flags & TRACE_ETERNAL != 0
     }
 
-    /// Валидация согласно спецификации UPO v2.2
+    /// Валидация согласно спецификации UPO v2.3
     pub fn validate(&self, screen: &Screen) -> bool {
+        let x_i32 = i32::from(self.x);
+        let y_i32 = i32::from(self.y);
+        let z_i32 = i32::from(self.z);
+
         self.weight >= screen.min_intensity
-        && self.created_at > 0
-        && self.last_update >= self.created_at
-        && self.x >= -screen.size[0]/2 && self.x <= screen.size[0]/2
-        && self.y >= -screen.size[1]/2 && self.y <= screen.size[1]/2
-        && self.z >= -screen.size[2]/2 && self.z <= screen.size[2]/2
+        && self.last_update > 0
+        && x_i32 >= -screen.size[0]/2 && x_i32 <= screen.size[0]/2
+        && y_i32 >= -screen.size[1]/2 && y_i32 <= screen.size[1]/2
+        && z_i32 >= -screen.size[2]/2 && z_i32 <= screen.size[2]/2
     }
 }
 
@@ -150,7 +156,7 @@ impl Screen {
         }
 
         // Обновление октанта
-        let octant = self.get_octant(trace.x, trace.y, trace.z);
+        let octant = self.get_octant(trace.x.into(), trace.y.into(), trace.z.into());
         self.octants[octant].trace_count += 1;
         self.octants[octant].total_energy += trace.weight;
         self.octants[octant].dominant_frequency = trace.frequency;
@@ -279,7 +285,6 @@ impl UPO {
             token_trace.z,
             token_trace.weight + connection_stress,
             token_trace.frequency,
-            token_trace.created_at,
             token_trace.last_update,
             TraceSourceType::Token,
             active_tokens[0].sutra_id,
@@ -297,11 +302,11 @@ impl UPO {
 
         // Средняя скорость
         let avg_velocity = self.compute_average_velocity(tokens);
-        
-        // Позиция на экране
-        let x = (avg_velocity[0] * 100.0) as i32;
-        let y = (avg_velocity[1] * 100.0) as i32;
-        let z = (avg_velocity[2] * 100.0) as i32;
+
+        // Позиция на экране (UPO V2.3: координаты i16)
+        let x = (avg_velocity[0] * 100.0) as i16;
+        let y = (avg_velocity[1] * 100.0) as i16;
+        let z = (avg_velocity[2] * 100.0) as i16;
 
         // Вес и частота
         let total_mass: f32 = tokens.iter().map(|t| t.mass as f32).sum();
@@ -313,7 +318,6 @@ impl UPO {
             x, y, z,
             weight,
             frequency,
-            event_id,
             event_id,
             TraceSourceType::Token,
             tokens[0].sutra_id,

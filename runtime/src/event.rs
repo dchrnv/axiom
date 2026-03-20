@@ -104,28 +104,32 @@ pub const EVENT_REVERSIBLE: u8 = 1;
 pub const EVENT_CRITICAL: u8 = 2;
 pub const EVENT_BATCHED: u8 = 4;
 
-/// Событие — 40 байт, выравнивание 32.
-/// Event-Driven V1 + Heartbeat V2.0
-#[repr(C, align(32))]
+/// COM Event — 64 байта, одна кэш-линия
+/// Event-Driven V1 + Heartbeat V2.0 + COM V1.1
+#[repr(C, align(64))]
 #[derive(Clone, Copy, Debug)]
 pub struct Event {
-    // --- ИДЕНТИФИКАТОР (8 Байт) ---
-    pub event_id: u64,        // Монотонный причинный индекс (COM V1.0)
-    pub domain_id: u16,       // Домен события
-    pub event_type: u16,      // Тип события
-    pub priority: u8,         // Приоритет (0..255)
-    pub flags: u8,            // Флаги (CRITICAL, REVERSIBLE, etc.)
-    pub _reserved: [u8; 2],   // Резерв (уменьшено с 4 до 2)
+    // --- ПРИЧИННОСТЬ [16 байт] ---
+    pub event_id: u64,          // 8b  | Монотонный причинный индекс (COM)
+    pub parent_event_id: u64,   // 8b  | Предыдущее событие в цепочке
 
-    // --- СОДЕРЖАНИЕ (16 Байт) ---
-    pub payload_hash: u64,    // Хеш содержимого (валидация/детерминизм)
-    pub target_id: u32,       // ID целевого объекта (Token/Connection)
-    pub source_id: u32,       // ID источника (если применимо)
-    pub payload_size: u32,    // Размер данных в байтах
+    // --- СОДЕРЖАНИЕ [16 байт] ---
+    pub payload_hash: u64,      // 8b  | Хеш содержимого (валидация/детерминизм)
+    pub target_id: u32,         // 4b  | ID целевого объекта (Token/Connection)
+    pub source_id: u32,         // 4b  | ID источника
 
-    // --- МЕТАДАННЫЕ (16 Байт) ---
-    pub parent_event_id: u64,  // Предыдущее событие в цепочке
-    pub pulse_id: u64,         // Номер пульса Heartbeat (0 если не применимо, Heartbeat V2.0)
+    // --- ИДЕНТИФИКАЦИЯ [8 байт] ---
+    pub domain_id: u16,         // 2b  | Домен события
+    pub event_type: u16,        // 2b  | Тип события (EventType enum)
+    pub payload_size: u16,      // 2b  | Размер payload (было u32 — u16 достаточно)
+    pub priority: u8,           // 1b  | Приоритет (0..255)
+    pub flags: u8,              // 1b  | Флаги (CRITICAL, REVERSIBLE, etc.)
+
+    // --- HEARTBEAT [8 байт] ---
+    pub pulse_id: u64,          // 8b  | Номер пульса (0 = не привязан к пульсу)
+
+    // --- РЕЗЕРВ [16 байт] ---
+    pub _reserved: [u8; 16],    // 16b | Резерв для будущих расширений
 }
 
 impl Event {
@@ -141,17 +145,17 @@ impl Event {
     ) -> Self {
         Self {
             event_id,
-            domain_id,
-            event_type: event_type as u16,
-            priority: priority as u8,
-            flags: 0,
-            _reserved: [0; 2],
+            parent_event_id,
             payload_hash,
             target_id,
             source_id,
+            domain_id,
+            event_type: event_type as u16,
             payload_size: 0,
-            parent_event_id,
+            priority: priority as u8,
+            flags: 0,
             pulse_id: 0, // 0 означает "не привязано к пульсу"
+            _reserved: [0; 16],
         }
     }
 
@@ -169,17 +173,17 @@ impl Event {
     ) -> Self {
         Self {
             event_id,
-            domain_id,
-            event_type: event_type as u16,
-            priority: priority as u8,
-            flags: 0,
-            _reserved: [0; 2],
+            parent_event_id,
             payload_hash,
             target_id,
             source_id,
+            domain_id,
+            event_type: event_type as u16,
             payload_size: 0,
-            parent_event_id,
+            priority: priority as u8,
+            flags: 0,
             pulse_id,
+            _reserved: [0; 16],
         }
     }
 
@@ -267,10 +271,10 @@ mod tests {
 
     #[test]
     fn test_event_size() {
-        // Event выравнивается до 64 байт из-за align(32)
-        // Фактически занимает 40 байт данных, но padding приводит к 64
+        // Event — ровно 64 байта данных, выравнивание 64 (одна кэш-линия)
+        // COM V1.1: оптимизированная структура без padding
         assert_eq!(std::mem::size_of::<Event>(), 64);
-        assert_eq!(std::mem::align_of::<Event>(), 32);
+        assert_eq!(std::mem::align_of::<Event>(), 64);
     }
 
     #[test]
