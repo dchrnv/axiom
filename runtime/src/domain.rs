@@ -173,8 +173,8 @@ impl Default for DomainConfig {
             // Offset: 80 байт
 
             // --- 5. МЕТАДАННЫЕ [32 Байт] ---
-            created_at: 1715292000,      // Время создания (Unix timestamp)
-            last_update: 1715292000,     // Последнее обновление
+            created_at: 0,               // COM event_id создания (0 = не инициализировано)
+            last_update: 0,              // COM event_id последнего обновления
             token_capacity: 1000,        // Емкость токенов
             connection_capacity: 5000,   // Емкость соединений
             error_count: 0,              // Счетчик ошибок
@@ -282,8 +282,8 @@ impl DomainConfig {
         config.domain_id = domain_id;
         config.structural_role = 0; // Sutra
         
-        config.created_at = 1715292000; // Время создания
-        config.last_update = 1715292000; // Последнее обновление
+        config.created_at = 0; // COM event_id (должен быть установлен при создании через COM)
+        config.last_update = 0; // COM event_id (обновляется при изменениях)
         
         config.gravity_strength = f32::MAX; // Бесконечная масса
         config.temperature = 0.0;           // Абсолютный ноль
@@ -318,8 +318,8 @@ impl DomainConfig {
         config.parent_domain_id = parent_domain_id;
         config.structural_role = 3; // Codex
         
-        config.created_at = 1715292000; // Время создания
-        config.last_update = 1715292000; // Последнее обновление
+        config.created_at = 0; // COM event_id (должен быть установлен при создании через COM)
+        config.last_update = 0; // COM event_id (обновляется при изменениях)
         
         config.gravity_strength = 1000.0;
         config.temperature = 10.0;          // Почти ноль (минимальные колебания)
@@ -356,8 +356,8 @@ impl DomainConfig {
         config.parent_domain_id = parent_domain_id;
         config.structural_role = 6; // Logic
         
-        config.created_at = 1715292000; // Время создания
-        config.last_update = 1715292000; // Последнее обновление
+        config.created_at = 0; // COM event_id (должен быть установлен при создании через COM)
+        config.last_update = 0; // COM event_id (обновляется при изменениях)
         
         config.gravity_strength = 9.81;     // Земная гравитация для нормального падения
         config.temperature = 273.0;         // Оптимальная кинетическая энергия
@@ -394,8 +394,8 @@ impl DomainConfig {
         config.parent_domain_id = parent_domain_id;
         config.structural_role = 7; // Dream
         
-        config.created_at = 1715292000; // Время создания
-        config.last_update = 1715292000; // Последнее обновление
+        config.created_at = 0; // COM event_id (должен быть установлен при создании через COM)
+        config.last_update = 0; // COM event_id (обновляется при изменениях)
         
         config.gravity_strength = 0.0;      // Невесомость
         config.temperature = 500.0;         // Токены движутся хаотично и быстро
@@ -473,8 +473,8 @@ impl DomainConfig {
         config.parent_domain_id = parent_domain_id;
         config.structural_role = 10; // Maya
         
-        config.created_at = 1715292000; // Время создания
-        config.last_update = 1715292000; // Последнее обновление
+        config.created_at = 0; // COM event_id (должен быть установлен при создании через COM)
+        config.last_update = 0; // COM event_id (обновляется при изменениях)
         
         config.field_size = [2000.0, 2000.0, 2000.0]; // Огромный "экран"
         config.gravity_strength = 1.0;      // Легкое притяжение
@@ -522,8 +522,10 @@ impl DomainConfig {
             return false;
         }
         
-        // COM синхронизация
-        if self.created_at == 0 || self.last_update < self.created_at {
+        // Time Model V1.0: created_at/last_update могут быть 0 для новых конфигураций
+        // Они будут установлены при реальном создании домена через COM
+        // Если оба установлены, проверяем корректность
+        if self.created_at > 0 && self.last_update < self.created_at {
             return false;
         }
         

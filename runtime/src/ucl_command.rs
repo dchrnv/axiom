@@ -237,13 +237,14 @@ impl UclResult {
     }
 }
 
-/// Генератор ID команд (временно, потом будет использовать COM)
+/// Генератор ID команд
+///
+/// Time Model V1.0: использует атомарный счётчик вместо wall-clock времени.
+/// В реальной системе command_id должны выдаваться через COM.
 fn generate_command_id() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as u64
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COMMAND_COUNTER: AtomicU64 = AtomicU64::new(1);
+    COMMAND_COUNTER.fetch_add(1, Ordering::SeqCst)
 }
 
 /// Билдер для удобного создания команд

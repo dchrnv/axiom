@@ -163,24 +163,38 @@ Generated Events → returned to caller for COM processing
 
 ---
 
-### Phase 4: Time Model Validation
+### Phase 4: Time Model Validation ✅ COMPLETED (2026-03-20)
 
-**Задачи:**
+**Реализовано:**
 
-- [ ] Audit кодовой базы на соблюдение Time Model V1.0
-  - Проверка: нет `std::time`, `SystemTime`, `Instant` в ядре
-  - Проверка: нет `timestamp_ms`, `duration_seconds` в core-структурах
-  - Проверка: все "длительности" через `event_id` разницу
-  - Проверка: нет `sleep()`, `delay()`, таймеров
+- ✅ Audit кодовой базы на соблюдение Time Model V1.0
+  - Проверены все core модули на использование `std::time`
+  - Проверены все структуры на наличие wall-clock полей
+  - Найдены нарушения в `ucl_command.rs`, `physics_processor.rs`, `domain.rs`
 
-- [ ] Рефакторинг нарушений (если найдены)
-  - Замена wall-clock на причинный возраст
-  - Вынос real-time в адаптеры (вне ядра)
+- ✅ Рефакторинг нарушений
+  - `ucl_command.rs:generate_command_id()` - заменён `SystemTime` на атомарный счётчик
+  - `physics_processor.rs` - добавлены комментарии что `Instant` используется только для метрик адаптера
+  - `domain.rs` - исправлена инициализация `created_at`/`last_update` (было Unix timestamp, стало event_id = 0)
+  - `domain.rs:validate()` - исправлена валидация для поддержки event_id = 0
 
-- [ ] Cross-spec validation тесты
-  - Token, Connection, Domain используют только `event_id` для возраста
-  - Все decay/gravity/cooling вычисляются через причинный возраст
-  - Heartbeat - легитимная причинность
+- ✅ Cross-spec validation тесты ([lib.rs:169-291](runtime/src/lib.rs#L169-L291))
+  - test_time_model_token_uses_event_id_for_age
+  - test_time_model_connection_uses_event_id
+  - test_time_model_domain_config_event_ids
+  - test_time_model_decay_uses_causal_age
+  - test_time_model_heartbeat_is_causal
+  - test_time_model_no_wall_clock_in_core_structs
+  - test_time_model_com_monotonic_causality
+  - test_time_model_gravity_uses_causal_age
+
+**Результат:**
+- Все core структуры используют только event_id для времени
+- Decay/gravity вычисляются через причинный возраст
+- Heartbeat - легитимная причинность (count событий)
+- Wall-clock time используется только в адаптерах (execution_time_us метрика)
+
+**Итого:** 8 новых validation тестов. Всего: 163 passed. Commit: [pending]
 
 ---
 

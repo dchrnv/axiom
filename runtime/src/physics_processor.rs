@@ -9,6 +9,8 @@ use crate::com::COM;
 use crate::arbiter::Arbiter;
 use crate::token::Token;
 use std::collections::HashMap;
+// Time Model V1.0: Instant используется только для профилирования (метрика адаптера),
+// не влияет на причинную логику ядра
 use std::time::Instant;
 
 /// Ошибки физического процессора
@@ -104,10 +106,11 @@ impl PhysicsProcessor {
             ),
         };
         
-        // Обновляем время выполнения
+        // Обновляем время выполнения (метрика профилирования, не влияет на причинную логику)
+        // Time Model V1.0: wall-clock метрики допустимы в адаптерах
         let mut final_result = result;
         final_result.execution_time_us = start_time.elapsed().as_micros() as u32;
-        
+
         final_result
     }
     
