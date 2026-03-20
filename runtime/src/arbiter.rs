@@ -334,7 +334,7 @@ impl Arbiter {
     /// Очистка старых сравнений (cleanup)
     pub fn cleanup_old_comparisons(&mut self, current_event_id: u64, max_age: u64) {
         self.pending_comparisons.retain(|_, comp| {
-            current_event_id - comp.created_at < max_age
+            current_event_id.saturating_sub(comp.created_at) <= max_age
         });
     }
 }
