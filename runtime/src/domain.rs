@@ -5,6 +5,7 @@
 
 use serde::{Serialize, Deserialize};
 use crate::causal_frontier::CausalFrontier;
+use crate::heartbeat::{HeartbeatGenerator, HeartbeatConfig};
 
 /// Состояние Domain
 pub const DOMAIN_ACTIVE: u32 = 1;
@@ -568,13 +569,19 @@ impl DomainConfig {
 /// Domain - runtime structure managing state and causal frontier
 ///
 /// Causal Frontier V1, раздел 12: Domain isolation
-/// Каждый домен имеет свой frontier для локальных вычислений
+/// Heartbeat V2.0, раздел 9: каждый домен имеет свой HeartbeatGenerator
 pub struct Domain {
     /// Конфигурация домена
     pub config: DomainConfig,
 
     /// Causal Frontier для управления активными вычислениями
     pub frontier: CausalFrontier,
+
+    /// Heartbeat generator для периодической активации
+    pub heartbeat: HeartbeatGenerator,
+
+    /// Heartbeat конфигурация
+    pub heartbeat_config: HeartbeatConfig,
 
     /// Текущее количество активных токенов
     pub active_tokens: usize,
@@ -584,14 +591,21 @@ pub struct Domain {
 }
 
 impl Domain {
-    /// Создает новый домен из конфигурации
+    /// Создает новый домен из конфигурации с heartbeat по умолчанию
     pub fn new(config: DomainConfig) -> Self {
+        Self::with_heartbeat(config, HeartbeatConfig::default())
+    }
+
+    /// Создает новый домен из конфигурации с кастомным heartbeat
+    pub fn with_heartbeat(config: DomainConfig, heartbeat_config: HeartbeatConfig) -> Self {
         // Создаем frontier с параметрами на основе capacities домена
         let storm_threshold = (config.token_capacity as usize) / 10; // 10% от capacity
         let max_frontier_size = (config.token_capacity as usize) / 5; // 20% от capacity
         let max_events_per_cycle = 1000; // Фиксированный бюджет
 
         Self {
+            heartbeat: HeartbeatGenerator::new(config.domain_id, heartbeat_config.interval),
+            heartbeat_config,
             config,
             frontier: CausalFrontier::with_config(
                 storm_threshold,
@@ -617,6 +631,32 @@ impl Domain {
     /// Получает текущее использование frontier памяти
     pub fn frontier_memory_usage(&self) -> f32 {
         self.frontier.memory_usage()
+    }
+
+    /// Обрабатывает событие и проверяет нужен ли Heartbeat
+    ///
+    /// Heartbeat V2.0, раздел 3.1: on_event
+    /// Возвращает pulse_number если пора генерировать Heartbeat
+    pub fn on_event(&mut self) -> Option<u64> {
+        self.heartbeat.on_event()
+    }
+
+    /// Обрабатывает Heartbeat событие - добавляет сущности в frontier
+    ///
+    /// Heartbeat V2.0, раздел 6: handle_heartbeat
+    pub fn handle_heartbeat(&mut self, pulse_number: u64) {
+        crate::heartbeat::handle_heartbeat(
+            &mut self.frontier,
+            pulse_number,
+            &self.heartbeat_config,
+            self.active_tokens,
+            self.active_connections,
+        );
+    }
+
+    /// Получает текущий номер пульса heartbeat
+    pub fn current_pulse(&self) -> u64 {
+        self.heartbeat.current_pulse()
     }
 }
 
@@ -787,5 +827,119 @@ mod tests {
         assert!(!domain1.frontier.contains_token(2));
         assert!(domain2.frontier.contains_token(2));
         assert!(!domain2.frontier.contains_token(1));
+    }
+
+    // --- Heartbeat Integration Tests ---
+
+    #[test]
+    fn test_domain_with_heartbeat() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        let domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        assert_eq!(domain.current_pulse(), 0);
+        assert_eq!(domain.heartbeat_config.interval, 1024);
+    }
+
+    #[test]
+    fn test_domain_heartbeat_generation() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 5,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Первые 4 события - нет пульса
+        assert!(domain.on_event().is_none());
+        assert!(domain.on_event().is_none());
+        assert!(domain.on_event().is_none());
+        assert!(domain.on_event().is_none());
+
+        // 5-е событие - первый пульс
+        let pulse = domain.on_event();
+        assert_eq!(pulse, Some(1));
+        assert_eq!(domain.current_pulse(), 1);
+    }
+
+    #[test]
+    fn test_domain_handle_heartbeat() {
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.token_capacity = 100;
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            batch_size: 5,
+            connection_batch_size: 2,
+            enable_connection_maintenance: true,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+        domain.active_tokens = 100;
+        domain.active_connections = 50;
+
+        // Обрабатываем Heartbeat - должны добавиться сущности в frontier
+        domain.handle_heartbeat(1);
+
+        assert_eq!(domain.frontier.token_count(), 5);
+        assert_eq!(domain.frontier.connection_count(), 2);
+    }
+
+    #[test]
+    fn test_domain_heartbeat_isolation() {
+        let config1 = DomainConfig::factory_logic(6, 1);
+        let config2 = DomainConfig::factory_dream(7, 1);
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 5,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain1 = Domain::with_heartbeat(config1, heartbeat_config);
+        let mut domain2 = Domain::with_heartbeat(config2, heartbeat_config);
+
+        // Обрабатываем 5 событий в domain1
+        for _ in 0..5 {
+            domain1.on_event();
+        }
+
+        // Обрабатываем 2 события в domain2
+        for _ in 0..2 {
+            domain2.on_event();
+        }
+
+        // Heartbeat domain1 сработал, domain2 - нет
+        assert_eq!(domain1.current_pulse(), 1);
+        assert_eq!(domain2.current_pulse(), 0);
+    }
+
+    #[test]
+    fn test_domain_heartbeat_frontier_update() {
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.token_capacity = 50;
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 10,
+            batch_size: 3,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+        domain.active_tokens = 50;
+
+        // Генерируем Heartbeat
+        for _ in 0..10 {
+            if let Some(pulse) = domain.on_event() {
+                domain.handle_heartbeat(pulse);
+            }
+        }
+
+        // Должны быть добавлены токены в frontier
+        assert_eq!(domain.frontier.token_count(), 3);
+        assert_eq!(domain.current_pulse(), 1);
+
+        // Обновляем состояние frontier
+        domain.update_frontier_state();
+        assert_eq!(domain.frontier.state(), crate::causal_frontier::FrontierState::Active);
     }
 }

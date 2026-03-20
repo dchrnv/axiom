@@ -11,6 +11,7 @@ mod connection;
 mod event;
 mod event_generator;
 mod causal_frontier;
+mod heartbeat;
 mod com;
 mod clock;
 mod upo;
@@ -56,6 +57,10 @@ pub use event_generator::{
 
 pub use causal_frontier::{
     CausalFrontier, FrontierState
+};
+
+pub use heartbeat::{
+    HeartbeatGenerator, HeartbeatConfig, handle_heartbeat
 };
 
 pub use com::{
