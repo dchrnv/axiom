@@ -6,15 +6,21 @@
 // Связанные спецификации:
 // - docs/spec/COM V1.0.md (каноническая)
 // - docs/spec/time/Time_Model_V1_0.md
+// - docs/spec/time/Event-Driven V1.md
 // - docs/spec/time/Causal Frontier System V1.md
 
-use crate::event::{Event, Timeline, EventType, EventPriority};
+use crate::event::{Event, Timeline, EventType, EventPriority, EVENT_BATCHED};
+use crate::event_generator::EventGenerator;
 
 /// COM (Causal Order Model) - центральная структура управления причинным порядком
+/// Event-Driven V1: поддержка batch processing и event aggregation
 pub struct COM {
     timeline: Timeline,
     event_log: Vec<Event>,  // TODO: заменить на более эффективную структуру
     validation_enabled: bool,
+    event_generator: EventGenerator,
+    batch_buffer: Vec<Event>, // Буфер для batch processing
+    max_batch_size: usize,    // Максимальный размер batch
 }
 
 impl COM {
@@ -24,6 +30,21 @@ impl COM {
             timeline: Timeline::new(),
             event_log: Vec::new(),
             validation_enabled: true,
+            event_generator: EventGenerator::new(),
+            batch_buffer: Vec::new(),
+            max_batch_size: 100, // По умолчанию 100 событий в batch
+        }
+    }
+
+    /// Создает COM с кастомным размером batch
+    pub fn with_batch_size(max_batch_size: usize) -> Self {
+        Self {
+            timeline: Timeline::new(),
+            event_log: Vec::new(),
+            validation_enabled: true,
+            event_generator: EventGenerator::new(),
+            batch_buffer: Vec::new(),
+            max_batch_size,
         }
     }
 
@@ -119,6 +140,75 @@ impl COM {
         } else {
             0
         }
+    }
+
+    /// Получает мутабельный доступ к EventGenerator
+    ///
+    /// Event-Driven V1: для интеграции с генератором событий
+    pub fn event_generator_mut(&mut self) -> &mut EventGenerator {
+        &mut self.event_generator
+    }
+
+    /// Применяет batch событий
+    ///
+    /// Event-Driven V1: batch processing для оптимизации
+    /// Возвращает количество успешно применённых событий
+    pub fn apply_batch(&mut self, events: Vec<Event>) -> usize {
+        let mut applied = 0;
+        for event in events {
+            if self.apply_event(event) {
+                applied += 1;
+            }
+        }
+        applied
+    }
+
+    /// Добавляет событие в batch буфер
+    ///
+    /// Event-Driven V1: накопление событий перед batch применением
+    /// Автоматически применяет batch если достигнут max_batch_size
+    pub fn buffer_event(&mut self, mut event: Event) -> bool {
+        // Присваиваем event_id если ещё не присвоен
+        if event.event_id == 0 {
+            event.event_id = self.next_event_id(event.domain_id);
+        }
+
+        // Помечаем как batched
+        event.flags |= EVENT_BATCHED;
+
+        self.batch_buffer.push(event);
+
+        // Автоматически применяем batch если буфер полон
+        if self.batch_buffer.len() >= self.max_batch_size {
+            self.flush_batch();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Применяет все события из batch буфера
+    ///
+    /// Event-Driven V1: flush накопленных событий
+    pub fn flush_batch(&mut self) -> usize {
+        let events: Vec<Event> = self.batch_buffer.drain(..).collect();
+        self.apply_batch(events)
+    }
+
+    /// Агрегирует однотипные события в batch
+    ///
+    /// Event-Driven V1: event aggregation для storm mitigation
+    /// Находит все события одного типа и объединяет их
+    pub fn aggregate_events(&self, event_type: EventType) -> Vec<&Event> {
+        self.event_log
+            .iter()
+            .filter(|e| EventType::from(e.event_type) == event_type)
+            .collect()
+    }
+
+    /// Получает количество событий в batch буфере
+    pub fn batch_buffer_size(&self) -> usize {
+        self.batch_buffer.len()
     }
 
     /// Отключает валидацию (для тестирования)
@@ -353,5 +443,125 @@ mod tests {
 
         assert_eq!(com.log_size(), 0);
         assert_eq!(com.current_event_id(), 5); // Timeline не сбрасывается
+    }
+
+    // --- Event-Driven V1 тесты ---
+
+    #[test]
+    fn test_event_generator_integration() {
+        let mut com = COM::new();
+        let generator = com.event_generator_mut();
+
+        generator.set_event_id(100);
+        generator.set_pulse_id(5);
+
+        assert_eq!(generator.current_event_id, 100);
+        assert_eq!(generator.current_pulse_id, 5);
+    }
+
+    #[test]
+    fn test_batch_processing() {
+        let mut com = COM::new();
+        com.disable_validation();
+
+        let events: Vec<Event> = (1..=5)
+            .map(|i| Event::new(i, 1, EventType::TokenCreate,
+                               EventPriority::Normal, i, 100 + i as u32, 0, 0))
+            .collect();
+
+        let applied = com.apply_batch(events);
+
+        assert_eq!(applied, 5);
+        assert_eq!(com.log_size(), 5);
+    }
+
+    #[test]
+    fn test_batch_buffer() {
+        let mut com = COM::with_batch_size(3);
+        com.disable_validation();
+
+        // Добавляем 2 события - буфер не должен flush
+        com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                   EventPriority::Normal, 0x1, 100, 0, 0));
+        com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                   EventPriority::Normal, 0x2, 101, 0, 0));
+
+        assert_eq!(com.batch_buffer_size(), 2);
+        assert_eq!(com.log_size(), 0); // Ещё не применено
+
+        // Третье событие должно триггерить flush
+        let flushed = com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                                  EventPriority::Normal, 0x3, 102, 0, 0));
+
+        assert!(flushed);
+        assert_eq!(com.batch_buffer_size(), 0); // Буфер очищен
+        assert_eq!(com.log_size(), 3); // Применено
+    }
+
+    #[test]
+    fn test_manual_flush_batch() {
+        let mut com = COM::with_batch_size(100); // Большой размер
+        com.disable_validation();
+
+        // Добавляем несколько событий
+        for i in 0..5 {
+            com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                       EventPriority::Normal, i, 100 + i as u32, 0, 0));
+        }
+
+        assert_eq!(com.batch_buffer_size(), 5);
+        assert_eq!(com.log_size(), 0);
+
+        // Ручной flush
+        let applied = com.flush_batch();
+
+        assert_eq!(applied, 5);
+        assert_eq!(com.batch_buffer_size(), 0);
+        assert_eq!(com.log_size(), 5);
+    }
+
+    #[test]
+    fn test_event_aggregation() {
+        let mut com = COM::new();
+        com.disable_validation();
+
+        // Создаём события разных типов
+        com.apply_event(Event::new(1, 1, EventType::TokenCreate,
+                                  EventPriority::Normal, 0x1, 100, 0, 0));
+        com.apply_event(Event::new(2, 1, EventType::TokenDecayed,
+                                  EventPriority::Normal, 0x2, 101, 0, 1));
+        com.apply_event(Event::new(3, 1, EventType::TokenDecayed,
+                                  EventPriority::Normal, 0x3, 102, 0, 1));
+        com.apply_event(Event::new(4, 1, EventType::TokenCreate,
+                                  EventPriority::Normal, 0x4, 103, 0, 0));
+        com.apply_event(Event::new(5, 1, EventType::TokenDecayed,
+                                  EventPriority::Normal, 0x5, 104, 0, 3));
+
+        // Агрегируем события затухания
+        let decayed = com.aggregate_events(EventType::TokenDecayed);
+        assert_eq!(decayed.len(), 3);
+
+        // Агрегируем события создания
+        let created = com.aggregate_events(EventType::TokenCreate);
+        assert_eq!(created.len(), 2);
+    }
+
+    #[test]
+    fn test_batched_flag() {
+        let mut com = COM::with_batch_size(2);
+        com.disable_validation();
+
+        com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                   EventPriority::Normal, 0x1, 100, 0, 0));
+        com.buffer_event(Event::new(0, 1, EventType::TokenCreate,
+                                   EventPriority::Normal, 0x2, 101, 0, 0));
+
+        // После flush события должны быть в логе с флагом BATCHED
+        assert_eq!(com.log_size(), 2);
+
+        let events = com.events_in_range(1, 2);
+        for event in events {
+            assert!(event.flags & EVENT_BATCHED != 0);
+        }
     }
 }

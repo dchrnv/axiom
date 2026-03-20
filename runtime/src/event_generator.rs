@@ -13,8 +13,8 @@ use crate::connection::Connection;
 /// Event-Driven V1, раздел 6: "Генерация событий"
 /// Симулятор проверяет локальную область изменений и генерирует события
 pub struct EventGenerator {
-    current_event_id: u64,
-    current_pulse_id: u64,
+    pub(crate) current_event_id: u64,
+    pub(crate) current_pulse_id: u64,
 }
 
 impl EventGenerator {
