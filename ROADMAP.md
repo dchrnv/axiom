@@ -8,9 +8,9 @@
 
 ## 📋 Технический долг
 
-### 🔥 Критический приоритет:
-- **Падающие тесты** - 5 failed: ucl_command size tests, ffi tests, arbiter cleanup
-- **Factory Methods** - 5 доменов (EXECUTION, SHADOW, MAP, PROBE, VOID) без factory методов
+### ✅ Критический приоритет (завершено):
+- ✅ **Падающие тесты** - все 6 тестов исправлены (173 passed, 0 failed)
+- ✅ **Factory Methods** - добавлены все 5 недостающих factory методов
 
 ### 🔧 Средний приоритет:
 - **Адаптеры и интерфейсы** - CLI, REST, WebSocket (отложено)

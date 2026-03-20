@@ -15,6 +15,9 @@
 - Domain::process_frontier(): полная интеграция компонентов
 - Time Model V1.0 compliance: event_id вместо timestamps
 - Cross-spec validation: 8 тестов
+- **Factory Methods**: все 11 доменов (EXECUTION, SHADOW, MAP, PROBE, VOID)
+- **Struct Layout**: UclCommand 64 bytes, UclResult 32 bytes (оптимизация padding)
+- **Test Fixes**: 6 тестов исправлено → 100% success rate
 
 **Архитектура:**
 ```
@@ -29,11 +32,11 @@ EventGenerator (state checks)
 Generated Events → COM
 ```
 
-**Тесты:** 168 pass, 5 fail
+**Тесты:** 173 pass, 0 fail ✅ (было: 167 pass, 6 fail)
 **Новых модулей:** 4 (event_generator, causal_frontier, heartbeat, domain runtime)
 **Спецификации:** Time Model V1.0, COM V1.0, Event-Driven V1, Causal Frontier V1, Heartbeat V2.0
 
-**Коммиты:** 02282d1, e38e17b, ff9e5bf
+**Коммиты:** 02282d1, e38e17b, ff9e5bf, 514d891, 745df1c, 8688439
 
 ---
 
