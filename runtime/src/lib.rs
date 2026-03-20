@@ -20,6 +20,7 @@ mod experience;
 mod arbiter;
 mod ashti_processor;
 mod maya_processor;
+mod space;
 
 pub use domain::{
     Domain, DomainConfig, StructuralRole, DomainType,
@@ -89,6 +90,13 @@ pub use ashti_processor::{
 
 pub use maya_processor::{
     MayaProcessor
+};
+
+pub use space::{
+    SpatialHashGrid, CellEntry, CELL_SHIFT, CELL_SIZE, BUCKET_COUNT, ANCHOR_X, ANCHOR_Y, ANCHOR_Z,
+    distance2, distance2_to_anchor, compute_gravity, GravityModel,
+    apply_velocity, apply_friction, apply_acceleration, clamp_i16, move_towards,
+    has_moved, cell_changed, detect_collisions
 };
 
 #[cfg(test)]

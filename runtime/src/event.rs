@@ -22,6 +22,11 @@ pub enum EventType {
     TokenFrozen = 0x000B,       // Заморозка токена (Event-Driven V1)
     TokenThawed = 0x000C,       // Разморозка токена (Event-Driven V1)
 
+    // SPACE V6.0 события движения (0x0010-0x001F)
+    TokenMoved = 0x0010,        // Токен переместился (SPACE V6.0)
+    TokenCollision = 0x0011,    // Столкновение токенов (SPACE V6.0)
+    TokenEnteredCell = 0x0012,  // Токен вошёл в новую ячейку (SPACE V6.0)
+
     // Connection события (0x1000-0x1FFF)
     ConnectionCreate = 0x1001,
     ConnectionUpdate = 0x1002,
@@ -65,6 +70,9 @@ impl From<u16> for EventType {
             0x000A => EventType::TokenDeactivated,
             0x000B => EventType::TokenFrozen,
             0x000C => EventType::TokenThawed,
+            0x0010 => EventType::TokenMoved,
+            0x0011 => EventType::TokenCollision,
+            0x0012 => EventType::TokenEnteredCell,
             0x1001 => EventType::ConnectionCreate,
             0x1002 => EventType::ConnectionUpdate,
             0x1003 => EventType::ConnectionDelete,
