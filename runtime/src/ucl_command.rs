@@ -65,15 +65,15 @@ pub mod flags {
 #[repr(C, align(64))]
 #[derive(Debug, Clone, Copy)]
 pub struct UclCommand {
-    // --- ЗАГОЛОВОК [16 байт] ---
-    pub command_id: u64,        // 8b | Уникальный ID транзакции (COM)
-    pub opcode: u16,            // 2b | Тип команды (OpCode)
-    pub target_id: u32,         // 4b | Цель (Domain ID или Token ID)
-    pub priority: u8,           // 1b | 0 (Low) - 255 (Critical)
-    pub flags: u8,              // 1b | Битовая маска (Sync, Force, Bypass_Membrane)
-    
     // --- ПОЛЕЗНАЯ НАГРУЗКА (PAYLOAD) [48 байт] ---
     pub payload: [u8; 48],      // 48b | Raw данные для разных команд
+
+    // --- ЗАГОЛОВОК [16 байт] ---
+    pub command_id: u64,        // 8b | Уникальный ID транзакции (COM)
+    pub target_id: u32,         // 4b | Цель (Domain ID или Token ID)
+    pub opcode: u16,            // 2b | Тип команды (OpCode)
+    pub priority: u8,           // 1b | 0 (Low) - 255 (Critical)
+    pub flags: u8,              // 1b | Битовая маска (Sync, Force, Bypass_Membrane)
 }
 
 /// Ответ ядра - 32 байта
@@ -81,12 +81,12 @@ pub struct UclCommand {
 #[derive(Debug, Clone, Copy)]
 pub struct UclResult {
     pub command_id: u64,        // 8b | Ссылка на исходную команду
-    pub status: u8,             // 1b | Статус выполнения
-    pub error_code: u16,        // 2b | Детальный код аномалии
-    pub consumed_energy: f32,   // 4b | Затраченная энергия Домена на операцию
-    pub events_generated: u16,  // 2b | Кол-во порожденных событий в шине COM
     pub execution_time_us: u32, // 4b | Время выполнения в микросекундах
-    pub reserved: [u8; 15],     // 15b | Добивка до 32 байт
+    pub consumed_energy: f32,   // 4b | Затраченная энергия Домена на операцию
+    pub error_code: u16,        // 2b | Детальный код аномалии
+    pub events_generated: u16,  // 2b | Кол-во порожденных событий в шине COM
+    pub status: u8,             // 1b | Статус выполнения
+    pub reserved: [u8; 7],      // 7b | Добивка до 32 байт
 }
 
 /// Payload для SpawnDomain
@@ -214,7 +214,7 @@ impl UclResult {
             consumed_energy: 0.0,
             events_generated: 0,
             execution_time_us: 0,
-            reserved: [0; 15],
+            reserved: [0; 7],
         }
     }
     
@@ -227,7 +227,7 @@ impl UclResult {
             consumed_energy: 0.0,
             events_generated: 0,
             execution_time_us: 0,
-            reserved: [0; 15],
+            reserved: [0; 7],
         }
     }
     

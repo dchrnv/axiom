@@ -308,6 +308,78 @@ impl DomainConfig {
     }
 
     /// -----------------------------------------------------------------------
+    /// EXECUTION (1) - Реализация решений
+    /// Физика: Умеренная среда для быстрой реакции. Средняя температура,
+    /// нормальная гравитация, низкое трение для быстрого выполнения.
+    /// -----------------------------------------------------------------------
+    pub fn factory_execution(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 1; // Execution
+
+        config.created_at = 0; // COM event_id
+        config.last_update = 0;
+
+        config.gravity_strength = 9.81;     // Земная гравитация
+        config.temperature = 310.0;         // ~37°C - активная среда
+        config.elasticity = 180;            // ~0.7 - умеренная упругость
+        config.friction_coeff = 30;         // ~0.12 - низкое трение
+
+        config.permeability = 180;          // ~0.7 - достаточно открыто
+        config.membrane_state = 2;          // SEMI
+
+        // Arbiter настройки для EXECUTION (V2.1)
+        config.reflex_threshold = 140;      // ~0.55 - умеренный порог
+        config.association_threshold = 50;  // ~0.20 - подсказки принимаются легко
+        config.arbiter_flags = 0b00011111;  // Всё включено
+        config.reflex_cooldown = 0;         // Без ограничений
+        config.max_concurrent_hints = 3;
+        config.feedback_weight_delta = 30;  // ~0.12 - умеренная скорость обучения
+
+        config.token_capacity = 5000;
+        config.connection_capacity = 2500;
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
+    /// SHADOW (2) - Симуляция и предсказание
+    /// Физика: Осторожная среда для точных симуляций. Высокий порог,
+    /// низкая температура для стабильности предсказаний.
+    /// -----------------------------------------------------------------------
+    pub fn factory_shadow(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 2; // Shadow
+
+        config.created_at = 0; // COM event_id
+        config.last_update = 0;
+
+        config.gravity_strength = 5.0;      // Средняя гравитация
+        config.temperature = 250.0;         // Прохладная среда для стабильности
+        config.viscosity = 180;             // ~0.7 - замедленное движение
+        config.friction_coeff = 50;         // ~0.2 - умеренное трение
+
+        config.permeability = 150;          // ~0.59 - избирательная проницаемость
+        config.membrane_state = 2;          // SEMI
+
+        // Arbiter настройки для SHADOW (V2.1)
+        config.reflex_threshold = 180;      // ~0.71 - высокий порог
+        config.association_threshold = 40;  // ~0.16 - принимает подсказки
+        config.arbiter_flags = 0b00010111;  // Рефлексы + подсказки + feedback + медленный путь
+        config.reflex_cooldown = 2;
+        config.max_concurrent_hints = 4;
+        config.feedback_weight_delta = 20;  // ~0.08 - осторожное обучение
+
+        config.token_capacity = 8000;
+        config.connection_capacity = 4000;
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
     /// CODEX (3) - Конституция и Правила
     /// Физика: Высокая стабильность и вязкость. Данные здесь "застревают"
     /// и становятся законами. Очень холодно, чтобы паттерны не мутировали.
@@ -379,6 +451,117 @@ impl DomainConfig {
         // Устанавливаем емкости для валидации
         config.token_capacity = 2000;
         config.connection_capacity = 200;
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
+    /// MAP (4) - Карта мира и фактов
+    /// Физика: Стабильная среда для достоверных данных. Высокая гравитация
+    /// для удержания фактов, умеренная температура, низкое трение.
+    /// -----------------------------------------------------------------------
+    pub fn factory_map(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 4; // Map
+
+        config.created_at = 0; // COM event_id
+        config.last_update = 0;
+
+        config.gravity_strength = 15.0;     // Высокая гравитация - факты удерживаются
+        config.temperature = 280.0;         // Умеренная температура - стабильность
+        config.friction_coeff = 40;         // ~0.16 - умеренное трение
+        config.viscosity = 200;             // ~0.78 - медленное изменение
+
+        config.permeability = 120;          // ~0.47 - избирательная проницаемость
+        config.membrane_state = 2;          // SEMI
+
+        // Arbiter настройки для MAP (V2.1)
+        config.reflex_threshold = 200;      // ~0.78 - высокий порог, факты требуют уверенности
+        config.association_threshold = 80;  // ~0.31 - подсказки только от надёжного опыта
+        config.arbiter_flags = 0b00011111;  // Всё включено
+        config.reflex_cooldown = 3;
+        config.max_concurrent_hints = 2;
+        config.feedback_weight_delta = 40;  // ~0.16 - подтверждённые факты усиливаются заметно
+
+        config.token_capacity = 10000;      // Много фактов
+        config.connection_capacity = 5000;
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
+    /// PROBE (5) - Исследование и анализ
+    /// Физика: Активная исследовательская среда. Средняя гравитация,
+    /// повышенная температура для активного поиска, высокий резонанс.
+    /// -----------------------------------------------------------------------
+    pub fn factory_probe(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 5; // Probe
+
+        config.created_at = 0; // COM event_id
+        config.last_update = 0;
+
+        config.gravity_strength = 7.0;      // Средняя гравитация
+        config.temperature = 350.0;         // Повышенная - активное исследование
+        config.resonance_freq = 800;        // Высокий резонанс - активный поиск
+        config.friction_coeff = 35;         // ~0.14 - низкое трение
+        config.elasticity = 200;            // ~0.78 - высокая упругость
+
+        config.permeability = 190;          // ~0.75 - высокая проницаемость
+        config.membrane_state = 0;          // OPEN - впускает всё для анализа
+
+        // Arbiter настройки для PROBE (V2.1)
+        // PROBE исследует, может использовать рефлексы для быстрого анализа
+        config.reflex_threshold = 160;      // ~0.63 - умеренно-высокий порог
+        config.association_threshold = 60;  // ~0.24 - принимает подсказки
+        config.arbiter_flags = 0b00010111;  // Рефлексы + подсказки + feedback + медленный путь
+        config.reflex_cooldown = 1;         // Быстрый цикл исследования
+        config.max_concurrent_hints = 5;
+        config.feedback_weight_delta = 25;  // ~0.10 - умеренное обучение
+
+        config.token_capacity = 6000;
+        config.connection_capacity = 3000;
+
+        config
+    }
+
+    /// -----------------------------------------------------------------------
+    /// VOID (8) - Аннигиляция и трансформация
+    /// Физика: Экстремальная среда. Очень высокая температура и гравитация,
+    /// токены здесь разрушаются и трансформируются.
+    /// -----------------------------------------------------------------------
+    pub fn factory_void(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = 8; // Void
+
+        config.created_at = 0; // COM event_id
+        config.last_update = 0;
+
+        config.gravity_strength = 100.0;    // Очень высокая гравитация - притяжение к центру
+        config.temperature = 1000.0;        // Экстремальная температура - разрушение
+        config.friction_coeff = 200;        // ~0.78 - высокое трение
+        config.viscosity = 100;             // ~0.39 - умеренная вязкость
+
+        config.permeability = 255;          // 1.0 - всё проникает (для аннигиляции)
+        config.membrane_state = 0;          // OPEN
+
+        // Arbiter настройки для VOID (V2.1)
+        // VOID трансформирует, не участвует в dual-path routing напрямую
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;  // Всё отключено
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
+        config.token_capacity = 2000;       // Небольшая ёмкость - токены здесь не хранятся долго
+        config.connection_capacity = 100;
 
         config
     }
@@ -789,14 +972,19 @@ mod tests {
 
     #[test]
     fn test_all_factory_methods_valid() {
-        // Тестируем все существующие factory методы
+        // Тестируем все существующие factory методы (11 доменов)
         let configs = vec![
-            DomainConfig::factory_sutra(1),     // SUTRA domain_id не может быть 0
-            DomainConfig::factory_codex(3, 1),
-            DomainConfig::factory_logic(6, 1),
-            DomainConfig::factory_dream(7, 1),
-            DomainConfig::factory_experience(9, 1),
-            DomainConfig::factory_maya(10, 1),
+            DomainConfig::factory_sutra(1),         // SUTRA (0) - domain_id не может быть 0
+            DomainConfig::factory_execution(1, 0),  // EXECUTION (1)
+            DomainConfig::factory_shadow(2, 0),     // SHADOW (2)
+            DomainConfig::factory_codex(3, 1),      // CODEX (3)
+            DomainConfig::factory_map(4, 0),        // MAP (4)
+            DomainConfig::factory_probe(5, 0),      // PROBE (5)
+            DomainConfig::factory_logic(6, 1),      // LOGIC (6)
+            DomainConfig::factory_dream(7, 1),      // DREAM (7)
+            DomainConfig::factory_void(8, 0),       // VOID (8)
+            DomainConfig::factory_experience(9, 1), // EXPERIENCE (9)
+            DomainConfig::factory_maya(10, 1),      // MAYA (10)
         ];
 
         for config in configs {
