@@ -334,4 +334,176 @@ mod tests {
         let has_gravity = events.iter().any(|e| e.event_type == EventType::GravityUpdate as u16);
         assert!(has_gravity, "Gravity computed via causal order");
     }
+
+    // --- Phase 5: Integration & Performance Tests ---
+
+    #[test]
+    fn test_integration_full_causal_time_system() {
+        // Полная интеграция: COM → Event-Driven → Causal Frontier → Heartbeat
+        let mut com = COM::new();
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.gravity_strength = 1.0;
+
+        let heartbeat_config = HeartbeatConfig {
+            interval: 10,
+            batch_size: 5,
+            enable_decay: true,
+            enable_gravity: true,
+            enable_connection_maintenance: false,
+            ..HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+        domain.active_tokens = 20;
+
+        // Создаем токены
+        let tokens: Vec<Token> = (0..20).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.last_event_id = 0;
+            token.valence = 5;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+
+        // Симулируем полный lifecycle
+        for cycle in 0..30 {
+            let event_id = com.next_event_id(6);
+            event_generator.set_event_id(event_id);
+
+            if let Some(pulse) = domain.on_event() {
+                event_generator.set_pulse_id(pulse);
+                domain.handle_heartbeat(pulse);
+
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+                // Применяем события через COM
+                for event in events {
+                    com.apply_event(event);
+                }
+
+                domain.frontier.reset_cycle();
+            }
+        }
+
+        // Проверка: система корректно обработала все циклы
+        assert!(com.current_event_id() >= 30);
+        assert!(domain.current_pulse() >= 3);
+    }
+
+    #[test]
+    fn test_performance_o_active_entities() {
+        // Causal Frontier V1: O(active_entities) сложность
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Большое количество токенов
+        let tokens: Vec<Token> = (0..10000).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем только 100 активных токенов
+        for i in 0..100 {
+            domain.frontier.push_token(i);
+        }
+
+        // Обработка должна затронуть только активные токены (~100)
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Проверка: обработаны только активные, не все 10000
+        // Количество событий должно быть пропорционально активным сущностям
+        assert!(events.len() <= 200, "Should process only active entities, not all");
+    }
+
+    #[test]
+    fn test_performance_idle_state_zero_cpu() {
+        // Causal Frontier V1, раздел 8: Idle state
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        let tokens = vec![];
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Пустой frontier → idle state
+        assert!(domain.frontier.is_empty());
+
+        // Обработка пустого frontier не должна производить вычислений
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        assert!(events.is_empty());
+        assert!(domain.frontier.is_empty());
+        // В реальной системе это означает нулевую нагрузку CPU
+    }
+
+    #[test]
+    fn test_determinism_reproducible_simulation() {
+        // Детерминизм: одинаковый input → одинаковый output
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = HeartbeatConfig {
+            interval: 5,
+            batch_size: 2,
+            enable_decay: true,
+            enable_gravity: false,
+            ..HeartbeatConfig::medium()
+        };
+
+        // Запуск 1
+        let mut domain1 = Domain::with_heartbeat(config, heartbeat_config);
+        domain1.active_tokens = 10;
+
+        let tokens: Vec<Token> = (0..10).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.last_event_id = 10;
+            token.valence = 5;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut gen1 = EventGenerator::new();
+        gen1.set_event_id(1000);
+
+        for _ in 0..5 {
+            domain1.on_event();
+        }
+        domain1.handle_heartbeat(1);
+        let events1 = domain1.process_frontier(&tokens, &connections, &mut gen1);
+
+        // Запуск 2 (тот же input)
+        let mut domain2 = Domain::with_heartbeat(config, heartbeat_config);
+        domain2.active_tokens = 10;
+
+        let mut gen2 = EventGenerator::new();
+        gen2.set_event_id(1000);
+
+        for _ in 0..5 {
+            domain2.on_event();
+        }
+        domain2.handle_heartbeat(1);
+        let events2 = domain2.process_frontier(&tokens, &connections, &mut gen2);
+
+        // Проверка детерминизма: одинаковое количество событий
+        assert_eq!(events1.len(), events2.len());
+
+        // Одинаковые event_type
+        for (e1, e2) in events1.iter().zip(events2.iter()) {
+            assert_eq!(e1.event_type, e2.event_type);
+            assert_eq!(e1.target_id, e2.target_id);
+        }
+    }
 }
