@@ -206,6 +206,7 @@ impl Screen {
 
 /// Режим обновления UPO.
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub enum UpdateMode {
     OnEvent,
     Periodic(u64),
@@ -214,6 +215,7 @@ pub enum UpdateMode {
 
 /// Конфигурация UPO.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct UPOConfig {
     pub domain_id: u16,
     pub update_mode: UpdateMode,
@@ -241,10 +243,12 @@ impl Default for UPOConfig {
 }
 
 /// UPO — вычисление метрик и генерация DynamicTrace.
+#[allow(dead_code)]
 pub struct UPO {
     config: UPOConfig,
 }
 
+#[allow(dead_code)]
 impl UPO {
     pub fn new(config: UPOConfig) -> Self {
         Self {

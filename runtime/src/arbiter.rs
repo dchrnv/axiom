@@ -48,6 +48,7 @@ impl RoutingResult {
 
 /// Ожидающее сравнение рефлекса с результатом ASHTI
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct PendingComparison {
     /// Входной паттерн
     input_pattern: Token,
@@ -161,7 +162,7 @@ impl Arbiter {
 
     /// SUTRA (0) → EXPERIENCE (9)
     fn route_from_sutra(&mut self, token: Token) -> RoutingResult {
-        let event_id = self.com.next_event_id(0);
+        let _event_id = self.com.next_event_id(0);
 
         // Токен от SUTRA всегда идёт в EXPERIENCE
         self.route_from_experience(token)

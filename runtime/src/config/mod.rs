@@ -7,7 +7,7 @@ pub mod loader;
 // mod tests; // TODO: Create tests module
 
 pub use loader::{
-    ConfigLoader, AxiomConfig, RuntimeConfig, SchemaConfig, LoaderConfig, ConfigError
+    ConfigLoader, AxiomConfig, ConfigError
 };
 
 /// Configuration system initialization
@@ -55,6 +55,7 @@ pub fn initialize() -> Result<AxiomConfig, ConfigError> {
 }
 
 /// Get configuration value by path
+#[allow(dead_code)]
 pub fn get_config_value(config: &AxiomConfig, path: &str) -> Option<serde_yaml::Value> {
     // Simple path resolution - extend with nested access
     let parts: Vec<&str> = path.split('.').collect();

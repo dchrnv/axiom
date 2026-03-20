@@ -3,7 +3,7 @@
 //
 // Token V5.2: docs/spec/Token V5.2.md
 
-use crate::config::{ConfigLoader, initialize};
+use crate::config::initialize;
 
 /// Состояние Token: Active, Sleeping, Locked...
 pub const STATE_ACTIVE: u8 = 1;

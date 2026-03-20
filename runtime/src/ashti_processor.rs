@@ -84,7 +84,7 @@ impl AshtiProcessor {
     ///
     /// Физика: Добавляет негативный valence (маркер угрозы),
     /// увеличивает температуру (волатильность).
-    fn apply_shadow_physics(token: &mut Token, domain: &DomainConfig) {
+    fn apply_shadow_physics(token: &mut Token, _domain: &DomainConfig) {
         // Добавляем негативный valence (угроза)
         token.valence = (token.valence - 20).max(-128);
 
@@ -127,7 +127,7 @@ impl AshtiProcessor {
     /// MAP (4) - Привязка к фактам, якорение
     ///
     /// Физика: Обнуляет скорость (фиксация), увеличивает массу (стабильность).
-    fn apply_map_physics(token: &mut Token, domain: &DomainConfig) {
+    fn apply_map_physics(token: &mut Token, _domain: &DomainConfig) {
         // Обнуляем скорость (якорение к факту)
         token.velocity = [0, 0, 0];
 
@@ -210,7 +210,7 @@ impl AshtiProcessor {
         ];
 
         // Случайный valence
-        token.valence = ((seed % 100 - 50) as i8);
+        token.valence = (seed % 100 - 50) as i8;
     }
 
     /// VOID (8) - Детекция аномалий, маркировка странного

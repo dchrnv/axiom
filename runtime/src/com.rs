@@ -9,7 +9,9 @@
 // - docs/spec/time/Event-Driven V1.md
 // - docs/spec/time/Causal Frontier System V1.md
 
-use crate::event::{Event, Timeline, EventType, EventPriority, EVENT_BATCHED};
+use crate::event::{Event, Timeline, EventType, EVENT_BATCHED};
+#[cfg(test)]
+use crate::event::EventPriority;
 use crate::event_generator::EventGenerator;
 
 /// COM (Causal Order Model) - центральная структура управления причинным порядком

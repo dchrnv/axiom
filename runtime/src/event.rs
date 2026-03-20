@@ -258,6 +258,7 @@ impl Timeline {
 /// Time Model V1.0: содержит только причинный порядок, НЕ wall-clock время
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct Snapshot {
     pub snapshot_id: u64,  // Причинный порядок (event_id последнего события)
     pub state_hash: u64,   // Хеш состояния для валидации

@@ -3,7 +3,7 @@
 //
 // Connection V5.0: docs/spec/Connection V5.0.md
 
-use crate::config::{ConfigLoader, initialize};
+use crate::config::initialize;
 
 /// Флаги Connection
 pub const FLAG_ACTIVE: u32 = 1;
