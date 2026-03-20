@@ -60,7 +60,7 @@
 **Результат:** 173 pass, 0 fail ✅ (было: 167 pass, 6 fail)
 
 **Коммиты:** 745df1c, 8688439
-**Документация:** [REMAINING_TEST_ISSUES.md](REMAINING_TEST_ISSUES.md)
+**Документация:** [REMAINING_TEST_ISSUES.md](docs/spec/archive/REMAINING_TEST_ISSUES.md)
 
 ---
 
