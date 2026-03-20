@@ -658,6 +658,73 @@ impl Domain {
     pub fn current_pulse(&self) -> u64 {
         self.heartbeat.current_pulse()
     }
+
+    /// Обрабатывает frontier - извлекает сущности и генерирует события
+    ///
+    /// Causal Frontier V1, раздел 7: Processing frontier entities
+    /// Event-Driven V1, раздел 6: Event generation from state changes
+    /// Heartbeat V2.0, раздел 6: Background processes через Frontier
+    ///
+    /// Этот метод соединяет все компоненты:
+    /// Heartbeat → Frontier → EventGenerator → Events
+    pub fn process_frontier(
+        &mut self,
+        tokens: &[crate::token::Token],
+        connections: &[crate::connection::Connection],
+        event_generator: &mut crate::event_generator::EventGenerator,
+    ) -> Vec<crate::event::Event> {
+
+        let mut generated_events = Vec::new();
+
+        // Обрабатываем frontier пока есть бюджет и сущности
+        while !self.frontier.is_budget_exhausted() && !self.frontier.is_empty() {
+            // Обработка токенов
+            if let Some(token_idx) = self.frontier.pop_token() {
+                if let Some(token) = tokens.get(token_idx) {
+                    // Проверка затухания (если включено)
+                    if self.heartbeat_config.enable_decay {
+                        if let Some(event) = event_generator.check_decay(
+                            token,
+                            self.config.friction_coeff as f32 / 255.0 // decay_rate from config
+                        ) {
+                            generated_events.push(event);
+                        }
+                    }
+
+                    // Генерация гравитационного обновления (если включено)
+                    if self.heartbeat_config.enable_gravity && self.config.gravity_strength.abs() > 0.01 {
+                        let event = event_generator.generate_gravity_update(token);
+                        generated_events.push(event);
+                    }
+                }
+
+                self.frontier.increment_processed();
+            }
+
+            // Обработка связей (если включено обслуживание)
+            if self.heartbeat_config.enable_connection_maintenance {
+                if let Some(conn_idx) = self.frontier.pop_connection() {
+                    if let Some(connection) = connections.get(conn_idx) {
+                        // Проверка стресса связи
+                        let stress_threshold = 0.8; // Можно добавить в DomainConfig позже
+                        if let Some(event) = event_generator.check_connection_stress(
+                            connection,
+                            stress_threshold
+                        ) {
+                            generated_events.push(event);
+                        }
+                    }
+
+                    self.frontier.increment_processed();
+                }
+            }
+        }
+
+        // Обновляем состояние frontier после обработки
+        self.update_frontier_state();
+
+        generated_events
+    }
 }
 
 #[cfg(test)]
@@ -941,5 +1008,380 @@ mod tests {
         // Обновляем состояние frontier
         domain.update_frontier_state();
         assert_eq!(domain.frontier.state(), crate::causal_frontier::FrontierState::Active);
+    }
+
+    // --- Frontier Processing Tests ---
+
+    #[test]
+    fn test_process_frontier_basic() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токены
+        let mut tokens = vec![Token::default(); 10];
+        for (i, token) in tokens.iter_mut().enumerate() {
+            token.sutra_id = i as u32;
+            token.domain_id = 6;
+            token.last_event_id = 0;
+        }
+
+        let connections = vec![Connection::default(); 5];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем токены в frontier
+        domain.frontier.push_token(0);
+        domain.frontier.push_token(1);
+        domain.frontier.push_token(2);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должны быть сгенерированы события
+        assert!(!events.is_empty());
+
+        // Frontier должен быть обработан
+        assert_eq!(domain.frontier.token_count(), 0);
+    }
+
+    #[test]
+    fn test_process_frontier_decay() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        heartbeat_config.enable_decay = true;
+        heartbeat_config.enable_gravity = false;
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токен со старым last_event_id (подвержен затуханию)
+        let mut token = Token::default();
+        token.sutra_id = 1;
+        token.domain_id = 6;
+        token.last_event_id = 0;
+        token.valence = 10; // Ненулевой valence - должен затухать
+
+        let tokens = vec![token];
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(10000); // Большой причинный возраст
+
+        // Добавляем токен в frontier
+        domain.frontier.push_token(0);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должно быть событие TokenDecayed
+        assert!(!events.is_empty());
+        let has_decay = events.iter().any(|e| e.event_type == EventType::TokenDecayed as u16);
+        assert!(has_decay, "Expected TokenDecayed event");
+    }
+
+    #[test]
+    fn test_process_frontier_gravity() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.gravity_strength = 10.0; // Ненулевая гравитация
+
+        let mut heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        heartbeat_config.enable_decay = false;
+        heartbeat_config.enable_gravity = true;
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токен
+        let mut token = Token::default();
+        token.sutra_id = 1;
+        token.domain_id = 6;
+
+        let tokens = vec![token];
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем токен в frontier
+        domain.frontier.push_token(0);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должно быть событие GravityUpdate
+        assert!(!events.is_empty());
+        let has_gravity = events.iter().any(|e| e.event_type == EventType::GravityUpdate as u16);
+        assert!(has_gravity, "Expected GravityUpdate event");
+    }
+
+    #[test]
+    fn test_process_frontier_connection_stress() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        heartbeat_config.enable_decay = false;
+        heartbeat_config.enable_gravity = false;
+        heartbeat_config.enable_connection_maintenance = true;
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем связь с высоким стрессом
+        let mut connection = Connection::default();
+        connection.source_id = 1;
+        connection.target_id = 2;
+        connection.domain_id = 6;
+        connection.current_stress = 1.0; // Высокий стресс (> 0.8 порога)
+
+        let tokens = vec![];
+        let connections = vec![connection];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем связь в frontier
+        domain.frontier.push_connection(0);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должно быть событие ConnectionWeakened или ConnectionBroken
+        assert!(!events.is_empty());
+        let has_stress_event = events.iter().any(|e| {
+            e.event_type == EventType::ConnectionWeakened as u16 ||
+            e.event_type == EventType::ConnectionBroken as u16
+        });
+        assert!(has_stress_event, "Expected connection stress event");
+    }
+
+    #[test]
+    fn test_process_frontier_budget_limit() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токены
+        let tokens: Vec<Token> = (0..2000).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем больше токенов чем бюджет (1000)
+        // Учитывая что на каждый токен 1-2 события, добавляем 1500 токенов
+        for i in 0..1500 {
+            domain.frontier.push_token(i);
+        }
+
+        let initial_count = domain.frontier.token_count();
+
+        // Обрабатываем frontier
+        let _events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Проверяем что либо остались необработанные токены, либо бюджет исчерпан
+        // При бюджете в 1000 событий должна остаться часть токенов необработанной
+        let processed_count = initial_count - domain.frontier.token_count();
+        assert!(processed_count <= 1000, "Should respect budget limit");
+    }
+
+    #[test]
+    fn test_process_frontier_empty() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        let tokens = vec![];
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Обрабатываем пустой frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Не должно быть событий
+        assert!(events.is_empty());
+        assert!(domain.frontier.is_empty());
+    }
+
+    #[test]
+    fn test_process_frontier_state_update() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig::medium();
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        let tokens: Vec<Token> = (0..10).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Добавляем токены в frontier
+        for i in 0..5 {
+            domain.frontier.push_token(i);
+        }
+
+        // Обрабатываем frontier
+        let _events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Состояние frontier должно быть обновлено
+        // После обработки frontier может быть Empty или Idle
+        let state = domain.frontier.state();
+        assert!(
+            state == crate::causal_frontier::FrontierState::Empty ||
+            state == crate::causal_frontier::FrontierState::Idle
+        );
+    }
+
+    // --- Integration Tests: Full Flow ---
+
+    #[test]
+    fn test_full_heartbeat_to_event_flow() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.gravity_strength = 5.0;
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 5,
+            batch_size: 2,
+            enable_decay: true,
+            enable_gravity: true,
+            enable_connection_maintenance: false,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+        domain.active_tokens = 10;
+
+        // Создаем токены
+        let tokens: Vec<Token> = (0..10).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.last_event_id = 0;
+            token.valence = 5;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(10000);
+
+        // Шаг 1: Генерируем события до Heartbeat
+        for _ in 0..5 {
+            if let Some(pulse) = domain.on_event() {
+                // Шаг 2: Heartbeat добавляет сущности в frontier
+                domain.handle_heartbeat(pulse);
+
+                // Шаг 3: Обрабатываем frontier → генерируем события
+                event_generator.set_pulse_id(pulse);
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+                // Шаг 4: События сгенерированы
+                assert!(!events.is_empty(), "Expected events from frontier processing");
+
+                // Проверяем что события имеют pulse_id
+                for event in &events {
+                    assert_eq!(event.pulse_id, pulse, "Event should have correct pulse_id");
+                }
+            }
+        }
+
+        // Heartbeat должен был сработать
+        assert_eq!(domain.current_pulse(), 1);
+    }
+
+    #[test]
+    fn test_full_flow_multiple_cycles() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.gravity_strength = 1.0;
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 3,
+            batch_size: 2,
+            enable_decay: false,
+            enable_gravity: true,
+            enable_connection_maintenance: false,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+        domain.active_tokens = 10;
+
+        let tokens: Vec<Token> = (0..10).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token
+        }).collect();
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        let mut total_events = 0;
+
+        // Симулируем несколько циклов
+        for cycle in 0..10 {
+            if let Some(pulse) = domain.on_event() {
+                event_generator.set_pulse_id(pulse);
+                domain.handle_heartbeat(pulse);
+
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+                total_events += events.len();
+
+                // На каждом цикле frontier должен быть обработан
+                domain.frontier.reset_cycle();
+            }
+
+            event_generator.set_event_id(1000 + cycle * 10);
+        }
+
+        // Должны были быть сгенерированы события
+        assert!(total_events > 0, "Expected events from multiple cycles");
+
+        // Heartbeat должен был срабатывать несколько раз
+        assert!(domain.current_pulse() >= 3);
     }
 }

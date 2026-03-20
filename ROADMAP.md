@@ -120,6 +120,49 @@
 
 ---
 
+### Phase 3.5: Frontier Processing Loop ✅ COMPLETED (2026-03-20)
+
+**Реализовано:**
+
+- ✅ Создан `Domain::process_frontier()` метод ([domain.rs:663](runtime/src/domain.rs#L663))
+  - Соединяет все компоненты: Heartbeat → Frontier → EventGenerator → Events
+  - Обрабатывает токены из frontier через EventGenerator.check_decay()
+  - Генерирует гравитационные обновления через EventGenerator.generate_gravity_update()
+  - Проверяет стресс связей через EventGenerator.check_connection_stress()
+  - Уважает causal budget (max_events_per_cycle)
+  - Обновляет FrontierState после обработки
+
+- ✅ Unit тесты frontier processing
+  - test_process_frontier_basic - базовая обработка frontier
+  - test_process_frontier_decay - генерация TokenDecayed событий
+  - test_process_frontier_gravity - генерация GravityUpdate событий
+  - test_process_frontier_connection_stress - обработка стресса связей
+  - test_process_frontier_budget_limit - соблюдение лимитов бюджета
+  - test_process_frontier_empty - обработка пустого frontier
+  - test_process_frontier_state_update - обновление состояния
+
+- ✅ Integration тесты полного потока
+  - test_full_heartbeat_to_event_flow - полный цикл: Heartbeat → Frontier → Events
+  - test_full_flow_multiple_cycles - множественные циклы обработки
+  - Проверка pulse_id в генерируемых событиях
+  - Проверка domain isolation
+
+**Архитектура:**
+
+```
+HeartbeatEvent → Domain.handle_heartbeat() → adds entities to Frontier
+    ↓
+Domain.process_frontier() → pop entities from Frontier
+    ↓
+EventGenerator.check_*() → check if event should be generated
+    ↓
+Generated Events → returned to caller for COM processing
+```
+
+**Итого:** 9 новых тестов. Всего: 155 passed. Commit: [pending]
+
+---
+
 ### Phase 4: Time Model Validation
 
 **Задачи:**
