@@ -47,19 +47,21 @@
 
 ### 1.1 Падающие тесты размеров структур
 
-**Где:** `runtime/src/ucl_command.rs`, `runtime/src/ffi.rs`
-**Что:** 6 unit тестов падают из-за несоответствия размеров (v0.5.0 Phase 3)
+**Где:** `runtime/src/ucl_command.rs`, `runtime/src/ffi.rs`, `runtime/src/arbiter.rs`
+**Что:** 5 unit тестов падают из-за несоответствия размеров (было 6 в v0.5.0)
 **Проблема:**
-- `test_ucl_command_size` - ожидает 64, получает другой размер
+- `test_ucl_command_size` - ожидает 64, получает 128
 - `test_ucl_result_size` - ожидает 32, получает 64
-- `test_ffi_*` тесты (4 теста) - PhysicsProcessor изменился (добавлены tokens, arbiter)
+- `test_ffi_apply_force` - ucl_result.is_success() = false
+- `test_ffi_get_sizes` - размеры структур изменились
+- `test_cleanup_old_comparisons` - arbiter тест падает
 
 **Почему:**
 - PhysicsProcessor расширен в v0.5.0 Phase 3 (+3 новых поля)
 - FFI тесты проверяют старые размеры структур
 - Структуры могут иметь неправильное выравнивание
 
-**Статус:** 88 pass, 6 fail (было 82 pass, 6 fail)
+**Статус:** 168 pass, 5 fail (было 167 pass, 6 fail - **1 тест исправлен в v0.6.0**)
 
 **Когда планируется:** Следующая сессия - высокий приоритет
 
@@ -72,44 +74,8 @@
 
 ---
 
-### 1.2 Domain Configuration - TimeStrip Integration
 
-**Где:** `runtime/src/domain.rs`, `docs/guides/UCL_V2.0_Guide.md`
-**Что отложено:** Конфигурация доменов использует timestamp вместо COM TimeStrip
-**Почему:** В гайде указаны timestamp, но в AXIOM используется COM TimeStrip система
-**Когда планируется:** v0.4.0 или позже
-
-**Текущий статус:**
-- **Проблема:** `created_at` и `last_update` используют timestamp (u64)
-- **Реальность:** AXIOM использует COM TimeStrip (event_id) для временных меток
-- **Последствия:** Несоответствие между гайдом и реальной реализацией
-
-**Что требует исправления:**
-- [ ] Обновить гайд: Заменить timestamp на COM event_id
-- [ ] Добавить TimeStrip функции: Для создания и управления временными метками
-- [ ] Обновить factory методы: Использовать COM TimeStrip вместо timestamp
-- [ ] Валидация: Проверять корректность COM event_id
-
-**Технические детали:**
-```rust
-// Текущий (неправильный) подход
-domain.created_at = 1715292000; // timestamp
-domain.last_update = 1715292000;
-
-// Правильный подход с COM TimeStrip
-domain.created_at = com.generate_event_id();
-domain.last_update = com.get_current_event_id();
-```
-
-**Влияние на документацию:**
-- Обновить все примеры в UCL_V2.0_Guide.md
-- Обновить Configuration Instructions раздел
-- Обновить Validation Rules для COM TimeStrip
-- Добавить COM TimeStrip API reference
-
----
-
-### 1.3 Неиспользуемые предупреждения компиляции
+### 1.2 Неиспользуемые предупреждения компиляции
 
 **Где:** `runtime/src/token.rs`, `runtime/src/connection.rs`, `runtime/src/config/mod.rs`, `runtime/src/event.rs`, `runtime/src/upo.rs`
 **Что:** ~10 предупреждений о неиспользуемом коде
@@ -240,7 +206,7 @@ domain.last_update = com.get_current_event_id();
 
 ---
 
-### 3.3 Events System Integration
+### 3.2 Events System Integration
 
 **Где:** `runtime/src/`
 **Что отложено:** Система событий для COM интеграции
@@ -254,18 +220,19 @@ domain.last_update = com.get_current_event_id();
 
 ---
 
-### 3.4 Configuration System Integration
+### 3.3 Configuration System Integration
 
-**Где:** `runtime/src/token.rs`, `runtime/src/connection.rs`, и т.д.
-**Что отложено:** Полная интеграция с системой конфигураций
-**Проблема:** ConfigLoader импортируется но не используется
-**Когда планируется:** По мере необходимости
+**Статус:** Базовая интеграция завершена, осталась YAML загрузка
 
-**Требуется:**
-- [ ] Реализовать загрузку конфигураций из YAML
-- [ ] Валидация по схемам из `config/schema/`
-- [ ] Применение пресетов из типов
-- [ ] Обработка ошибок конфигураций
+**Что реализовано (v0.6.0):**
+- ✅ DomainConfig интегрирован с runtime
+- ✅ HeartbeatConfig пресеты
+- ✅ CausalFrontier конфигурация
+
+**Осталось (низкий приоритет):**
+- [ ] Загрузка из YAML
+- [ ] JSON схемы валидация
+- [ ] Hot reload
 
 ---
 
@@ -298,151 +265,38 @@ domain.last_update = com.get_current_event_id();
 
 ---
 
-## 5. 📚 ДОКУМЕНТАЦИЯ И ГАЙДЫ
 
-### 5.1 API Documentation
-
-**Где:** `docs/api/`
-**Что отложено:** Полная документация UCL V2.0 API
-**Почему:** Для внешних разработчиков
-**Когда планируется:** По необходимости
-
----
-
-### 5.2 Examples and Tutorials
-
-**Где:** `examples/`
-**Что отложено:** Примеры использования UCL V2.0
-**Почему:** Обучение и onboarding
-**Когда планируется:** По необходимости
-
----
-
-## 6. 📦 АРХИВНЫЕ ПЛАНЫ (ДЕТАЛЬНЫЕ)
-
-### 6.1 Детальный план v0.3.0 (7-8 недель)
-
-<details>
-<summary>Развернуть детальный план</summary>
-
-#### Неделя 1-2: Проектирование внутренних интерфейсов
-```
-День 1-3: Определение Commands
-- CreateDomain(domain_id, domain_type, structural_role, parent_id)
-- UpdateDomain(domain_id, field_updates)
-- DeleteDomain(domain_id)
-- ValidateDomain(domain_id)
-
-День 4-5: Определение Queries
-- GetDomain(domain_id)
-- ListDomains(filter_criteria)
-- ValidateDomain(domain_id)
-- GetDomainStats(domain_id)
-
-День 6-7: Определение Events
-- DomainCreated(domain_id, config)
-- DomainUpdated(domain_id, changes)
-- DomainDeleted(domain_id)
-- DomainValidationFailed(domain_id, errors)
-```
-
-#### Неделя 3-4: Реализация внутренней логики
-```
-День 8-10: Реализация Commands
-- DomainCommandProcessor
-- Валидация входных данных
-- Обновление состояния доменов
-- Генерация Events
-
-День 11-12: Реализация Queries
-- DomainQueryProcessor
-- Фильтрация и поиск доменов
-- Агрегация статистики
-- Кэширование результатов
-
-День 13-14: Реализация Events
-- DomainEventEmitter
-- Подписка на события
-- Форматирование событий
-- Тестирование событий
-```
-
-#### Неделя 5-6: CLI адаптер
-```
-День 15-17: CLI структура команд
-- axiom domain create <type> <name>
-- axiom domain list
-- axiom domain get <id>
-- axiom domain delete <id>
-- axiom domain validate <id>
-
-День 18-19: Трансляция CLI → внутренние интерфейсы
-- CLICommandParser
-- CLIOutputFormatter
-- Обработка ошибок
-- Валидация аргументов
-
-День 20-21: Тестирование CLI
-- Unit тесты CLI команд
-- Интеграционные тесты с Domain модулем
-- Тестирование обработки ошибок
-- Документация CLI
-```
-
-#### Неделя 7-8: REST адаптер
-```
-День 22-24: REST сервер
-- Настроить warp/actix-web framework
-- Реализовать POST /api/domains (CreateDomain)
-- Реализовать GET /api/domains (ListDomains)
-- Реализовать GET /api/domains/{id} (GetDomain)
-- Реализовать PUT /api/domains/{id} (UpdateDomain)
-- Реализовать DELETE /api/domains/{id} (DeleteDomain)
-
-День 25-26: WebSocket для Events
-- WebSocket endpoint /api/events
-- Потоковая передача Domain Events
-- Фильтрация событий по подписке
-- Обработка соединений
-
-День 27-28: Тестирование REST API
-- Unit тесты эндпоинтов
-- Интеграционные тесты с Domain модулем
-- Тестирование WebSocket
-- OpenAPI документация
-```
-
-</details>
-
----
 
 ## 📊 СВОДКА ПО ПРИОРИТЕТАМ
 
-### 🔥 КРИТИЧЕСКИЕ (требуют внимания):
-1. Падающие тесты размеров структур (6 fail) - **СЛЕДУЮЩАЯ ЗАДАЧА**
-2. Domain Configuration - TimeStrip Integration
-3. Неиспользуемые предупреждения компиляции
+### 🔥 КРИТИЧЕСКИЕ:
+1. Падающие тесты размеров структур (5 fail)
+2. Неиспользуемые предупреждения компиляции
 
 ### 🔧 СРЕДНИЙ:
-4. DomainConfig V2.1 - Примеры конфигураций для всех доменов
-5. Factory Methods для всех доменов
-6. Events System Integration
-7. Configuration System Integration
+3. DomainConfig V2.1 - Примеры для 3 доменов (CODEX, PROBE, VOID)
+4. Factory Methods - 5 доменов (EXECUTION, SHADOW, MAP, PROBE, VOID)
+5. Events System Integration
+6. Configuration YAML загрузка
 
-### 🟢 НИЗКИЙ (по необходимости):
-8. Python Adapter
-9. REST API
-10. Performance Benchmarks
-11. API Documentation
-12. Examples and Tutorials
+### 🟢 НИЗКИЙ:
+7. Python Adapter
+8. REST API
+9. Performance Benchmarks
+10. API Documentation
 
-### 📦 АРХИВНЫЕ ПЛАНЫ:
-- Все детальные планы v0.3.0-v0.4.0 из старого ROADMAP
-- ✅ v0.5.0 Ashti_Core v2.0 - **ЗАВЕРШЕНО** (2026-03-19)
+### 📦 АРХИВНЫЕ:
+- v0.3.0, v0.4.0 планы (отложено)
 
 ---
 
 ## 📝 История изменений
+
+**2026-03-20 (v0.6.0 завершена):**
+- ✅ Решены: 1.2 Domain Configuration - TimeStrip Integration
+- ✅ Решены: 3.4 Configuration System Integration (базовая интеграция)
+- Обновлен статус: 1.1 Падающие тесты (5 fail вместо 6, +1 тест исправлен)
+- Обновлен статус тестов: 168 pass, 5 fail (было 167 pass, 6 fail)
 
 **2026-03-19 (DomainConfig V2.1):**
 - Добавлен раздел 3.1: DomainConfig V2.1 - Примеры конфигураций для всех доменов
@@ -471,6 +325,6 @@ domain.last_update = com.get_current_event_id();
 
 ---
 
-**Последнее обновление:** 2026-03-19
+**Последнее обновление:** 2026-03-20
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
