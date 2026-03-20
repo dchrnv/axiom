@@ -995,6 +995,62 @@ mod tests {
         }
     }
 
+    // --- Domain-Specific Example Tests ---
+
+    #[test]
+    fn test_codex_domain_stability() {
+        // CODEX (3) - Конституция и правила
+        // Физика: высокая стабильность, низкая температура, высокая вязкость
+        let config = DomainConfig::factory_codex(3, 1);
+
+        assert_eq!(config.structural_role, 3);
+        assert_eq!(config.temperature, 10.0); // Почти ноль - минимальные колебания
+        assert_eq!(config.viscosity, 250);    // ~0.98 - Токены вязнут и фиксируются
+        assert_eq!(config.membrane_state, 2); // SEMI - жёсткий фильтр
+
+        // Arbiter отключён - CODEX не участвует в dual-path routing
+        assert_eq!(config.reflex_threshold, 0);
+        assert_eq!(config.arbiter_flags, 0b00000000);
+    }
+
+    #[test]
+    fn test_probe_domain_exploration() {
+        // PROBE (5) - Активное зондирование и исследование
+        // Физика: активная среда, высокая температура, высокий резонанс
+        let config = DomainConfig::factory_probe(5, 0);
+
+        assert_eq!(config.structural_role, 5);
+        assert_eq!(config.temperature, 350.0);    // Повышенная - активное исследование
+        assert_eq!(config.resonance_freq, 800);   // Высокий резонанс - активный поиск
+        assert_eq!(config.membrane_state, 0);     // OPEN - впускает всё для анализа
+
+        // Arbiter активен для быстрого анализа
+        assert_eq!(config.reflex_threshold, 160); // ~0.63 - умеренно-высокий порог
+        assert_eq!(config.reflex_cooldown, 1);    // Быстрый цикл исследования
+        assert_eq!(config.max_concurrent_hints, 5);
+    }
+
+    #[test]
+    fn test_void_domain_transformation() {
+        // VOID (8) - Неопределённость и трансформация
+        // Физика: экстремальная среда для разрушения и трансформации
+        let config = DomainConfig::factory_void(8, 0);
+
+        assert_eq!(config.structural_role, 8);
+        assert_eq!(config.temperature, 1000.0);    // Экстремальная температура - разрушение
+        assert_eq!(config.gravity_strength, 100.0); // Очень высокая гравитация - притяжение к центру
+        assert_eq!(config.friction_coeff, 200);    // ~0.78 - высокое трение
+        assert_eq!(config.permeability, 255);      // 1.0 - всё проникает (для аннигиляции)
+        assert_eq!(config.membrane_state, 0);      // OPEN
+
+        // Arbiter отключён - VOID не участвует в dual-path routing
+        assert_eq!(config.reflex_threshold, 0);
+        assert_eq!(config.arbiter_flags, 0b00000000);
+
+        // Небольшая ёмкость - токены здесь не хранятся долго
+        assert_eq!(config.token_capacity, 2000);
+    }
+
     // --- Domain Runtime Tests ---
 
     #[test]
