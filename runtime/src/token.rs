@@ -3,7 +3,7 @@
 //
 // Token V5.2: docs/spec/Token V5.2.md
 
-use crate::config::initialize;
+use crate::config::{ConfigLoader, initialize};
 
 /// Состояние Token: Active, Sleeping, Locked...
 pub const STATE_ACTIVE: u8 = 1;
@@ -114,7 +114,7 @@ impl Token {
     /// Создать токен из пресета согласно Configuration System
     pub fn from_preset(preset_name: &str, sutra_id: u32, domain_id: u16) -> Result<Self, crate::config::ConfigError> {
         let config = initialize()?;
-        let mut loader = crate::config::ConfigLoader::new();
+        let mut loader = ConfigLoader::new();
         
         // Загрузить схему токенов
         let schema = loader.load_schema("token", 
@@ -168,7 +168,7 @@ impl Token {
 
         // Загрузить схему для дополнительной валидации
         let config = initialize()?;
-        let mut loader = crate::config::ConfigLoader::new();
+        let mut loader = ConfigLoader::new();
         let schema = loader.load_schema("token", 
             std::path::Path::new(&config.schema.token))?;
 

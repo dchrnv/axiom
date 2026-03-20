@@ -3,7 +3,7 @@
 //
 // Connection V5.0: docs/spec/Connection V5.0.md
 
-use crate::config::initialize;
+use crate::config::{ConfigLoader, initialize};
 
 /// Флаги Connection
 pub const FLAG_ACTIVE: u32 = 1;
@@ -133,7 +133,7 @@ impl Connection {
     /// Создать соединение из пресета согласно Configuration System
     pub fn from_preset(preset_name: &str, source_id: u32, target_id: u32, domain_id: u16) -> Result<Self, crate::config::ConfigError> {
         let config = initialize()?;
-        let mut loader = crate::config::ConfigLoader::new();
+        let mut loader = ConfigLoader::new();
         
         // Загрузить схему соединений
         let schema = loader.load_schema("connection", 
@@ -189,7 +189,7 @@ impl Connection {
 
         // Загрузить схему для дополнительной валидации
         let config = initialize()?;
-        let mut loader = crate::config::ConfigLoader::new();
+        let mut loader = ConfigLoader::new();
         let schema = loader.load_schema("connection", 
             std::path::Path::new(&config.schema.connection))?;
 
