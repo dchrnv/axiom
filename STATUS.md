@@ -1,7 +1,22 @@
 # Axiom Status
 
-**Версия:** v0.6.1
+**Версия:** v0.6.2
 **Дата:** 2026-03-20
+
+---
+
+## ✅ v0.6.2 - Struct Optimization & Domain Examples (ЗАВЕРШЕНО)
+
+**Выполнено:**
+- **Struct Optimization**: Event 64b (COM V1.1), DynamicTrace 32b (UPO V2.3)
+- **Domain Examples**: Все 11 доменов Ashti_Core v2.0 с примерами-тестами
+- **Compiler Warnings**: 26 → 0 warnings cleanup
+- **Cross-spec validation**: обновлены под новые размеры структур
+- **ConfigLoader imports**: восстановлены для будущих preset функций
+
+**Тесты:** 181 pass, 0 fail ✅ (было: 176 pass)
+
+**Коммиты:** 28b114c, 43585ee, 1606cf8, 62c6ada, 510730b, 1be41b9
 
 ---
 
@@ -71,19 +86,25 @@ Generated Events → COM
 
 | Модуль | Spec | Runtime | Status |
 |--------|------|---------|--------|
-| Token | V5.2 | V5.2 | ✅ Complete |
-| Connection | V5.0 | V5.0 | ✅ Complete |
-| COM | V1.0 | V1.0 | ✅ Complete |
-| Domain | V2.1 | V2.1 | ✅ Complete |
+| Token | V5.2 | V5.2 | ✅ Complete (64b align) |
+| Connection | V5.0 | V5.0 | ✅ Complete (64b align) |
+| COM | V1.1 | V1.1 | ✅ Complete (Event 64b) |
+| UPO | V2.3 | V2.3 | ✅ Complete (DynamicTrace 32b) |
+| Domain | V2.1 | V2.1 | ✅ Complete (11 examples) |
 | EventGenerator | V1 | V1 | ✅ Complete |
 | CausalFrontier | V1 | V1 | ✅ Complete |
 | Heartbeat | V2.0 | V2.0 | ✅ Complete |
 | Experience | V1 | V1 | ✅ Complete |
-| Arbiter | V1.0 | V1.0 | ✅ Complete |
+| Arbiter | V2.1 | V2.1 | ✅ Complete |
 
 ---
 
 ## 🎯 Релизы
+
+### v0.6.2 - Struct Optimization ✅ (2026-03-20)
+- Event 64b (COM V1.1), DynamicTrace 32b (UPO V2.3)
+- All 11 domains with examples
+- Zero compiler warnings
 
 ### v0.6.1 - Bug Fixes ✅ (2026-03-20)
 - Factory Methods (все 11 доменов)
