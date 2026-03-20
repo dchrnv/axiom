@@ -22,7 +22,8 @@ pub const MEMBRANE_OPEN: u8 = 1;
 pub const MEMBRANE_CLOSED: u8 = 2;
 pub const MEMBRANE_SEMI: u8 = 3;
 
-/// Структурные роли в Ashti_Core v2.0
+/// Структурные роли доменов в Ashti_Core v2.0
+/// Ashti_Core: 11 доменов (SUTRA, EXECUTION, SHADOW, CODEX, MAP, PROBE, LOGIC, DREAM, VOID, EXPERIENCE, MAYA)
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum StructuralRole {
@@ -61,7 +62,7 @@ pub struct DomainConfig {
     pub domain_id: u16,         // 2b | Уникальный ID Домена
     pub parent_domain_id: u16,  // 2b | Родительский Домен
     pub domain_type: u8,        // 1b | Тип (до 255 вариаций)
-    pub structural_role: u8,    // 1b | Роль в Ashti_Core (Sutra, Logic, Dream)
+    pub structural_role: u8,    // 1b | Роль в Ashti_Core (0-10: SUTRA..MAYA)
     pub generation: u8,         // 1b | Поколение (эволюционный индекс)
     pub flags: u8,              // 1b | Битовая маска состояний (Active, Locked)
     // Offset: 16 байт
@@ -972,19 +973,19 @@ mod tests {
 
     #[test]
     fn test_all_factory_methods_valid() {
-        // Тестируем все существующие factory методы (11 доменов)
+        // Тестируем все существующие factory методы (11 доменов Ashti_Core v2.0)
         let configs = vec![
-            DomainConfig::factory_sutra(1),         // SUTRA (0) - domain_id не может быть 0
-            DomainConfig::factory_execution(1, 0),  // EXECUTION (1)
-            DomainConfig::factory_shadow(2, 0),     // SHADOW (2)
-            DomainConfig::factory_codex(3, 1),      // CODEX (3)
-            DomainConfig::factory_map(4, 0),        // MAP (4)
-            DomainConfig::factory_probe(5, 0),      // PROBE (5)
-            DomainConfig::factory_logic(6, 1),      // LOGIC (6)
-            DomainConfig::factory_dream(7, 1),      // DREAM (7)
-            DomainConfig::factory_void(8, 0),       // VOID (8)
-            DomainConfig::factory_experience(9, 1), // EXPERIENCE (9)
-            DomainConfig::factory_maya(10, 1),      // MAYA (10)
+            DomainConfig::factory_sutra(1),         // 0: SUTRA - Источник истины
+            DomainConfig::factory_execution(1, 0),  // 1: EXECUTION - Реализация решений
+            DomainConfig::factory_shadow(2, 0),     // 2: SHADOW - Симуляция угроз
+            DomainConfig::factory_codex(3, 1),      // 3: CODEX - Конституция/правила
+            DomainConfig::factory_map(4, 0),        // 4: MAP - Карта мира/фактов
+            DomainConfig::factory_probe(5, 0),      // 5: PROBE - Активное зондирование
+            DomainConfig::factory_logic(6, 1),      // 6: LOGIC - Чистые вычисления
+            DomainConfig::factory_dream(7, 1),      // 7: DREAM - Фоновая оптимизация
+            DomainConfig::factory_void(8, 0),       // 8: VOID - Неопределённость/аномалии
+            DomainConfig::factory_experience(9, 1), // 9: EXPERIENCE - Память и опыт
+            DomainConfig::factory_maya(10, 1),      // 10: MAYA - Интерфейс/проекция
         ];
 
         for config in configs {

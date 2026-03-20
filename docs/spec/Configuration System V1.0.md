@@ -1,7 +1,7 @@
-# AXIOM Configuration System Specification
+# AXIOM Configuration System Specification V1.0
 
-**Version:** 1.0  
-**Status:** Foundational  
+**Version:** 1.0
+**Status:** Foundational
 **Scope:** Runtime configuration and semantic schema definition for Axiom.
 
 ---
@@ -13,16 +13,12 @@ The configuration system defines how Axiom loads, validates, and applies configu
 The system has two responsibilities:
 
 1. Configure how the system runs.
-    
 2. Define the semantic structure of the Axiom environment.
-    
 
 To support these responsibilities, configuration is divided into two independent layers:
 
 - **Runtime Configuration**
-    
 - **Schema Configuration**
-    
 
 This separation ensures that infrastructure settings remain stable while the semantic model of the system can evolve.
 
@@ -34,7 +30,7 @@ The configuration system follows several core principles.
 
 **1. Strong Typing**
 
-All configuration is represented as strongly typed structures in code.  
+All configuration is represented as strongly typed structures in code.
 Configuration files are only serialized representations of these structures.
 
 ---
@@ -46,20 +42,14 @@ Configuration files describe system state but do not contain executable logic.
 Allowed:
 
 - structural definitions
-    
 - parameters
-    
 - constraints
-    
 
 Forbidden:
 
 - conditional logic
-    
 - algorithms
-    
 - procedural behavior
-    
 
 ---
 
@@ -67,7 +57,7 @@ Forbidden:
 
 Runtime configuration and semantic schema must remain separate.
 
-Runtime config describes **how the system operates**.  
+Runtime config describes **how the system operates**.
 Schema config describes **the structure of the semantic environment**.
 
 ---
@@ -97,17 +87,11 @@ Runtime configuration defines operational parameters of the system.
 Typical responsibilities include:
 
 - runtime environment
-    
 - logging
-    
 - resource limits
-    
 - storage
-    
 - network configuration
-    
 - performance parameters
-    
 
 Runtime configuration changes rarely and is expected to remain stable.
 
@@ -129,17 +113,11 @@ Schema configuration defines the semantic structure of the Axiom system.
 This includes:
 
 - domains
-    
 - token types
-    
 - connection rules
-    
 - grid structure
-    
 - layer definitions
-    
 - field parameters
-    
 
 Schema configuration may evolve over time as the semantic model changes.
 
@@ -167,11 +145,8 @@ Configuration files use **YAML** as the primary format.
 Reasons:
 
 - human readability
-    
 - support for comments
-    
 - widespread ecosystem support
-    
 
 JSON is implicitly supported because YAML is a superset of JSON.
 
@@ -227,17 +202,11 @@ The root configuration acts as the entry point for the configuration loader.
 Axiom uses a single configuration loader responsible for:
 
 1. reading the root configuration
-    
 2. resolving referenced files
-    
 3. parsing YAML
-    
 4. constructing typed structures
-    
 5. validating all configuration
-    
 6. returning a fully initialized configuration object
-    
 
 The loader performs no runtime logic beyond initialization.
 
@@ -271,15 +240,10 @@ trait Validate {
 Validation ensures:
 
 - type correctness
-    
 - required fields
-    
 - valid ranges
-    
 - structural consistency
-    
 - schema compatibility
-    
 
 Validation must run before the system enters runtime execution.
 
@@ -314,11 +278,8 @@ core/connection/config.rs
 Each module defines:
 
 - configuration struct
-    
 - default values
-    
 - validation rules
-    
 
 Modules must not modify configuration belonging to other modules.
 
@@ -341,15 +302,10 @@ The configuration system is designed to support future capabilities without arch
 Possible future features include:
 
 - schema version migration
-    
 - configuration validation CLI
-    
 - schema visualization tools
-    
 - environment profiles
-    
 - configuration diff and inspection
-    
 
 These features must operate on the existing configuration structures without changing the core architecture.
 
@@ -360,13 +316,9 @@ These features must operate on the existing configuration structures without cha
 The configuration system explicitly does not support:
 
 - runtime scripting
-    
 - configuration plugins
-    
 - executable configuration logic
-    
 - dynamic configuration mutation
-    
 
 These capabilities introduce instability and are intentionally excluded.
 
@@ -377,15 +329,10 @@ These capabilities introduce instability and are intentionally excluded.
 The Axiom configuration system provides a stable foundation based on several key ideas:
 
 - strong typing
-    
 - strict separation between runtime and schema
-    
 - declarative configuration
-    
 - minimal infrastructure
-    
 - deterministic initialization
-    
 
 This architecture allows Axiom to evolve its semantic model while maintaining a stable runtime foundation.
 
