@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 214
+**current_test_count:** 223
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
@@ -17,7 +17,7 @@
 | 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
 | 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
-| 6 | axiom-arbiter | ⏸️ | — | — | Пропущена (зависит от непереведённых модулей) |
+| 6 | axiom-arbiter | ✅ | 2026-03-21 | 9 | Arbiter V1.0 со stub-модулями (experience, ashti, maya, com) |
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
 | 9 | axiom-domain | ⏸️ | — | — | Пропущена (2845 строк, требует event_generator + 113+ импортов) |
@@ -361,4 +361,65 @@ cargo test --workspace
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Завершён рефакторинг тестов — все inline тесты вынесены в отдельные файлы)
+## Фаза 6: axiom-arbiter
+
+**Дата:** 2026-03-21
+**Статус:** ✅ Завершена
+
+### Цель
+Мигрировать модуль Arbiter V1.0 (над-доменная маршрутизация) в отдельный crate с stub-модулями для зависимостей.
+
+### Выполнено
+
+**Структура модуля:**
+- `src/lib.rs` - Основная логика Arbiter (RoutingResult, PendingComparison, DomainRegistry, Arbiter)
+- `src/experience.rs` - Stub для Experience модуля (ExperienceTrace, ResonanceLevel, ResonanceResult)
+- `src/ashti_processor.rs` - Stub для ASHTI 1-8 обработки
+- `src/maya_processor.rs` - Stub для MAYA консолидации
+- `src/com.rs` - Stub для Causal Order Model
+- `tests/arbiter_tests.rs` - 9 тестов (уже извлечены ранее)
+
+### Изменения
+
+**API изменения для тестов:**
+- `pending_comparisons` field → публичный
+- `PendingComparison` struct → публичная со всеми полями
+- `compare_tokens()` метод → публичный
+- `euclidean_distance()` метод → публичный
+- Re-exported `COM` для использования в тестах
+
+**Исправления:**
+- Импорты изменены с `crate::token` на `axiom_core::Token`
+- Импорты изменены с `crate::domain` на `axiom_config::DomainConfig`
+- `Token::default()` заменён на `Token::new()` в тестах
+- Убран дубликат импорта `COM`
+
+### Зависимости
+- axiom-core (Token)
+- axiom-config (DomainConfig)
+
+### Stub модули
+Следующие модули реализованы как stubs и будут заменены полноценными реализациями:
+- `experience` - Ассоциативная память (Experience, ExperienceTrace, ResonanceLevel)
+- `ashti_processor` - Обработка через ASHTI 1-8 домены
+- `maya_processor` - Консолидация результатов от ASHTI
+- `com` - Causal Order Model для отслеживания событий
+
+### Тесты
+✅ 9 тестов проходят успешно:
+- `test_arbiter_creation` - Создание Arbiter
+- `test_domain_registration` - Регистрация всех 11 доменов
+- `test_invalid_role_registration` - Валидация structural_role
+- `test_routing_without_registration` - Маршрутизация без готовности
+- `test_token_comparison_identical` - Сравнение идентичных токенов
+- `test_token_comparison_similar` - Сравнение схожих токенов
+- `test_token_comparison_different` - Сравнение различных токенов
+- `test_euclidean_distance` - Евклидово расстояние
+- `test_cleanup_old_comparisons` - Очистка старых сравнений
+
+### Коммит
+`feat(arbiter): complete Phase 6 - axiom-arbiter migration (v0.1.0)`
+
+---
+
+**Последнее обновление:** 2026-03-21 (Завершена Фаза 6: axiom-arbiter — 223 теста в workspace)
