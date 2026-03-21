@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024-2026 Chernov Denys
+//
 // AXIOM MODULE: ARBITER V1.0 - Над-доменная маршрутизация
 //
 // Arbiter принимает решения о маршрутизации между быстрым путём
@@ -10,13 +13,21 @@
 // - docs/spec/Arbiter_V1_0.md (каноническая)
 // - docs/spec/Ashti_Core_v2_0.md
 
-use crate::token::Token;
-use crate::experience::{Experience, ExperienceTrace, ResonanceLevel};
-use crate::domain::DomainConfig;
-use crate::ashti_processor::AshtiProcessor;
-use crate::maya_processor::MayaProcessor;
-use crate::com::COM;
+mod experience;
+mod ashti_processor;
+mod maya_processor;
+mod com;
+
+use axiom_core::Token;
+use axiom_config::DomainConfig;
+use experience::{Experience, ExperienceTrace, ResonanceLevel};
+use ashti_processor::AshtiProcessor;
+use maya_processor::MayaProcessor;
 use std::collections::HashMap;
+
+// Re-export for tests
+pub use experience::{Experience as ExperienceModule, ResonanceLevel as ResonanceLevelEnum};
+pub use com::COM;
 
 /// Результат маршрутизации токена
 #[derive(Debug, Clone)]
@@ -49,24 +60,24 @@ impl RoutingResult {
 /// Ожидающее сравнение рефлекса с результатом ASHTI
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct PendingComparison {
+pub struct PendingComparison {
     /// Входной паттерн
-    input_pattern: Token,
+    pub input_pattern: Token,
     /// Предсказание рефлекса (если было)
-    reflex_prediction: Option<Token>,
+    pub reflex_prediction: Option<Token>,
     /// Результаты от ASHTI 1-8
-    ashti_results: Vec<Token>,
+    pub ashti_results: Vec<Token>,
     /// Консолидированный результат от MAYA
-    consolidated_result: Option<Token>,
+    pub consolidated_result: Option<Token>,
     /// Время создания (event_id)
-    created_at: u64,
+    pub created_at: u64,
     /// Индекс следа, который сгенерировал рефлекс
-    trace_index: Option<usize>,
+    pub trace_index: Option<usize>,
 }
 
 /// Реестр доменов по их ролям
 #[derive(Debug, Clone)]
-struct DomainRegistry {
+pub struct DomainRegistry {
     sutra: Option<u32>,
     experience: Option<u32>,
     ashti: [Option<u32>; 8],  // Indexed by role 1-8
@@ -97,8 +108,8 @@ pub struct Arbiter {
     experience: Experience,
     /// Реестр доменов
     registry: DomainRegistry,
-    /// Ожидающие сравнения
-    pending_comparisons: HashMap<u64, PendingComparison>,
+    /// Ожидающие сравнения (публично для тестов)
+    pub pending_comparisons: HashMap<u64, PendingComparison>,
     /// Ссылка на домены (для обработки)
     domains: HashMap<u32, DomainConfig>,
     /// COM для событий
@@ -294,8 +305,8 @@ impl Arbiter {
         Ok(())
     }
 
-    /// Сравнение двух токенов на схожесть
-    fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
+    /// Сравнение двух токенов на схожесть (публично для тестов)
+    pub fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
         // Проверяем ключевые свойства
         let temp_match = (reflex.temperature as i16 - ashti.temperature as i16).abs() < 10;
         let mass_match = (reflex.mass as i16 - ashti.mass as i16).abs() < 5;
@@ -314,8 +325,8 @@ impl Arbiter {
         matches >= 3
     }
 
-    /// Вычисление Евклидова расстояния между позициями
-    fn euclidean_distance(&self, a: &[i16; 3], b: &[i16; 3]) -> f32 {
+    /// Вычисление Евклидова расстояния между позициями (публично для тестов)
+    pub fn euclidean_distance(&self, a: &[i16; 3], b: &[i16; 3]) -> f32 {
         let dx = (a[0] - b[0]) as f32;
         let dy = (a[1] - b[1]) as f32;
         let dz = (a[2] - b[2]) as f32;

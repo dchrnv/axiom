@@ -9,7 +9,7 @@ members = [
     # "crates/axiom-domain",  # Временно отключен - требует event_generator и исправления 113+ импортов
     "crates/axiom-space",
     "crates/axiom-shell",
-    # "crates/axiom-arbiter",  # Временно отключен - зависит от непереведённых модулей
+    "crates/axiom-arbiter",
     "crates/axiom-heartbeat",
     "crates/axiom-frontier",
     "crates/axiom-upo",

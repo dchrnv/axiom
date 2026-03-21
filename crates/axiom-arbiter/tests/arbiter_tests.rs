@@ -3,11 +3,9 @@ use axiom_core::Token;
 use std::collections::HashMap;
 
 fn create_test_token(id: u32, temp: u8) -> Token {
-    let mut token = Token::default();
-    token.sutra_id = id;
+    let mut token = Token::new(id, 1, [0, 0, 0], 1);
     token.temperature = temp;
     token.mass = 100;
-    token.position = [0, 0, 0];
     token
 }
 
