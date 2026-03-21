@@ -15,6 +15,7 @@ harness = false
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+bitvec = "1.0"
 
 [dev-dependencies]
 criterion = "0.5"

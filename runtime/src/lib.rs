@@ -21,6 +21,7 @@ mod arbiter;
 mod ashti_processor;
 mod maya_processor;
 mod space;
+mod shell;
 
 pub use domain::{
     Domain, DomainConfig, StructuralRole, DomainType,
@@ -97,6 +98,10 @@ pub use space::{
     distance2, distance2_to_anchor, compute_gravity, GravityModel,
     apply_velocity, apply_friction, apply_acceleration, clamp_i16, move_towards,
     has_moved, cell_changed, detect_collisions
+};
+
+pub use shell::{
+    ShellProfile, ShellContribution, DomainShellCache, EMPTY_SHELL, LAYER_NAMES
 };
 
 #[cfg(test)]
