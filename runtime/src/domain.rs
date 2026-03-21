@@ -784,6 +784,14 @@ pub struct Domain {
     /// Счётчик событий с последней перестройки spatial grid
     /// Используется для rebuild_frequency
     pub events_since_rebuild: usize,
+
+    /// Shell Cache для семантических профилей токенов
+    /// Shell V3.0: Кэш профилей + dirty flags для инкрементального обновления
+    pub shell_cache: crate::shell::DomainShellCache,
+
+    /// Semantic Contribution Table для Shell вычислений
+    /// Shell V3.0: Справочник вкладов типов связей в семантические слои
+    pub semantic_table: crate::shell::SemanticContributionTable,
 }
 
 impl Domain {
@@ -799,6 +807,13 @@ impl Domain {
         let max_frontier_size = (config.token_capacity as usize) / 5; // 20% от capacity
         let max_events_per_cycle = 1000; // Фиксированный бюджет
 
+        // Инициализируем shell cache с capacity из конфигурации
+        let shell_capacity = config.token_capacity as usize;
+        let shell_cache = crate::shell::DomainShellCache::new(shell_capacity);
+
+        // Инициализируем semantic table с дефолтными Ashti Core вкладами
+        let semantic_table = crate::shell::SemanticContributionTable::default_ashti_core();
+
         Self {
             heartbeat: HeartbeatGenerator::new(config.domain_id, heartbeat_config.interval),
             heartbeat_config,
@@ -812,6 +827,8 @@ impl Domain {
             active_tokens: 0,
             active_connections: 0,
             events_since_rebuild: 0,
+            shell_cache,
+            semantic_table,
         }
     }
 
@@ -2613,5 +2630,69 @@ mod tests {
         // Domain V2.1: DomainConfig остаётся 128 байт
         use std::mem::size_of;
         assert_eq!(size_of::<DomainConfig>(), 128, "DomainConfig must be 128 bytes");
+    }
+
+    // --- Shell V3.0 Integration Tests (Phase 2.8) ---
+
+    #[test]
+    fn test_domain_shell_cache_initialization() {
+        // Shell V3.0: Domain должен инициализировать shell_cache с правильной capacity
+        let config = DomainConfig::factory_sutra(1);
+        let domain = Domain::new(config);
+
+        assert_eq!(domain.shell_cache.profiles.len(), config.token_capacity as usize);
+        assert_eq!(domain.shell_cache.dirty_flags.len(), config.token_capacity as usize);
+        assert_eq!(domain.shell_cache.generation, 0);
+    }
+
+    #[test]
+    fn test_domain_semantic_table_initialization() {
+        // Shell V3.0: Domain должен иметь default_ashti_core() semantic table
+        let config = DomainConfig::factory_sutra(1);
+        let domain = Domain::new(config);
+
+        // Проверяем что semantic_table инициализирована правильно
+        // Category 0x01 (Structural) должна иметь вклад [20, 5, 0, 0, 5, 0, 0, 0]
+        let structural_contrib = domain.semantic_table.get(0x0100);
+        assert_eq!(*structural_contrib, [20, 5, 0, 0, 5, 0, 0, 0]);
+
+        // Category 0x02 (Semantic) должна иметь вклад [0, 0, 0, 0, 15, 0, 0, 10]
+        let semantic_contrib = domain.semantic_table.get(0x0200);
+        assert_eq!(*semantic_contrib, [0, 0, 0, 0, 15, 0, 0, 10]);
+    }
+
+    #[test]
+    fn test_domain_shell_cache_zero_profiles() {
+        // Shell V3.0: Все профили должны быть инициализированы нулями
+        let config = DomainConfig::factory_sutra(1);
+        let domain = Domain::new(config);
+
+        for profile in &domain.shell_cache.profiles {
+            assert_eq!(*profile, [0, 0, 0, 0, 0, 0, 0, 0], "All profiles should start as zero");
+        }
+    }
+
+    #[test]
+    fn test_domain_shell_cache_no_dirty_flags() {
+        // Shell V3.0: Все dirty flags должны быть false при инициализации
+        let config = DomainConfig::factory_sutra(1);
+        let domain = Domain::new(config);
+
+        for i in 0..domain.shell_cache.dirty_flags.len() {
+            assert!(!domain.shell_cache.dirty_flags[i], "No dirty flags should be set initially");
+        }
+    }
+
+    #[test]
+    fn test_domain_different_capacities() {
+        // Shell V3.0: shell_cache должен масштабироваться с token_capacity
+        let small = DomainConfig::factory_logic(6, 1); // 2000 tokens
+        let large = DomainConfig::factory_experience(9, 0); // 100000 tokens
+
+        let domain_small = Domain::new(small);
+        let domain_large = Domain::new(large);
+
+        assert_eq!(domain_small.shell_cache.profiles.len(), 2000);
+        assert_eq!(domain_large.shell_cache.profiles.len(), 100000);
     }
 }

@@ -38,6 +38,10 @@ pub struct HeartbeatConfig {
 
     /// Добавлять pulse_id к генерируемым событиям
     pub attach_pulse_id: bool,
+
+    /// Активировать Shell reconciliation (Shell V3.0 Phase 2.7)
+    /// Пересчёт и проверка семантических профилей токенов
+    pub enable_shell_reconciliation: bool,
 }
 
 impl Default for HeartbeatConfig {
@@ -61,6 +65,7 @@ impl HeartbeatConfig {
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
             attach_pulse_id: false,
+            enable_shell_reconciliation: false, // Disabled for weak hardware
         }
     }
 
@@ -78,6 +83,7 @@ impl HeartbeatConfig {
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
             attach_pulse_id: true,
+            enable_shell_reconciliation: true, // Enabled for medium+ hardware
         }
     }
 
@@ -95,6 +101,7 @@ impl HeartbeatConfig {
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
             attach_pulse_id: true,
+            enable_shell_reconciliation: true, // Enabled for medium+ hardware
         }
     }
 
@@ -110,6 +117,7 @@ impl HeartbeatConfig {
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
             attach_pulse_id: false,
+            enable_shell_reconciliation: false, // Disabled when heartbeat disabled
         }
     }
 }

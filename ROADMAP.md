@@ -58,20 +58,20 @@
 - ✅ Интеграция с mark_dirty для frontier workflow
 - ✅ Тесты: empty, single, multiple, self-loops, integration with mark_dirty
 
-**2.7 Reconciliation через Heartbeat**
-- `HeartbeatConfig.enable_shell_reconciliation: bool`
-- Shell reconciliation в heartbeat батче:
-  - Пересчёт Shell
-  - Сравнение с кэшем
-  - Запись, если отличается
-- Гарантия полного покрытия (все токены проверяются)
-- Тесты: reconciliation, drift detection
+**✅ 2.7 Reconciliation через Heartbeat** (ЗАВЕРШЕНО - 3 теста)
+- ✅ Добавлен `HeartbeatConfig.enable_shell_reconciliation: bool`
+- ✅ Обновлены все пресеты (weak=false, medium=true, powerful=true, disabled=false)
+- ✅ Функция `reconcile_shell_batch()` для heartbeat батча
+- ✅ Пересчёт Shell → сравнение с кэшем → обновление если отличается
+- ✅ Возвращает drift_count для мониторинга
+- ✅ Тесты: no_drift, drift_detected, multiple_tokens
 
-**2.8 Интеграция с Domain**
-- Добавить `DomainShellCache` в `DomainState`
-- Инициализация нулевыми профилями
-- Первичное вычисление при загрузке
-- Тесты: domain + shell cache
+**✅ 2.8 Интеграция с Domain** (ЗАВЕРШЕНО - 5 тестов)
+- ✅ Добавлены `shell_cache` и `semantic_table` в Domain struct
+- ✅ Инициализация shell_cache с capacity из DomainConfig
+- ✅ Инициализация semantic_table с default_ashti_core()
+- ✅ Все профили инициализируются нулями, dirty flags = false
+- ✅ Тесты: initialization, zero profiles, no dirty flags, semantic table, different capacities
 
 **2.9 Runtime конфигурация**
 - Runtime configuration YAML:

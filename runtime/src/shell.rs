@@ -383,6 +383,48 @@ pub fn compute_shell(
     profile
 }
 
+/// Reconciliation batch: пересчёт и проверка Shell для батча токенов
+///
+/// Heartbeat V2.0 Phase 2.7: Shell reconciliation
+/// Функция для использования в heartbeat батче.
+/// Пересчитывает Shell для указанных токенов и обновляет кэш если отличается.
+///
+/// # Arguments
+/// * `cache` - DomainShellCache для обновления
+/// * `token_indices` - индексы токенов для reconciliation
+/// * `connections` - все связи домена
+/// * `table` - SemanticContributionTable для вычисления вкладов
+///
+/// # Returns
+/// Количество токенов, профиль которых изменился (drift detected)
+pub fn reconcile_shell_batch(
+    cache: &mut DomainShellCache,
+    token_indices: &[usize],
+    connections: &[crate::connection::Connection],
+    table: &SemanticContributionTable,
+) -> usize {
+    let mut drift_count = 0;
+
+    for &token_index in token_indices {
+        // token_id = token_index + 1
+        let token_id = (token_index + 1) as u32;
+
+        // Пересчитать Shell
+        let new_profile = compute_shell(token_id, connections, table);
+
+        // Сравнить с кэшем
+        let cached_profile = cache.get(token_index);
+
+        // Если отличается — обновить кэш
+        if cached_profile != &new_profile {
+            cache.profiles[token_index] = new_profile;
+            drift_count += 1;
+        }
+    }
+
+    drift_count
+}
+
 // ============================================================================
 // TESTS
 // ============================================================================
@@ -1082,5 +1124,104 @@ mod tests {
         assert!(!cache.is_dirty(5));
         assert!(!cache.is_dirty(7));
         assert!(!cache.is_dirty(9));
+    }
+
+    // --- Phase 2.7: Heartbeat Reconciliation Tests ---
+
+    #[test]
+    fn test_reconcile_shell_batch_no_drift() {
+        // Shell V3.0 Phase 2.7: Reconciliation не обнаруживает drift если профиль не изменился
+        let mut cache = DomainShellCache::new(5);
+        let table = SemanticContributionTable::default_ashti_core();
+
+        // Связь: Token 1 → Token 2 (Structural)
+        let mut conn = Connection::new(1, 2, 1);
+        conn.link_type = 0x0100; // Structural
+        let connections = vec![conn];
+
+        // Вычислим профиль и запишем в кэш
+        let profile = compute_shell(1, &connections, &table);
+        cache.profiles[0] = profile;
+
+        // Reconciliation не должна обнаружить drift
+        let token_indices = vec![0];
+        let drift_count = reconcile_shell_batch(&mut cache, &token_indices, &connections, &table);
+
+        assert_eq!(drift_count, 0, "No drift should be detected");
+        assert_eq!(cache.profiles[0], profile, "Profile should not change");
+    }
+
+    #[test]
+    fn test_reconcile_shell_batch_drift_detected() {
+        // Shell V3.0 Phase 2.7: Reconciliation обнаруживает drift если профиль изменился
+        let mut cache = DomainShellCache::new(5);
+        let table = SemanticContributionTable::default_ashti_core();
+
+        // Старая связь: Token 1 → Token 2 (Structural)
+        let mut old_conn = Connection::new(1, 2, 1);
+        old_conn.link_type = 0x0100; // Structural
+
+        // Новая связь: Token 1 → Token 2 (Semantic вместо Structural)
+        let mut new_conn = Connection::new(1, 2, 1);
+        new_conn.link_type = 0x0200; // Semantic (другой тип!)
+
+        // Запишем старый профиль в кэш
+        let old_profile = compute_shell(1, &vec![old_conn], &table);
+        cache.profiles[0] = old_profile;
+
+        // Reconciliation с новыми связями
+        let token_indices = vec![0];
+        let new_connections = vec![new_conn];
+        let drift_count = reconcile_shell_batch(&mut cache, &token_indices, &new_connections, &table);
+
+        assert_eq!(drift_count, 1, "Drift should be detected");
+
+        // Профиль должен обновиться
+        let expected_profile = compute_shell(1, &new_connections, &table);
+        assert_eq!(cache.profiles[0], expected_profile, "Profile should be updated");
+        assert_ne!(cache.profiles[0], old_profile, "Profile should differ from old");
+    }
+
+    #[test]
+    fn test_reconcile_shell_batch_multiple_tokens() {
+        // Shell V3.0 Phase 2.7: Reconciliation обрабатывает несколько токенов
+        let mut cache = DomainShellCache::new(5);
+        let table = SemanticContributionTable::default_ashti_core();
+
+        // Создадим связи: 1→2 (Structural), 3→4 (Semantic)
+        // Token 5 не участвует ни в каких связях
+        let mut conn1 = Connection::new(1, 2, 1);
+        conn1.link_type = 0x0100; // Structural
+
+        let mut conn2 = Connection::new(3, 4, 1);
+        conn2.link_type = 0x0200; // Semantic
+
+        let connections = vec![conn1, conn2];
+
+        // Инициализируем кэш правильными профилями
+        cache.profiles[0] = compute_shell(1, &connections, &table); // Token 1
+        cache.profiles[1] = compute_shell(2, &connections, &table); // Token 2
+        cache.profiles[2] = compute_shell(3, &connections, &table); // Token 3
+        cache.profiles[3] = compute_shell(4, &connections, &table); // Token 4
+        cache.profiles[4] = EMPTY_SHELL; // Token 5 - no connections
+
+        // Reconciliation не должна обнаружить drift
+        let token_indices = vec![0, 1, 2, 3, 4];
+        let drift_count = reconcile_shell_batch(&mut cache, &token_indices, &connections, &table);
+
+        assert_eq!(drift_count, 0, "No drift should be detected when profiles are correct");
+
+        // Теперь испортим профили Token 1, Token 3, и Token 5
+        cache.profiles[0] = [100, 100, 100, 100, 100, 100, 100, 100]; // wrong
+        cache.profiles[2] = [50, 50, 50, 50, 50, 50, 50, 50]; // wrong
+        cache.profiles[4] = [10, 10, 10, 10, 10, 10, 10, 10]; // wrong (should be EMPTY)
+
+        // Reconciliation должна обнаружить 3 drift (Token 1, Token 3, Token 5)
+        let drift_count = reconcile_shell_batch(&mut cache, &token_indices, &connections, &table);
+
+        assert_eq!(drift_count, 3, "Three tokens should have drift");
+
+        // Token 5 не имеет связей → должен стать EMPTY после reconciliation
+        assert_eq!(cache.profiles[4], EMPTY_SHELL, "Token 5 should be empty after reconciliation");
     }
 }
