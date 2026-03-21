@@ -357,7 +357,7 @@ fn test_shell_determinism_validation() {
 | Задача | Файлы | Тесты | Статус |
 |--------|-------|-------|--------|
 | 2.1 Базовые структуры | shell.rs | 9 | ✅ Complete |
-| 2.2 Справочник | shell.rs | 5+ | ⏸️ Pending |
+| 2.2 Справочник | shell.rs | 6 | ✅ Complete |
 | 2.3 YAML конфигурация | - | - | ⏸️ Deferred |
 | 2.4 Алгоритм compute | shell.rs | 8+ | ⏸️ Pending |
 | 2.5 Инкрементальное | shell.rs | 5+ | ⏸️ Pending |
@@ -367,7 +367,7 @@ fn test_shell_determinism_validation() {
 | 2.9 Runtime config | - | - | ⏸️ Deferred |
 | 2.10 Валидация | shell.rs | 4+ | ⏸️ Pending |
 
-**Итого:** 1/10 завершено (10%), 9 тестов pass (+9 новых, всего 294)
+**Итого:** 2/10 завершено (20%), 15 тестов pass (+15 новых, всего 300)
 
 ---
 

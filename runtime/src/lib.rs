@@ -101,7 +101,8 @@ pub use space::{
 };
 
 pub use shell::{
-    ShellProfile, ShellContribution, DomainShellCache, EMPTY_SHELL, LAYER_NAMES
+    ShellProfile, ShellContribution, DomainShellCache, SemanticContributionTable,
+    EMPTY_SHELL, LAYER_NAMES
 };
 
 #[cfg(test)]
