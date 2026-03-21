@@ -251,7 +251,6 @@
 
 **Отключенные crates в Cargo.toml:**
 ```toml
-# "crates/axiom-arbiter",  # Зависит от непереведённых модулей
 # "crates/axiom-domain",   # Требует event_generator и 113+ импортов
 # "crates/axiom-runtime",  # Зависит от axiom-arbiter и axiom-domain
 ```
@@ -260,24 +259,35 @@
 
 1. Мигрировать вспомогательные модули:
    - event_generator.rs (для domain тестов)
-   - experience.rs (для arbiter)
-   - ashti_processor.rs (для arbiter)
-   - maya_processor.rs (для arbiter)
-   - com.rs (для arbiter)
 
 2. Завершить Фазу 9 (domain):
    - Исправить импорты в основном коде
    - Исправить импорты в тестах
    - Адаптировать тесты для новой структуры
 
-3. Завершить Фазу 6 (arbiter):
-   - После миграции зависимостей
-   - Исправить импорты
-   - Проверить 9 тестов
-
-4. Завершить Фазу 10 (runtime):
+3. Завершить Фазу 10 (runtime):
    - Финальная интеграция
    - Интеграционные тесты
+
+### 🔮 Deferred Tasks (на будущее)
+
+**Фаза 6 (axiom-arbiter) - Замена stub-модулей:**
+- [ ] Заменить `src/experience.rs` stub на полноценную реализацию Experience модуля
+  - ExperienceTrace с полной логикой ассоциативной памяти
+  - ResonanceSearch с threshold-based classification
+  - Trace strengthening/weakening based on feedback
+- [ ] Заменить `src/ashti_processor.rs` stub на реальную ASHTI 1-8 обработку
+  - Маршрутизация токенов через 8 специализированных доменов
+  - Hint propagation из Experience
+  - Parallel/sequential processing options
+- [ ] Заменить `src/maya_processor.rs` stub на полноценную MAYA консолидацию
+  - Consolidation algorithm для результатов от ASHTI 1-8
+  - Confidence scoring
+  - Conflict resolution
+- [ ] Заменить `src/com.rs` stub на полный Causal Order Model
+  - Event tracking and causal ordering
+  - Domain-specific event ID allocation
+  - Frontier integration
 
 ---
 
