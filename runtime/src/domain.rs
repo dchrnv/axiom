@@ -938,6 +938,20 @@ impl Domain {
 
                                 // Добавляем оба токена в frontier для повторной проверки
                                 self.frontier.push_token(collision_idx as usize);
+
+                                // Shell V3.0 Phase 3.1: пометить затронутые токены как dirty
+                                // При столкновении - проверяем есть ли Connection между токенами
+                                // Если есть - помечаем Shell для обоих токенов как dirty
+                                for conn in connections {
+                                    let involves_tokens =
+                                        (conn.source_id == token.sutra_id && conn.target_id == other_token.sutra_id) ||
+                                        (conn.source_id == other_token.sutra_id && conn.target_id == token.sutra_id);
+
+                                    if involves_tokens {
+                                        crate::shell::process_connection_event(&mut self.shell_cache, conn);
+                                        break; // Найдена связь, выходим из цикла
+                                    }
+                                }
                             }
                         }
                     }
@@ -958,6 +972,10 @@ impl Domain {
                         ) {
                             generated_events.push(event);
                         }
+
+                        // Shell V3.0 Phase 3.1: пометить затронутые токены как dirty
+                        // При любом изменении Connection - обновляем Shell для source+target
+                        crate::shell::process_connection_event(&mut self.shell_cache, connection);
                     }
 
                     self.frontier.increment_processed();
@@ -2694,5 +2712,134 @@ mod tests {
 
         assert_eq!(domain_small.shell_cache.profiles.len(), 2000);
         assert_eq!(domain_large.shell_cache.profiles.len(), 100000);
+    }
+
+    // --- SPACE ↔ Shell Integration Tests (Phase 3.1) ---
+
+    #[test]
+    fn test_integration_process_connection_event_marks_dirty() {
+        // Phase 3.1: Базовая проверка process_connection_event()
+        // Проверяем что обработка Connection помечает затронутые токены как dirty
+
+        let config = DomainConfig::factory_sutra(1);
+        let mut cache = crate::shell::DomainShellCache::new(config.token_capacity as usize);
+
+        // Начальное состояние: все токены clean
+        assert!(!cache.is_dirty(0));
+        assert!(!cache.is_dirty(1));
+
+        // Создаём Connection между токенами 1 и 2
+        let mut conn = crate::connection::Connection::new(1, 2, 1);
+        conn.link_type = 0x0100; // Structural
+        conn.strength = 1.0;
+
+        // Вызываем process_connection_event (это наша новая функция)
+        crate::shell::process_connection_event(&mut cache, &conn);
+
+        // Проверяем что оба токена помечены как dirty
+        assert!(cache.is_dirty(0), "Token 1 (index 0) should be marked dirty");
+        assert!(cache.is_dirty(1), "Token 2 (index 1) should be marked dirty");
+    }
+
+    #[test]
+    fn test_integration_connection_maintenance_marks_shell_dirty() {
+        // Phase 3.1: Connection maintenance → Shell dirty flags
+        // Проверяем что process_frontier с Connection помечает Shell как dirty
+
+        let config = DomainConfig::factory_sutra(1);
+        let mut domain = Domain::new(config);
+        domain.heartbeat_config.enable_connection_maintenance = true;
+
+        let token1 = crate::token::Token::new(1, 1);
+        let token2 = crate::token::Token::new(2, 1);
+        let tokens = vec![token1, token2];
+
+        // Создаём Connection со стрессом
+        let mut conn = crate::connection::Connection::new(1, 2, 1);
+        conn.link_type = 0x0200; // Semantic
+        conn.strength = 1.0;
+        conn.current_stress = 0.9; // Высокий стресс
+        let connections = vec![conn];
+
+        // Проверяем начальное состояние
+        assert!(!domain.shell_cache.is_dirty(0));
+        assert!(!domain.shell_cache.is_dirty(1));
+
+        // Добавляем connection в frontier
+        domain.frontier.push_connection(0);
+
+        let mut event_generator = crate::event_generator::EventGenerator::new();
+        event_generator.set_event_id(100);
+
+        // Обрабатываем frontier
+        let _events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Проверяем что оба токена помечены как dirty
+        // (благодаря нашему вызову process_connection_event в process_frontier)
+        assert!(domain.shell_cache.is_dirty(0), "Token 1 (index 0) should be marked dirty after connection maintenance");
+        assert!(domain.shell_cache.is_dirty(1), "Token 2 (index 1) should be marked dirty after connection maintenance");
+    }
+
+    #[test]
+    fn test_integration_end_to_end_connection_to_shell_flow() {
+        // Phase 3.1: Полный цикл Connection → Shell
+        // 1. Connection event → Shell dirty
+        // 2. Reconciliation → Shell пересчёт
+        // 3. Проверка что профили обновились
+
+        let config = DomainConfig::factory_sutra(1);
+        let mut domain = Domain::new(config);
+
+        // Создаём таблицу вкладов
+        let table = crate::shell::SemanticContributionTable::default_ashti_core();
+
+        let token1 = crate::token::Token::new(1, 1);
+        let token2 = crate::token::Token::new(2, 1);
+        let tokens = vec![token1, token2];
+
+        // Создаём Connection с Structural link_type
+        let mut conn = crate::connection::Connection::new(1, 2, 1);
+        conn.link_type = 0x0100; // Structural: [127, 0, 0, 0, 0, 0, 0, 0]
+        conn.strength = 1.0;
+        let connections = vec![conn.clone()];
+
+        // Инициализируем Shell cache (все нули)
+        assert_eq!(domain.shell_cache.get(0), &[0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(domain.shell_cache.get(1), &[0, 0, 0, 0, 0, 0, 0, 0]);
+
+        // 1. Обрабатываем Connection event (помечаем dirty)
+        crate::shell::process_connection_event(&mut domain.shell_cache, &conn);
+
+        // 2. Проверяем что токены помечены как dirty
+        assert!(domain.shell_cache.is_dirty(0), "Token 1 should be marked dirty");
+        assert!(domain.shell_cache.is_dirty(1), "Token 2 should be marked dirty");
+
+        // 3. Выполняем reconciliation для dirty токенов
+        let dirty_tokens: Vec<usize> = (0..domain.shell_cache.capacity())
+            .filter(|&i| domain.shell_cache.is_dirty(i))
+            .collect();
+
+        assert_eq!(dirty_tokens.len(), 2, "Should have 2 dirty tokens");
+
+        let drift_count = crate::shell::reconcile_shell_batch(
+            &mut domain.shell_cache,
+            &dirty_tokens,
+            &connections,
+            &table,
+        );
+
+        // 4. Проверяем что Shell был пересчитан (drift detected)
+        assert_eq!(drift_count, 2, "Both tokens should have drift detected");
+
+        // 5. Проверяем что профили обновились
+        let profile1 = domain.shell_cache.get(0);
+        let profile2 = domain.shell_cache.get(1);
+
+        // Оба профиля должны иметь ненулевой L1 Physical (от Structural link)
+        assert!(profile1[0] > 0, "Token 1 should have L1 Physical contribution");
+        assert!(profile2[0] > 0, "Token 2 should have L1 Physical contribution");
+
+        // Профили должны быть одинаковыми (симметричная связь)
+        assert_eq!(profile1, profile2, "Profiles should be equal for symmetric connection");
     }
 }

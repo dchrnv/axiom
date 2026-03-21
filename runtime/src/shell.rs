@@ -324,6 +324,34 @@ pub fn collect_affected_tokens(connections: &[Connection]) -> Vec<usize> {
     affected
 }
 
+/// Обработать Connection событие и пометить затронутые токены как dirty
+///
+/// Shell V3.0 Phase 3.1: SPACE ↔ Shell Integration
+/// При любом изменении Connection (create/update/delete) - помечаем
+/// затронутые токены (source + target) как dirty для последующего пересчёта Shell.
+///
+/// # Arguments
+/// * `cache` - DomainShellCache для пометки dirty flags
+/// * `connection` - Connection которая изменилась
+///
+/// # Example
+/// ```ignore
+/// // После создания/обновления Connection:
+/// process_connection_event(&mut domain.shell_cache, &connection);
+/// // Затронутые токены будут пересчитаны в heartbeat reconciliation
+/// ```
+pub fn process_connection_event(cache: &mut DomainShellCache, connection: &Connection) {
+    // Собираем затронутые токены (source + target)
+    let affected = collect_affected_tokens(&[connection.clone()]);
+
+    // Помечаем каждый затронутый токен как dirty
+    for token_idx in affected {
+        if token_idx < cache.capacity() {
+            cache.mark_dirty(token_idx);
+        }
+    }
+}
+
 /// Вычислить семантический профиль токена на основе его связей
 ///
 /// Алгоритм (Shell V3.0 spec):

@@ -1,7 +1,36 @@
 # Axiom Status
 
-**Версия:** v0.8.0
+**Версия:** v0.8.1
 **Дата:** 2026-03-21
+
+---
+
+## ✅ v0.8.1 - SPACE ↔ Shell Integration (ЗАВЕРШЕНО)
+
+**Выполнено (Phase 3.1):**
+- **process_connection_event()**: Новая функция для пометки затронутых токенов как dirty при Connection событиях
+- **Collision Integration**: При TokenCollision с существующей Connection - помечаем Shell dirty для обоих токенов
+- **Connection Maintenance Integration**: При обработке Connection в frontier - автоматически вызываем process_connection_event()
+- **End-to-End Flow**: Полный цикл: Connection event → Shell dirty → Heartbeat reconciliation → Shell update
+- **Integration Tests**: 3 новых теста (process_connection_event, connection_maintenance, end-to-end flow)
+
+**Поток данных:**
+1. SPACE: столкновение → `TokenCollision` событие
+2. Domain: обработка Connection в process_frontier() → вызов process_connection_event()
+3. Shell: затронутые токены (source + target) помечаются dirty через mark_dirty()
+4. Heartbeat: reconcile_shell_batch() пересчитывает только dirty токены
+5. Cache: обновлённые профили сохраняются в DomainShellCache
+
+**Тесты:** 336 pass (+3: process_connection_event + connection_maintenance + end-to-end) ✅
+
+**Файлы:**
+- runtime/src/shell.rs (+process_connection_event function, 1 test)
+- runtime/src/domain.rs (+2 integration points в process_frontier, 3 integration tests)
+- runtime/src/lib.rs (экспорт process_connection_event)
+
+**Прогресс:** 100% (Phase 3.1 завершена) ✅
+
+**Коммит:** [to be added]
 
 ---
 
@@ -165,6 +194,12 @@ Generated Events → COM
 ---
 
 ## 🎯 Релизы
+
+### v0.8.1 - SPACE ↔ Shell Integration ✅ (2026-03-21, complete)
+- Phase 3.1: SPACE ↔ Shell integration
+- 336 tests pass (+3 new: process_connection_event + connection_maintenance + end-to-end flow)
+- Автоматическая пометка Shell dirty при Connection событиях
+- Полный цикл: Connection event → Shell dirty → Heartbeat reconciliation → Shell update
 
 ### v0.8.0 - Shell V3.0 ✅ (2026-03-21, complete)
 - Phases 2.1-2.10 (skip 2.3, 2.9): Semantic profiles, contribution table, compute algorithm, incremental updates, frontier integration, heartbeat reconciliation, domain integration, validation

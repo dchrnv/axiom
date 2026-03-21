@@ -1,8 +1,8 @@
 # Axiom Roadmap
 
-**Версия:** 8.1
+**Версия:** 8.2
 **Дата:** 2026-03-21
-**Статус:** v0.8.0 завершена ✅ (Shell V3.0), начало v0.8.1 (SPACE ↔ Shell Integration)
+**Статус:** v0.8.1 завершена ✅ (SPACE ↔ Shell Integration), Phase 3.1 выполнена
 
 ---
 
@@ -13,85 +13,15 @@
 
 ---
 
-### ✅ PHASE 2: Shell V3.0 - Семантический профиль (v0.8.0) - ЗАВЕРШЕНО
+### ✅ PHASE 3: Интеграция SPACE ↔ Shell (v0.8.1) - ЗАВЕРШЕНО (Phase 3.1)
 
-**✅ 2.1 Базовые структуры** (ЗАВЕРШЕНО - 9 тестов)
-- ✅ `runtime/src/shell.rs` - новый модуль
-- ✅ `ShellProfile` type = `[u8; 8]`
-- ✅ `DomainShellCache` структура (profiles, dirty_flags, generation)
-- ✅ `ShellContribution` type = `[u8; 8]`
-- ✅ Тесты: размеры, выравнивание, dirty flags
-
-**✅ 2.2 Справочник семантических вкладов** (ЗАВЕРШЕНО - 6 тестов)
-- ✅ `SemanticContributionTable` структура
-- ✅ `categories: [ShellProfile; 256]`
-- ✅ `overrides: HashMap<u16, ShellProfile>`
-- ✅ `get(link_type)` - двухуровневый lookup
-- ✅ `default_ashti_core()` - 7 категорий
-- ✅ Тесты: категории, переопределения, иерархия
-
-**⏸️ 2.3 YAML конфигурация** (ОТЛОЖЕНО)
-- Причина: требует ConfigLoader (см. DEFERRED.md 3.5)
-- Временное решение: hardcoded `default_ashti_core()`
-
-**✅ 2.4 Алгоритм вычисления Shell** (ЗАВЕРШЕНО - 7 тестов)
-- ✅ `compute_shell()` - полный пересчёт для токена
-- ✅ Сбор Connection (source_id или target_id)
-- ✅ Accumulator `[f32; 8]`
-- ✅ Вклад contribution × strength
-- ✅ Нормализация (max → 255)
-- ✅ Округление до `[u8; 8]`
-- ✅ Тесты: no connections, single, multiple, weighted, source+target, normalization, irrelevant
-
-**✅ 2.5 Инкрементальное обновление** (ЗАВЕРШЕНО - 8 тестов)
-- ✅ `get_dirty_tokens()` - список dirty токенов
-- ✅ `update_dirty_shells()` - пересчёт только dirty токенов
-- ✅ `mark_connection_dirty()` - триггер при изменении Connection
-- ✅ Mark dirty → recompute → clear dirty workflow
-- ✅ Generation counter increment
-- ✅ Тесты: mark/clear dirty, get dirty list, trigger, single/multiple update, incremental vs full
-
-**✅ 2.6 Интеграция с Causal Frontier** (ЗАВЕРШЕНО - 5 тестов)
-- ✅ `collect_affected_tokens()` - собирает source+target из Connection событий
-- ✅ Дедупликация токенов (один токен может быть в нескольких связях)
-- ✅ Self-loop handling (source_id == target_id)
-- ✅ Интеграция с mark_dirty для frontier workflow
-- ✅ Тесты: empty, single, multiple, self-loops, integration with mark_dirty
-
-**✅ 2.7 Reconciliation через Heartbeat** (ЗАВЕРШЕНО - 3 теста)
-- ✅ Добавлен `HeartbeatConfig.enable_shell_reconciliation: bool`
-- ✅ Обновлены все пресеты (weak=false, medium=true, powerful=true, disabled=false)
-- ✅ Функция `reconcile_shell_batch()` для heartbeat батча
-- ✅ Пересчёт Shell → сравнение с кэшем → обновление если отличается
-- ✅ Возвращает drift_count для мониторинга
-- ✅ Тесты: no_drift, drift_detected, multiple_tokens
-
-**✅ 2.8 Интеграция с Domain** (ЗАВЕРШЕНО - 5 тестов)
-- ✅ Добавлены `shell_cache` и `semantic_table` в Domain struct
-- ✅ Инициализация shell_cache с capacity из DomainConfig
-- ✅ Инициализация semantic_table с default_ashti_core()
-- ✅ Все профили инициализируются нулями, dirty flags = false
-- ✅ Тесты: initialization, zero profiles, no dirty flags, semantic table, different capacities
-
-**⏸️ 2.9 Runtime конфигурация** (ОТЛОЖЕНО)
-- Причина: требует ConfigLoader (см. DEFERRED.md 3.5)
-- Временное решение: enable_shell_reconciliation в HeartbeatConfig пресетах
-
-**✅ 2.10 Финальная валидация** (ЗАВЕРШЕНО - 5 тестов)
-- ✅ Детерминизм: одинаковые входы → одинаковый результат
-- ✅ Домен-локальность: Shell зависит только от локальных Connection
-- ✅ No COM events: compute_shell() и reconcile_shell_batch() не генерируют события
-- ✅ Cache coherence: кэш согласован с Connection после reconciliation
-- ✅ Zero-allocation: compute_shell() использует только стек
-- ✅ Тесты: determinism, domain_locality, no_events, cache_coherence, zero_allocation
-### PHASE 3: Интеграция SPACE ↔ Shell (v0.8.1)
-
-**3.1 Полный цикл взаимодействия**
-- SPACE: столкновение → `TokenCollision` событие
-- Обработчик столкновения создаёт Connection (резонанс)
-- Connection триггерит Shell dirty flag
-- Shell пересчитывается для обоих токенов
-- Тесты: end-to-end поток
+**✅ 3.1 Полный цикл взаимодействия** (v0.8.1, complete)
+- ✅ SPACE: столкновение → `TokenCollision` событие (уже было в v0.7.0)
+- ✅ Connection триггерит Shell dirty flag (process_connection_event)
+- ✅ Shell пересчитывается для затронутых токенов (mark_dirty + reconciliation)
+- ✅ Интеграция в Domain::process_frontier (collision + connection maintenance)
+- ✅ Тесты: 3 integration tests (process_connection_event, connection_maintenance, end-to-end)
+- 336 тестов pass
 
 **3.2 Конфигурация столкновений**
 - Стратегии обработки столкновений:
