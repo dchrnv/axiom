@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 223
+**current_test_count:** 222
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
@@ -422,4 +422,4 @@ cargo test --workspace
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Завершена Фаза 6: axiom-arbiter — 223 теста в workspace)
+**Последнее обновление:** 2026-03-21 (Завершена Фаза 6: axiom-arbiter — 222 теста в workspace)
