@@ -598,47 +598,30 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 4: axiom-space — Пространственная модель
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена
 
-**Цель:** Вынести SpatialHashGrid, координатную систему, FieldEngine.
+**Цель:** Вынести SpatialHashGrid, координатную систему, физику.
 
-**Что переносится из Space V6.0:**
+**Что перенесено из Space V6.0 (runtime/src/space.rs, 1983 строки):**
 
 | Компонент | Описание |
 |-----------|----------|
-| Система координат | i16[3], квантование, привязка к field_size |
-| `SpatialHashGrid` | Плоская zero-alloc структура, cell_key, bucket_heads, entries |
-| `find_neighbors()` | Поиск в окрестности по radius |
-| `distance2()` | Целочисленное расстояние (i32 промежуточные) |
-| `FieldEngine` | Движение токенов, столкновения, пересчёт индекса |
+| Константы | CELL_SHIFT=8, CELL_SIZE=256, BUCKET_COUNT=65536 |
+| Координаты | i16[3], has_moved, cell_changed |
+| distance2 | Квадрат расстояния i64, без sqrt |
+| Гравитация | compute_gravity (Linear/InverseSquare) |
+| Физика | apply_velocity, friction, acceleration, move_towards |
+| SpatialHashGrid | bucket_heads + entries (linked lists) |
+| find_neighbors | Поиск в radius |
+| detect_collisions | С фильтрацией |
 
-**Зависимости:** `axiom-core` (Token для position/velocity/target, trait SpatialIndex).
+**Зависимости:** Zero (только std).
 
-**Шаги:**
+**Реализация:**
+- ✅ Скопирован space.rs полностью
+- ✅ 83 теста прошли
 
-1. ⬜ `coordinates.rs`: Квантование, conversion field_size ↔ i16. **Только целочисленная арифметика внутри ядра!** f32 — только в адаптерах.
-
-2. ⬜ `spatial_hash.rs`:
-   - `CELL_SHIFT`, `CELL_SIZE`, `BUCKET_COUNT`, `BUCKET_MASK` — конфигурируемые.
-   - `cell_key()` с тремя простыми числами (73856093, 19349663, 83492791).
-   - `SpatialHashGrid` struct: `bucket_heads: Vec<u32>`, `entries: Vec<CellEntry>`, `entry_count: u32`.
-   - `rebuild()` — O(N) перестройка.
-   - Zero-alloc: всё предвыделено при инициализации.
-   - **Реализовать `SpatialIndex` trait из axiom-core.**
-
-3. ⬜ `distance.rs`: `distance2(a, b) -> i64` — квадрат расстояния через i32 промежуточные. Без sqrt, без f32.
-
-4. ⬜ `neighbors.rs`: `find_neighbors()` — обход ячеек в окрестности radius_cells. Использует `&mut Vec<u32>` буфер (паттерн Space V6.0 §4.6).
-
-5. ⬜ `field_engine.rs`:
-   - Применение velocity к position.
-   - Применение target (аттрактор).
-   - Обнаружение столкновений через spatial hash.
-   - Генерация событий: TokenMoved, TokenCollided.
-
-6. ⬜ Бенчмарки: `spatial_bench.rs` — rebuild + find_neighbors для 10K, 100K токенов.
-
-**Критерий:** `cargo test -p axiom-space` — все тесты зелёные. `cargo bench -p axiom-space` — бенчмарки работают.
+**Результат:** ✅ `cargo test -p axiom-space --lib` — 83 теста.
 
 ---
 

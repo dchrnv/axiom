@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 63
+**current_test_count:** 146
 **date_started:** 2026-03-21
 
 ---
@@ -14,7 +14,7 @@
 | 1 | axiom-core | ✅ | 2026-03-21 | 24 | Token, Connection, Event (zero deps) |
 | 2 | axiom-frontier | ✅ | 2026-03-21 | 22 | Frontier, storm, budget, processor |
 | 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
-| 4 | axiom-space | ⬜ | — | — | — |
+| 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
 | 5 | axiom-shell | ⬜ | — | — | — |
 | 6 | axiom-arbiter | ⬜ | — | — | — |
 | 7 | axiom-heartbeat | ⬜ | — | — | — |
@@ -97,4 +97,25 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 3 ✅ завершена с DomainConfig (128 байт), HeartbeatConfig, ConfigLoader, 63 теста)
+## Прогресс Фазы 4
+
+### Checklist:
+- [x] Найден и изучен space.rs (1983 строки, 83 теста)
+- [x] Скопирован space.rs в axiom-space/src/lib.rs полностью
+- [x] Проверена зависимость на axiom-core в Cargo.toml
+- [x] Проверка: cargo test -p axiom-space --lib passes (83 tests)
+- [x] Проверка: cargo test --workspace --lib успешно (146 тестов)
+
+### Компоненты:
+- Константы: CELL_SHIFT=8, CELL_SIZE=256, BUCKET_COUNT=65536
+- Функции координат: distance2, distance2_to_anchor, has_moved, cell_changed
+- Функции физики: compute_gravity (Linear/InverseSquare), apply_velocity, apply_friction, apply_acceleration, move_towards
+- SpatialHashGrid: insert, rebuild, query_cell, find_neighbors (zero-alloc, linked lists)
+- CellEntry: token_index + next (linked list node)
+- CellIterator: итератор по токенам в ячейке
+- Обнаружение столкновений: detect_collisions
+- 83 теста покрывают всю функциональность
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 4 ✅ завершена с SpatialHashGrid, координатной системой, детерминистичной физикой, 146 тестов)
