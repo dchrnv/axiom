@@ -655,7 +655,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 6: axiom-arbiter — Arbiter V1.0
 
-**Статус:** ⬜ Не начата
+**Статус:** ⏸️ Пропущена (вернёмся позже)
 
 **Цель:** Вынести логику маршрутизации Arbiter.
 
@@ -705,7 +705,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 7: axiom-heartbeat — Heartbeat V2.0
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена 2026-03-21
 
 **Цель:** Вынести генератор Heartbeat и обработчик.
 
@@ -720,28 +720,17 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 **Зависимости:** `axiom-core` (Event, EventType::Heartbeat), `axiom-frontier` (CausalFrontier.push_token/push_connection).
 
-**Шаги:**
+**Реализация:**
 
-1. ⬜ `generator.rs`:
-   - `HeartbeatGenerator` struct.
-   - `on_event() -> Option<HeartbeatEvent>` — счётчик, генерация при достижении interval.
-   - `pulse_number` монотонно возрастает.
+Полный перенос heartbeat.rs (413 строк, 11 тестов) выполнен успешно:
 
-2. ⬜ `handler.rs`:
-   - `handle_heartbeat(domain_state, frontier, heartbeat, config)` — добавление батчей в frontier.
-   - Детерминированный выбор: `token_index = (pulse_number * batch_size + offset) % total_tokens`.
-   - Гарантия полного покрытия: за `ceil(total / batch_size)` пульсов каждый проверен.
+1. ✅ HeartbeatConfig — пресеты weak/medium/powerful/disabled с флагами enable_decay, enable_gravity, enable_spatial_collision, enable_connection_maintenance, enable_thermodynamics, enable_shell_reconciliation
+2. ✅ HeartbeatGenerator — pulse counter, batch selection, event creation
+3. ✅ handle_heartbeat() — детерминированный отбор токенов/связей для frontier
+4. ✅ Детерминизм: `(pulse_number * batch_size + offset) % total` гарантирует полное покрытие
+5. ✅ 11 тестов: config presets, generation by event count, batching (tokens/connections), wraparound, determinism, idle state
 
-3. ⬜ `causal_age.rs`:
-   - `causal_age(entity_last_event_id, current_event_id) -> u64`.
-   - Используется для decay, gravity, thermodynamics.
-
-4. ⬜ Тесты:
-   - Генерация строго через interval событий.
-   - Полное покрытие всех токенов за N пульсов.
-   - Детерминизм выбора.
-
-**Критерий:** `cargo test -p axiom-heartbeat` — все тесты зелёные.
+**Критерий:** ✅ `cargo test -p axiom-heartbeat` — 11/11 тестов зелёные.
 
 ---
 

@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 189
+**current_test_count:** 200
 **date_started:** 2026-03-21
 
 ---
@@ -16,8 +16,8 @@
 | 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
 | 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
-| 6 | axiom-arbiter | ⬜ | — | — | — |
-| 7 | axiom-heartbeat | ⬜ | — | — | — |
+| 6 | axiom-arbiter | ⏸️ | — | — | Пропущена (зависит от непереведённых модулей) |
+| 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ⬜ | — | — | — |
 | 9 | axiom-domain | ⬜ | — | — | — |
 | 10 | axiom-runtime | ⬜ | — | — | — |
@@ -139,4 +139,28 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 5 ✅ завершена с Shell V3.0, семантическими профилями, 189 тестов)
+## Прогресс Фазы 7
+
+### Checklist:
+- [x] Найден и изучен heartbeat.rs (413 строк, 11 тестов)
+- [x] Скопирован heartbeat.rs в axiom-heartbeat/src/lib.rs полностью
+- [x] Проверены зависимости: axiom-core, axiom-frontier
+- [x] Исправлены импорты: `use axiom_core::event::*` и `use axiom_frontier::CausalFrontier`
+- [x] Проверка: cargo test -p axiom-heartbeat --lib passes (11 tests)
+- [x] Проверка: cargo test --workspace --lib успешно (200 тестов)
+
+### Компоненты:
+- HeartbeatConfig: пресеты (weak, medium, powerful, disabled)
+- HeartbeatGenerator: pulse counter, batch selection (tokens, connections)
+- Heartbeat event creation с event_id tracking
+- Детерминированный отбор токенов/связей (модульная арифметика)
+- Пакетная обработка для токенов и связей
+- Wraparound handling для больших доменов
+- 11 тестов: config presets, generation, batching, wraparound, determinism
+
+### Примечание:
+- Фаза 6 (axiom-arbiter) пропущена - будет реализована позже после миграции experience, ashti_processor, maya_processor, com
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 7 ✅ завершена с Heartbeat V2.0, 200 тестов)

@@ -9,12 +9,12 @@ members = [
     "crates/axiom-domain",
     "crates/axiom-space",
     "crates/axiom-shell",
-    "crates/axiom-arbiter",
+    # "crates/axiom-arbiter",  # Временно отключен - зависит от непереведённых модулей
     "crates/axiom-heartbeat",
     "crates/axiom-frontier",
     "crates/axiom-upo",
     "crates/axiom-ucl",
-    "crates/axiom-runtime",
+    # "crates/axiom-runtime",  # Временно отключен - зависит от axiom-arbiter
 ]
 
 [workspace.package]
