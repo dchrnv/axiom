@@ -896,8 +896,8 @@ impl Domain {
                     }
 
                     // SPACE V6.0: Проверка столкновений через spatial hash
-                    // Если spatial grid не пуст, ищем столкновения
-                    if self.spatial_grid.entry_count > 0 {
+                    // Если spatial grid не пуст и включена spatial collision detection
+                    if self.heartbeat_config.enable_spatial_collision && self.spatial_grid.entry_count > 0 {
                         let collision_radius = 100i16; // TODO: добавить в DomainConfig
                         let collisions = crate::space::detect_collisions(
                             token_idx as u32,
@@ -2324,5 +2324,256 @@ mod tests {
 
         assert!(collision_targets.contains(&101), "Should collide with token 101");
         assert!(collision_targets.contains(&102), "Should collide with token 102");
+    }
+
+    // --- SPACE V6.0 + Heartbeat Integration Tests (Phase 1.9) ---
+
+    #[test]
+    fn test_heartbeat_triggers_spatial_collision_checks() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 3,
+            batch_size: 2,
+            enable_decay: false,
+            enable_gravity: false,
+            enable_spatial_collision: true, // SPACE V6.0: включаем spatial collision
+            enable_connection_maintenance: false,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токены близко друг к другу
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0]; // Близко к token0
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Симулируем несколько событий до heartbeat
+        for event_id in 1000..1003 {
+            event_generator.set_event_id(event_id);
+            if let Some(pulse) = domain.on_event() {
+                // Heartbeat добавляет токены в frontier
+                domain.handle_heartbeat(pulse);
+
+                event_generator.set_pulse_id(pulse);
+
+                // Обрабатываем frontier - должны быть collision events
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+                // Проверяем collision events
+                let collision_events: Vec<_> = events
+                    .iter()
+                    .filter(|e| e.event_type == EventType::TokenCollision as u16)
+                    .collect();
+
+                if !collision_events.is_empty() {
+                    // Успешно обнаружили столкновение через heartbeat
+                    assert!(collision_events.len() > 0, "Should detect collisions");
+                    return;
+                }
+            }
+        }
+
+        panic!("Heartbeat should have triggered collision detection");
+    }
+
+    #[test]
+    fn test_heartbeat_spatial_collision_can_be_disabled() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 3,
+            batch_size: 2,
+            enable_decay: false,
+            enable_gravity: false,
+            enable_spatial_collision: false, // Отключаем spatial collision
+            enable_connection_maintenance: false,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токены близко друг к другу
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0];
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Симулируем несколько событий
+        for event_id in 1000..1010 {
+            event_generator.set_event_id(event_id);
+            if let Some(pulse) = domain.on_event() {
+                domain.handle_heartbeat(pulse);
+                event_generator.set_pulse_id(pulse);
+
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+                // Не должно быть collision events
+                let collision_events: Vec<_> = events
+                    .iter()
+                    .filter(|e| e.event_type == EventType::TokenCollision as u16)
+                    .collect();
+
+                assert!(collision_events.is_empty(), "Should not detect collisions when disabled");
+            }
+        }
+    }
+
+    #[test]
+    fn test_heartbeat_with_gravity_and_spatial_collision() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.gravity_strength = 1.0; // Включаем гравитацию
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 3,
+            batch_size: 2,
+            enable_decay: false,
+            enable_gravity: true, // Гравитация
+            enable_spatial_collision: true, // Столкновения
+            enable_connection_maintenance: false,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        // Создаем токены
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0];
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        domain.rebuild_spatial_grid(&tokens);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        let mut has_gravity = false;
+        let mut has_collision = false;
+
+        // Симулируем события
+        for event_id in 1000..1010 {
+            event_generator.set_event_id(event_id);
+            if let Some(pulse) = domain.on_event() {
+                domain.handle_heartbeat(pulse);
+                event_generator.set_pulse_id(pulse);
+
+                let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+                // Проверяем gravity events
+                for event in &events {
+                    if event.event_type == EventType::GravityUpdate as u16 {
+                        has_gravity = true;
+                    }
+                    if event.event_type == EventType::TokenCollision as u16 {
+                        has_collision = true;
+                    }
+                }
+
+                if has_gravity && has_collision {
+                    break;
+                }
+            }
+        }
+
+        assert!(has_gravity, "Should generate gravity events");
+        assert!(has_collision, "Should generate collision events");
+    }
+
+    #[test]
+    fn test_heartbeat_rebuilds_spatial_grid_periodically() {
+        use crate::token::Token;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.rebuild_frequency = 5; // Перестройка каждые 5 событий
+
+        let heartbeat_config = crate::heartbeat::HeartbeatConfig {
+            interval: 3,
+            batch_size: 2,
+            enable_spatial_collision: true,
+            ..crate::heartbeat::HeartbeatConfig::medium()
+        };
+
+        let mut domain = Domain::with_heartbeat(config, heartbeat_config);
+
+        let tokens: Vec<Token> = (0..5).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.position = [i as i16 * 100, 0, 0];
+            token
+        }).collect();
+
+        domain.active_tokens = 5;
+
+        // Первая перестройка
+        domain.rebuild_spatial_grid(&tokens);
+        assert_eq!(domain.events_since_rebuild, 0);
+
+        // Инкрементируем счётчик
+        for _ in 0..5 {
+            domain.increment_events_since_rebuild();
+        }
+
+        assert!(domain.should_rebuild_spatial_grid(), "Should need rebuild after 5 events");
+
+        // Перестройка сбрасывает счётчик
+        domain.rebuild_spatial_grid(&tokens);
+        assert_eq!(domain.events_since_rebuild, 0);
     }
 }
