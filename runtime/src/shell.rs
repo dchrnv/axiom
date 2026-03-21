@@ -221,6 +221,71 @@ impl Default for SemanticContributionTable {
 }
 
 // ============================================================================
+// SHELL COMPUTATION ALGORITHM
+// ============================================================================
+
+use crate::connection::Connection;
+
+/// Вычислить семантический профиль токена на основе его связей
+///
+/// Алгоритм (Shell V3.0 spec):
+/// 1. Собрать все Connection где token_id == source_id ИЛИ target_id
+/// 2. Для каждой связи:
+///    - Получить contribution из таблицы (по link_type)
+///    - Добавить contribution × strength в аккумулятор
+/// 3. Нормализовать аккумулятор (max → 255)
+/// 4. Округлить до [u8; 8]
+///
+/// # Arguments
+/// * `token_id` - ID токена для которого вычисляется профиль
+/// * `connections` - все связи домена
+/// * `table` - справочник семантических вкладов
+///
+/// # Returns
+/// Семантический профиль [u8; 8] (L1-L8)
+pub fn compute_shell(
+    token_id: u32,
+    connections: &[Connection],
+    table: &SemanticContributionTable,
+) -> ShellProfile {
+    // 1. Аккумулятор для 8 слоёв (используем f32 для точности)
+    let mut acc = [0.0f32; 8];
+
+    // 2. Проходим по всем связям
+    for conn in connections {
+        // Только связи где token_id участвует (source или target)
+        if conn.source_id != token_id && conn.target_id != token_id {
+            continue;
+        }
+
+        // Получаем вклад для типа связи
+        let contribution = table.get(conn.link_type);
+
+        // Добавляем взвешенный вклад (contribution × strength)
+        for i in 0..8 {
+            acc[i] += contribution[i] as f32 * conn.strength;
+        }
+    }
+
+    // 3. Нормализация: находим максимум, масштабируем к [0, 255]
+    let max_val = acc.iter().copied().fold(0.0f32, f32::max);
+
+    if max_val == 0.0 {
+        // Нет связей или все вклады нулевые
+        return EMPTY_SHELL;
+    }
+
+    // 4. Округление до u8 с нормализацией
+    let scale = 255.0 / max_val;
+    let mut profile = EMPTY_SHELL;
+    for i in 0..8 {
+        profile[i] = (acc[i] * scale).round() as u8;
+    }
+
+    profile
+}
+
+// ============================================================================
 // TESTS
 // ============================================================================
 
@@ -461,5 +526,174 @@ mod tests {
 
         // Другая категория
         assert_eq!(table.get(0x4300), &[0; 8]);
+    }
+
+    // --- compute_shell() Tests ---
+
+    #[test]
+    fn test_compute_shell_no_connections() {
+        // Токен без связей должен иметь нулевой профиль
+        let table = SemanticContributionTable::default_ashti_core();
+        let connections: Vec<Connection> = vec![];
+
+        let profile = compute_shell(100, &connections, &table);
+        assert_eq!(profile, EMPTY_SHELL);
+    }
+
+    #[test]
+    fn test_compute_shell_single_connection() {
+        // Один токен, одна связь
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [20, 10, 0, 0, 5, 0, 0, 0]); // Structural
+
+        let mut conn = Connection::default();
+        conn.source_id = 100;
+        conn.target_id = 200;
+        conn.link_type = 0x0100; // Structural category
+        conn.strength = 1.0;
+
+        let connections = vec![conn];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // Нормализация: max = 20 → scale = 255/20 = 12.75
+        // [20, 10, 0, 0, 5, 0, 0, 0] × 12.75 ≈ [255, 128, 0, 0, 64, 0, 0, 0]
+        assert_eq!(profile[0], 255); // Physical layer (max)
+        assert_eq!(profile[1], 128); // Sensory layer (10 × 12.75 = 127.5 → 128)
+        assert_eq!(profile[2], 0);
+        assert_eq!(profile[3], 0);
+        assert_eq!(profile[4], 64); // Cognitive (5 × 12.75 = 63.75 → 64)
+        assert_eq!(profile[5], 0);
+        assert_eq!(profile[6], 0);
+        assert_eq!(profile[7], 0);
+    }
+
+    #[test]
+    fn test_compute_shell_multiple_connections() {
+        // Токен с несколькими связями разных типов
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [20, 0, 0, 0, 0, 0, 0, 0]); // Structural
+        table.set_category(0x02, [0, 0, 0, 0, 15, 0, 0, 0]); // Semantic
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 100;
+        conn1.target_id = 200;
+        conn1.link_type = 0x0100; // Structural
+        conn1.strength = 1.0;
+
+        let mut conn2 = Connection::default();
+        conn2.source_id = 100;
+        conn2.target_id = 300;
+        conn2.link_type = 0x0200; // Semantic
+        conn2.strength = 1.0;
+
+        let connections = vec![conn1, conn2];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // Accumulator: [20, 0, 0, 0, 15, 0, 0, 0]
+        // max = 20 → scale = 255/20 = 12.75
+        // [20, 0, 0, 0, 15, 0, 0, 0] × 12.75 ≈ [255, 0, 0, 0, 191, 0, 0, 0]
+        assert_eq!(profile[0], 255); // Physical (max)
+        assert_eq!(profile[4], 191); // Cognitive (15 × 12.75 = 191.25 → 191)
+    }
+
+    #[test]
+    fn test_compute_shell_weighted_strength() {
+        // Проверка взвешивания по strength
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 100;
+        conn1.target_id = 200;
+        conn1.link_type = 0x0100;
+        conn1.strength = 2.0; // Двойной вес
+
+        let connections = vec![conn1];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // contribution = [10, 0, 0, 0, 0, 0, 0, 0]
+        // × strength 2.0 = [20, 0, 0, 0, 0, 0, 0, 0]
+        // max = 20 → scale = 255/20 = 12.75
+        // [20, 0, 0, 0, 0, 0, 0, 0] × 12.75 = [255, 0, 0, 0, 0, 0, 0, 0]
+        assert_eq!(profile[0], 255);
+    }
+
+    #[test]
+    fn test_compute_shell_source_and_target() {
+        // Токен участвует и как source, и как target
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 100;
+        conn1.target_id = 200;
+        conn1.link_type = 0x0100;
+        conn1.strength = 1.0;
+
+        let mut conn2 = Connection::default();
+        conn2.source_id = 300;
+        conn2.target_id = 100; // Токен 100 как target
+        conn2.link_type = 0x0100;
+        conn2.strength = 1.0;
+
+        let connections = vec![conn1, conn2];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // Обе связи дают вклад: [10, 0, ...] + [10, 0, ...] = [20, 0, ...]
+        // max = 20 → scale = 255/20 = 12.75
+        // [20, 0, ...] × 12.75 = [255, 0, ...]
+        assert_eq!(profile[0], 255);
+    }
+
+    #[test]
+    fn test_compute_shell_normalization() {
+        // Проверка правильности нормализации
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [100, 50, 25, 10, 5, 2, 1, 0]);
+
+        let mut conn = Connection::default();
+        conn.source_id = 100;
+        conn.target_id = 200;
+        conn.link_type = 0x0100;
+        conn.strength = 1.0;
+
+        let connections = vec![conn];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // max = 100 → scale = 255/100 = 2.55
+        // [100, 50, 25, 10, 5, 2, 1, 0] × 2.55 ≈ [255, 128, 64, 26, 13, 5, 3, 0]
+        assert_eq!(profile[0], 255);
+        assert_eq!(profile[1], 128);
+        assert_eq!(profile[2], 64);
+        assert_eq!(profile[3], 26); // 10 × 2.55 = 25.5 → 26
+        assert_eq!(profile[4], 13); // 5 × 2.55 = 12.75 → 13
+        assert_eq!(profile[5], 5);  // 2 × 2.55 = 5.1 → 5
+        assert_eq!(profile[6], 3);  // 1 × 2.55 = 2.55 → 3
+        assert_eq!(profile[7], 0);
+    }
+
+    #[test]
+    fn test_compute_shell_irrelevant_connections() {
+        // Связи, не относящиеся к токену, игнорируются
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 200; // НЕ наш токен
+        conn1.target_id = 300;
+        conn1.link_type = 0x0100;
+        conn1.strength = 1.0;
+
+        let connections = vec![conn1];
+
+        let profile = compute_shell(100, &connections, &table);
+
+        // Нет связей для токена 100
+        assert_eq!(profile, EMPTY_SHELL);
     }
 }

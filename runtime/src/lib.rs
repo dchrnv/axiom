@@ -102,7 +102,7 @@ pub use space::{
 
 pub use shell::{
     ShellProfile, ShellContribution, DomainShellCache, SemanticContributionTable,
-    EMPTY_SHELL, LAYER_NAMES
+    EMPTY_SHELL, LAYER_NAMES, compute_shell
 };
 
 #[cfg(test)]

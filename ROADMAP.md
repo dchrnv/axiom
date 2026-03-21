@@ -34,14 +34,14 @@
 - Причина: требует ConfigLoader (см. DEFERRED.md 3.5)
 - Временное решение: hardcoded `default_ashti_core()`
 
-**2.4 Алгоритм вычисления Shell**
-- `compute_shell()` - полный пересчёт для токена:
-  - Сбор Connection (source_id или target_id)
-  - Accumulator `[f32; 8]`
-  - Вклад contribution × strength
-  - Нормализация (max → 255)
-  - Округление до `[u8; 8]`
-- Тесты: разные наборы связей, нормализация
+**✅ 2.4 Алгоритм вычисления Shell** (ЗАВЕРШЕНО - 7 тестов)
+- ✅ `compute_shell()` - полный пересчёт для токена
+- ✅ Сбор Connection (source_id или target_id)
+- ✅ Accumulator `[f32; 8]`
+- ✅ Вклад contribution × strength
+- ✅ Нормализация (max → 255)
+- ✅ Округление до `[u8; 8]`
+- ✅ Тесты: no connections, single, multiple, weighted, source+target, normalization, irrelevant
 
 **2.5 Инкрементальное обновление**
 - Dirty flags (BitVec)
