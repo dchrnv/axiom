@@ -481,7 +481,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 2: axiom-frontier — Causal Frontier
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена 2026-03-21
 
 **Цель:** Вынести CausalFrontier и цикл обработки.
 
@@ -495,36 +495,43 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 | Storm detection | frontier_size > STORM_THRESHOLD |
 | Causal budget | max_events_per_cycle |
 
-**Зависимости:** `axiom-core` (нужен Token, Connection, Event для типизации frontier).
+**Зависимости:** Нет (frontier работает с usize ID, не зависит от axiom-core).
 
 **Шаги:**
 
-1. ⬜ Создать `crates/axiom-frontier/src/frontier.rs`:
+1. ✅ Создать `crates/axiom-frontier/src/frontier.rs`:
    - `CausalFrontier` struct с `push_token()`, `push_connection()`, `pop()`, `contains()`, `clear()`, `size()`.
-   - Дедупликация через BitVec.
-   - Детерминированный порядок обработки (stable queue).
+   - Дедупликация через Vec<bool> (visited tracking).
+   - Детерминированный порядок обработки (FIFO через VecDeque).
+   - EntityQueue с автоматическим resize для visited.
 
-2. ⬜ Создать `crates/axiom-frontier/src/processor.rs`:
-   - Трейт `LocalRules` (evaluate_local_rules для entity).
-   - Основной цикл: `while frontier not empty → pop → evaluate → generate event → apply → collect_neighbors → push`.
-   - Функция `collect_neighbors` — принимает trait SpatialIndex (из axiom-core).
+2. ✅ Создать `crates/axiom-frontier/src/processor.rs`:
+   - Trait `LocalRules` с методами `evaluate_token()` и `evaluate_connection()`.
+   - `FrontierProcessor` с основным циклом: pop → evaluate → transform → push neighbors.
+   - `EvaluationResult::NoChange` и `EvaluationResult::Transform { affected_neighbors }`.
+   - `process_until_empty_or_budget()` — обработка с уважением budget.
+   - 6 тестов с mock LocalRules: step, connections, transform, chain reaction, budget.
 
-3. ⬜ Создать `crates/axiom-frontier/src/storm.rs`:
-   - Storm detection: отслеживание `events_per_cycle`, `frontier_growth_rate`.
-   - Storm mitigation: batch events, aggregation, causal budget.
-   - `STORM_THRESHOLD` как параметр конфигурации.
+3. ✅ Storm detection встроен в CausalFrontier:
+   - `update_state()` отслеживает размер frontier.
+   - FrontierState: Empty → Active → Storm → Stabilized → Idle.
+   - Storm mitigation через causal budget.
 
-4. ⬜ Создать `crates/axiom-frontier/src/budget.rs`:
+4. ✅ Budget встроен в CausalFrontier:
    - `max_events_per_cycle` — лимит вычислений.
    - `max_frontier_size` — лимит памяти.
-   - Логика паузы и возобновления.
+   - `is_budget_exhausted()`, `increment_processed()`, `reset_cycle()`.
 
-5. ⬜ Тесты:
-   - `frontier_tests.rs`: push/pop/dedup, deterministic ordering.
-   - `storm_tests.rs`: storm detection, budget enforcement.
-   - `processor_tests.rs`: mock LocalRules, проверить цикл.
+5. ✅ Тесты (22 теста):
+   - EntityQueue: push/pop/dedup/contains (3 теста).
+   - CausalFrontier: creation, push/pop, mixed entities, clear (13 тестов).
+   - State transitions: Empty → Active → Storm → Stabilized → Idle.
+   - Causal budget: increment, exhaustion, reset.
+   - Memory limit enforcement.
+   - Deterministic FIFO order.
+   - FrontierProcessor: step, connections, transform, chain reaction, budget (6 тестов).
 
-**Критерий:** `cargo test -p axiom-frontier` — все тесты зелёные.
+**Результат:** ✅ `cargo test -p axiom-frontier` — 22 теста прошли. Zero dependencies.
 
 ---
 

@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 24
+**current_test_count:** 46
 **date_started:** 2026-03-21
 
 ---
@@ -12,7 +12,7 @@
 |-------|-------|--------|------|-------|-------------|
 | 0 | workspace setup | ✅ | 2026-03-21 | 0 | Завершено: 11 crates, justfile, scripts |
 | 1 | axiom-core | ✅ | 2026-03-21 | 24 | Token, Connection, Event (zero deps) |
-| 2 | axiom-frontier | ⬜ | — | — | — |
+| 2 | axiom-frontier | ✅ | 2026-03-21 | 22 | Frontier, storm, budget, processor |
 | 3 | axiom-config | ⬜ | — | — | — |
 | 4 | axiom-space | ⬜ | — | — | — |
 | 5 | axiom-shell | ⬜ | — | — | — |
@@ -61,4 +61,21 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 1 ✅ завершена, 24 теста)
+## Прогресс Фазы 2
+
+### Checklist:
+- [x] Перенесён CausalFrontier в axiom-frontier
+- [x] EntityQueue с дедупликацией через visited BitVec
+- [x] FrontierState lifecycle (Empty, Active, Storm, Stabilized, Idle)
+- [x] Storm detection (size > storm_threshold)
+- [x] Causal budget (max_events_per_cycle)
+- [x] Memory limit (max_frontier_size)
+- [x] Создан FrontierProcessor с trait LocalRules
+- [x] Основной цикл: pop → evaluate → transform → push neighbors
+- [x] Все тесты перенесены + processor tests (22 теста)
+- [x] Проверка: cargo test -p axiom-frontier passes (22 tests)
+- [x] Проверка: cargo build --workspace успешно
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 2 ✅ завершена с processor, 46 тестов)
