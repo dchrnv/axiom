@@ -1,0 +1,10 @@
+[package]
+name = "axiom-heartbeat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-frontier = { path = "../axiom-frontier" }
