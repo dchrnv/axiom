@@ -6,6 +6,7 @@
 use serde::{Serialize, Deserialize};
 use crate::causal_frontier::CausalFrontier;
 use crate::heartbeat::{HeartbeatGenerator, HeartbeatConfig};
+use crate::space::SpatialHashGrid;
 
 /// Состояние Domain
 pub const DOMAIN_ACTIVE: u32 = 1;
@@ -74,7 +75,7 @@ pub struct DomainConfig {
     pub time_dilation: u16,     // 2b | Замедление времени (х100)
     pub resonance_freq: u16,    // 2b | Базовая частота (Hz)
     pub pressure: u16,          // 2b | Давление (Pa)
-    pub reserved_physics: u16,  // 2b | Резерв блока физики
+    pub rebuild_frequency: u16, // 2b | SPACE V6.0: частота перестройки spatial grid (событий)
     pub friction_coeff: u8,     // 1b | Трение (0..255 -> 0.0..1.0)
     pub viscosity: u8,          // 1b | Вязкость (0..255 -> 0.0..1.0)
     pub elasticity: u8,         // 1b | Упругость (0..255 -> 0.0..1.0)
@@ -140,7 +141,7 @@ impl Default for DomainConfig {
             time_dilation: 100,                    // Замедление времени (х100) = 1.0x
             resonance_freq: 440,                   // Базовая частота (Hz)
             pressure: 50000,                      // Давление (Па)
-            reserved_physics: 0,  // Резерв блока физики
+            rebuild_frequency: 10,  // SPACE V6.0: перестройка spatial grid каждые 10 событий
             friction_coeff: 25,                      // Трение (25/255 ≈ 0.098)
             viscosity: 3,                             // Вязкость (3/255 ≈ 0.012)
             elasticity: 128,                           // Упругость (128/255 ≈ 0.502)
@@ -223,7 +224,7 @@ impl DomainConfig {
             time_dilation: 0,
             resonance_freq: 0,
             pressure: 0,
-            reserved_physics: 0,
+            rebuild_frequency: 0, // 0 = отключена перестройка spatial grid
             friction_coeff: 5,
             viscosity: 0,
             elasticity: 0,
@@ -756,6 +757,7 @@ impl DomainConfig {
 ///
 /// Causal Frontier V1, раздел 12: Domain isolation
 /// Heartbeat V2.0, раздел 9: каждый домен имеет свой HeartbeatGenerator
+/// SPACE V6.0, раздел 8: каждый домен имеет свой SpatialHashGrid
 pub struct Domain {
     /// Конфигурация домена
     pub config: DomainConfig,
@@ -769,11 +771,19 @@ pub struct Domain {
     /// Heartbeat конфигурация
     pub heartbeat_config: HeartbeatConfig,
 
+    /// Spatial Hash Grid для пространственной индексации
+    /// SPACE V6.0: Пространственный индекс для быстрого поиска соседей
+    pub spatial_grid: SpatialHashGrid,
+
     /// Текущее количество активных токенов
     pub active_tokens: usize,
 
     /// Текущее количество активных связей
     pub active_connections: usize,
+
+    /// Счётчик событий с последней перестройки spatial grid
+    /// Используется для rebuild_frequency
+    pub events_since_rebuild: usize,
 }
 
 impl Domain {
@@ -798,8 +808,10 @@ impl Domain {
                 max_frontier_size,
                 max_events_per_cycle
             ),
+            spatial_grid: SpatialHashGrid::new(),
             active_tokens: 0,
             active_connections: 0,
+            events_since_rebuild: 0,
         }
     }
 
@@ -910,6 +922,78 @@ impl Domain {
         self.update_frontier_state();
 
         generated_events
+    }
+
+    /// Перестроить spatial hash grid
+    ///
+    /// SPACE V6.0, раздел 4.5: Перестройка индекса после применения событий
+    ///
+    /// Аргументы:
+    /// - tokens: массив всех токенов домена
+    ///
+    /// Метод вызывается после обработки batch событий, когда позиции токенов изменились
+    pub fn rebuild_spatial_grid(&mut self, tokens: &[crate::token::Token]) {
+        self.spatial_grid.rebuild(self.active_tokens, |token_index| {
+            if let Some(token) = tokens.get(token_index) {
+                (token.position[0], token.position[1], token.position[2])
+            } else {
+                (0, 0, 0) // Fallback для несуществующих токенов
+            }
+        });
+
+        // Сбрасываем счётчик событий после перестройки
+        self.events_since_rebuild = 0;
+    }
+
+    /// Проверить, нужна ли перестройка spatial grid
+    ///
+    /// SPACE V6.0, раздел 8: Конфигурируемая частота перестройки
+    ///
+    /// Возвращает true, если:
+    /// - rebuild_frequency > 0 (перестройка включена)
+    /// - events_since_rebuild >= rebuild_frequency
+    pub fn should_rebuild_spatial_grid(&self) -> bool {
+        self.config.rebuild_frequency > 0 &&
+        self.events_since_rebuild >= self.config.rebuild_frequency as usize
+    }
+
+    /// Инкрементировать счётчик событий с последней перестройки
+    ///
+    /// Вызывается после применения каждого события, которое может изменить позиции токенов
+    pub fn increment_events_since_rebuild(&mut self) {
+        self.events_since_rebuild = self.events_since_rebuild.saturating_add(1);
+    }
+
+    /// Найти соседей токена через spatial grid
+    ///
+    /// SPACE V6.0, раздел 4.6: Поиск соседей
+    ///
+    /// Аргументы:
+    /// - token: токен, для которого ищем соседей
+    /// - radius: радиус поиска в квантах
+    /// - tokens: массив всех токенов домена
+    ///
+    /// Возвращает:
+    /// - Vec<u32>: индексы токенов-соседей
+    pub fn find_neighbors(
+        &self,
+        token: &crate::token::Token,
+        radius: i16,
+        tokens: &[crate::token::Token],
+    ) -> Vec<u32> {
+        self.spatial_grid.find_neighbors(
+            token.position[0],
+            token.position[1],
+            token.position[2],
+            radius,
+            |token_index| {
+                if let Some(t) = tokens.get(token_index as usize) {
+                    (t.position[0], t.position[1], t.position[2])
+                } else {
+                    (0, 0, 0)
+                }
+            },
+        )
     }
 }
 
@@ -1723,5 +1807,229 @@ mod tests {
 
         // Heartbeat должен был срабатывать несколько раз
         assert!(domain.current_pulse() >= 3);
+    }
+
+    // --- SPACE V6.0 Integration Tests ---
+
+    #[test]
+    fn test_domain_spatial_grid_initialization() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let domain = Domain::new(config);
+
+        // Spatial grid должен быть инициализирован
+        assert_eq!(domain.spatial_grid.entry_count, 0);
+        assert_eq!(domain.events_since_rebuild, 0);
+    }
+
+    #[test]
+    fn test_domain_rebuild_spatial_grid() {
+        use crate::token::Token;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены с разными позициями
+        let tokens: Vec<Token> = (0..10).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.position = [i as i16 * 100, i as i16 * 50, 0];
+            token
+        }).collect();
+
+        domain.active_tokens = 10;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Проверяем что grid перестроен
+        assert_eq!(domain.spatial_grid.entry_count, 10);
+        assert_eq!(domain.events_since_rebuild, 0);
+    }
+
+    #[test]
+    fn test_domain_should_rebuild_spatial_grid() {
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.rebuild_frequency = 10; // Перестройка каждые 10 событий
+
+        let mut domain = Domain::new(config);
+
+        // Изначально не нужна перестройка
+        assert!(!domain.should_rebuild_spatial_grid());
+
+        // Инкрементируем счётчик событий
+        for _ in 0..9 {
+            domain.increment_events_since_rebuild();
+        }
+
+        // Всё ещё не нужна (9 < 10)
+        assert!(!domain.should_rebuild_spatial_grid());
+
+        // Ещё одно событие
+        domain.increment_events_since_rebuild();
+
+        // Теперь нужна перестройка (10 >= 10)
+        assert!(domain.should_rebuild_spatial_grid());
+    }
+
+    #[test]
+    fn test_domain_rebuild_frequency_disabled() {
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.rebuild_frequency = 0; // Перестройка отключена
+
+        let mut domain = Domain::new(config);
+
+        // Инкрементируем счётчик событий
+        for _ in 0..100 {
+            domain.increment_events_since_rebuild();
+        }
+
+        // Перестройка не нужна, так как отключена
+        assert!(!domain.should_rebuild_spatial_grid());
+    }
+
+    #[test]
+    fn test_domain_find_neighbors() {
+        use crate::token::Token;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены в одной области
+        let mut tokens: Vec<Token> = Vec::new();
+
+        // Токен 0 в центре (0, 0, 0)
+        let mut token0 = Token::default();
+        token0.sutra_id = 0;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+        tokens.push(token0);
+
+        // Токен 1 рядом (100, 0, 0)
+        let mut token1 = Token::default();
+        token1.sutra_id = 1;
+        token1.domain_id = 6;
+        token1.position = [100, 0, 0];
+        tokens.push(token1);
+
+        // Токен 2 далеко (1000, 1000, 1000)
+        let mut token2 = Token::default();
+        token2.sutra_id = 2;
+        token2.domain_id = 6;
+        token2.position = [1000, 1000, 1000];
+        tokens.push(token2);
+
+        domain.active_tokens = 3;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Ищем соседей токена 0 в радиусе 200 квантов
+        let neighbors = domain.find_neighbors(&tokens[0], 200, &tokens);
+
+        // Должны найти токен 1 (расстояние 100)
+        // Не должны найти токен 2 (слишком далеко)
+        assert!(neighbors.contains(&1), "Should find token 1");
+        assert!(!neighbors.contains(&2), "Should not find token 2");
+    }
+
+    #[test]
+    fn test_domain_spatial_grid_rebuild_resets_counter() {
+        use crate::token::Token;
+
+        let mut config = DomainConfig::factory_logic(6, 1);
+        config.rebuild_frequency = 5;
+
+        let mut domain = Domain::new(config);
+
+        let tokens: Vec<Token> = (0..5).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.position = [i as i16 * 100, 0, 0];
+            token
+        }).collect();
+
+        domain.active_tokens = 5;
+
+        // Инкрементируем счётчик
+        for _ in 0..10 {
+            domain.increment_events_since_rebuild();
+        }
+
+        assert_eq!(domain.events_since_rebuild, 10);
+
+        // Перестраиваем
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Счётчик должен быть сброшен
+        assert_eq!(domain.events_since_rebuild, 0);
+    }
+
+    #[test]
+    fn test_domain_spatial_grid_with_empty_tokens() {
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        let tokens: Vec<crate::token::Token> = Vec::new();
+        domain.active_tokens = 0;
+
+        // Перестройка с пустым массивом не должна паниковать
+        domain.rebuild_spatial_grid(&tokens);
+
+        assert_eq!(domain.spatial_grid.entry_count, 0);
+    }
+
+    #[test]
+    fn test_domain_find_neighbors_empty_grid() {
+        use crate::token::Token;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let domain = Domain::new(config);
+
+        let mut token = Token::default();
+        token.position = [0, 0, 0];
+
+        let tokens = vec![token];
+
+        // Поиск в пустом grid должен вернуть пустой список
+        let neighbors = domain.find_neighbors(&tokens[0], 100, &tokens);
+
+        assert!(neighbors.is_empty());
+    }
+
+    #[test]
+    fn test_domain_spatial_grid_multiple_rebuilds() {
+        use crate::token::Token;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        let mut tokens: Vec<Token> = (0..5).map(|i| {
+            let mut token = Token::default();
+            token.sutra_id = i;
+            token.domain_id = 6;
+            token.position = [i as i16 * 100, 0, 0];
+            token
+        }).collect();
+
+        domain.active_tokens = 5;
+
+        // Первая перестройка
+        domain.rebuild_spatial_grid(&tokens);
+        assert_eq!(domain.spatial_grid.entry_count, 5);
+
+        // Меняем позиции токенов
+        for token in &mut tokens {
+            token.position[0] += 50;
+        }
+
+        // Вторая перестройка
+        domain.rebuild_spatial_grid(&tokens);
+        assert_eq!(domain.spatial_grid.entry_count, 5);
+
+        // Проверяем что grid содержит обновлённые позиции
+        let neighbors = domain.find_neighbors(&tokens[0], 200, &tokens);
+        assert!(neighbors.contains(&1), "Should find neighbor after rebuild");
     }
 }

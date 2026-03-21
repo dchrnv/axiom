@@ -1,31 +1,33 @@
 # Axiom Status
 
 **Версия:** v0.7.0 (in progress)
-**Дата:** 2026-03-20
+**Дата:** 2026-03-21
 
 ---
 
 ## 🚧 v0.7.0 - SPACE V6.0 (В РАБОТЕ)
 
-**Выполнено (Phases 1.1-1.6):**
+**Выполнено (Phases 1.1-1.7):**
 - **Spatial Hash Grid**: O(1) neighbor lookup, bucket-based linked lists
 - **Distance Functions**: distance2(), distance2_to_anchor() - целочисленная арифметика
 - **Gravity**: Linear & InverseSquare models, configurable gravity_scale_shift
 - **Motion Physics**: velocity, friction, acceleration - saturating arithmetic
 - **Spatial Events**: TokenMoved, TokenCollision, TokenEnteredCell
 - **Collision Detection**: detect_collisions() через spatial hash
+- **Domain Integration**: SpatialHashGrid в Domain, rebuild_frequency, 10 новых тестов
 
-**Тесты:** 264 pass (+83 в space модуле) ✅
+**Тесты:** 274 pass (+93: 83 space + 10 domain integration) ✅
 
 **Файлы:**
 - runtime/src/space.rs (1447 строк, 83 теста)
+- runtime/src/domain.rs (+SpatialHashGrid field, +rebuild methods, 10 тестов)
 - runtime/src/event.rs (+3 EventType)
 - docs/spec/SPACE_V6_0.md, Shell_V3_0.md
 
-**Прогресс:** ~55% (6 из 11 фаз завершено)
+**Прогресс:** ~64% (7 из 11 фаз завершено)
 
 **Осталось:**
-- Phase 1.7-1.9: Интеграция с Domain/Frontier/Heartbeat
+- Phase 1.8-1.9: Интеграция с Causal Frontier и Heartbeat
 - Phase 1.10-1.11: Конфигурация и валидация
 
 **Коммит:** ad12960
@@ -123,16 +125,16 @@ Generated Events → COM
 | Heartbeat | V2.0 | V2.0 | ✅ Complete |
 | Experience | V1 | V1 | ✅ Complete |
 | Arbiter | V2.1 | V2.1 | ✅ Complete |
-| **SPACE** | **V6.0** | **V6.0** | **🚧 In Progress (55%)** |
+| **SPACE** | **V6.0** | **V6.0** | **🚧 In Progress (64%)** |
 
 ---
 
 ## 🎯 Релизы
 
-### v0.7.0 - SPACE V6.0 🚧 (2026-03-20, in progress)
-- Phases 1.1-1.6: Spatial hash grid, gravity, motion, events
-- 264 tests pass (+83 new)
-- Целочисленная пространственная физика
+### v0.7.0 - SPACE V6.0 🚧 (2026-03-21, in progress)
+- Phases 1.1-1.7: Spatial hash grid, gravity, motion, events, Domain integration
+- 274 tests pass (+93 new)
+- Целочисленная пространственная физика с Domain integration
 
 ### v0.6.2 - Struct Optimization ✅ (2026-03-20)
 - Event 64b (COM V1.1), DynamicTrace 32b (UPO V2.3)
@@ -165,4 +167,4 @@ Generated Events → COM
 
 ---
 
-**Последнее обновление:** 2026-03-20
+**Последнее обновление:** 2026-03-21
