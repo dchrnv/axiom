@@ -118,6 +118,50 @@ impl DomainShellCache {
     pub fn capacity(&self) -> usize {
         self.profiles.len()
     }
+
+    /// Получить список всех dirty токенов
+    pub fn get_dirty_tokens(&self) -> Vec<usize> {
+        self.dirty_flags
+            .iter()
+            .enumerate()
+            .filter_map(|(i, is_dirty)| if *is_dirty { Some(i) } else { None })
+            .collect()
+    }
+
+    /// Инкрементальное обновление: пересчитать только dirty токены
+    ///
+    /// # Arguments
+    /// * `connections` - все связи домена
+    /// * `table` - справочник семантических вкладов
+    ///
+    /// # Returns
+    /// Количество обновлённых профилей
+    pub fn update_dirty_shells(
+        &mut self,
+        connections: &[Connection],
+        table: &SemanticContributionTable,
+    ) -> usize {
+        let mut updated = 0;
+
+        for token_index in 0..self.dirty_flags.len() {
+            if self.dirty_flags[token_index] {
+                // Пересчитываем профиль (token_id = token_index + 1)
+                let token_id = (token_index + 1) as u32;
+                let new_profile = compute_shell(token_id, connections, table);
+
+                // Обновляем кэш
+                self.profiles[token_index] = new_profile;
+                self.dirty_flags.set(token_index, false);
+                updated += 1;
+            }
+        }
+
+        if updated > 0 {
+            self.generation += 1;
+        }
+
+        updated
+    }
 }
 
 // ============================================================================
@@ -225,6 +269,28 @@ impl Default for SemanticContributionTable {
 // ============================================================================
 
 use crate::connection::Connection;
+
+/// Пометить токены как dirty при изменении Connection
+///
+/// Триггер для инкрементального обновления.
+/// Вызывается когда Connection создана/удалена/изменена.
+///
+/// # Arguments
+/// * `cache` - кэш Shell профилей
+/// * `source_id` - ID source токена
+/// * `target_id` - ID target токена
+pub fn mark_connection_dirty(cache: &mut DomainShellCache, source_id: u32, target_id: u32) {
+    // token_id = token_index + 1
+    if source_id > 0 {
+        let source_index = (source_id - 1) as usize;
+        cache.mark_dirty(source_index);
+    }
+
+    if target_id > 0 {
+        let target_index = (target_id - 1) as usize;
+        cache.mark_dirty(target_index);
+    }
+}
 
 /// Вычислить семантический профиль токена на основе его связей
 ///
@@ -695,5 +761,184 @@ mod tests {
 
         // Нет связей для токена 100
         assert_eq!(profile, EMPTY_SHELL);
+    }
+
+    // --- Incremental Update Tests ---
+
+    #[test]
+    fn test_mark_dirty_and_is_dirty() {
+        // Проверка пометки токенов как dirty
+        let mut cache = DomainShellCache::new(5);
+
+        assert!(!cache.is_dirty(0));
+        assert!(!cache.is_dirty(2));
+
+        cache.mark_dirty(0);
+        cache.mark_dirty(2);
+
+        assert!(cache.is_dirty(0));
+        assert!(!cache.is_dirty(1));
+        assert!(cache.is_dirty(2));
+        assert!(!cache.is_dirty(3));
+    }
+
+    #[test]
+    fn test_clear_dirty() {
+        // Проверка очистки dirty flag
+        let mut cache = DomainShellCache::new(3);
+
+        cache.mark_dirty(0);
+        cache.mark_dirty(1);
+
+        assert!(cache.is_dirty(0));
+        assert!(cache.is_dirty(1));
+
+        cache.clear_dirty(0);
+
+        assert!(!cache.is_dirty(0));
+        assert!(cache.is_dirty(1));
+    }
+
+    #[test]
+    fn test_get_dirty_tokens() {
+        // Проверка получения списка dirty токенов
+        let mut cache = DomainShellCache::new(10);
+
+        cache.mark_dirty(1);
+        cache.mark_dirty(3);
+        cache.mark_dirty(7);
+
+        let dirty = cache.get_dirty_tokens();
+        assert_eq!(dirty, vec![1, 3, 7]);
+    }
+
+    #[test]
+    fn test_mark_connection_dirty() {
+        // Проверка триггера для Connection
+        let mut cache = DomainShellCache::new(5);
+
+        // Connection между токенами 1 (index 0) и 3 (index 2)
+        mark_connection_dirty(&mut cache, 1, 3);
+
+        assert!(cache.is_dirty(0)); // token_id 1 → index 0
+        assert!(!cache.is_dirty(1));
+        assert!(cache.is_dirty(2)); // token_id 3 → index 2
+        assert!(!cache.is_dirty(3));
+    }
+
+    #[test]
+    fn test_update_dirty_shells_no_dirty() {
+        // Обновление когда нет dirty токенов
+        let mut cache = DomainShellCache::new(3);
+        let table = SemanticContributionTable::new();
+        let connections: Vec<Connection> = vec![];
+
+        let updated = cache.update_dirty_shells(&connections, &table);
+
+        assert_eq!(updated, 0);
+        assert_eq!(cache.generation, 0);
+    }
+
+    #[test]
+    fn test_update_dirty_shells_single_token() {
+        // Инкрементальное обновление одного токена
+        let mut cache = DomainShellCache::new(5);
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [20, 10, 0, 0, 5, 0, 0, 0]);
+
+        let mut conn = Connection::default();
+        conn.source_id = 2; // token_id 2 → index 1
+        conn.target_id = 4;
+        conn.link_type = 0x0100;
+        conn.strength = 1.0;
+
+        let connections = vec![conn];
+
+        // Помечаем токен 2 (index 1) как dirty
+        cache.mark_dirty(1);
+
+        let initial_gen = cache.generation;
+        let updated = cache.update_dirty_shells(&connections, &table);
+
+        assert_eq!(updated, 1);
+        assert_eq!(cache.generation, initial_gen + 1);
+        assert!(!cache.is_dirty(1)); // Dirty flag очищен
+
+        // Профиль обновлён
+        let profile = cache.get(1);
+        assert_ne!(profile, &EMPTY_SHELL);
+        assert_eq!(profile[0], 255); // Physical layer
+    }
+
+    #[test]
+    fn test_update_dirty_shells_multiple_tokens() {
+        // Инкрементальное обновление нескольких токенов
+        let mut cache = DomainShellCache::new(5);
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 1;
+        conn1.target_id = 2;
+        conn1.link_type = 0x0100;
+        conn1.strength = 1.0;
+
+        let mut conn2 = Connection::default();
+        conn2.source_id = 3;
+        conn2.target_id = 4;
+        conn2.link_type = 0x0100;
+        conn2.strength = 1.0;
+
+        let connections = vec![conn1, conn2];
+
+        // Помечаем токены 1, 2, 3 как dirty (index 0, 1, 2)
+        cache.mark_dirty(0);
+        cache.mark_dirty(1);
+        cache.mark_dirty(2);
+
+        let updated = cache.update_dirty_shells(&connections, &table);
+
+        assert_eq!(updated, 3);
+        assert!(!cache.is_dirty(0));
+        assert!(!cache.is_dirty(1));
+        assert!(!cache.is_dirty(2));
+    }
+
+    #[test]
+    fn test_incremental_vs_full_update() {
+        // Сравнение инкрементального и полного обновления
+        let mut cache1 = DomainShellCache::new(3);
+        let mut cache2 = DomainShellCache::new(3);
+        let mut table = SemanticContributionTable::new();
+        table.set_category(0x01, [15, 5, 0, 0, 0, 0, 0, 0]);
+
+        let mut conn = Connection::default();
+        conn.source_id = 1;
+        conn.target_id = 2;
+        conn.link_type = 0x0100;
+        conn.strength = 1.0;
+
+        let connections = vec![conn];
+
+        // Инкрементальное обновление (только tokens 1 и 2 - участвуют в связи)
+        cache1.mark_dirty(0); // token 1
+        cache1.mark_dirty(1); // token 2
+        cache1.update_dirty_shells(&connections, &table);
+
+        // Полное обновление (все токены)
+        for i in 0..3 {
+            cache2.mark_dirty(i);
+        }
+        cache2.update_dirty_shells(&connections, &table);
+
+        // Результаты для token 1 должны совпадать
+        assert_eq!(cache1.get(0), cache2.get(0));
+
+        // Token 2 тоже должен обновиться (участвует в связи)
+        assert_eq!(cache1.get(1), cache2.get(1));
+
+        // Token 3 не участвует в связях - пустой профиль
+        assert_eq!(cache1.get(2), &EMPTY_SHELL);
+        assert_eq!(cache2.get(2), &EMPTY_SHELL);
     }
 }

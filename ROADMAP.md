@@ -43,11 +43,13 @@
 - ✅ Округление до `[u8; 8]`
 - ✅ Тесты: no connections, single, multiple, weighted, source+target, normalization, irrelevant
 
-**2.5 Инкрементальное обновление**
-- Dirty flags (BitVec)
-- Триггеры: Connection создана/удалена/изменена
-- Mark dirty → recompute → clear dirty
-- Тесты: инкрементальное vs полное
+**✅ 2.5 Инкрементальное обновление** (ЗАВЕРШЕНО - 8 тестов)
+- ✅ `get_dirty_tokens()` - список dirty токенов
+- ✅ `update_dirty_shells()` - пересчёт только dirty токенов
+- ✅ `mark_connection_dirty()` - триггер при изменении Connection
+- ✅ Mark dirty → recompute → clear dirty workflow
+- ✅ Generation counter increment
+- ✅ Тесты: mark/clear dirty, get dirty list, trigger, single/multiple update, incremental vs full
 
 **2.6 Интеграция с Causal Frontier**
 - `evaluate_local_rules()` расширение:
