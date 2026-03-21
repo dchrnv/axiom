@@ -68,7 +68,8 @@ impl std::error::Error for ConfigError {}
 
 /// Основной загрузчик конфигураций
 pub struct ConfigLoader {
-    cache: HashMap<String, serde_yaml::Value>,
+    /// Кэш загруженных конфигураций
+    pub cache: HashMap<String, serde_yaml::Value>,
 }
 
 impl ConfigLoader {
@@ -276,31 +277,5 @@ impl ConfigLoader {
 impl Default for ConfigLoader {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_loader_creation() {
-        let loader = ConfigLoader::new();
-        assert_eq!(loader.cache.len(), 0);
-    }
-
-    #[test]
-    fn test_config_loader_default() {
-        let loader = ConfigLoader::default();
-        assert_eq!(loader.cache.len(), 0);
-    }
-
-    #[test]
-    fn test_config_error_display() {
-        let error = ConfigError::ValidationError("test error".to_string());
-        assert_eq!(format!("{}", error), "Validation error: test error");
-
-        let error = ConfigError::MissingFile("config.yaml".to_string());
-        assert_eq!(format!("{}", error), "Missing file: config.yaml");
     }
 }
