@@ -775,7 +775,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 9: axiom-domain — Домены и Ashti_Core
 
-**Статус:** ⬜ Не начата
+**Статус:** ⏸️ Отложена (требует миграции вспомогательных модулей)
 
 **Цель:** Вынести Domain, DomainState и Ashti_Core.
 
@@ -843,7 +843,7 @@ pub fn add_token(&mut self, token: Token) -> Result<usize, CapacityExceeded> {
 
 ### ФАЗА 10: axiom-runtime — Оркестрация и интеграция
 
-**Статус:** ⬜ Не начата
+**Статус:** ⏸️ Отложена (зависит от Фаз 6 и 9)
 
 **Цель:** Собрать всё в единый runtime. Перенести интеграционные тесты.
 
@@ -1245,3 +1245,105 @@ just deps-graph
 - Документ перемещён в корень как основной план работы
 - Добавлены символы ⬜/✅/🔄/❌ для отслеживания прогресса
 - Все выполненные пункты сохраняются, не удаляются
+
+---
+
+## 📊 ИТОГИ МИГРАЦИИ (2026-03-21)
+
+### Текущий статус: 8 из 10 фаз завершено (80%)
+
+**✅ Завершённые фазы:**
+- Фаза 0: workspace setup
+- Фаза 1: axiom-core (24 теста)
+- Фаза 2: axiom-frontier (22 теста)
+- Фаза 3: axiom-config (17 тестов)
+- Фаза 4: axiom-space (83 теста)
+- Фаза 5: axiom-shell (43 теста)
+- Фаза 7: axiom-heartbeat (11 тестов)
+- Фаза 8: axiom-upo + axiom-ucl (5 тестов)
+
+**⏸️ Отложенные фазы:**
+- Фаза 6: axiom-arbiter (зависит от experience, ashti_processor, maya_processor, com)
+- Фаза 9: axiom-domain (требует event_generator + 113+ импортов)
+- Фаза 10: axiom-runtime (зависит от Фаз 6 и 9)
+
+### Статистика
+
+| Метрика | Значение |
+|---------|----------|
+| Тестов мигрировано | 205 |
+| Строк кода мигрировано | ~7500 |
+| Активных crates | 8 из 11 |
+| Завершённость | 80% |
+
+### Следующие шаги
+
+1. **Мигрировать вспомогательные модули:**
+   - event_generator.rs (используется в domain тестах)
+   - experience.rs (ассоциативная память для arbiter)
+   - ashti_processor.rs (обработка ASHTI 1-8)
+   - maya_processor.rs (консолидация результатов)
+   - com.rs (Causal Order Model tracking)
+
+2. **Завершить Фазу 9 (domain):**
+   - domain.rs (2845 строк, 63 теста)
+   - Исправить 113+ импортов
+   - Адаптировать тесты под новую структуру
+
+3. **Завершить Фазу 6 (arbiter):**
+   - arbiter.rs (500 строк, 9 тестов)
+   - После миграции зависимостей
+
+4. **Завершить Фазу 10 (runtime):**
+   - Финальная интеграция всех компонентов
+   - Интеграционные тесты
+
+### Технические детали
+
+**Workspace configuration:**
+```toml
+# Cargo.toml
+[workspace]
+members = [
+    "crates/axiom-core",           # ✅
+    "crates/axiom-config",         # ✅
+    "crates/axiom-space",          # ✅
+    "crates/axiom-shell",          # ✅
+    "crates/axiom-heartbeat",      # ✅
+    "crates/axiom-frontier",       # ✅
+    "crates/axiom-upo",            # ✅
+    "crates/axiom-ucl",            # ✅
+    # "crates/axiom-arbiter",      # ⏸️ Отложен
+    # "crates/axiom-domain",       # ⏸️ Отложен
+    # "crates/axiom-runtime",      # ⏸️ Отложен
+]
+
+[workspace.package]
+license = "AGPL-3.0-only"
+authors = ["Chernov Denys (@dchrnv)"]
+```
+
+**Граф зависимостей (текущий):**
+```
+axiom-core (zero deps)
+    ↓
+    ├── axiom-frontier
+    ├── axiom-config
+    ├── axiom-space
+    ├── axiom-upo
+    ├── axiom-ucl
+    │
+    ├── axiom-shell → axiom-config
+    ├── axiom-heartbeat → axiom-frontier
+    │
+    └── [axiom-arbiter] → (ждёт experience, processors, com)
+        └── [axiom-domain] → (ждёт event_generator)
+            └── [axiom-runtime] → (ждёт arbiter, domain)
+```
+
+---
+
+**Дата приостановки:** 2026-03-21  
+**Причина:** Необходима миграция вспомогательных модулей для завершения Фаз 6, 9, 10  
+**Следующий этап:** Миграция event_generator, experience, processors, com
+
