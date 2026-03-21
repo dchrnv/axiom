@@ -99,6 +99,7 @@ pub enum GravityModel {
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// let (ax, ay, az) = compute_gravity(100, 200, 300, 1000, 24, GravityModel::Linear);
 /// // Вернёт ускорение в направлении (0, 0, 0)
 /// ```
@@ -187,10 +188,11 @@ pub fn compute_gravity(
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// let pos = (100, 200, 300);
 /// let vel = (10, -5, 0);
 /// let new_pos = apply_velocity(pos, vel);
-/// // Результат: (110, 195, 300)
+/// assert_eq!(new_pos, (110, 195, 300));
 /// ```
 #[inline]
 pub fn apply_velocity(pos: (i16, i16, i16), vel: (i16, i16, i16)) -> (i16, i16, i16) {
@@ -223,9 +225,10 @@ pub fn apply_velocity(pos: (i16, i16, i16), vel: (i16, i16, i16)) -> (i16, i16, 
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// let vel = (100, -200, 50);
 /// let new_vel = apply_friction(vel, 4); // Коэффициент 1/16
-/// // Результат: vel - vel/16 = (94, -187, 47)
+/// assert_eq!(new_vel, (94, -187, 47)); // vel - vel/16
 /// ```
 #[inline]
 pub fn apply_friction(vel: (i16, i16, i16), friction_shift: u32) -> (i16, i16, i16) {
@@ -266,10 +269,11 @@ pub fn apply_friction(vel: (i16, i16, i16), friction_shift: u32) -> (i16, i16, i
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// let vel = (100, -50, 0);
 /// let acc = (10, 5, -3);
 /// let new_vel = apply_acceleration(vel, acc);
-/// // Результат: (110, -45, -3)
+/// assert_eq!(new_vel, (110, -45, -3));
 /// ```
 #[inline]
 pub fn apply_acceleration(vel: (i16, i16, i16), acc: (i16, i16, i16)) -> (i16, i16, i16) {
@@ -293,6 +297,7 @@ pub fn apply_acceleration(vel: (i16, i16, i16), acc: (i16, i16, i16)) -> (i16, i
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// assert_eq!(clamp_i16(100), 100);
 /// assert_eq!(clamp_i16(50000), 32767); // i16::MAX
 /// assert_eq!(clamp_i16(-50000), -32768); // i16::MIN
@@ -323,6 +328,7 @@ pub fn clamp_i16(value: i32) -> i16 {
 ///
 /// Пример:
 /// ```
+/// use axiom_space::*;
 /// let pos = (100, 100, 100);
 /// let target = (200, 100, 100);
 /// let acc = move_towards(pos, target, 4);
