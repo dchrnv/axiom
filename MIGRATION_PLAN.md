@@ -627,52 +627,29 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 5: axiom-shell — Shell V3.0
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена
 
 **Цель:** Вынести семантический кэш Shell.
 
-**Что переносится из Shell V3.0:**
+**Что перенесено из Shell V3.0 (runtime/src/shell.rs, 1365 строк):**
 
 | Компонент | Описание |
 |-----------|----------|
-| `ShellProfile` | `[u8; 8]` — L1..L8 |
-| `DomainShellCache` | `profiles: Vec<ShellProfile>`, `dirty_flags: BitVec`, `generation: u64` |
-| `SemanticContributionTable` | Двухуровневый: categories[256] + overrides HashMap<u16, ShellProfile> |
-| Полный пересчёт | Все active Connection → accumulator → normalize → u8 |
-| Инкрементальный пересчёт | При Connection-событии — пересчёт затронутых |
-| Reconciliation | Через Heartbeat — проверка батча |
+| ShellProfile | [u8; 8] - 8 слоёв (Physical, Sensory, Motor, Emotional, Cognitive, Social, Temporal, Abstract) |
+| DomainShellCache | profiles Vec + dirty_flags BitVec + generation + update_dirty_shells |
+| SemanticContributionTable | categories[256] + overrides HashMap + default_ashti_core() |
+| compute_shell | Полный пересчёт из всех связей токена |
+| Dirty tracking | mark_dirty, collect_affected, process_event |
+| Reconciliation | reconcile_batch с drift detection |
 
-**Зависимости:** `axiom-core` (Connection.link_type, Connection.strength, Connection.flags), `axiom-config` (загрузка SemanticContributionTable из YAML).
+**Зависимости:** `axiom-core` (Connection), `bitvec` (BitVec).
 
-**Шаги:**
+**Реализация:**
+- ✅ Скопирован shell.rs полностью (1365 строк)
+- ✅ 43 теста: profile, cache, table, compute, dirty, reconciliation
+- ✅ Исправлены импорты и Connection::new() calls
 
-1. ⬜ `profile.rs`:
-   - `pub type ShellProfile = [u8; 8];`
-   - `DomainShellCache` struct.
-   - Методы: `get(token_index)`, `set(token_index, profile)`, `mark_dirty(token_index)`.
-
-2. ⬜ `contribution.rs`:
-   - `SemanticContributionTable` struct.
-   - `get(link_type: u16) -> &ShellProfile` — сначала overrides, потом category.
-   - Загрузка из YAML (через axiom-config).
-   - 7 стандартных категорий: Structural(0x01), Semantic(0x02), Causal(0x03), Experiential(0x04), Social(0x05), Temporal(0x06), Motor(0x07).
-
-3. ⬜ `compute.rs`:
-   - `full_recompute(token_index, connections, table) -> ShellProfile` — полный пересчёт из всех active Connection.
-   - `incremental_update(token_index, changed_connection, table, cache)` — обновление при изменении одной связи.
-   - Нормализация: если max > 255, масштабировать с сохранением пропорций.
-
-4. ⬜ `reconciliation.rs`:
-   - `reconcile(token_index, connections, table, cache)` — пересчёт + сравнение + запись при расхождении.
-   - Интеграция с Heartbeat: вызывается при обработке токена из Heartbeat-батча.
-
-5. ⬜ Тесты:
-   - Нулевой Shell для токена без связей.
-   - Корректность вычисления из 1, 2, N связей.
-   - Нормализация при переполнении.
-   - Reconciliation обнаруживает расхождение.
-
-**Критерий:** `cargo test -p axiom-shell` — все тесты зелёные.
+**Результат:** ✅ `cargo test -p axiom-shell --lib` — 43 теста прошли.
 
 ---
 

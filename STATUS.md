@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 146
+**current_test_count:** 189
 **date_started:** 2026-03-21
 
 ---
@@ -15,7 +15,7 @@
 | 2 | axiom-frontier | ✅ | 2026-03-21 | 22 | Frontier, storm, budget, processor |
 | 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
-| 5 | axiom-shell | ⬜ | — | — | — |
+| 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
 | 6 | axiom-arbiter | ⬜ | — | — | — |
 | 7 | axiom-heartbeat | ⬜ | — | — | — |
 | 8 | axiom-upo + axiom-ucl | ⬜ | — | — | — |
@@ -118,4 +118,25 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 4 ✅ завершена с SpatialHashGrid, координатной системой, детерминистичной физикой, 146 тестов)
+## Прогресс Фазы 5
+
+### Checklist:
+- [x] Найден и изучен shell.rs (1365 строк, 43 теста)
+- [x] Скопирован shell.rs в axiom-shell/src/lib.rs полностью
+- [x] Проверены зависимости: axiom-core, bitvec
+- [x] Исправлены импорты: `use axiom_core::connection::Connection`
+- [x] Исправлены тесты: добавлен event_id в Connection::new()
+- [x] Проверка: cargo test -p axiom-shell --lib passes (43 tests)
+- [x] Проверка: cargo test --workspace --lib успешно (189 тестов)
+
+### Компоненты:
+- ShellProfile = [u8; 8] - 8 слоёв восприятия (Physical, Sensory, Motor, Emotional, Cognitive, Social, Temporal, Abstract)
+- DomainShellCache: profiles Vec + dirty_flags BitVec + generation counter
+- SemanticContributionTable: categories[256] + overrides HashMap
+- Алгоритмы: compute_shell, mark_dirty, collect_affected, process_event, reconcile_batch
+- default_ashti_core() - 7 категорий связей (Structural, Semantic, Causal, Experiential, Social, Temporal, Motor)
+- 43 теста: profile, cache, table, compute, dirty tracking, reconciliation
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 5 ✅ завершена с Shell V3.0, семантическими профилями, 189 тестов)
