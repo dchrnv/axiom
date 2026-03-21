@@ -1,6 +1,6 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.4
+**Версия:** 3.5
 **Создан:** 2026-02-11
 **Обновлен:** 2026-03-21
 
@@ -223,6 +223,47 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
+### 3.6 Shell V3.0 - Runtime Configuration (Phase 2.9)
+
+**Где:** `runtime/src/heartbeat.rs`, `runtime/src/config/mod.rs`
+**Что отложено:** Runtime YAML конфигурация для Shell cache параметров
+**Текущий статус:** Hardcoded флаг `enable_shell_reconciliation` в HeartbeatConfig пресетах
+**Почему отложено:** Требует ConfigLoader интеграции (см. Section 3.2)
+**Когда планируется:** После завершения базовой Configuration System
+
+**Текущее решение (hardcoded):**
+```rust
+// HeartbeatConfig presets
+weak:     enable_shell_reconciliation = false  // Disabled for weak hardware
+medium:   enable_shell_reconciliation = true   // Enabled for medium+ hardware
+powerful: enable_shell_reconciliation = true   // Enabled for medium+ hardware
+disabled: enable_shell_reconciliation = false  // Disabled when heartbeat disabled
+```
+
+**Требуется для полной реализации:**
+- [ ] YAML schema: `config/runtime/shell_cache.yaml`
+- [ ] Формат конфигурации:
+  ```yaml
+  shell_cache:
+    enable_shell_reconciliation: true
+    reconciliation_log: false  # Опционально: логировать drift detection
+    reconciliation_batch_size: 10  # Опционально: сколько токенов проверять за раз
+  ```
+- [ ] Интеграция с ConfigLoader::load_runtime_config()
+- [ ] Валидация параметров
+- [ ] Тесты: разные конфигурации shell_cache
+
+**Альтернативы:**
+1. Оставить hardcoded в HeartbeatConfig пресетах (текущее решение)
+2. Добавить ShellCacheConfig структуру отдельно от HeartbeatConfig
+3. Расширить HeartbeatConfig дополнительными полями (reconciliation_batch_size, etc.)
+
+**Связано с:**
+- Section 3.2: Configuration System - Preset Loading
+- Section 3.5: Shell V3.0 - YAML Configuration (semantic_contributions.yaml)
+
+---
+
 ## 4. 🟢 НИЗКИЙ ПРИОРИТЕТ - ДОЛГОСРОЧНЫЕ ЦЕЛИ
 
 ### 4.1 Python Adapter
@@ -265,6 +306,7 @@ _(Нет критических проблем)_
 3. Events System Integration
 4. Configuration Advanced Features
 5. Shell V3.0 - YAML Configuration (Phase 2.3)
+6. Shell V3.0 - Runtime Configuration (Phase 2.9)
 
 ### 🟢 НИЗКИЙ:
 4. Python Adapter
@@ -277,6 +319,11 @@ _(Нет критических проблем)_
 ---
 
 ## 📝 История изменений
+
+**2026-03-21 (v0.8.0 Phase 2.9):**
+- Добавлено: Секция 3.6 (Shell V3.0 - Runtime Configuration)
+- Обновлена сводка по приоритетам (добавлен пункт 6)
+- Причина: Отложена Runtime YAML конфигурация shell_cache (требует ConfigLoader)
 
 **2026-03-21 (v0.8.0 Phase 2.3):**
 - Добавлено: Секция 3.5 (Shell V3.0 - YAML Configuration)
@@ -334,7 +381,7 @@ _(Нет критических проблем)_
 
 ---
 
-**Версия:** 3.4
+**Версия:** 3.5
 **Последнее обновление:** 2026-03-21
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
