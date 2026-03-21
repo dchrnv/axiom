@@ -6,7 +6,7 @@ resolver = "2"
 members = [
     "crates/axiom-core",
     "crates/axiom-config",
-    "crates/axiom-domain",
+    # "crates/axiom-domain",  # Временно отключен - требует event_generator и исправления 113+ импортов
     "crates/axiom-space",
     "crates/axiom-shell",
     # "crates/axiom-arbiter",  # Временно отключен - зависит от непереведённых модулей
