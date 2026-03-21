@@ -153,6 +153,76 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
+### 3.5 Shell V3.0 - YAML Configuration (Phase 2.3)
+
+**Где:** `runtime/src/shell.rs`, `runtime/src/config/mod.rs`
+**Что отложено:** YAML конфигурация семантических вкладов (semantic_contributions.yaml)
+**Текущий статус:** Hardcoded `default_ashti_core()` с 7 категориями
+**Почему отложено:** Требует ConfigLoader интеграции (см. Section 3.2)
+**Когда планируется:** После завершения базовой Configuration System
+
+**Hardcoded категории (временное решение):**
+- `0x01` Structural: [20, 5, 0, 0, 5, 0, 0, 0] - Physical, Sensory, Cognitive layers
+- `0x02` Semantic: [0, 0, 0, 0, 15, 0, 0, 10] - Cognitive, Abstract layers
+- `0x03` Causal: [0, 0, 5, 0, 15, 0, 10, 8] - Motor, Cognitive, Temporal, Abstract
+- `0x04` Experiential: [5, 20, 0, 15, 0, 0, 0, 0] - Physical, Sensory, Emotional
+- `0x05` Social: [0, 0, 0, 5, 0, 25, 0, 0] - Emotional, Social layers
+- `0x06` Temporal: [0, 0, 0, 0, 5, 0, 25, 0] - Cognitive, Temporal layers
+- `0x07` Motor: [10, 0, 25, 0, 5, 0, 0, 0] - Physical, Motor, Cognitive layers
+
+**Требуется для полной реализации:**
+- [ ] YAML schema: `config/schema/semantic_contributions.yaml`
+- [ ] Формат описания категорий и переопределений:
+  ```yaml
+  categories:
+    0x01:  # Structural
+      name: "Structural"
+      layers: [20, 5, 0, 0, 5, 0, 0, 0]
+    0x02:  # Semantic
+      name: "Semantic"
+      layers: [0, 0, 0, 0, 15, 0, 0, 10]
+    0x03:  # Causal
+      name: "Causal"
+      layers: [0, 0, 5, 0, 15, 0, 10, 8]
+    0x04:  # Experiential
+      name: "Experiential"
+      layers: [5, 20, 0, 15, 0, 0, 0, 0]
+    0x05:  # Social
+      name: "Social"
+      layers: [0, 0, 0, 5, 0, 25, 0, 0]
+    0x06:  # Temporal
+      name: "Temporal"
+      layers: [0, 0, 0, 0, 5, 0, 25, 0]
+    0x07:  # Motor
+      name: "Motor"
+      layers: [10, 0, 25, 0, 5, 0, 0, 0]
+  overrides:
+    0x0310:  # Emotional_Cause (Causal category override)
+      name: "Emotional_Cause"
+      layers: [0, 0, 0, 20, 10, 5, 8, 5]
+    0x0311:  # Physical_Cause
+      name: "Physical_Cause"
+      layers: [15, 5, 10, 0, 8, 0, 10, 0]
+    0x0412:  # Aesthetic_Feel (Experiential override)
+      name: "Aesthetic_Feel"
+      layers: [2, 15, 0, 18, 5, 0, 0, 12]
+  ```
+- [ ] Пресеты: `ashti_core.yaml`, `custom.yaml`
+- [ ] Интеграция с ConfigLoader::load_config()
+- [ ] Валидация схемы: проверка диапазонов [0-255], суммы вкладов
+- [ ] Тесты: загрузка, валидация пресетов
+
+**Альтернативы:**
+1. Оставить hardcoded `default_ashti_core()` (текущее решение, детерминистично)
+2. Добавить runtime конфигурацию через HeartbeatConfig/DomainConfig (требует расширения структур)
+3. Создать отдельный ShellConfig файл (semantic_contributions.yaml)
+
+**Связано с:**
+- Section 3.2: Configuration System - Preset Loading
+- Section 3.1: SPACE V6.0 - YAML Configuration (аналогичный случай)
+
+---
+
 ## 4. 🟢 НИЗКИЙ ПРИОРИТЕТ - ДОЛГОСРОЧНЫЕ ЦЕЛИ
 
 ### 4.1 Python Adapter
@@ -194,6 +264,7 @@ _(Нет критических проблем)_
 2. Configuration System - Preset Loading
 3. Events System Integration
 4. Configuration Advanced Features
+5. Shell V3.0 - YAML Configuration (Phase 2.3)
 
 ### 🟢 НИЗКИЙ:
 4. Python Adapter
@@ -206,6 +277,11 @@ _(Нет критических проблем)_
 ---
 
 ## 📝 История изменений
+
+**2026-03-21 (v0.8.0 Phase 2.3):**
+- Добавлено: Секция 3.5 (Shell V3.0 - YAML Configuration)
+- Обновлена сводка по приоритетам (добавлен пункт 5)
+- Причина: Отложена YAML конфигурация semantic_contributions.yaml (требует ConfigLoader)
 
 **2026-03-21 (v0.7.0 Phase 1.10-1.11):**
 - Добавлено: Секция 3.1 (SPACE V6.0 - YAML Configuration)

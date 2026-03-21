@@ -15,27 +15,24 @@
 
 ### PHASE 2: Shell V3.0 - Семантический профиль (v0.8.0)
 
-**2.1 Базовые структуры**
-- `runtime/src/shell.rs` - новый модуль
-- `ShellProfile` type = `[u8; 8]`
-- `DomainShellCache` структура (profiles, dirty_flags, generation)
-- `ShellContribution` type = `[u8; 8]`
-- Тесты: размеры, выравнивание
+**✅ 2.1 Базовые структуры** (ЗАВЕРШЕНО - 9 тестов)
+- ✅ `runtime/src/shell.rs` - новый модуль
+- ✅ `ShellProfile` type = `[u8; 8]`
+- ✅ `DomainShellCache` структура (profiles, dirty_flags, generation)
+- ✅ `ShellContribution` type = `[u8; 8]`
+- ✅ Тесты: размеры, выравнивание, dirty flags
 
-**2.2 Справочник семантических вкладов**
-- `SemanticContributionTable` структура
-- `categories: [ShellProfile; 256]`
-- `overrides: HashMap<u16, ShellProfile>`
-- `get(link_type)` - двухуровневый lookup
-- Тесты: категории, переопределения
+**✅ 2.2 Справочник семантических вкладов** (ЗАВЕРШЕНО - 6 тестов)
+- ✅ `SemanticContributionTable` структура
+- ✅ `categories: [ShellProfile; 256]`
+- ✅ `overrides: HashMap<u16, ShellProfile>`
+- ✅ `get(link_type)` - двухуровневый lookup
+- ✅ `default_ashti_core()` - 7 категорий
+- ✅ Тесты: категории, переопределения, иерархия
 
-**2.3 YAML конфигурация**
-- Schema: `config/schema/semantic_contributions.yaml`
-- Пример с 7 категориями (Structural, Semantic, Causal, Experiential, Social, Temporal, Motor)
-- Пример с переопределениями (Emotional_Cause, Physical_Cause, Aesthetic_Feel)
-- Загрузка через ConfigLoader
-- Валидация схемы
-- Тесты: загрузка, валидация
+**⏸️ 2.3 YAML конфигурация** (ОТЛОЖЕНО)
+- Причина: требует ConfigLoader (см. DEFERRED.md 3.5)
+- Временное решение: hardcoded `default_ashti_core()`
 
 **2.4 Алгоритм вычисления Shell**
 - `compute_shell()` - полный пересчёт для токена:
