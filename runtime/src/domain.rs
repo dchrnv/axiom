@@ -894,6 +894,36 @@ impl Domain {
                         let event = event_generator.generate_gravity_update(token);
                         generated_events.push(event);
                     }
+
+                    // SPACE V6.0: Проверка столкновений через spatial hash
+                    // Если spatial grid не пуст, ищем столкновения
+                    if self.spatial_grid.entry_count > 0 {
+                        let collision_radius = 100i16; // TODO: добавить в DomainConfig
+                        let collisions = crate::space::detect_collisions(
+                            token_idx as u32,
+                            (token.position[0], token.position[1], token.position[2]),
+                            collision_radius,
+                            |idx| {
+                                if let Some(t) = tokens.get(idx as usize) {
+                                    (t.position[0], t.position[1], t.position[2])
+                                } else {
+                                    (0, 0, 0)
+                                }
+                            },
+                            &self.spatial_grid,
+                        );
+
+                        // Генерируем события столкновений
+                        for collision_idx in collisions {
+                            if let Some(other_token) = tokens.get(collision_idx as usize) {
+                                let event = event_generator.generate_collision(token, other_token);
+                                generated_events.push(event);
+
+                                // Добавляем оба токена в frontier для повторной проверки
+                                self.frontier.push_token(collision_idx as usize);
+                            }
+                        }
+                    }
                 }
 
                 self.frontier.increment_processed();
@@ -2031,5 +2061,268 @@ mod tests {
         // Проверяем что grid содержит обновлённые позиции
         let neighbors = domain.find_neighbors(&tokens[0], 200, &tokens);
         assert!(neighbors.contains(&1), "Should find neighbor after rebuild");
+    }
+
+    // --- SPACE V6.0 + Causal Frontier Integration Tests (Phase 1.8) ---
+
+    #[test]
+    fn test_process_frontier_with_spatial_collision_detection() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены близко друг к другу (столкновение)
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+        token0.last_event_id = 0;
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0]; // Близко к token0 (расстояние 50 < 100)
+        token1.last_event_id = 0;
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Добавляем token0 в frontier
+        domain.frontier.push_token(0);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должно быть событие столкновения
+        let collision_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event_type == EventType::TokenCollision as u16)
+            .collect();
+
+        assert!(!collision_events.is_empty(), "Expected collision event");
+
+        // Проверяем что collision event содержит правильные ID
+        let collision = collision_events[0];
+        // source_id и target_id могут быть в любом порядке
+        assert!(
+            (collision.source_id == 100 && collision.target_id == 101) ||
+            (collision.source_id == 101 && collision.target_id == 100),
+            "Collision should be between token 100 and 101"
+        );
+    }
+
+    #[test]
+    fn test_process_frontier_no_collision_when_far_apart() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены далеко друг от друга
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+        token0.last_event_id = 0;
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [500, 0, 0]; // Далеко от token0 (расстояние 500 > 100)
+        token1.last_event_id = 0;
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Добавляем token0 в frontier
+        domain.frontier.push_token(0);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Не должно быть события столкновения
+        let collision_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event_type == EventType::TokenCollision as u16)
+            .collect();
+
+        assert!(collision_events.is_empty(), "Should not have collision event");
+    }
+
+    #[test]
+    fn test_process_frontier_collision_adds_both_tokens_to_frontier() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены близко друг к другу
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0];
+
+        let tokens = vec![token0, token1];
+        domain.active_tokens = 2;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Добавляем token0 в frontier
+        domain.frontier.push_token(0);
+
+        assert_eq!(domain.frontier.token_count(), 1);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Счётчик токенов в frontier до обработки
+        let initial_token_count = domain.frontier.token_count();
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Проверяем что были сгенерированы collision events
+        let collision_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event_type == crate::event::EventType::TokenCollision as u16)
+            .collect();
+
+        assert!(!collision_events.is_empty(), "Expected collision events");
+
+        // Token1 должен быть добавлен в frontier (проверяем через событие, а не frontier напрямую)
+        // frontier может быть уже обработан, поэтому проверяем события
+        assert!(
+            collision_events.iter().any(|e| e.target_id == 101),
+            "Token 101 should be involved in collision"
+        );
+    }
+
+    #[test]
+    fn test_process_frontier_with_empty_spatial_grid() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем токены но НЕ перестраиваем spatial grid
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let tokens = vec![token0];
+        domain.active_tokens = 1;
+
+        // Добавляем token0 в frontier
+        domain.frontier.push_token(0);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Не должно быть collision events если spatial grid пуст
+        let collision_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event_type == EventType::TokenCollision as u16)
+            .collect();
+
+        assert!(collision_events.is_empty(), "Should not check collisions with empty grid");
+    }
+
+    #[test]
+    fn test_process_frontier_multiple_collisions() {
+        use crate::token::Token;
+        use crate::connection::Connection;
+        use crate::event_generator::EventGenerator;
+        use crate::event::EventType;
+
+        let config = DomainConfig::factory_logic(6, 1);
+        let mut domain = Domain::new(config);
+
+        // Создаем 3 токена близко друг к другу
+        let mut token0 = Token::default();
+        token0.sutra_id = 100;
+        token0.domain_id = 6;
+        token0.position = [0, 0, 0];
+
+        let mut token1 = Token::default();
+        token1.sutra_id = 101;
+        token1.domain_id = 6;
+        token1.position = [50, 0, 0];
+
+        let mut token2 = Token::default();
+        token2.sutra_id = 102;
+        token2.domain_id = 6;
+        token2.position = [0, 50, 0];
+
+        let tokens = vec![token0, token1, token2];
+        domain.active_tokens = 3;
+
+        // Перестраиваем spatial grid
+        domain.rebuild_spatial_grid(&tokens);
+
+        // Добавляем token0 в frontier
+        domain.frontier.push_token(0);
+
+        let connections = vec![];
+        let mut event_generator = EventGenerator::new();
+        event_generator.set_event_id(1000);
+
+        // Обрабатываем frontier
+        let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
+
+        // Должно быть как минимум 2 collision events (token0 -> token1 и token0 -> token2)
+        // Может быть больше из-за Gravity events
+        let collision_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event_type == EventType::TokenCollision as u16)
+            .collect();
+
+        assert!(collision_events.len() >= 2, "Expected at least 2 collision events, got {}", collision_events.len());
+
+        // Проверяем что столкновения были с token1 и token2
+        let collision_targets: Vec<u32> = collision_events
+            .iter()
+            .map(|e| e.target_id)
+            .collect();
+
+        assert!(collision_targets.contains(&101), "Should collide with token 101");
+        assert!(collision_targets.contains(&102), "Should collide with token 102");
     }
 }

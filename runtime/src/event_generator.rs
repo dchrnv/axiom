@@ -121,6 +121,29 @@ impl EventGenerator {
         )
     }
 
+    /// Генерирует событие столкновения между двумя токенами
+    ///
+    /// SPACE V6.0: используется после обнаружения столкновения через spatial hash
+    pub fn generate_collision(&self, token1: &Token, token2: &Token) -> Event {
+        // Вычисляем квадрат расстояния для хеша
+        let dist2 = crate::space::distance2(
+            token1.position[0], token1.position[1], token1.position[2],
+            token2.position[0], token2.position[1], token2.position[2],
+        );
+
+        Event::with_pulse(
+            0,
+            token1.domain_id,
+            EventType::TokenCollision,
+            EventPriority::High,
+            self.compute_collision_hash_from_tokens(token1, token2, dist2),
+            token1.sutra_id,
+            token2.sutra_id,
+            self.current_event_id,
+            self.current_pulse_id,
+        )
+    }
+
     // --- Hash functions для детерминизма ---
 
     fn compute_decay_hash(&self, token: &Token, causal_age: u64) -> u64 {
@@ -151,6 +174,13 @@ impl EventGenerator {
         hash = hash.wrapping_mul(31).wrapping_add(token.position[0] as u64);
         hash = hash.wrapping_mul(31).wrapping_add(token.position[1] as u64);
         hash = hash.wrapping_mul(31).wrapping_add(token.position[2] as u64);
+        hash
+    }
+
+    fn compute_collision_hash_from_tokens(&self, token1: &Token, token2: &Token, dist2: i64) -> u64 {
+        let mut hash = token1.sutra_id as u64;
+        hash = hash.wrapping_mul(31).wrapping_add(token2.sutra_id as u64);
+        hash = hash.wrapping_mul(31).wrapping_add(dist2 as u64);
         hash
     }
 }

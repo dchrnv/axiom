@@ -1,8 +1,8 @@
 # Axiom Roadmap
 
-**Версия:** 7.2
+**Версия:** 7.3
 **Дата:** 2026-03-21
-**Статус:** v0.7.0 в работе (Phases 1.1-1.7 завершены), планирование v0.8.0
+**Статус:** v0.7.0 в работе (Phases 1.1-1.8 завершены), планирование v0.8.0
 
 ---
 
@@ -57,13 +57,12 @@
 - ✅ Методы: `rebuild_spatial_grid()`, `should_rebuild_spatial_grid()`, `find_neighbors()`
 - ✅ Тесты: domain + spatial hash (10 новых тестов)
 
-**1.8 Интеграция с Causal Frontier**
-- `evaluate_local_rules()` расширение:
-  - gravity check → `TokenMoved`
-  - neighbor check → `TokenCollision`
-  - inertia application
-- `collect_neighbors()` использует spatial hash
-- Тесты: frontier + space
+**✅ 1.8 Интеграция с Causal Frontier** (ЗАВЕРШЕНО)
+- ✅ `Domain::process_frontier()` расширено collision detection через spatial hash
+- ✅ `EventGenerator::generate_collision()` - генерация TokenCollision событий
+- ✅ Collision detection с радиусом 100 квантов
+- ✅ Добавление столкнувшихся токенов обратно в frontier
+- ✅ Тесты: frontier + space integration (5 новых тестов)
 
 **1.9 Интеграция с Heartbeat**
 - Heartbeat добавляет токены в frontier
@@ -227,11 +226,11 @@ shell_cache:
 - Оба зависят от Heartbeat (уже есть ✅)
 
 ### Оценка:
-- SPACE V6.0: ~8-10 шагов (1.1-1.11) - **✅ 7/11 завершено (64%)**
+- SPACE V6.0: ~8-10 шагов (1.1-1.11) - **✅ 8/11 завершено (73%)**
 - Shell V3.0: ~8-10 шагов (2.1-2.10)
 - Integration: ~3 шага (3.1-3.3)
 - Docs: ~4 шага (4.1-4.4)
-- **Всего: ~25-30 шагов** (**7 завершено, ~18-23 осталось**) 
+- **Всего: ~25-30 шагов** (**8 завершено, ~17-22 осталось**) 
 
 ---
 
