@@ -1,11 +1,39 @@
 //! AXIOM Config — система конфигурации
 //!
 //! Загрузка, парсинг и валидация конфигураций из YAML.
+//!
+//! # Модули
+//!
+//! - `domain_config` — DomainConfig (128 байт) с 5 блоками конфигурации
+//! - `heartbeat_config` — HeartbeatConfig для периодической активации
+//! - `loader` — ConfigLoader для загрузки и валидации YAML
+//!
+//! # Примеры
+//!
+//! ```
+//! use axiom_config::{DomainConfig, HeartbeatConfig, StructuralRole, DomainType};
+//!
+//! // Создание DomainConfig
+//! let config = DomainConfig::new(1, DomainType::Logic, StructuralRole::Logic);
+//! assert_eq!(config.domain_id, 1);
+//!
+//! // Создание HeartbeatConfig
+//! let heartbeat = HeartbeatConfig::medium();
+//! assert_eq!(heartbeat.interval, 1024);
+//! ```
 
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
-/// Placeholder функция для компиляции пустого crate
-pub fn placeholder() {
-    // Будет удалена при миграции Фазы 3
-}
+pub mod domain_config;
+pub mod heartbeat_config;
+pub mod loader;
+
+pub use domain_config::{
+    DomainConfig, DomainType, StructuralRole, DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
+    PROCESSING_ACTIVE, PROCESSING_FROZEN, PROCESSING_IDLE,
+};
+pub use heartbeat_config::HeartbeatConfig;
+pub use loader::{
+    AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, RuntimeConfig, SchemaConfig,
+};

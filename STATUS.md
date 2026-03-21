@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 46
+**current_test_count:** 63
 **date_started:** 2026-03-21
 
 ---
@@ -13,7 +13,7 @@
 | 0 | workspace setup | ✅ | 2026-03-21 | 0 | Завершено: 11 crates, justfile, scripts |
 | 1 | axiom-core | ✅ | 2026-03-21 | 24 | Token, Connection, Event (zero deps) |
 | 2 | axiom-frontier | ✅ | 2026-03-21 | 22 | Frontier, storm, budget, processor |
-| 3 | axiom-config | ⬜ | — | — | — |
+| 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ⬜ | — | — | — |
 | 5 | axiom-shell | ⬜ | — | — | — |
 | 6 | axiom-arbiter | ⬜ | — | — | — |
@@ -78,4 +78,23 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 2 ✅ завершена с processor, 46 тестов)
+## Прогресс Фазы 3
+
+### Checklist:
+- [x] Найден и изучен DomainConfig в runtime/src/domain.rs
+- [x] Найден HeartbeatConfig в runtime/src/heartbeat.rs
+- [x] Найден ConfigLoader в runtime/src/config/loader.rs
+- [x] Создан domain_config.rs с DomainConfig (128 байт, 5 блоков)
+- [x] Добавлены StructuralRole и DomainType enums
+- [x] Добавлены константы DOMAIN_* и PROCESSING_*
+- [x] Добавлен compile-time size assertion
+- [x] Создан heartbeat_config.rs с пресетами (weak, medium, powerful, disabled)
+- [x] Создан loader.rs с ConfigLoader и типами ошибок
+- [x] Создан lib.rs с re-exports
+- [x] Добавлены 17 тестов (11 domain + 3 heartbeat + 3 loader)
+- [x] Проверка: cargo test -p axiom-config passes (17 tests)
+- [x] Проверка: cargo test --workspace успешно (63 теста)
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 3 ✅ завершена с DomainConfig (128 байт), HeartbeatConfig, ConfigLoader, 63 теста)

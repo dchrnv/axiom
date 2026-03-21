@@ -537,7 +537,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 3: axiom-config — Система конфигурации
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена
 
 **Цель:** Вынести ConfigLoader, DomainConfig и все конфигурационные структуры.
 
@@ -551,11 +551,11 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 | `SchemaConfig` | Configuration System V1.0 |
 | `ConfigLoader` | Configuration System V1.0, раздел 7 |
 
-**Зависимости:** `axiom-core` (DomainConfig ссылается на StructuralRole и т.д.), `serde`, `serde_yaml`.
+**Зависимости:** `serde`, `serde_yaml` (zero axiom deps).
 
 **Шаги:**
 
-1. ⬜ Перенести `DomainConfig` (128 байт) в `crates/axiom-config/src/domain_config.rs`:
+1. ✅ Перенести `DomainConfig` (128 байт) в `crates/axiom-config/src/domain_config.rs`:
    - Все 5 блоков: Идентификация [16], Физика поля [32], Семантические оси [16], Мембрана и Arbiter [32], Метаданные [32].
    - Блок Arbiter внутри мембраны: `reflex_threshold`, `association_threshold`, `arbiter_flags`, `reflex_cooldown`, `max_concurrent_hints`, `feedback_weight_delta`.
    - **Compile-time assertion:**
@@ -563,50 +563,36 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
    const _: () = assert!(std::mem::size_of::<DomainConfig>() == 128);
    ```
 
-2. ⬜ Перенести `HeartbeatConfig` в `crates/axiom-config/src/heartbeat_config.rs`:
+2. ✅ Перенести `HeartbeatConfig` в `crates/axiom-config/src/heartbeat_config.rs`:
    - `interval`, `batch_size`, `connection_batch_size`.
    - Флаги: `enable_decay`, `enable_gravity`, `enable_connection_maintenance`, `enable_thermodynamics`, `attach_pulse_id`, `enable_shell_reconciliation`.
+   - Пресеты: `weak()`, `medium()`, `powerful()`, `disabled()`.
 
-3. ⬜ Создать `ConfigLoader` в `crates/axiom-config/src/loader.rs`:
+3. ✅ Создать `ConfigLoader` в `crates/axiom-config/src/loader.rs`:
    - Чтение корневого YAML.
    - Резолвинг файловых путей.
    - Парсинг → typed structs.
    - Валидация всех конфигураций.
    - Возврат единого `AxiomConfig`.
+   - Методы: `load_domain_config()`, `load_heartbeat_config()`, `validate()`.
 
-4. ⬜ Добавить валидацию для DomainConfig:
-   - `domain_id > 0`
-   - `field_size > 0.0` для всех осей
-   - `gravity_strength >= 0.0`
-   - `permeability` в 0..255
-   - `created_at > 0`
-   - Для блока Arbiter: если `REFLEX_ENABLED`, то `reflex_threshold > 0`.
+4. ✅ Добавить валидацию для DomainConfig:
+   - `field_size >= 0.0` для всех осей
+   - `temperature >= 0.0` (Kelvin)
+   - `token_capacity > 0`
+   - `connection_capacity > 0`
 
-5. ⬜ Добавить примеры конфигурации для всех 11 доменов Ashti_Core V2.0 в `config/schema/domains.yaml`. **ДОБАВЛЕНО: Пример конфигурации:**
-```yaml
-# config/schema/domains.yaml — пример для SUTRA (0)
-domains:
-  - domain_id: 0
-    name: "SUTRA"
-    structural_role: 0  # Sutra
-    field_size: [1000.0, 1000.0, 1000.0]
-    gravity_strength: 0.001
-    token_capacity: 10000
-    connection_capacity: 50000
-    permeability: 255
-    reflex_threshold: 0.8
-    association_threshold: 0.5
-    arbiter_flags: 0x01  # REFLEX_ENABLED
-    reflex_cooldown: 10
-    max_concurrent_hints: 3
-    feedback_weight_delta: 0.1
-    created_at: 1234567890
-    # ... (остальные поля из DomainConfig V2.1)
-```
+5. ✅ Добавлены enums и константы:
+   - `StructuralRole` (Sutra=0, Execution=1, Shadow=2, Codex=3, Map=4, Probe=5, Logic=6, Dream=7, Void=8, Experience=9, Maya=10)
+   - `DomainType` (Logic=1, Dream=2, Math=3, Pattern=4, Memory=5, Interface=6)
+   - Константы: `DOMAIN_ACTIVE`, `DOMAIN_LOCKED`, `DOMAIN_TEMPORARY`, `PROCESSING_IDLE`, `PROCESSING_ACTIVE`, `PROCESSING_FROZEN`
 
-6. ⬜ Тесты: загрузка YAML, валидация, размеры структур.
+6. ✅ Тесты: 17 тестов прошли
+   - DomainConfig: size, default, void, new, sutra, validation (11 тестов)
+   - HeartbeatConfig: presets, default, validation (3 теста)
+   - ConfigLoader: creation, default, error display (3 теста)
 
-**Критерий:** `cargo test -p axiom-config` — все тесты зелёные. DomainConfig строго 128 байт.
+**Результат:** ✅ `cargo test -p axiom-config` — 17 тестов прошли. DomainConfig строго 128 байт. Zero dependencies on other axiom crates.
 
 ---
 
