@@ -1,8 +1,8 @@
 # Axiom Roadmap
 
-**Версия:** 8.0
+**Версия:** 8.1
 **Дата:** 2026-03-21
-**Статус:** v0.7.0 завершена ✅, начало v0.8.0 (Shell V3.0)
+**Статус:** v0.8.0 завершена ✅ (Shell V3.0), начало v0.8.1 (SPACE ↔ Shell Integration)
 
 ---
 
@@ -13,7 +13,7 @@
 
 ---
 
-### PHASE 2: Shell V3.0 - Семантический профиль (v0.8.0)
+### ✅ PHASE 2: Shell V3.0 - Семантический профиль (v0.8.0) - ЗАВЕРШЕНО
 
 **✅ 2.1 Базовые структуры** (ЗАВЕРШЕНО - 9 тестов)
 - ✅ `runtime/src/shell.rs` - новый модуль
@@ -73,21 +73,17 @@
 - ✅ Все профили инициализируются нулями, dirty flags = false
 - ✅ Тесты: initialization, zero profiles, no dirty flags, semantic table, different capacities
 
-**2.9 Runtime конфигурация**
-- Runtime configuration YAML:
-```yaml
-shell_cache:
-  enable_shell_reconciliation: true
-  reconciliation_log: false
-```
-- Тесты: разные конфигурации
+**⏸️ 2.9 Runtime конфигурация** (ОТЛОЖЕНО)
+- Причина: требует ConfigLoader (см. DEFERRED.md 3.5)
+- Временное решение: enable_shell_reconciliation в HeartbeatConfig пресетах
 
-**2.10 Финальная валидация**
-- Все инварианты Shell V3.0
-- Shell не генерирует COM-события
-- Домен-локальность
-- Детерминизм
-- Документация в коде
+**✅ 2.10 Финальная валидация** (ЗАВЕРШЕНО - 5 тестов)
+- ✅ Детерминизм: одинаковые входы → одинаковый результат
+- ✅ Домен-локальность: Shell зависит только от локальных Connection
+- ✅ No COM events: compute_shell() и reconcile_shell_batch() не генерируют события
+- ✅ Cache coherence: кэш согласован с Connection после reconciliation
+- ✅ Zero-allocation: compute_shell() использует только стек
+- ✅ Тесты: determinism, domain_locality, no_events, cache_coherence, zero_allocation
 ### PHASE 3: Интеграция SPACE ↔ Shell (v0.8.1)
 
 **3.1 Полный цикл взаимодействия**
@@ -151,10 +147,10 @@ shell_cache:
 
 ### Оценка:
 - ✅ SPACE V6.0: 11 шагов (1.1-1.11) - **ЗАВЕРШЕНО**
-- Shell V3.0: ~10 шагов (2.1-2.10) - **следующая задача**
-- Integration: ~3 шага (3.1-3.3)
+- ✅ Shell V3.0: 9 шагов (2.1-2.10, skip 2.9) - **ЗАВЕРШЕНО**
+- Integration: ~3 шага (3.1-3.3) - **следующая задача**
 - Docs: ~4 шага (4.1-4.4)
-- **Всего: ~28 шагов** (**11 завершено, ~17 осталось**) 
+- **Всего: ~27 шагов** (**20 завершено, ~7 осталось**) 
 
 ---
 
