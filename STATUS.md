@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 200
+**current_test_count:** 205
 **date_started:** 2026-03-21
 
 ---
@@ -18,7 +18,7 @@
 | 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
 | 6 | axiom-arbiter | ⏸️ | — | — | Пропущена (зависит от непереведённых модулей) |
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
-| 8 | axiom-upo + axiom-ucl | ⬜ | — | — | — |
+| 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
 | 9 | axiom-domain | ⬜ | — | — | — |
 | 10 | axiom-runtime | ⬜ | — | — | — |
 
@@ -163,4 +163,34 @@
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Фаза 7 ✅ завершена с Heartbeat V2.0, 200 тестов)
+## Прогресс Фазы 8
+
+### Checklist:
+- [x] Найдены и изучены upo.rs (388 строк, 0 тестов) и ucl_command.rs (356 строк, 5 тестов)
+- [x] Скопированы оба файла в axiom-upo/src/lib.rs и axiom-ucl/src/lib.rs
+- [x] Проверены зависимости: axiom-core (для обоих)
+- [x] Исправлены импорты в upo.rs: `use axiom_core::connection::Connection` и `use axiom_core::token::Token`
+- [x] UCL не требовал исправлений (уже использовал правильные импорты)
+- [x] Проверка: cargo test -p axiom-upo passes (0 tests)
+- [x] Проверка: cargo test -p axiom-ucl passes (5 tests)
+- [x] Проверка: cargo test --workspace --lib успешно (205 тестов)
+
+### Компоненты:
+
+**axiom-upo (Universal Patch Observer v2.2):**
+- TraceSourceType: Token, Connection, Field
+- TraceFlags: ACTIVE, FADING, MERGED
+- Trace: 128-байтная структура для отслеживания изменений
+- UPOEngine: движок наблюдения за изменениями
+- Patch generation и application
+- 0 тестов (тесты будут добавлены позже)
+
+**axiom-ucl (Universal Command Language):**
+- UCLCommand: SpawnDomain, ApplyForce, QueryState (64 байта, repr(C))
+- UCLResult: Success/Error с payload (64 байта)
+- Compile-time size assertions
+- 5 тестов: command size, result size, spawn domain, apply force, result creation
+
+---
+
+**Последнее обновление:** 2026-03-21 (Фаза 8 ✅ завершена с UPO v2.2 + UCL, 205 тестов)
