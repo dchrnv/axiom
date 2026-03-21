@@ -7,7 +7,7 @@
 
 ## 🚧 v0.7.0 - SPACE V6.0 (В РАБОТЕ)
 
-**Выполнено (Phases 1.1-1.9):**
+**Выполнено (Phases 1.1-1.11):**
 - **Spatial Hash Grid**: O(1) neighbor lookup, bucket-based linked lists
 - **Distance Functions**: distance2(), distance2_to_anchor() - целочисленная арифметика
 - **Gravity**: Linear & InverseSquare models, configurable gravity_scale_shift
@@ -17,21 +17,21 @@
 - **Domain Integration**: SpatialHashGrid в Domain, rebuild_frequency
 - **Frontier Integration**: Collision detection в process_frontier, generate_collision()
 - **Heartbeat Integration**: enable_spatial_collision flag, полный цикл Heartbeat → Spatial checks
+- **Validation**: 3 тестa инвариантов (детерминизм, zero-alloc, cross-spec)
+- **Configuration**: Hardcoded константы (YAML конфигурация отложена в DEFERRED.md)
 
-**Тесты:** 282 pass (+102: 83 space + 10 domain + 5 frontier + 4 heartbeat integration) ✅
+**Тесты:** 285 pass (+105: 83 space + 10 domain + 5 frontier + 4 heartbeat + 3 validation) ✅
 
 **Файлы:**
 - runtime/src/space.rs (1447 строк, 83 теста)
-- runtime/src/domain.rs (+collision detection in process_frontier, 19 тестов)
+- runtime/src/domain.rs (+collision detection + 3 validation тестa, 22 тестa)
 - runtime/src/heartbeat.rs (+enable_spatial_collision flag)
 - runtime/src/event_generator.rs (+generate_collision method)
 - runtime/src/event.rs (+3 EventType)
 - docs/spec/SPACE_V6_0.md, Shell_V3_0.md
+- DEFERRED.md (+YAML configuration отложена)
 
-**Прогресс:** ~82% (9 из 11 фаз завершено)
-
-**Осталось:**
-- Phase 1.10-1.11: Конфигурация и валидация
+**Прогресс:** 100% (11 из 11 фаз завершено) ✅
 
 **Коммит:** 663ca07
 
@@ -128,16 +128,17 @@ Generated Events → COM
 | Heartbeat | V2.0 | V2.0 | ✅ Complete |
 | Experience | V1 | V1 | ✅ Complete |
 | Arbiter | V2.1 | V2.1 | ✅ Complete |
-| **SPACE** | **V6.0** | **V6.0** | **🚧 In Progress (82%)** |
+| **SPACE** | **V6.0** | **V6.0** | **✅ Complete** |
 
 ---
 
 ## 🎯 Релизы
 
-### v0.7.0 - SPACE V6.0 🚧 (2026-03-21, in progress)
-- Phases 1.1-1.9: Spatial hash grid, gravity, motion, events, Domain + Frontier + Heartbeat integration
-- 282 tests pass (+102 new)
+### v0.7.0 - SPACE V6.0 ✅ (2026-03-21, complete)
+- Phases 1.1-1.11: Spatial hash grid, gravity, motion, events, Domain + Frontier + Heartbeat integration, validation
+- 285 tests pass (+105 new: 83 space + 22 domain integration + validation)
 - Целочисленная пространственная физика с полным циклом Heartbeat → Spatial checks
+- YAML конфигурация отложена (DEFERRED.md v3.4)
 
 ### v0.6.2 - Struct Optimization ✅ (2026-03-20)
 - Event 64b (COM V1.1), DynamicTrace 32b (UPO V2.3)

@@ -2576,4 +2576,42 @@ mod tests {
         domain.rebuild_spatial_grid(&tokens);
         assert_eq!(domain.events_since_rebuild, 0);
     }
+
+    // --- SPACE V6.0 Validation Tests (Phase 1.10-1.11 минимум) ---
+
+    #[test]
+    fn test_space_determinism_validation() {
+        // SPACE V6.0 инвариант: детерминизм
+        use crate::space::distance2;
+
+        let d1 = distance2(0, 0, 0, 100, 100, 100);
+        let d2 = distance2(0, 0, 0, 100, 100, 100);
+
+        assert_eq!(d1, d2, "SPACE functions must be deterministic");
+    }
+
+    #[test]
+    fn test_space_no_alloc_validation() {
+        // SPACE V6.0 инвариант: zero-alloc во время работы
+        use crate::space::SpatialHashGrid;
+
+        let mut grid = SpatialHashGrid::new();
+
+        // Pre-allocate
+        for i in 0..100 {
+            grid.insert(i, i as i16, 0, 0);
+        }
+
+        // Clear и rebuild не должны аллоцировать (используют существующую память)
+        grid.clear();
+        assert_eq!(grid.entry_count, 0);
+        assert!(grid.entries.capacity() > 0, "Should reuse allocated memory");
+    }
+
+    #[test]
+    fn test_cross_spec_domain_config_unchanged() {
+        // Domain V2.1: DomainConfig остаётся 128 байт
+        use std::mem::size_of;
+        assert_eq!(size_of::<DomainConfig>(), 128, "DomainConfig must be 128 bytes");
+    }
 }

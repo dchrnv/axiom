@@ -1,8 +1,8 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.3
+**Версия:** 3.4
 **Создан:** 2026-02-11
-**Обновлен:** 2026-03-20
+**Обновлен:** 2026-03-21
 
 ---
 
@@ -82,7 +82,40 @@ _(Нет критических проблем на данный момент)_
 
 ## 3. 🔧 ЗАДАЧИ ПО УЛУЧШЕНИЮ - СРЕДНИЙ ПРИОРИТЕТ
 
-### 3.1 Configuration System - Preset Loading
+### 3.1 SPACE V6.0 - YAML Configuration (Phase 1.10-1.11)
+
+**Где:** `runtime/src/space.rs`, `runtime/src/domain.rs`, `runtime/src/config/mod.rs`
+**Что отложено:** YAML конфигурация пространственных параметров
+**Текущий статус:** Hardcoded константы (collision_radius: 100, gravity_scale_shift: 8)
+**Почему отложено:** Конфликт с DomainConfig 128-byte constraint + требует ConfigLoader интеграции
+**Когда планируется:** После завершения базовой Configuration System
+
+**Hardcoded параметры (временное решение):**
+- `collision_radius`: 100 (в функции `detect_collisions`)
+- `gravity_scale_shift`: 8 (в GravityModel::InverseSquare)
+- `rebuild_frequency`: 50 (в Domain::should_rebuild_spatial_grid)
+
+**Требуется для полной реализации:**
+- [ ] Добавить SpatialConfig структуру (collision_radius, gravity_scale_shift)
+- [ ] Расширить DomainConfig (сейчас 128b, нужны +3-4 байта) ИЛИ
+- [ ] Создать отдельную конфигурацию для spatial параметров
+- [ ] YAML схема для spatial.yml (пресеты: tight, medium, loose)
+- [ ] Интеграция с ConfigLoader::load_config()
+- [ ] Валидация spatial параметров
+- [ ] Тесты загрузки spatial конфигураций
+
+**Альтернативы:**
+1. Оставить hardcoded (текущее решение, детерминистично)
+2. Передавать параметры через HeartbeatConfig (но там тоже размер ограничен)
+3. Создать отдельный SpatialConfig вне DomainConfig
+
+**Связано с:**
+- Section 3.2: Configuration System - Preset Loading
+- Section 3.4: Configuration System - Advanced Features
+
+---
+
+### 3.2 Configuration System - Preset Loading
 
 **Где:** `runtime/src/config/mod.rs`, `runtime/src/token.rs`, `runtime/src/connection.rs`
 **Что отложено:** Загрузка пресетов через ConfigLoader
@@ -97,7 +130,7 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
-### 3.2 Events System Integration
+### 3.3 Events System Integration
 
 **Где:** `runtime/src/`
 **Что отложено:** Система событий для COM интеграции
@@ -111,7 +144,7 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
-### 3.3 Configuration System - Advanced Features
+### 3.4 Configuration System - Advanced Features
 
 **Что осталось (низкий приоритет):**
 - [ ] JSON схемы валидация
@@ -157,9 +190,10 @@ _(Нет критических проблем на данный момент)_
 _(Нет критических проблем)_
 
 ### 🔧 СРЕДНИЙ:
-1. Configuration System - Preset Loading
-2. Events System Integration
-3. Configuration Advanced Features
+1. SPACE V6.0 - YAML Configuration (Phase 1.10-1.11)
+2. Configuration System - Preset Loading
+3. Events System Integration
+4. Configuration Advanced Features
 
 ### 🟢 НИЗКИЙ:
 4. Python Adapter
@@ -172,6 +206,12 @@ _(Нет критических проблем)_
 ---
 
 ## 📝 История изменений
+
+**2026-03-21 (v0.7.0 Phase 1.10-1.11):**
+- Добавлено: Секция 3.1 (SPACE V6.0 - YAML Configuration)
+- Перенумерованы секции 3.2-3.4
+- Обновлена сводка по приоритетам (добавлен пункт 1)
+- Причина: Отложена YAML конфигурация из-за DomainConfig 128-byte constraint
 
 **2026-03-20 (v0.6.2 завершена):**
 - ✅ Удалено: Секция 1.1 (Compiler warnings - решено в v0.6.2)
@@ -218,7 +258,7 @@ _(Нет критических проблем)_
 
 ---
 
-**Версия:** 3.3
-**Последнее обновление:** 2026-03-20
+**Версия:** 3.4
+**Последнее обновление:** 2026-03-21
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
