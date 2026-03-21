@@ -51,11 +51,12 @@
 - ✅ Generation counter increment
 - ✅ Тесты: mark/clear dirty, get dirty list, trigger, single/multiple update, incremental vs full
 
-**2.6 Интеграция с Causal Frontier**
-- `evaluate_local_rules()` расширение:
-  - shell update при Connection событиях
-- `collect_neighbors()` добавляет source+target в frontier
-- Тесты: connection event → shell update
+**✅ 2.6 Интеграция с Causal Frontier** (ЗАВЕРШЕНО - 5 тестов)
+- ✅ `collect_affected_tokens()` - собирает source+target из Connection событий
+- ✅ Дедупликация токенов (один токен может быть в нескольких связях)
+- ✅ Self-loop handling (source_id == target_id)
+- ✅ Интеграция с mark_dirty для frontier workflow
+- ✅ Тесты: empty, single, multiple, self-loops, integration with mark_dirty
 
 **2.7 Reconciliation через Heartbeat**
 - `HeartbeatConfig.enable_shell_reconciliation: bool`

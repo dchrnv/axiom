@@ -292,6 +292,38 @@ pub fn mark_connection_dirty(cache: &mut DomainShellCache, source_id: u32, targe
     }
 }
 
+/// Собрать затронутые токены из Connection событий
+///
+/// Frontier integration helper: при обработке Connection событий
+/// собирает все токены (source + target), которые должны быть добавлены в frontier.
+///
+/// # Arguments
+/// * `connections` - массив связей для обработки
+///
+/// # Returns
+/// Vec с индексами токенов (token_index = token_id - 1)
+pub fn collect_affected_tokens(connections: &[Connection]) -> Vec<usize> {
+    let mut affected = Vec::new();
+
+    for conn in connections {
+        if conn.source_id > 0 {
+            let source_idx = (conn.source_id - 1) as usize;
+            if !affected.contains(&source_idx) {
+                affected.push(source_idx);
+            }
+        }
+
+        if conn.target_id > 0 {
+            let target_idx = (conn.target_id - 1) as usize;
+            if !affected.contains(&target_idx) {
+                affected.push(target_idx);
+            }
+        }
+    }
+
+    affected
+}
+
 /// Вычислить семантический профиль токена на основе его связей
 ///
 /// Алгоритм (Shell V3.0 spec):
@@ -940,5 +972,115 @@ mod tests {
         // Token 3 не участвует в связях - пустой профиль
         assert_eq!(cache1.get(2), &EMPTY_SHELL);
         assert_eq!(cache2.get(2), &EMPTY_SHELL);
+    }
+
+    // --- Frontier Integration Tests ---
+
+    #[test]
+    fn test_collect_affected_tokens_empty() {
+        // Пустой массив связей
+        let connections: Vec<Connection> = vec![];
+        let affected = collect_affected_tokens(&connections);
+        assert!(affected.is_empty());
+    }
+
+    #[test]
+    fn test_collect_affected_tokens_single_connection() {
+        // Одна связь затрагивает 2 токена
+        let mut conn = Connection::default();
+        conn.source_id = 5; // token_index = 4
+        conn.target_id = 10; // token_index = 9
+        conn.link_type = 0x0100;
+
+        let connections = vec![conn];
+        let mut affected = collect_affected_tokens(&connections);
+        affected.sort(); // Сортируем для предсказуемости
+
+        assert_eq!(affected.len(), 2);
+        assert!(affected.contains(&4)); // source_id 5 → index 4
+        assert!(affected.contains(&9)); // target_id 10 → index 9
+    }
+
+    #[test]
+    fn test_collect_affected_tokens_multiple_connections() {
+        // Несколько связей с дубликатами
+        let mut conn1 = Connection::default();
+        conn1.source_id = 1; // index 0
+        conn1.target_id = 2; // index 1
+        conn1.link_type = 0x0100;
+
+        let mut conn2 = Connection::default();
+        conn2.source_id = 2; // index 1 (дубликат)
+        conn2.target_id = 3; // index 2
+        conn2.link_type = 0x0200;
+
+        let mut conn3 = Connection::default();
+        conn3.source_id = 3; // index 2 (дубликат)
+        conn3.target_id = 4; // index 3
+        conn3.link_type = 0x0100;
+
+        let connections = vec![conn1, conn2, conn3];
+        let mut affected = collect_affected_tokens(&connections);
+        affected.sort();
+
+        // Дубликаты должны быть удалены
+        assert_eq!(affected.len(), 4);
+        assert_eq!(affected, vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_collect_affected_tokens_self_loops() {
+        // Связь токена с самим собой
+        let mut conn = Connection::default();
+        conn.source_id = 7; // index 6
+        conn.target_id = 7; // index 6 (тот же токен)
+        conn.link_type = 0x0300;
+
+        let connections = vec![conn];
+        let affected = collect_affected_tokens(&connections);
+
+        // Должен быть только один токен (дубликат удалён)
+        assert_eq!(affected.len(), 1);
+        assert_eq!(affected[0], 6);
+    }
+
+    #[test]
+    fn test_collect_affected_tokens_integration_with_mark_dirty() {
+        // Интеграция: collect_affected_tokens + mark_dirty
+        let mut cache = DomainShellCache::new(10);
+
+        let mut conn1 = Connection::default();
+        conn1.source_id = 2; // index 1
+        conn1.target_id = 5; // index 4
+        conn1.link_type = 0x0100;
+
+        let mut conn2 = Connection::default();
+        conn2.source_id = 7; // index 6
+        conn2.target_id = 9; // index 8
+        conn2.link_type = 0x0200;
+
+        let connections = vec![conn1, conn2];
+
+        // Собираем затронутые токены
+        let affected = collect_affected_tokens(&connections);
+
+        // Помечаем их как dirty
+        for token_idx in affected {
+            cache.mark_dirty(token_idx);
+        }
+
+        // Проверяем что правильные токены помечены
+        assert!(cache.is_dirty(1)); // source_id 2
+        assert!(cache.is_dirty(4)); // target_id 5
+        assert!(cache.is_dirty(6)); // source_id 7
+        assert!(cache.is_dirty(8)); // target_id 9
+
+        // Остальные не помечены
+        assert!(!cache.is_dirty(0));
+        assert!(!cache.is_dirty(2));
+        assert!(!cache.is_dirty(3));
+        assert!(!cache.is_dirty(5));
+        assert!(!cache.is_dirty(7));
+        assert!(!cache.is_dirty(9));
     }
 }
