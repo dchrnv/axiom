@@ -1,6 +1,6 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.5
+**Версия:** 3.6
 **Создан:** 2026-02-11
 **Обновлен:** 2026-03-21
 
@@ -40,6 +40,90 @@ _(Нет критических проблем на данный момент)_
 **Причина отсутствия:** Исходный файл не содержал тестов. UPO тестируется как часть интеграционных тестов domain.
 
 **Приоритет:** Низкий (можно добавить после завершения миграции)
+
+---
+
+### axiom-arbiter (Arbiter V1.0) — Stub-модули требуют замены
+
+**Файлы:**
+- `crates/axiom-arbiter/src/experience.rs` (84 строки)
+- `crates/axiom-arbiter/src/ashti_processor.rs` (24 строки)
+- `crates/axiom-arbiter/src/maya_processor.rs` (40 строк)
+- `crates/axiom-arbiter/src/com.rs` (32 строки)
+
+**Статус:** Модуль мигрирован со stub-реализациями зависимостей
+**Дата:** 2026-03-21 (Фаза 6 миграции)
+
+**Что нужно заменить:**
+
+**1. Experience Module (`experience.rs` stub → полноценная реализация):**
+- [ ] `Experience::resonance_search()` — реальный алгоритм резонансного поиска
+  - Threshold-based classification (reflex_threshold, association_threshold)
+  - Weight-based trace selection
+  - Distance metrics для pattern matching
+- [ ] `Experience::add_trace()` — полная логика ассоциативной памяти
+  - Trace deduplication
+  - Weight normalization
+  - Memory capacity limits
+- [ ] Trace strengthening/weakening based on feedback
+  - `strengthen_trace(trace_index, delta)`
+  - `weaken_trace(trace_index, delta)`
+  - Feedback loop integration
+- [ ] `ExperienceTrace` расширение:
+  - Добавить `last_used: u64` (для LRU eviction)
+  - Добавить `success_count: u32` (для reinforcement)
+  - Добавить `pattern_hash: u64` (для быстрого поиска)
+
+**2. ASHTI Processor (`ashti_processor.rs` stub → реальная обработка):**
+- [ ] `AshtiProcessor::process_token()` — маршрутизация через ASHTI 1-8
+  - Параллельная обработка через 8 специализированных доменов
+  - Hint propagation из Experience
+  - Domain-specific processing rules
+- [ ] Интеграция с DomainConfig:
+  - Использование `arbiter_flags` для REFLEX_ENABLED, HINTS_ENABLED
+  - Применение `max_concurrent_hints` ограничения
+  - Учет `reflex_cooldown` per domain
+- [ ] Result aggregation:
+  - Сбор результатов от всех 8 доменов
+  - Timeout handling для медленных доменов
+  - Partial result handling
+
+**3. MAYA Processor (`maya_processor.rs` stub → полная консолидация):**
+- [ ] `MayaProcessor::consolidate_results()` — алгоритм консолидации
+  - Weighted averaging по результатам от ASHTI 1-8
+  - Confidence scoring для каждого результата
+  - Conflict resolution при противоречивых результатах
+- [ ] Интеграция с DomainConfig:
+  - Использование `comparison_strategy` (FirstMatch, BestMatch, Consensus)
+  - Применение `response_timeout` для отбрасывания медленных результатов
+- [ ] Quality metrics:
+  - Consistency score между ASHTI результатами
+  - Confidence threshold для принятия решения
+
+**4. COM Module (`com.rs` stub → полный Causal Order Model):**
+- [ ] `COM::next_event_id()` — реальное отслеживание причинного порядка
+  - Domain-specific event ID allocation
+  - Causal ordering guarantees
+  - Event timestamp management
+- [ ] Интеграция с CausalFrontier:
+  - Event tracking для всех 11 доменов
+  - Parent-child event relationships
+  - Causal consistency validation
+- [ ] Event storage:
+  - Event history для replay/debugging
+  - Pruning старых событий (retention policy)
+
+**Причина stub-реализации:** Модули experience, ashti_processor, maya_processor, com еще не мигрированы. Arbiter мигрирован с минимальными заглушками для компиляции и тестирования основной логики маршрутизации.
+
+**Приоритет:** Средний (требуется после миграции соответствующих модулей)
+
+**Зависимости:**
+- Experience module миграция (пока не начата)
+- ASHTI domains implementation (требует axiom-domain)
+- MAYA consolidation logic (требует axiom-domain)
+- COM полная реализация (может быть отдельным crate)
+
+**Критерий готовности:** Все stub-модули заменены, 9 существующих тестов остаются зелеными, добавлены интеграционные тесты для полной функциональности.
 
 ---
 
@@ -325,12 +409,13 @@ disabled: enable_shell_reconciliation = false  // Disabled when heartbeat disabl
 _(Нет критических проблем)_
 
 ### 🔧 СРЕДНИЙ:
-1. SPACE V6.0 - YAML Configuration (Phase 1.10-1.11)
-2. Configuration System - Preset Loading
-3. Events System Integration
-4. Configuration Advanced Features
-5. Shell V3.0 - YAML Configuration (Phase 2.3)
-6. Shell V3.0 - Runtime Configuration (Phase 2.9)
+1. **axiom-arbiter stub-модули** - Замена заглушек на полноценные реализации (Фаза 6)
+2. SPACE V6.0 - YAML Configuration (Phase 1.10-1.11)
+3. Configuration System - Preset Loading
+4. Events System Integration
+5. Configuration Advanced Features
+6. Shell V3.0 - YAML Configuration (Phase 2.3)
+7. Shell V3.0 - Runtime Configuration (Phase 2.9)
 
 ### 🟢 НИЗКИЙ:
 4. Python Adapter
@@ -343,6 +428,12 @@ _(Нет критических проблем)_
 ---
 
 ## 📝 История изменений
+
+**2026-03-21 (Migration Phase 6):**
+- Добавлено: Секция 1.5 (axiom-arbiter stub-модули требуют замены)
+- Обновлена сводка по приоритетам (добавлен пункт 1 в СРЕДНИЙ приоритет)
+- Причина: Фаза 6 миграции завершена со stub-реализациями для experience, ashti_processor, maya_processor, com
+- Детализированы требования для замены каждого stub-модуля
 
 **2026-03-21 (v0.8.0 Phase 2.9):**
 - Добавлено: Секция 3.6 (Shell V3.0 - Runtime Configuration)
@@ -405,7 +496,7 @@ _(Нет критических проблем)_
 
 ---
 
-**Версия:** 3.5
-**Последнее обновление:** 2026-03-21
+**Версия:** 3.6
+**Последнее обновление:** 2026-03-21 (Migration Phase 6)
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
