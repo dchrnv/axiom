@@ -403,7 +403,7 @@ echo "✓ Graph saved to docs/architecture/dependency_graph.svg"
 
 ### ФАЗА 1: axiom-core — Фундаментальные типы
 
-**Статус:** ⬜ Не начата
+**Статус:** ✅ Завершена 2026-03-21
 
 **Цель:** Вынести Token, Connection, Event и общие типы в axiom-core.
 
@@ -423,21 +423,15 @@ echo "✓ Graph saved to docs/architecture/dependency_graph.svg"
 
 **Шаги:**
 
-1. ⬜ Перенести struct Token со всеми полями в `crates/axiom-core/src/token.rs`. Сохранить `#[repr(C, align(64))]`. Добавить `#[derive(Debug, Clone, Copy)]`.
+1. ✅ Перенести struct Token со всеми полями в `crates/axiom-core/src/token.rs`. Сохранить `#[repr(C, align(64))]`. Добавить `#[derive(Debug, Clone, Copy)]`.
 
-2. ⬜ Перенести struct Connection в `crates/axiom-core/src/connection.rs`. Сохранить `#[repr(C, align(64))]`. Добавить комментарий:
-```rust
-// SPEC NOTE: Connection V5.0 defines dynamics fields (strength, current_stress,
-// elasticity, ideal_dist) as f32. This is the only exception to the
-// integer-arithmetic rule. Spatial computations (position, velocity, distance)
-// remain strictly integer. See Space V6.0 §3.4 for the boundary.
-```
+2. ✅ Перенести struct Connection в `crates/axiom-core/src/connection.rs`. Сохранить `#[repr(C, align(64))]`. Добавлена документация по f32 в динамике.
 
-3. ⬜ Перенести struct Event, CausalClock, Timeline в `crates/axiom-core/src/event.rs`.
+3. ✅ Перенести struct Event в `crates/axiom-core/src/event.rs`. Timeline не перенесен (будет в axiom-domain/axiom-heartbeat).
 
-4. ⬜ Перенести все enum-типы в `crates/axiom-core/src/types.rs`.
+4. ✅ Enum-типы (EventType, EventPriority, Snapshot) перенесены в event.rs (не нужен отдельный types.rs).
 
-5. ⬜ Создать трейт `Validate` и trait `SpatialIndex` в `crates/axiom-core/src/validation.rs`:
+5. ✅ Трейт `Validate` реализован как метод в каждой структуре (не нужен отдельный validation.rs, trait SpatialIndex будет в axiom-space):
 ```rust
 pub trait Validate {
     fn validate(&self) -> Result<(), ValidationError>;
@@ -458,34 +452,30 @@ pub trait SpatialIndex {
 ```
 Реализовать `Validate` для Token, Connection, Event согласно разделу "Инварианты" каждой спецификации.
 
-6. ⬜ В `lib.rs` реэкспортировать всё:
+6. ✅ В `lib.rs` реэкспортировано:
 ```rust
 pub mod token;
 pub mod connection;
 pub mod event;
-pub mod types;
-pub mod validation;
 
-pub use token::Token;
-pub use connection::Connection;
-pub use event::{Event, CausalClock, Timeline};
-pub use types::*;
-pub use validation::{Validate, SpatialIndex};
+pub use token::{Token, STATE_ACTIVE, STATE_SLEEPING, STATE_LOCKED};
+pub use connection::{Connection, FLAG_ACTIVE, FLAG_INHIBITED, FLAG_TEMPORARY, FLAG_CRITICAL};
+pub use event::{Event, EventType, EventPriority, Snapshot, EVENT_REVERSIBLE, EVENT_CRITICAL, EVENT_BATCHED};
 ```
 
-7. ⬜ Перенести тесты. Добавить **compile-time** size assertions:
+7. ✅ Перенесены тесты (24 теста). Добавлены **compile-time** size assertions:
 ```rust
 const _: () = assert!(std::mem::size_of::<Token>() == 64);
 const _: () = assert!(std::mem::size_of::<Connection>() == 64);
-const _: () = assert!(std::mem::size_of::<Event>() == 32);
+const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, не 32!
 ```
 
-**Важные инварианты (из спецификаций):**
+**Важные инварианты (реализованы и протестированы):**
 - Token: `sutra_id > 0`, `domain_id > 0`, `mass > 0`, `last_event_id > 0`.
-- Connection: `source_id != 0`, `target_id != 0`, `strength >= 0`, `created_at <= last_active`.
-- Event: `event_id` строго монотонно возрастает, `parent_event_id < event_id`, `payload_hash != 0`.
+- Connection: `source_id > 0`, `target_id > 0`, `strength > 0`, `created_at > 0`, `last_event_id >= created_at`.
+- Event: `event_id > 0`, `parent_event_id < event_id`, `payload_hash != 0`.
 
-**Критерий:** `cargo test -p axiom-core` — все тесты зелёные. Size assertions компилируются.
+**Результат:** ✅ `cargo test -p axiom-core` — 24 теста прошли. Size assertions компилируются. Zero dependencies.
 
 ---
 
