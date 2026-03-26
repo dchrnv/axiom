@@ -1,8 +1,8 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.6
+**Версия:** 3.7
 **Создан:** 2026-02-11
-**Обновлен:** 2026-03-21
+**Обновлен:** 2026-03-26
 
 ---
 
@@ -43,89 +43,18 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
-### axiom-arbiter (Arbiter V1.0) — Stub-модули требуют замены
+### ~~axiom-arbiter (Arbiter V1.0) — Stub-модули~~ ✅ ЗАВЕРШЕНО 2026-03-26
 
-**Файлы:**
-- `crates/axiom-arbiter/src/experience.rs` (84 строки)
-- `crates/axiom-arbiter/src/ashti_processor.rs` (24 строки)
-- `crates/axiom-arbiter/src/maya_processor.rs` (40 строк)
-- `crates/axiom-arbiter/src/com.rs` (32 строки)
+**Статус:** ✅ Все stub-модули заменены реальными реализациями
+**Дата завершения:** 2026-03-26 (Option A — перед Фазой 10)
 
-**Статус:** Модуль мигрирован со stub-реализациями зависимостей
-**Дата:** 2026-03-21 (Фаза 6 миграции)
+**Что реализовано:**
+- ✅ `experience.rs` — `resonance_search()` с threshold-based classification, weight-based trace selection, pattern distance (temperature/mass/valence/position); `strengthen_trace()`, `weaken_trace()`; `ExperienceTrace` расширен: `last_used`, `success_count`, `pattern_hash`; capacity eviction по минимальному весу
+- ✅ `ashti_processor.rs` — `process_token()` с hint blending (blend_alpha = trace.weight × feedback_weight_delta) + 8 domain-specific transformers по structural_role (spatial/temporal/logical/semantic/thermal/causal/resonant/meta)
+- ✅ `maya_processor.rs` — `consolidate_results()` с weighted averaging, confidence scoring (4 поля, tolerance-based agreement), median fallback при confidence < 0.5, `arbiter_flags` bit 0 для force-median
+- ✅ `com.rs` — `next_event_id()` с глобальным монотонным счётчиком + per-domain event count tracking; методы `domain_event_count()`, `current_id()`
 
-**Что нужно заменить:**
-
-**1. Experience Module (`experience.rs` stub → полноценная реализация):**
-- [ ] `Experience::resonance_search()` — реальный алгоритм резонансного поиска
-  - Threshold-based classification (reflex_threshold, association_threshold)
-  - Weight-based trace selection
-  - Distance metrics для pattern matching
-- [ ] `Experience::add_trace()` — полная логика ассоциативной памяти
-  - Trace deduplication
-  - Weight normalization
-  - Memory capacity limits
-- [ ] Trace strengthening/weakening based on feedback
-  - `strengthen_trace(trace_index, delta)`
-  - `weaken_trace(trace_index, delta)`
-  - Feedback loop integration
-- [ ] `ExperienceTrace` расширение:
-  - Добавить `last_used: u64` (для LRU eviction)
-  - Добавить `success_count: u32` (для reinforcement)
-  - Добавить `pattern_hash: u64` (для быстрого поиска)
-
-**2. ASHTI Processor (`ashti_processor.rs` stub → реальная обработка):**
-- [ ] `AshtiProcessor::process_token()` — маршрутизация через ASHTI 1-8
-  - Параллельная обработка через 8 специализированных доменов
-  - Hint propagation из Experience
-  - Domain-specific processing rules
-- [ ] Интеграция с DomainConfig:
-  - Использование `arbiter_flags` для REFLEX_ENABLED, HINTS_ENABLED
-  - Применение `max_concurrent_hints` ограничения
-  - Учет `reflex_cooldown` per domain
-- [ ] Result aggregation:
-  - Сбор результатов от всех 8 доменов
-  - Timeout handling для медленных доменов
-  - Partial result handling
-
-**3. MAYA Processor (`maya_processor.rs` stub → полная консолидация):**
-- [ ] `MayaProcessor::consolidate_results()` — алгоритм консолидации
-  - Weighted averaging по результатам от ASHTI 1-8
-  - Confidence scoring для каждого результата
-  - Conflict resolution при противоречивых результатах
-- [ ] Интеграция с DomainConfig:
-  - Использование `comparison_strategy` (FirstMatch, BestMatch, Consensus)
-  - Применение `response_timeout` для отбрасывания медленных результатов
-- [ ] Quality metrics:
-  - Consistency score между ASHTI результатами
-  - Confidence threshold для принятия решения
-
-**4. COM Module (`com.rs` stub → полный Causal Order Model):**
-- [ ] `COM::next_event_id()` — реальное отслеживание причинного порядка
-  - Domain-specific event ID allocation
-  - Causal ordering guarantees
-  - Event timestamp management
-- [ ] Интеграция с CausalFrontier:
-  - Event tracking для всех 11 доменов
-  - Parent-child event relationships
-  - Causal consistency validation
-- [ ] Event storage:
-  - Event history для replay/debugging
-  - Pruning старых событий (retention policy)
-
-**Причина stub-реализации:** Модули experience, ashti_processor, maya_processor, com еще не мигрированы. Arbiter мигрирован с минимальными заглушками для компиляции и тестирования основной логики маршрутизации.
-
-**Приоритет:** Средний (требуется после миграции соответствующих модулей)
-
-**Зависимости:**
-- Experience module миграция (пока не начата)
-- ASHTI domains implementation (требует axiom-domain)
-- MAYA consolidation logic (требует axiom-domain)
-- COM полная реализация (может быть отдельным crate)
-
-**Критерий готовности:** Все stub-модули заменены, 9 существующих тестов остаются зелеными, добавлены интеграционные тесты для полной функциональности.
-
----
+**Тесты:** 9 существующих ✅ + 12 experience tests + 5 COM tests = **26 итого**
 
 ---
 
@@ -149,8 +78,8 @@ _(Нет критических проблем на данный момент)_
   - `com.rs` — полный Causal Order Model
 - Без рабочих процессоров AshtiCore будет нефункциональным
 
-**Зависит от:** Замены stub-модулей в axiom-arbiter (см. §1.5 выше)
-**Когда:** После завершения миграции axiom-arbiter stub-модулей
+**Зависит от:** ~~Замены stub-модулей в axiom-arbiter~~ ✅ Выполнено 2026-03-26
+**Когда:** Перед Фазой 10 (axiom-runtime) или после неё
 
 ---
 

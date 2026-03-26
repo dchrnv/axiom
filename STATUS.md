@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 307
+**current_test_count:** 324
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
@@ -17,7 +17,7 @@
 | 3 | axiom-config | ✅ | 2026-03-21 | 33 | DomainConfig (+factory методы, мембрана), HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
 | 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
-| 6 | axiom-arbiter | ✅ | 2026-03-21 | 9 | Arbiter V1.0 со stub-модулями (experience, ashti, maya, com) |
+| 6 | axiom-arbiter | ✅ | 2026-03-26 | 26 | Arbiter V1.0 — stub-модули заменены: experience (resonance_search, strengthen/weaken), ashti (hint blend + role rules), maya (avg/median/confidence), com (per-domain tracking) |
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
 | 9 | axiom-domain | ✅ | 2026-03-26 | 71 | Domain, DomainState, EventGenerator, membrane — без unsafe, без дублирования. AshtiCore → DEFERRED.md |
