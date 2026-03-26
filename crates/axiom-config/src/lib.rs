@@ -30,8 +30,10 @@ pub mod heartbeat_config;
 pub mod loader;
 
 pub use domain_config::{
-    DomainConfig, DomainType, StructuralRole, DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
+    DomainConfig, DomainType, StructuralRole,
+    DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
     PROCESSING_ACTIVE, PROCESSING_FROZEN, PROCESSING_IDLE,
+    MEMBRANE_OPEN, MEMBRANE_SEMI, MEMBRANE_CLOSED, MEMBRANE_ADAPTIVE,
 };
 pub use heartbeat_config::HeartbeatConfig;
 pub use loader::{

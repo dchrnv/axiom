@@ -127,6 +127,33 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
+---
+
+### axiom-domain — AshtiCore (ashti.rs) отложено
+
+**Файл:** `crates/axiom-domain/src/ashti.rs` (не создан)
+**Статус:** Отложено
+**Дата:** 2026-03-26 (Фаза 9 миграции)
+
+**Что нужно:**
+- `AshtiCore` struct — 11 Domain instances (SUTRA=0, EXECUTION=1..VOID=8, EXPERIENCE=9, MAYA=10)
+- Маршрутизация: запрос → SUTRA(0) → EXECUTION(1)..VOID(8) → EXPERIENCE(9) → MAYA(10)
+- Интеграция с axiom-arbiter для dual-path routing (рефлексы + ассоциации)
+- `tests/ashti_tests.rs` — тесты маршрутизации 11 доменов
+
+**Причина отсрочки:**
+- Требует замены stub-модулей в axiom-arbiter:
+  - `experience.rs` — реальный алгоритм резонансного поиска
+  - `ashti_processor.rs` — маршрутизация через ASHTI 1-8
+  - `maya_processor.rs` — консолидация результатов
+  - `com.rs` — полный Causal Order Model
+- Без рабочих процессоров AshtiCore будет нефункциональным
+
+**Зависит от:** Замены stub-модулей в axiom-arbiter (см. §1.5 выше)
+**Когда:** После завершения миграции axiom-arbiter stub-модулей
+
+---
+
 ## 2. 📋 СТАРЫЕ ПЛАНЫ ИЗ ROADMAP (ОТЛОЖЕНО)
 
 Весь контент из предыдущего ROADMAP v2.3 перемещен сюда как отложенные задачи.

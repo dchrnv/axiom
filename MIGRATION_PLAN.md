@@ -537,7 +537,7 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 3: axiom-config — Система конфигурации
 
-**Статус:** ✅ Завершена
+**Статус:** ✅ Завершена 2026-03-26 (дополнена в рамках Фазы 9)
 
 **Цель:** Вынести ConfigLoader, DomainConfig и все конфигурационные структуры.
 
@@ -587,12 +587,17 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
    - `DomainType` (Logic=1, Dream=2, Math=3, Pattern=4, Memory=5, Interface=6)
    - Константы: `DOMAIN_ACTIVE`, `DOMAIN_LOCKED`, `DOMAIN_TEMPORARY`, `PROCESSING_IDLE`, `PROCESSING_ACTIVE`, `PROCESSING_FROZEN`
 
-6. ✅ Тесты: 17 тестов прошли
+6. ✅ Тесты: 17 тестов прошли (базовые)
    - DomainConfig: size, default, void, new, sutra, validation (11 тестов)
    - HeartbeatConfig: presets, default, validation (3 теста)
    - ConfigLoader: creation, default, error display (3 теста)
 
-**Результат:** ✅ `cargo test -p axiom-config` — 17 тестов прошли. DomainConfig строго 128 байт. Zero dependencies on other axiom crates.
+7. ✅ 2026-03-26 Дополнено в рамках Фазы 9: +16 тестов (итого 33)
+   - factory_execution..maya (10 методов), test_all_factory_methods_valid
+   - MEMBRANE_* константы (OPEN=0, SEMI=1, CLOSED=2, ADAPTIVE=3)
+   - helper методы: can_enter, is_active, is_locked, is_temporary, calculate_complexity, update_metadata
+
+**Результат:** ✅ `cargo test -p axiom-config` — 33 теста прошли. DomainConfig строго 128 байт.
 
 ---
 
@@ -779,69 +784,47 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ### ФАЗА 9: axiom-domain — Домены и Ashti_Core
 
-**Статус:** ⏸️ Отложена (требует миграции вспомогательных модулей)
+**Статус:** ✅ Завершена 2026-03-26 (частично — AshtiCore → DEFERRED.md)
 
 **Цель:** Вынести Domain, DomainState и Ashti_Core.
 
 **Что переносится:**
 
-| Компонент | Спецификация |
-|-----------|-------------|
-| `Domain` | Domain V1.3 (Anchor, Field, Membrane) |
-| `DomainState` | tokens, connections, shell_cache, spatial_hash |
-| Физика | гравитация, резонанс, термодинамика |
-| Мембранные фильтры | can_enter_domain, can_exit_domain |
-| `AshtiCore` | Ashti_Core V2.0 — композиция 11 доменов |
-| Маршруты | 0→9, 9→1-8, 9→10, 1-8→10, 1-8→9, 10→9, 10→0 |
+| Компонент | Спецификация | Статус |
+|-----------|-------------|--------|
+| `Domain` | Domain V1.3 (Anchor, Field, Membrane) | ✅ |
+| `DomainState` | tokens, connections, pre-allocated buffers | ✅ |
+| `EventGenerator` | physics.rs — decay, gravity, collision, stress | ✅ |
+| Мембранные фильтры | can_enter_domain, can_exit_domain | ✅ |
+| `AshtiCore` | Ashti_Core V2.0 — 11 доменов | ⏸️ DEFERRED.md |
+| Factory методы | DomainConfig factory_* (11 доменов) → axiom-config | ✅ |
 
-**Зависимости:** `axiom-core`, `axiom-config`, а также использует (через traits) возможности axiom-space, axiom-shell, axiom-frontier.
+**Зависимости:** `axiom-core`, `axiom-config`, `axiom-space`, `axiom-shell`, `axiom-frontier`, `axiom-heartbeat`.
 
 **Шаги:**
 
-1. ⬜ `domain.rs`: Основная структура Domain с тремя компонентами (Anchor, Field, Membrane).
+1. ✅ `axiom-config`: +10 factory методов (execution, shadow, codex, map, probe, logic, dream, void, experience, maya) + MEMBRANE_* константы + helper методы (can_enter, is_active, calculate_complexity).
 
-2. ⬜ `domain_state.rs`: DomainState с предвыделёнными буферами:
-```rust
-pub fn new(config: &DomainConfig) -> Self {
-    Self {
-        tokens: Vec::with_capacity(config.token_capacity as usize),
-        connections: Vec::with_capacity(config.connection_capacity as usize),
-        neighbor_buffer: Vec::with_capacity(256),
-        // ...
-    }
-}
+2. ✅ `domain.rs`: Domain runtime struct — axiom_config::DomainConfig напрямую, без дублирования, без unsafe. Методы: new, with_heartbeat, on_event, handle_heartbeat, process_frontier, rebuild_spatial_grid, find_neighbors.
 
-pub fn add_token(&mut self, token: Token) -> Result<usize, CapacityExceeded> {
-    if self.tokens.len() >= self.tokens.capacity() {
-        return Err(CapacityExceeded);
-    }
-    self.tokens.push(token);
-    Ok(self.tokens.len() - 1)
-}
-```
+3. ✅ `domain_state.rs`: DomainState с предвыделёнными буферами (token_capacity, connection_capacity из конфига). add_token/add_connection возвращают CapacityExceeded.
 
-3. ⬜ `physics.rs`:
-   - `apply_gravity(token, config)` — гравитация к Anchor (0,0,0).
-   - `apply_resonance(token_a, token_b, config)` — обмен momentum при резонансе.
-   - `apply_thermodynamics(token, config)` — адаптация температуры к полю.
-   - Все через целочисленную арифметику.
+4. ✅ `physics.rs`: EventGenerator — check_decay (causal age), generate_gravity_update, generate_collision (axiom_space::distance2), check_connection_stress. Константы: DEFAULT_DECAY_RATE=0.001, DEFAULT_STRESS_THRESHOLD=0.8, DEFAULT_COLLISION_RADIUS=100.
 
-4. ⬜ `membrane.rs`:
-   - `can_enter_domain(token, config) -> bool` — mass >= threshold, temperature, pattern match.
-   - `can_exit_domain(token, config) -> bool` — state != Locked, membrane != Closed.
+5. ✅ `membrane.rs`: can_enter_domain, can_exit_domain — MEMBRANE_CLOSED блокирует, mass threshold, bloom filter.
 
-5. ⬜ `ashti.rs`:
-   - `AshtiCore` struct — содержит 11 Domain instances (0=SUTRA, 1-8=ASHTI, 9=EXPERIENCE, 10=MAYA).
-   - Инициализация из конфигурации (domains.yaml).
-   - Маршрутизация через Arbiter.
+6. ✅ `lib.rs`: только re-exports из модулей + re-export axiom_config::DomainConfig.
 
-6. ⬜ Тесты:
-   - Domain: создание, инициализация, физика.
-   - Membrane: фильтрация входа/выхода.
-   - AshtiCore: маршрутизация через все домены.
-   - CapacityExceeded: попытка добавить токен сверх capacity.
+7. ✅ Тесты (71 тест):
+   - `domain_tests.rs` — Domain runtime, DomainState, Heartbeat integration, Frontier processing, SPACE V6.0.
+   - `physics_tests.rs` — EventGenerator: decay, gravity, collision, stress, deterministic hashes.
+   - `membrane_tests.rs` — can_enter/can_exit: closed/open/semi/adaptive, locked token.
 
-**Критерий:** `cargo test -p axiom-domain` — все тесты зелёные.
+8. ⏸️ `ashti.rs` — AshtiCore: ОТЛОЖЕНО в DEFERRED.md (требует замены stub-модулей axiom-arbiter).
+
+**Результат:** ✅ `cargo test -p axiom-domain` — 71 тест зелёный. Нет unsafe. Нет дублирования DomainConfig. Workspace: 307 тестов.
+
+**Критерий:** ✅ `cargo test -p axiom-domain` — все тесты зелёные.
 
 ---
 

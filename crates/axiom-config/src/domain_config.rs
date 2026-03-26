@@ -19,6 +19,12 @@ pub const PROCESSING_IDLE: u8 = 1;
 pub const PROCESSING_ACTIVE: u8 = 2;
 pub const PROCESSING_FROZEN: u8 = 3;
 
+/// Константы состояния мембраны (Domain V1.3)
+pub const MEMBRANE_OPEN: u8 = 0;      // Полностью открыта — всё проходит
+pub const MEMBRANE_SEMI: u8 = 1;      // Полупроницаемая — фильтрация по порогу
+pub const MEMBRANE_CLOSED: u8 = 2;    // Закрыта — только системные токены
+pub const MEMBRANE_ADAPTIVE: u8 = 3;  // Адаптивная — меняется по контексту
+
 /// Структурные роли доменов в системе Ashti_Core
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -273,6 +279,351 @@ impl DomainConfig {
         config.token_capacity = 100;
         config.connection_capacity = 1000;
         config
+    }
+
+    /// EXECUTION (1) — Реализация решений
+    ///
+    /// Физика: Умеренная среда для быстрой реакции.
+    /// Средняя температура, нормальная гравитация, низкое трение.
+    pub fn factory_execution(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Execution as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 9.81;
+        config.temperature = 310.0;         // ~37°C — активная среда
+        config.elasticity = 180;            // ~0.7 — умеренная упругость
+        config.friction_coeff = 30;         // ~0.12 — низкое трение
+
+        config.permeability = 180;
+        config.membrane_state = MEMBRANE_SEMI;
+
+        config.reflex_threshold = 140;
+        config.association_threshold = 50;
+        config.arbiter_flags = 0b00011111;
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 3;
+        config.feedback_weight_delta = 30;
+
+        config.token_capacity = 5000;
+        config.connection_capacity = 2500;
+        config
+    }
+
+    /// SHADOW (2) — Симуляция и предсказание
+    ///
+    /// Физика: Осторожная среда для точных симуляций.
+    /// Высокий порог, низкая температура для стабильности.
+    pub fn factory_shadow(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Shadow as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 5.0;
+        config.temperature = 250.0;         // Прохладная среда для стабильности
+        config.viscosity = 180;             // ~0.7 — замедленное движение
+        config.friction_coeff = 50;
+
+        config.permeability = 150;
+        config.membrane_state = MEMBRANE_CLOSED;
+
+        config.reflex_threshold = 180;
+        config.association_threshold = 40;
+        config.arbiter_flags = 0b00010111;
+        config.reflex_cooldown = 2;
+        config.max_concurrent_hints = 4;
+        config.feedback_weight_delta = 20;
+
+        config.token_capacity = 8000;
+        config.connection_capacity = 4000;
+        config
+    }
+
+    /// CODEX (3) — Конституция и правила
+    ///
+    /// Физика: Высокая стабильность и вязкость. Данные здесь «застревают»
+    /// и становятся законами. Очень холодно — паттерны не мутируют.
+    pub fn factory_codex(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Codex as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 1000.0;
+        config.temperature = 10.0;          // Почти ноль — минимальные колебания
+        config.viscosity = 250;             // ~0.98 — токены вязнут и фиксируются
+        config.friction_coeff = 200;
+
+        config.permeability = 25;
+        config.membrane_state = MEMBRANE_CLOSED;
+
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
+        config.token_capacity = 500;
+        config.connection_capacity = 50;
+        config
+    }
+
+    /// MAP (4) — Карта мира и фактов
+    ///
+    /// Физика: Стабильная среда для достоверных данных.
+    /// Высокая гравитация для удержания фактов.
+    pub fn factory_map(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Map as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 15.0;
+        config.temperature = 280.0;
+        config.friction_coeff = 40;
+        config.viscosity = 200;
+
+        config.permeability = 120;
+        config.membrane_state = MEMBRANE_CLOSED;
+
+        config.reflex_threshold = 200;
+        config.association_threshold = 80;
+        config.arbiter_flags = 0b00011111;
+        config.reflex_cooldown = 3;
+        config.max_concurrent_hints = 2;
+        config.feedback_weight_delta = 40;
+
+        config.token_capacity = 10000;
+        config.connection_capacity = 5000;
+        config
+    }
+
+    /// PROBE (5) — Исследование и анализ
+    ///
+    /// Физика: Активная исследовательская среда.
+    /// Повышенная температура, высокий резонанс для активного поиска.
+    pub fn factory_probe(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Probe as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 7.0;
+        config.temperature = 350.0;
+        config.resonance_freq = 800;
+        config.friction_coeff = 35;
+        config.elasticity = 200;
+
+        config.permeability = 190;
+        config.membrane_state = MEMBRANE_OPEN;
+
+        config.reflex_threshold = 160;
+        config.association_threshold = 60;
+        config.arbiter_flags = 0b00010111;
+        config.reflex_cooldown = 1;
+        config.max_concurrent_hints = 5;
+        config.feedback_weight_delta = 25;
+
+        config.token_capacity = 6000;
+        config.connection_capacity = 3000;
+        config
+    }
+
+    /// LOGIC (6) — Чистое вычисление
+    ///
+    /// Физика: Идеальная рабочая среда. Комнатная температура,
+    /// умеренная гравитация. Смыслы сталкиваются, вычисляются, летят дальше.
+    pub fn factory_logic(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Logic as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 9.81;
+        config.temperature = 273.0;
+        config.elasticity = 200;
+        config.friction_coeff = 25;
+
+        config.permeability = 127;
+        config.membrane_state = MEMBRANE_ADAPTIVE;
+
+        config.reflex_threshold = 230;
+        config.association_threshold = 100;
+        config.arbiter_flags = 0b00011111;
+        config.reflex_cooldown = 5;
+        config.max_concurrent_hints = 2;
+        config.feedback_weight_delta = 50;
+
+        config.token_capacity = 2000;
+        config.connection_capacity = 200;
+        config
+    }
+
+    /// DREAM (7) — Фоновая оптимизация и галлюцинация
+    ///
+    /// Физика: Полный хаос. Нулевая гравитация, высокая температура,
+    /// высокий квантовый шум. Смыслы мутируют и образуют случайные связи.
+    pub fn factory_dream(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Dream as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 0.0;
+        config.temperature = 500.0;
+        config.quantum_noise = 200;
+        config.time_dilation = 50;          // x0.5 — время течёт быстрее
+
+        config.permeability = 200;
+        config.membrane_state = MEMBRANE_OPEN;
+
+        config.reflex_threshold = 0;
+        config.association_threshold = 25;
+        config.arbiter_flags = 0b00010010;
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 8;
+        config.feedback_weight_delta = 10;
+
+        config.token_capacity = 3000;
+        config.connection_capacity = 300;
+        config
+    }
+
+    /// VOID (8) — Аннигиляция и трансформация
+    ///
+    /// Физика: Экстремальная среда. Очень высокая температура и гравитация,
+    /// токены здесь разрушаются и трансформируются.
+    pub fn factory_void(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Void as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 100.0;
+        config.temperature = 1000.0;
+        config.friction_coeff = 200;
+        config.viscosity = 100;
+
+        config.permeability = 255;
+        config.membrane_state = MEMBRANE_OPEN;
+
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
+        config.token_capacity = 2000;
+        config.connection_capacity = 100;
+        config
+    }
+
+    /// EXPERIENCE (9) — Ассоциативная память и рефлексы (Ashti_Core V2.0)
+    ///
+    /// Физика: Низкая гравитация (свободное перемещение следов),
+    /// минимальное затухание (ничего не забывается), высокий резонанс.
+    pub fn factory_experience(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Experience as u8;
+
+        config.field_size = [5000.0, 5000.0, 5000.0]; // Большое поле для множества следов
+        config.gravity_strength = 0.5;
+        config.temperature = 300.0;
+        config.resonance_freq = 1000;       // Высокий резонанс — лёгкий поиск
+        config.friction_coeff = 20;
+        config.viscosity = 200;
+
+        config.permeability = 200;
+        config.membrane_state = MEMBRANE_SEMI;
+
+        config.reflex_threshold = 0;        // Сам источник рефлексов, не получатель
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000100;  // Только FEEDBACK_ENABLED
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;   // Управляется внутренней логикой домена 9
+
+        config.token_capacity = 100000;     // Много следов (опыт накапливается)
+        config.connection_capacity = 50000;
+        config
+    }
+
+    /// MAYA (10) — Интерфейс и проекция (Иллюзия)
+    ///
+    /// Физика: Мягкое, тёплое поле без трения. Презентационный слой,
+    /// где токены собираются в структуры для выдачи ответа.
+    pub fn factory_maya(domain_id: u16, parent_domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_domain_id;
+        config.structural_role = StructuralRole::Maya as u8;
+
+        config.field_size = [2000.0, 2000.0, 2000.0];
+        config.gravity_strength = 1.0;
+        config.temperature = 310.0;
+        config.friction_coeff = 5;
+
+        config.permeability = 255;
+        config.membrane_state = MEMBRANE_OPEN;
+
+        config.reflex_threshold = 0;
+        config.association_threshold = 0;
+        config.arbiter_flags = 0b00000000;
+        config.reflex_cooldown = 0;
+        config.max_concurrent_hints = 0;
+        config.feedback_weight_delta = 0;
+
+        config.token_capacity = 5000;
+        config.connection_capacity = 500;
+        config
+    }
+
+    /// Проверить может ли токен войти в домен по параметрам мембраны
+    pub fn can_enter(&self, mass: u16, _temperature: u16) -> bool {
+        self.membrane_state != MEMBRANE_CLOSED && mass >= self.threshold_mass
+    }
+
+    /// Обновить метаданные при изменении (event_id из COM)
+    pub fn update_metadata(&mut self, event_id: u64) {
+        self.last_update = event_id;
+        self.error_count = 0;
+    }
+
+    /// Домен активен
+    pub fn is_active(&self) -> bool {
+        (self.flags & (DOMAIN_ACTIVE as u8)) != 0
+    }
+
+    /// Домен заблокирован
+    pub fn is_locked(&self) -> bool {
+        (self.flags & (DOMAIN_LOCKED as u8)) != 0
+    }
+
+    /// Домен временный
+    pub fn is_temporary(&self) -> bool {
+        (self.flags & (DOMAIN_TEMPORARY as u8)) != 0
+    }
+
+    /// Расчёт сложности домена
+    pub fn calculate_complexity(&self) -> f32 {
+        let token_factor = self.token_capacity as f32 * 0.1;
+        let connection_factor = self.connection_capacity as f32 * 0.05;
+        let friction_factor = (self.friction_coeff as f32 / 255.0) * 10.0;
+        token_factor + connection_factor + friction_factor
     }
 
     /// Валидация конфигурации

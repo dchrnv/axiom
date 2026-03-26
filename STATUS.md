@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 222
+**current_test_count:** 307
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
@@ -14,13 +14,13 @@
 | 0 | workspace setup | ✅ | 2026-03-21 | 0 | Завершено: 11 crates, justfile, scripts |
 | 1 | axiom-core | ✅ | 2026-03-21 | 24 | Token, Connection, Event (zero deps) |
 | 2 | axiom-frontier | ✅ | 2026-03-21 | 22 | Frontier, storm, budget, processor |
-| 3 | axiom-config | ✅ | 2026-03-21 | 17 | DomainConfig, HeartbeatConfig, ConfigLoader |
+| 3 | axiom-config | ✅ | 2026-03-21 | 33 | DomainConfig (+factory методы, мембрана), HeartbeatConfig, ConfigLoader |
 | 4 | axiom-space | ✅ | 2026-03-21 | 83 | SpatialHashGrid, координаты, физика (1983 строки) |
 | 5 | axiom-shell | ✅ | 2026-03-21 | 43 | Shell V3.0, семантические профили (1365 строк) |
 | 6 | axiom-arbiter | ✅ | 2026-03-21 | 9 | Arbiter V1.0 со stub-модулями (experience, ashti, maya, com) |
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
-| 9 | axiom-domain | ⏸️ | — | — | Пропущена (2845 строк, требует event_generator + 113+ импортов) |
+| 9 | axiom-domain | ✅ | 2026-03-26 | 71 | Domain, DomainState, EventGenerator, membrane — без unsafe, без дублирования. AshtiCore → DEFERRED.md |
 | 10 | axiom-runtime | ⏸️ | — | — | Пропущена (зависит от domain и arbiter) |
 
 ---
