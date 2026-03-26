@@ -1,0 +1,18 @@
+[package]
+name = "axiom-runtime"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-config = { path = "../axiom-config" }
+axiom-domain = { path = "../axiom-domain" }
+axiom-space = { path = "../axiom-space" }
+axiom-shell = { path = "../axiom-shell" }
+axiom-arbiter = { path = "../axiom-arbiter" }
+axiom-heartbeat = { path = "../axiom-heartbeat" }
+axiom-frontier = { path = "../axiom-frontier" }
+axiom-upo = { path = "../axiom-upo" }
+axiom-ucl = { path = "../axiom-ucl" }

@@ -1,0 +1,22 @@
+# Strong Connection Preset
+# High-strength, low-decay connections for stable relationships
+
+type: strong
+strength: 1.0
+decay_rate: 0.001
+gate_complexity: 1
+flags: 1  # ACTIVE
+
+description: "Strong connection with high stability and minimal decay"
+
+# Validation constraints
+constraints:
+  strength:
+    min: 0.1
+    max: 10.0
+  decay_rate:
+    min: 0.0001
+    max: 0.1
+  gate_complexity:
+    min: 1
+    max: 1000

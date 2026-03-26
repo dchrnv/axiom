@@ -1,0 +1,30 @@
+# AXIOM Workspace
+# Модульная архитектура: каждый архитектурный компонент — отдельный crate
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/axiom-core",
+    "crates/axiom-config",
+    "crates/axiom-domain",
+    "crates/axiom-space",
+    "crates/axiom-shell",
+    "crates/axiom-arbiter",
+    "crates/axiom-heartbeat",
+    "crates/axiom-frontier",
+    "crates/axiom-upo",
+    "crates/axiom-ucl",
+    "crates/axiom-runtime",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Chernov Denys (@dchrnv)"]
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+# Общие зависимости — версии определяются здесь один раз
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+bitvec = "1"

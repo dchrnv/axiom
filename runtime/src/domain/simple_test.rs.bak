@@ -1,0 +1,14 @@
+
+#[cfg(test)]
+mod simple_test {
+    use super::*;
+
+    #[test]
+    fn test_simple_factory() {
+        let domain = DomainConfig::factory_sutra(42);
+        assert_eq!(domain.domain_id, 42);
+        assert_eq!(domain.structural_role, StructuralRole::Sutra as u8);
+        assert!(domain.validate());
+        assert_eq!(std::mem::size_of_val(&domain), 128);
+    }
+}

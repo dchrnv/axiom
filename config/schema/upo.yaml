@@ -1,0 +1,66 @@
+# UPO Schema Configuration
+# Semantic structure of Axiom Unstable Periodic Orbits
+
+# UPO types definition
+upo_types:
+  - name: "fixed_point"
+    description: "Fixed point attractor"
+    stability_threshold: 0.001
+    detection_window: 100
+    
+  - name: "limit_cycle"
+    description: "Limit cycle attractor"
+    stability_threshold: 0.01
+    detection_window: 200
+    
+  - name: "strange_attractor"
+    description: "Chaotic attractor"
+    stability_threshold: 0.1
+    detection_window: 500
+
+# UPO configuration template
+upo_template:
+  type: object
+  required: ["upo_id", "upo_type", "stability_threshold", "detection_window"]
+  properties:
+    upo_id:
+      type: integer
+      minimum: 1
+      maximum: 4294967295
+    upo_type:
+      type: string
+      enum: ["fixed_point", "limit_cycle", "strange_attractor", "custom"]
+    stability_threshold:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+      default: 0.01
+    detection_window:
+      type: integer
+      minimum: 10
+      maximum: 10000
+      default: 100
+    period:
+      type: number
+      minimum: 0.1
+      maximum: 10000.0
+      default: 1.0
+    embedding_dimension:
+      type: integer
+      minimum: 1
+      maximum: 10
+      default: 3
+
+# Dynamical constraints
+dynamical_constraints:
+  stability_convergence:
+    description: "UPO must converge to stable behavior"
+    rule: "variance(states, detection_window) <= stability_threshold"
+    
+  period_detection:
+    description: "Period must be detectable within window"
+    rule: "autocorrelation_period(states) <= detection_window"
+    
+  embedding_sufficiency:
+    description: "Embedding dimension must capture dynamics"
+    rule: "embedding_dimension >= correlation_dimension(states)"

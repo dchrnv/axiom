@@ -1,0 +1,22 @@
+# Temporal Connection Preset
+# Time-based connections with moderate decay
+
+type: temporal
+strength: 0.5
+decay_rate: 0.01
+gate_complexity: 5
+flags: 1  # ACTIVE
+
+description: "Temporal connection with time-based decay"
+
+# Validation constraints
+constraints:
+  strength:
+    min: 0.1
+    max: 5.0
+  decay_rate:
+    min: 0.001
+    max: 0.1
+  gate_complexity:
+    min: 1
+    max: 1000

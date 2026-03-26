@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024-2026 Chernov Denys
+//
+// AXIOM Runtime — оркестрация всей системы
+//
+// Главный цикл: UCL → COM → Frontier → State.
+// Интеграция всех компонентов в единый Engine.
+
+#![deny(unsafe_code)]
+#![warn(missing_docs)]
+
+/// Engine — центральный оркестратор
+pub mod engine;
+/// Guardian — надоменный контроль CODEX-правил
+pub mod guardian;
+/// Snapshot — сохранение и восстановление состояния
+pub mod snapshot;
+/// Adapters — trait-границы для внешних адаптеров
+pub mod adapters;
+mod orchestrator;
+
+pub use engine::AxiomEngine;
+pub use guardian::Guardian;
+pub use snapshot::{EngineSnapshot, DomainSnapshot};
+pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter};

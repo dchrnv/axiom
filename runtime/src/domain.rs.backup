@@ -1,0 +1,324 @@
+// Copyright (C) 2024-2026 Chernov Denys
+//
+// Domain V1.3: docs/spec/Domain V1.3.md
+
+use crate::config::{ConfigLoader, initialize};
+
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod factory_tests;
+#[cfg(test)]
+mod simple_test;
+
+/// Состояние Domain
+pub const DOMAIN_ACTIVE: u32 = 1;
+pub const DOMAIN_LOCKED: u32 = 2;
+pub const DOMAIN_TEMPORARY: u32 = 3;
+
+/// Состояние обработки
+pub const PROCESSING_IDLE: u8 = 1;
+pub const PROCESSING_ACTIVE: u8 = 2;
+pub const PROCESSING_FROZEN: u8 = 3;
+
+/// Состояние мембраны
+pub const MEMBRANE_OPEN: u8 = 1;
+pub const MEMBRANE_CLOSED: u8 = 2;
+pub const MEMBRANE_SEMI: u8 = 3;
+
+/// Структурные роли в Ashti_Core
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum StructuralRole {
+    Sutra = 0,
+    Execution = 1,
+    Shadow = 2,
+    Codex = 3,
+    Map = 4,
+    Probe = 5,
+    Logic = 6,
+    Dream = 7,
+    Void = 8, 
+    Maya = 10, // Нейтральное пространство для фабрик
+}
+
+/// Типы доменов
+#[repr(u16)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum DomainType {
+    Logic = 1,
+    Dream = 2,
+    Math = 3,
+    Pattern = 4,
+    Memory = 5,
+    Interface = 6,
+}
+
+/// DomainConfig — 128 байт конфигурация домена (соответствие спецификации V2.0)
+/// Размер: 128 байт, выравнивание: 128 байт
+#[repr(C, align(128))]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct DomainConfig {
+    // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
+    pub reserved_id: u64,       // 8b | Явный резерв для будущих расширений
+    pub domain_id: u16,         // 2b | Уникальный ID Домена
+    pub parent_domain_id: u16,  // 2b | Родительский Домен
+    pub domain_type: u8,        // 1b | Тип (до 255 вариаций)
+    pub structural_role: u8,    // 1b | Роль в Ashti_Core (Sutra, Logic, Dream)
+    pub generation: u8,         // 1b | Поколение (эволюционный индекс)
+    pub flags: u8,              // 1b | Битовая маска состояний (Active, Locked)
+    // Offset: 16 байт
+
+    // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
+    pub field_size: [f32; 3],   // 12b| Размеры поля (X, Y, Z)
+    pub gravity_strength: f32,  // 4b | Гравитация (-MAX..+MAX)
+    pub temperature: f32,       // 4b | Температура поля в Кельвинах
+    pub time_dilation: u16,     // 2b | Замедление времени (х100)
+    pub resonance_freq: u16,    // 2b | Базовая частота (Hz)
+    pub pressure: u16,          // 2b | Давление (Pa)
+    pub reserved_physics: u16,  // 2b | Резерв блока физики
+    pub friction_coeff: u8,     // 1b | Трение (0..255 -> 0.0..1.0)
+    pub viscosity: u8,          // 1b | Вязкость (0..255 -> 0.0..1.0)
+    pub elasticity: u8,         // 1b | Упругость (0..255 -> 0.0..1.0)
+    pub quantum_noise: u8,      // 1b | Квантовый шум (0..255 -> 0.0..1.0)
+    // Offset: 48 байт
+
+    // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
+    pub axis_x_ref: u32,        // 4b | Референс концепции оси X
+    pub axis_y_ref: u32,        // 4b | Референс концепции оси Y  
+    pub axis_z_ref: u32,        // 4b | Референс концепции оси Z
+    pub axis_config: u32,       // 4b | Конфигурация полюсов (Bit-packed u16x2)
+    // Offset: 64 байт
+
+    // --- 4. МЕМБРАНА [32 Байт] ---
+    pub input_filter: u64,      // 8b | 64-bit Bloom Filter или хэш входа
+    pub output_filter: u64,     // 8b | 64-bit Bloom Filter или хэш выхода
+    pub reserved_membrane: u64, // 8b | Резерв мембраны
+    pub gate_complexity: u16,   // 2b | Вычислительная сложность шлюзов
+    pub threshold_mass: u16,    // 2b | Порог массы для прохождения
+    pub threshold_temp: u16,    // 2b | Порог температуры для прохождения
+    pub permeability: u8,       // 1b | Проницаемость (0..255 -> 0.0..1.0)
+    pub membrane_state: u8,     // 1b | OPEN/CLOSED/SEMI/ADAPTIVE
+    // Offset: 96 байт
+
+    // --- 5. МЕТАДАННЫЕ [32 Байт] ---
+    pub created_at: u64,        // 8b | COM event_id (Время создания)
+    pub last_update: u64,       // 8b | COM event_id (Последнее обновление)
+    pub token_capacity: u32,    // 4b | Максимальная емкость токенов
+    pub connection_capacity: u32, // 4b | Максимальная емкость связей
+    pub error_count: u16,       // 2b | Счетчик когнитивных ошибок
+    pub processing_state: u8,   // 1b | IDLE/PROCESSING/FROZEN/CRASHED
+    pub complexity_score: u8,   // 1b | Оценка сложности (0..255 -> 0.0..1.0)
+    pub performance_score: u8,  // 1b | Производительность (0..255 -> 0.0..1.0)
+    pub reserved_meta: [u8; 3], // 3b | Добивка до границы 128 байт
+    // Итого: 128 байт. Offset: 128. Без скрытого паддинга.
+}
+
+impl Default for DomainConfig {
+    fn default() -> Self {
+        Self {
+            // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
+            reserved_id: 0,          // Явный резерв для будущих расширений
+            domain_id: 1,             // Уникальный ID Домена
+            parent_domain_id: 0,       // Родительский Домен
+            domain_type: 1,            // DomainType::Logic
+            structural_role: 6,         // StructuralRole::Logic
+            generation: 0,             // Поколение (эволюционный индекс)
+            flags: DOMAIN_ACTIVE as u8, // Битовая маска состояний
+
+            // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
+            field_size: [100.0, 100.0, 100.0], // Размеры поля (X, Y, Z)
+            gravity_strength: 1.0,               // Гравитация
+            temperature: 293.15,                  // Температура поля в Кельвинах (20°C)
+            time_dilation: 100,                    // Замедление времени (х100) = 1.0x
+            resonance_freq: 440,                   // Базовая частота (Hz)
+            pressure: 50000,                      // Давление (Па)
+            reserved_physics: 0,  // Резерв блока физики
+            friction_coeff: 25,                      // Трение (25/255 ≈ 0.098)
+            viscosity: 3,                             // Вязкость (3/255 ≈ 0.012)
+            elasticity: 128,                           // Упругость (128/255 ≈ 0.502)
+            quantum_noise: 1,                          // Квантовый шум (1/255 ≈ 0.004)
+
+            // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
+            axis_x_ref: 0,              // Ссылка на ось X
+            axis_y_ref: 0,              // Ссылка на ось Y
+            axis_z_ref: 0,              // Ссылка на ось Z
+            axis_config: 0,             // Конфигурация осей
+            // Offset: 48 байт
+
+            // --- 4. МЕМБРАНА [32 Байт] ---
+            input_filter: u64::MAX,     // Bloom фильтр входа (все разрешено)
+            output_filter: u64::MAX,    // Bloom фильтр выхода (все разрешено)
+            reserved_membrane: 0,   // Резерв мембраны
+            gate_complexity: 50,        // Сложность ворот (0..255)
+            threshold_mass: 1,           // Порог массы (0..65535)
+            threshold_temp: 200,         // Порог температуры (0..65535)
+            permeability: 255,           // Проницаемость (0..255) = 1.0
+            membrane_state: MEMBRANE_OPEN, // Состояние мембраны (открыта)
+            // Offset: 80 байт
+
+            // --- 5. МЕТАДАННЫЕ [32 Байт] ---
+            created_at: 1715292000,      // Время создания (Unix timestamp)
+            last_update: 1715292000,     // Последнее обновление
+            token_capacity: 1000,        // Емкость токенов
+            connection_capacity: 5000,   // Емкость соединений
+            error_count: 0,              // Счетчик ошибок
+            processing_state: PROCESSING_IDLE, // Состояние обработки
+            complexity_score: 0,          // Оценка сложности (0..255)
+            performance_score: 255,       // Оценка производительности (0..255)
+            reserved_meta: [0, 0, 0],   // Резерв метаданных
+            // Offset: 112 байт
+            // Total: 128 байт
+        }
+    }
+}
+
+impl DomainConfig {
+    /// Создать новый домен с базовыми параметрами
+    pub fn new(domain_id: u16, domain_type: DomainType, structural_role: StructuralRole) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.domain_type = domain_type as u8;
+        config.structural_role = structural_role as u8;
+        config
+    }
+
+    /// -----------------------------------------------------------------------
+    /// БАЗОВАЯ ФАБРИКА (ВАКУУМ)
+    /// Создает абсолютно нейтральное, пустое пространство (Role::Void = 8).
+    /// Используется как основа для всех остальных фабрик, чтобы избежать 
+    /// ручного заполнения 30+ полей каждый раз.
+    /// -----------------------------------------------------------------------
+    pub fn default_void() -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.parent_domain_id = parent_id;
+        config.structural_role = 10; // Maya
+        
+        config.field_size = [2000.0, 2000.0, 2000.0]; // Огромный "экран"
+        config.gravity_strength = 1.0;      // Легкое притяжение
+        config.temperature = 310.0;         // ~36.6 по Цельсию (теплая среда)
+        config.friction_coeff = 5;          // Скольжение
+        
+        config.permeability = 255;          // 1.0 - Абсолютно открыто для проекций
+        config.membrane_state = 0;          // OPEN
+        config
+    }
+
+    /// Создать домен из пресета согласно Configuration System
+    pub fn from_preset(preset_name: &str) -> Result<Self, crate::config::ConfigError> {
+        let config = initialize()?;
+        let mut loader = crate::config::ConfigLoader::new();
+        
+        // Загрузить схему доменов
+        let schema = loader.load_schema("domain", 
+            std::path::Path::new(&config.schema.domain))?;
+        
+        // Получить пресет из схемы
+        if let Some(presets) = schema.get("domain_types") {
+            if let Some(presets_array) = presets.as_sequence() {
+                for preset in presets_array {
+                    if let Some(name) = preset.get("name") {
+                        if let Some(name_str) = name.as_str() {
+                            if name_str == preset_name {
+                                // В реальной реализации здесь будет десериализация
+                                // из YAML в DomainConfig структуру
+                                println!("Loading domain from preset: {}", preset_name);
+                                return Ok(Self::default()); // Временно
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Err(crate::config::ConfigError::ValidationError(format!(
+            "Unknown preset: {}", preset_name
+        )))
+    }
+
+    /// -----------------------------------------------------------------------
+    /// SUTRA (0) - Источник Истины
+    /// Физика: Кристаллизация. Абсолютный ноль, колоссальная гравитация. 
+    /// Сюда ничего не проникает извне, отсюда только рождаются смыслы.
+    /// -----------------------------------------------------------------------
+    pub fn factory_sutra(domain_id: u16) -> Self {
+        let mut config = Self::default_void();
+        config.domain_id = domain_id;
+        config.structural_role = 0; // Sutra
+        
+        config.created_at = 1715292000; // Время создания
+        config.last_update = 1715292000; // Последнее обновление
+        
+        config.gravity_strength = f32::MAX; // Бесконечная масса
+        config.temperature = 0.0;           // Абсолютный ноль
+        
+        config.permeability = 0;            // 0.0 - Непроницаемая
+        config.membrane_state = 1;          // CLOSED
+        config
+    }
+
+    /// Валидация согласно спецификации DomainConfig V2.0
+    pub fn validate(&self) -> bool {
+        // Базовые проверки
+        if self.domain_id == 0 {
+            return false;
+        }
+        
+        if self.token_capacity == 0 || self.connection_capacity == 0 {
+            return false;
+        }
+        
+        // Физические ограничения
+        if self.gravity_strength < 0.0 {
+            return false;
+        }
+        
+        // Проверка размеров поля (не должны быть нулевыми)
+        if self.field_size.iter().any(|&s| s <= 0.0) {
+            return false;
+        }
+        
+        // COM синхронизация
+        if self.created_at == 0 || self.last_update < self.created_at {
+            return false;
+        }
+        
+        true
+    }
+
+    /// Проверка фильтров мембраны
+    pub fn can_enter(&self, mass: u16, temperature: u16) -> bool {
+        mass >= self.threshold_mass
+        && temperature >= self.threshold_temp
+        && self.membrane_state != MEMBRANE_CLOSED
+    }
+
+    /// Обновление метаданных при изменении
+    pub fn update_metadata(&mut self, event_id: u64) {
+        self.last_update = event_id;
+        self.error_count = 0; // Сброс счетчика при успешном обновлении
+    }
+
+    /// Расчет сложности домена
+    pub fn calculate_complexity(&self) -> f32 {
+        let token_factor = self.token_capacity as f32 * 0.1;
+        let connection_factor = self.connection_capacity as f32 * 0.05;
+        let friction_factor = (self.friction_coeff as f32 / 255.0) * 10.0;
+        
+        token_factor + connection_factor + friction_factor
+    }
+
+    /// Проверка состояния домена
+    pub fn is_active(&self) -> bool {
+        (self.flags & (DOMAIN_ACTIVE as u8)) != 0
+    }
+
+    pub fn is_locked(&self) -> bool {
+        (self.flags & (DOMAIN_LOCKED as u8)) != 0
+    }
+
+    pub fn is_temporary(&self) -> bool {
+        (self.flags & (DOMAIN_TEMPORARY as u8)) != 0
+    }
+}

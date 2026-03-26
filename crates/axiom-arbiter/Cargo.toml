@@ -1,0 +1,10 @@
+[package]
+name = "axiom-arbiter"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-config = { path = "../axiom-config" }

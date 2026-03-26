@@ -1,0 +1,179 @@
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ucl_command::*;
+    use crate::physics_processor::*;
+    
+    #[test]
+    fn test_ucl_command_sizes() {
+        assert_eq!(std::mem::size_of::<UclCommand>(), 64);
+        assert_eq!(std::mem::align_of::<UclCommand>(), 64);
+        assert_eq!(std::mem::size_of::<UclResult>(), 32);
+        assert_eq!(std::mem::align_of::<UclResult>(), 32);
+    }
+    
+    #[test]
+    fn test_opcode_values() {
+        assert_eq!(OpCode::SpawnDomain as u16, 1000);
+        assert_eq!(OpCode::CollapseDomain as u16, 1001);
+        assert_eq!(OpCode::ApplyForce as u16, 2001);
+        assert_eq!(OpCode::InjectToken as u16, 2000);
+        assert_eq!(OpCode::TickForward as u16, 3000);
+        assert_eq!(OpCode::ChangeTemperature as u16, 3001);
+        assert_eq!(OpCode::CoreShutdown as u16, 9000);
+    }
+    
+    #[test]
+    fn test_command_builder() {
+        let command = UclBuilder::spawn_domain(123, 1); // SUTRA
+        
+        assert_eq!(command.opcode, OpCode::SpawnDomain as u16);
+        assert_eq!(command.target_id, 123);
+        assert_eq!(command.priority, 100);
+        assert_eq!(command.flags, 0);
+        assert!(command.is_valid());
+        
+        let payload = command.get_payload::<SpawnDomainPayload>();
+        assert_eq!(payload.factory_preset, 1);
+        assert_eq!(payload.structural_role, 1);
+        assert_eq!(payload.parent_domain_id, 0);
+    }
+    
+    #[test]
+    fn test_apply_force_builder() {
+        let force = [1.0, 2.0, 3.0];
+        let command = UclBuilder::apply_force(456, force, 10.0);
+        
+        assert_eq!(command.opcode, OpCode::ApplyForce as u16);
+        assert_eq!(command.target_id, 456);
+        assert!(command.is_valid());
+        
+        let payload = command.get_payload::<ApplyForcePayload>();
+        assert_eq!(payload.force_vector, force);
+        assert_eq!(payload.magnitude, 10.0);
+        assert_eq!(payload.duration_ticks, 1);
+        assert_eq!(payload.force_type, 1); // Гравитационная
+    }
+    
+    #[test]
+    fn test_inject_token_builder() {
+        let position = [5.0, 10.0, 15.0];
+        let command = UclBuilder::inject_token(789, 2, 1.5, position);
+        
+        assert_eq!(command.opcode, OpCode::InjectToken as u16);
+        assert_eq!(command.target_id, 789);
+        assert!(command.is_valid());
+        
+        let payload = command.get_payload::<InjectTokenPayload>();
+        assert_eq!(payload.target_domain_id, 789);
+        assert_eq!(payload.token_type, 2);
+        assert_eq!(payload.mass, 1.5);
+        assert_eq!(payload.position, position);
+        assert_eq!(payload.temperature, 273.0);
+    }
+    
+    #[test]
+    fn test_command_validation() {
+        // Валидная команда
+        let valid_command = UclBuilder::spawn_domain(123, 1);
+        assert!(valid_command.is_valid());
+        
+        // Невалидная команда (target_id = 0 для SpawnDomain)
+        let invalid_command = UclCommand::new(OpCode::SpawnDomain, 0, 100, 0);
+        assert!(!invalid_command.is_valid());
+        
+        // Валидная команда (CoreShutdown не требует target_id)
+        let valid_shutdown = UclCommand::new(OpCode::CoreShutdown, 0, 255, 0);
+        assert!(valid_shutdown.is_valid());
+    }
+    
+    #[test]
+    fn test_result_creation() {
+        let success = UclResult::success(123);
+        assert!(success.is_success());
+        assert_eq!(success.command_id, 123);
+        assert_eq!(success.status, CommandStatus::Success as u8);
+        assert_eq!(success.error_code, 0);
+        
+        let error = UclResult::error(456, CommandStatus::PhysicsViolation, 1001);
+        assert!(!error.is_success());
+        assert_eq!(error.command_id, 456);
+        assert_eq!(error.status, CommandStatus::PhysicsViolation as u8);
+        assert_eq!(error.error_code, 1001);
+    }
+    
+    #[test]
+    fn test_payload_transmutation() {
+        // Создаем SpawnDomain payload
+        let spawn_payload = SpawnDomainPayload {
+            parent_domain_id: 100,
+            factory_preset: 6, // LOGIC
+            structural_role: 6,
+            initial_energy: 200.0,
+            seed: 12345,
+            reserved: [0; 36],
+        };
+        
+        // Создаем команду с этим payload
+        let command = UclCommand::new(OpCode::SpawnDomain, 200, 100, 0)
+            .with_payload(&spawn_payload);
+        
+        // Читаем payload обратно
+        let read_payload = command.get_payload::<SpawnDomainPayload>();
+        
+        assert_eq!(read_payload.parent_domain_id, 100);
+        assert_eq!(read_payload.factory_preset, 6);
+        assert_eq!(read_payload.structural_role, 6);
+        assert_eq!(read_payload.initial_energy, 200.0);
+        assert_eq!(read_payload.seed, 12345);
+    }
+    
+    #[test]
+    fn test_command_flags() {
+        let command = UclCommand::new(OpCode::SpawnDomain, 123, 100, flags::SYNC | flags::FORCE);
+        
+        assert_eq!(command.flags, flags::SYNC | flags::FORCE);
+        assert!(command.flags & flags::SYNC != 0);
+        assert!(command.flags & flags::FORCE != 0);
+        assert!(command.flags & flags::CRITICAL == 0);
+    }
+    
+    #[test]
+    fn test_priority_levels() {
+        let low_priority = UclCommand::new(OpCode::SpawnDomain, 123, 10, 0);
+        let high_priority = UclCommand::new(OpCode::SpawnDomain, 124, 200, 0);
+        let critical_priority = UclCommand::new(OpCode::SpawnDomain, 125, 255, 0);
+        
+        assert_eq!(low_priority.priority, 10);
+        assert_eq!(high_priority.priority, 200);
+        assert_eq!(critical_priority.priority, 255);
+        
+        assert!(low_priority.priority < high_priority.priority);
+        assert!(high_priority.priority < critical_priority.priority);
+    }
+    
+    #[test]
+    fn test_unknown_opcode() {
+        let command = UclCommand::new(OpCode::CoreReset, 0, 100, 0);
+        assert!(!command.is_valid()); // CoreReset не в списке валидации
+    }
+    
+    #[test]
+    fn test_payload_sizes() {
+        assert_eq!(std::mem::size_of::<SpawnDomainPayload>(), 48);
+        assert_eq!(std::mem::size_of::<ApplyForcePayload>(), 48);
+        assert_eq!(std::mem::size_of::<InjectTokenPayload>(), 48);
+        assert_eq!(std::mem::size_of::<ChangeTemperaturePayload>(), 48);
+    }
+    
+    #[test]
+    fn test_command_id_generation() {
+        let command1 = UclBuilder::spawn_domain(1, 1);
+        let command2 = UclBuilder::spawn_domain(2, 1);
+        
+        // ID должны быть разными (основаны на времени)
+        assert_ne!(command1.command_id, command2.command_id);
+        assert!(command1.command_id > 0);
+        assert!(command2.command_id > 0);
+    }
+}

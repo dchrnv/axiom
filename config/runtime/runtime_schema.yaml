@@ -1,0 +1,53 @@
+# Runtime Configuration Schema
+# Validation schema for runtime configuration
+
+# System resource constraints
+system:
+  type: object
+  required: true
+  properties:
+    threads:
+      type: integer
+      minimum: 1
+      maximum: 64
+      default: 4
+    max_tokens:
+      type: integer
+      minimum: 1000
+      maximum: 10000000
+      default: 100000
+    cache_size:
+      type: string
+      pattern: "^[0-9]+(kb|mb|gb)$"
+      default: "512mb"
+    memory_limit:
+      type: string
+      pattern: "^[0-9]+(kb|mb|gb)$"
+      default: "2gb"
+
+# Logging configuration
+logging:
+  type: object
+  required: true
+  properties:
+    level:
+      type: string
+      enum: ["debug", "info", "warn", "error"]
+      default: "info"
+    file:
+      type: string
+      format: "uri"
+      default: "logs/axiom.log"
+    max_size:
+      type: string
+      pattern: "^[0-9]+(kb|mb|gb)$"
+      default: "100mb"
+    backup_count:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 5
+    format:
+      type: string
+      enum: ["json", "text"]
+      default: "json"

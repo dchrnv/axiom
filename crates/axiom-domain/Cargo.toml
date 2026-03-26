@@ -1,0 +1,15 @@
+[package]
+name = "axiom-domain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-config = { path = "../axiom-config" }
+axiom-frontier = { path = "../axiom-frontier" }
+axiom-heartbeat = { path = "../axiom-heartbeat" }
+axiom-space = { path = "../axiom-space" }
+axiom-shell = { path = "../axiom-shell" }
+serde = { workspace = true }

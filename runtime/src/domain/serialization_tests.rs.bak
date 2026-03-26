@@ -1,0 +1,150 @@
+//! Тесты сериализации DomainConfig V2.0
+
+use crate::{DomainConfig, DomainType, StructuralRole};
+use serde_json;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_domain_config_serialization() {
+        let domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti6);
+        
+        // Тест JSON сериализации
+        let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+        assert!(json_str.contains("\"domain_id\":1"));
+        assert!(json_str.contains("\"domain_type\":1"));
+        assert!(json_str.contains("\"structural_role\":6"));
+        
+        // Тест JSON десериализации
+        let deserialized: DomainConfig = serde_json::from_str(&json_str)
+            .expect("Failed to deserialize");
+        
+        assert_eq!(deserialized.domain_id, domain.domain_id);
+        assert_eq!(deserialized.domain_type, domain.domain_type);
+        assert_eq!(deserialized.structural_role, domain.structural_role);
+    }
+
+    #[test]
+    fn test_domain_config_yaml_serialization() {
+        let domain = DomainConfig::new(1, DomainType::Logic, StructuralRole::Ashti6);
+        
+        // Тест YAML сериализации
+        let yaml_str = serde_yaml::to_string(&domain).expect("Failed to serialize to YAML");
+        assert!(yaml_str.contains("domain_id: 1"));
+        assert!(yaml_str.contains("domain_type: 1"));
+        assert!(yaml_str.contains("structural_role: 6"));
+        
+        // Тест YAML десериализации
+        let deserialized: DomainConfig = serde_yaml::from_str(&yaml_str)
+            .expect("Failed to deserialize from YAML");
+        
+        assert_eq!(deserialized.domain_id, domain.domain_id);
+        assert_eq!(deserialized.domain_type, domain.domain_type);
+        assert_eq!(deserialized.structural_role, domain.structural_role);
+    }
+
+    #[test]
+    fn test_domain_config_size_after_serialization() {
+        let domain = DomainConfig::default();
+        
+        // Проверяем что сериализация не меняет размер
+        let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+        let deserialized: DomainConfig = serde_json::from_str(&json_str)
+            .expect("Failed to deserialize");
+        
+        assert_eq!(domain.domain_id, deserialized.domain_id);
+        assert_eq!(std::mem::size_of::<DomainConfig>(), 128);
+    }
+
+    #[test]
+    fn test_all_domain_types_serialization() {
+        // Тестируем все типы доменов
+        let types = vec![
+            (DomainType::Logic, 1),
+            (DomainType::Dream, 2),
+            (DomainType::Math, 3),
+            (DomainType::Pattern, 4),
+            (DomainType::Memory, 5),
+            (DomainType::Interface, 6),
+        ];
+        
+        for (domain_type, expected_value) in types {
+            let domain = DomainConfig::new(1, domain_type, StructuralRole::Ashti6);
+            let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+            let deserialized: DomainConfig = serde_json::from_str(&json_str)
+                .expect("Failed to deserialize");
+            
+            assert_eq!(deserialized.domain_type, expected_value);
+        }
+    }
+
+    #[test]
+    fn test_all_structural_roles_serialization() {
+        // Тестируем все структурные роли
+        let roles = vec![
+            (StructuralRole::Sutra, 0),
+            (StructuralRole::Ashti1, 1),
+            (StructuralRole::Ashti2, 2),
+            (StructuralRole::Ashti3, 3),
+            (StructuralRole::Ashti4, 4),
+            (StructuralRole::Ashti5, 5),
+            (StructuralRole::Ashti6, 6),
+            (StructuralRole::Ashti7, 7),
+            (StructuralRole::Ashti8, 8),
+            (StructuralRole::Maya, 10),
+        ];
+        
+        for (role, expected_value) in roles {
+            let domain = DomainConfig::new(1, DomainType::Logic, role);
+            let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+            let deserialized: DomainConfig = serde_json::from_str(&json_str)
+                .expect("Failed to deserialize");
+            
+            assert_eq!(deserialized.structural_role, expected_value);
+        }
+    }
+
+    #[test]
+    fn test_domain_config_complex_values_serialization() {
+        // Тестируем сложные значения с квантованными коэффициентами
+        let mut domain = DomainConfig::default();
+        domain.friction_coeff = 255; // Максимальное трение
+        domain.viscosity = 128; // Средняя вязкость
+        domain.elasticity = 64; // Средняя упругость
+        domain.quantum_noise = 10; // Небольшой шум
+        
+        let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+        let deserialized: DomainConfig = serde_json::from_str(&json_str)
+            .expect("Failed to deserialize");
+        
+        assert_eq!(deserialized.friction_coeff, 255);
+        assert_eq!(deserialized.viscosity, 128);
+        assert_eq!(deserialized.elasticity, 64);
+        assert_eq!(deserialized.quantum_noise, 10);
+    }
+
+    #[test]
+    fn test_domain_config_membrane_serialization() {
+        // Тестируем мембранные параметры
+        let mut domain = DomainConfig::default();
+        domain.input_filter = 0x123456789ABCDEF0;
+        domain.output_filter = 0xFEDCBA9876543210;
+        domain.threshold_mass = 42;
+        domain.threshold_temp = 300;
+        domain.permeability = 128;
+        domain.membrane_state = crate::domain::MEMBRANE_SEMI;
+        
+        let json_str = serde_json::to_string(&domain).expect("Failed to serialize");
+        let deserialized: DomainConfig = serde_json::from_str(&json_str)
+            .expect("Failed to deserialize");
+        
+        assert_eq!(deserialized.input_filter, 0x123456789ABCDEF0);
+        assert_eq!(deserialized.output_filter, 0xFEDCBA9876543210);
+        assert_eq!(deserialized.threshold_mass, 42);
+        assert_eq!(deserialized.threshold_temp, 300);
+        assert_eq!(deserialized.permeability, 128);
+        assert_eq!(deserialized.membrane_state, crate::domain::MEMBRANE_SEMI);
+    }
+}

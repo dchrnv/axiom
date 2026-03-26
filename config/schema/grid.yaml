@@ -1,0 +1,60 @@
+# Grid Schema Configuration
+# Semantic structure of Axiom grid
+
+# Grid topology types
+grid_types:
+  - name: "hexagonal"
+    description: "Hexagonal grid topology"
+    dimensions: 3
+    default_resolution: [100, 100, 50]
+    
+  - name: "cubic"
+    description: "Cubic grid topology"
+    dimensions: 3
+    default_resolution: [64, 64, 64]
+    
+  - name: "spherical"
+    description: "Spherical grid topology"
+    dimensions: 3
+    default_resolution: [180, 360, 1]
+
+# Grid configuration template
+grid_template:
+  type: object
+  required: ["grid_type", "dimensions", "resolution"]
+  properties:
+    grid_type:
+      type: string
+      enum: ["hexagonal", "cubic", "spherical", "custom"]
+    dimensions:
+      type: integer
+      minimum: 1
+      maximum: 3
+      default: 3
+    resolution:
+      type: array
+      items:
+        type: integer
+        minimum: 1
+        maximum: 1000
+      minItems: 1
+      maxItems: 3
+    boundary_conditions:
+      type: string
+      enum: ["periodic", "reflective", "absorbing"]
+      default: "periodic"
+    neighborhood_radius:
+      type: number
+      minimum: 1.0
+      maximum: 10.0
+      default: 1.0
+
+# Spatial constraints
+spatial_constraints:
+  resolution_limits:
+    description: "Grid resolution must be reasonable"
+    rule: "product(resolution) <= 1000000"
+    
+  dimension_consistency:
+    description: "Resolution must match grid type"
+    rule: "grid_type == 'spherical' implies dimensions == 3 AND resolution[2] == 1"

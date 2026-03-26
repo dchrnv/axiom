@@ -1,0 +1,52 @@
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn test_domain_serialization() {
+        let domain = DomainConfig::factory_sutra(42);
+        
+        // Test JSON serialization
+        let json = serde_json::to_string(&domain).expect("Failed to serialize");
+        assert!(json.len() > 0);
+        
+        // Test JSON deserialization
+        let deserialized: DomainConfig = serde_json::from_str(&json).expect("Failed to deserialize");
+        
+        assert_eq!(domain.domain_id, deserialized.domain_id);
+        assert_eq!(domain.structural_role, deserialized.structural_role);
+        assert_eq!(domain.gravity_strength, deserialized.gravity_strength);
+        assert_eq!(domain.temperature, deserialized.temperature);
+        
+        // Test YAML serialization
+        let yaml = serde_yaml::to_string(&domain).expect("Failed to serialize to YAML");
+        assert!(yaml.len() > 0);
+        
+        // Test YAML deserialization
+        let yaml_deserialized: DomainConfig = serde_yaml::from_str(&yaml).expect("Failed to deserialize YAML");
+        
+        assert_eq!(domain.domain_id, yaml_deserialized.domain_id);
+        assert_eq!(domain.structural_role, yaml_deserialized.structural_role);
+    }
+
+    #[test]
+    fn test_factory_serialization() {
+        let sutra = DomainConfig::factory_sutra(1);
+        let codex = DomainConfig::factory_codex(2, 0);
+        let logic = DomainConfig::factory_logic(3, 0);
+        let dream = DomainConfig::factory_dream(4, 0);
+        let maya = DomainConfig::factory_maya(5, 0);
+        
+        // Test that all factory methods create serializable domains
+        for domain in [sutra, codex, logic, dream, maya] {
+            let json = serde_json::to_string(&domain).expect("Failed to serialize");
+            let deserialized: DomainConfig = serde_json::from_str(&json).expect("Failed to deserialize");
+            
+            assert_eq!(domain.domain_id, deserialized.domain_id);
+            assert_eq!(domain.structural_role, deserialized.structural_role);
+            assert_eq!(domain.gravity_strength, deserialized.gravity_strength);
+            assert_eq!(domain.temperature, deserialized.temperature);
+        }
+    }
+}
