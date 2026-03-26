@@ -3,7 +3,9 @@
     "allow": [
       "Bash(cargo build:*)",
       "Bash(cargo test:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

@@ -24,49 +24,83 @@ use std::fmt;
 #[repr(u16)]
 pub enum EventType {
     // Token события (0x0000-0x0FFF)
+    /// Создание токена
     TokenCreate = 0x0001,
+    /// Обновление токена
     TokenUpdate = 0x0002,
+    /// Удаление токена
     TokenDelete = 0x0003,
+    /// Перемещение токена
     TokenMove = 0x0004,
+    /// Трансформация токена
     TokenTransform = 0x0005,
-    TokenDecayed = 0x0006,      // Затухание токена
-    TokenMerged = 0x0007,       // Слияние токенов
-    TokenSplit = 0x0008,        // Разделение токена
-    TokenActivated = 0x0009,    // Активация токена
-    TokenDeactivated = 0x000A,  // Деактивация токена
-    TokenFrozen = 0x000B,       // Заморозка токена
-    TokenThawed = 0x000C,       // Разморозка токена
+    /// Затухание токена
+    TokenDecayed = 0x0006,
+    /// Слияние токенов
+    TokenMerged = 0x0007,
+    /// Разделение токена
+    TokenSplit = 0x0008,
+    /// Активация токена
+    TokenActivated = 0x0009,
+    /// Деактивация токена
+    TokenDeactivated = 0x000A,
+    /// Заморозка токена
+    TokenFrozen = 0x000B,
+    /// Разморозка токена
+    TokenThawed = 0x000C,
 
     // SPACE события движения (0x0010-0x001F)
-    TokenMoved = 0x0010,        // Токен переместился
-    TokenCollision = 0x0011,    // Столкновение токенов
-    TokenEnteredCell = 0x0012,  // Токен вошёл в новую ячейку
+    /// Токен переместился
+    TokenMoved = 0x0010,
+    /// Столкновение токенов
+    TokenCollision = 0x0011,
+    /// Токен вошёл в новую ячейку
+    TokenEnteredCell = 0x0012,
 
     // Connection события (0x1000-0x1FFF)
+    /// Создание связи
     ConnectionCreate = 0x1001,
+    /// Обновление связи
     ConnectionUpdate = 0x1002,
+    /// Удаление связи
     ConnectionDelete = 0x1003,
+    /// Изменение стресса связи
     ConnectionStress = 0x1004,
-    ConnectionWeakened = 0x1005,    // Ослабление связи
-    ConnectionStrengthened = 0x1006, // Усиление связи
-    ConnectionBroken = 0x1007,      // Разрыв связи
-    ConnectionFormed = 0x1008,      // Формирование новой связи
+    /// Ослабление связи
+    ConnectionWeakened = 0x1005,
+    /// Усиление связи
+    ConnectionStrengthened = 0x1006,
+    /// Разрыв связи
+    ConnectionBroken = 0x1007,
+    /// Формирование новой связи
+    ConnectionFormed = 0x1008,
 
     // Domain события (0x2000-0x2FFF)
+    /// Создание домена
     DomainCreate = 0x2001,
+    /// Конфигурация домена
     DomainConfig = 0x2002,
+    /// Сброс домена
     DomainReset = 0x2003,
 
     // Physics события (0x3000-0x3FFF)
+    /// Периодический пульс системы
     Heartbeat = 0x3001,
-    GravityUpdate = 0x3002,         // Обновление гравитации
-    CollisionDetected = 0x3003,     // Обнаружено столкновение
-    ResonanceTriggered = 0x3004,    // Триггер резонанса
-    ThermodynamicsUpdate = 0x3005,  // Обновление температуры
+    /// Обновление гравитации
+    GravityUpdate = 0x3002,
+    /// Обнаружено столкновение
+    CollisionDetected = 0x3003,
+    /// Триггер резонанса
+    ResonanceTriggered = 0x3004,
+    /// Обновление температуры
+    ThermodynamicsUpdate = 0x3005,
 
     // Системные события (0xF000-0xFFFF)
+    /// Создание контрольной точки системы
     SystemCheckpoint = 0xF001,
+    /// Откат системы к контрольной точке
     SystemRollback = 0xF002,
+    /// Остановка системы
     SystemShutdown = 0xF003,
 }
 
@@ -116,15 +150,21 @@ impl From<u16> for EventType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum EventPriority {
+    /// Низкий приоритет
     Low = 0,
+    /// Обычный приоритет
     Normal = 128,
+    /// Высокий приоритет
     High = 200,
+    /// Критический приоритет
     Critical = 255,
 }
 
 /// Флаги событий
 pub const EVENT_REVERSIBLE: u8 = 1;
+/// Флаг критического события
 pub const EVENT_CRITICAL: u8 = 2;
+/// Флаг пакетного события
 pub const EVENT_BATCHED: u8 = 4;
 
 /// Event — событие в причинном порядке
@@ -194,6 +234,7 @@ impl Event {
     ///
     /// # Returns
     /// Новый экземпляр Event без привязки к пульсу
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         event_id: u64,
         domain_id: u16,
@@ -228,6 +269,7 @@ impl Event {
     ///
     /// # Returns
     /// Новый экземпляр Event с привязкой к пульсу
+    #[allow(clippy::too_many_arguments)]
     pub fn with_pulse(
         event_id: u64,
         domain_id: u16,

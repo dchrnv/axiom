@@ -13,43 +13,61 @@ use crate::heartbeat_config::HeartbeatConfig;
 /// Корневая конфигурация Axiom
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomConfig {
+    /// Конфигурация runtime
     pub runtime: RuntimeConfig,
+    /// Конфигурация схем
     pub schema: SchemaConfig,
+    /// Конфигурация загрузчика
     pub loader: LoaderConfig,
 }
 
 /// Конфигурация runtime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeConfig {
+    /// Путь к файлу runtime конфигурации
     pub file: String,
+    /// Путь к схеме runtime конфигурации
     pub schema: String,
 }
 
 /// Конфигурация схем
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchemaConfig {
+    /// Путь к схеме домена
     pub domain: String,
+    /// Путь к схеме токена
     pub token: String,
+    /// Путь к схеме связи
     pub connection: String,
+    /// Путь к схеме сетки
     pub grid: String,
+    /// Путь к схеме UPO
     pub upo: String,
 }
 
 /// Конфигурация загрузчика
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoaderConfig {
+    /// Формат конфигурационных файлов
     pub format: String,
+    /// Режим валидации
     pub validation: String,
+    /// Включить кэширование загруженных конфигураций
     pub cache_enabled: bool,
+    /// Включить горячую перезагрузку конфигурации
     pub hot_reload: bool,
 }
 
 /// Ошибки загрузки конфигурации
 #[derive(Debug)]
 pub enum ConfigError {
+    /// Ошибка ввода/вывода при чтении файла
     IoError(std::io::Error),
+    /// Ошибка разбора YAML
     ParseError(serde_yaml::Error),
+    /// Ошибка валидации конфигурации
     ValidationError(String),
+    /// Конфигурационный файл не найден
     MissingFile(String),
 }
 

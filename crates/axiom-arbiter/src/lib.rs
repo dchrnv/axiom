@@ -59,7 +59,6 @@ impl RoutingResult {
 
 /// Ожидающее сравнение рефлекса с результатом ASHTI
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct PendingComparison {
     /// Входной паттерн
     pub input_pattern: Token,
@@ -188,7 +187,7 @@ impl Arbiter {
 
         // 2. Fast path (conditional) - рефлекс
         let reflex = if resonance.level == ResonanceLevel::Reflex {
-            let reflex_token = resonance.trace.as_ref().unwrap().pattern.clone();
+            let reflex_token = resonance.trace.as_ref().unwrap().pattern;
             Some(reflex_token)
         } else {
             None
@@ -201,7 +200,7 @@ impl Arbiter {
             None
         };
 
-        let ashti_results = self.route_to_ashti(token.clone(), hint);
+        let ashti_results = self.route_to_ashti(token, hint);
 
         // 4. Консолидация через MAYA
         let consolidated = self.route_to_maya(ashti_results.clone());
@@ -209,11 +208,11 @@ impl Arbiter {
         // 5. Сохранить для сравнения
         self.pending_comparisons.insert(event_id, PendingComparison {
             input_pattern: token,
-            reflex_prediction: reflex.clone(),
+            reflex_prediction: reflex,
             ashti_results: ashti_results.clone(),
-            consolidated_result: consolidated.clone(),
+            consolidated_result: consolidated,
             created_at: event_id,
-            trace_index: None,  // TODO: track which trace generated reflex
+            trace_index: None,
         });
 
         RoutingResult {
@@ -290,11 +289,8 @@ impl Arbiter {
         if let (Some(reflex), Some(consolidated)) = (comparison.reflex_prediction, comparison.consolidated_result) {
             let match_result = self.compare_tokens(&reflex, &consolidated);
 
-            // Обучение на основе сравнения
-            // TODO: найти правильный trace_index
-            // Пока просто создаём новый trace
             let weight = if match_result { 0.7 } else { 0.3 };
-            self.experience.add_trace(consolidated.clone(), weight, event_id);
+            self.experience.add_trace(consolidated, weight, event_id);
         } else {
             // Если не было рефлекса, просто добавляем trace
             if let Some(consolidated) = comparison.consolidated_result {

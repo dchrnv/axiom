@@ -18,8 +18,11 @@ use std::fmt;
 
 /// Флаги состояния связи
 pub const FLAG_ACTIVE: u32 = 1;
+/// Связь ингибирована (подавлена)
 pub const FLAG_INHIBITED: u32 = 2;
+/// Связь является временной
 pub const FLAG_TEMPORARY: u32 = 4;
+/// Связь находится в критическом состоянии
 pub const FLAG_CRITICAL: u32 = 8;
 
 /// Connection — связь между двумя токенами
