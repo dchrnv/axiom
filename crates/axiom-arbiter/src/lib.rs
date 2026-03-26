@@ -349,5 +349,10 @@ impl Arbiter {
             current_event_id.saturating_sub(comp.created_at) <= max_age
         });
     }
+
+    /// Добавить или обновить конфигурацию домена (для динамического добавления доменов из Engine)
+    pub fn add_domain_config(&mut self, domain_id: u32, config: DomainConfig) {
+        self.domains.insert(domain_id, config);
+    }
 }
 

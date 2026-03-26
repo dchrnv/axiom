@@ -1,7 +1,7 @@
 # AXIOM Migration Status
 
 **baseline_test_count:** 0
-**current_test_count:** 324
+**current_test_count:** 354
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
@@ -21,7 +21,7 @@
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
 | 9 | axiom-domain | ✅ | 2026-03-26 | 71 | Domain, DomainState, EventGenerator, membrane — без unsafe, без дублирования. AshtiCore → DEFERRED.md |
-| 10 | axiom-runtime | ⏸️ | — | — | Пропущена (зависит от domain и arbiter) |
+| 10 | axiom-runtime | ✅ | 2026-03-26 | 30 | AxiomEngine (UCL→COM→Frontier→State), Guardian (CODEX), Snapshot (capture/restore), adapters (RuntimeAdapter trait), orchestrator (12-шаговый dual-path цикл) |
 
 ---
 

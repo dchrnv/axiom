@@ -14,7 +14,7 @@ members = [
     "crates/axiom-frontier",
     "crates/axiom-upo",
     "crates/axiom-ucl",
-    # "crates/axiom-runtime",  # Временно отключен - зависит от axiom-arbiter
+    "crates/axiom-runtime",
 ]
 
 [workspace.package]

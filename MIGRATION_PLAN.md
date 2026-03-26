@@ -828,9 +828,9 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 ---
 
-### ФАЗА 10: axiom-runtime — Оркестрация и интеграция
+### ФАЗА 10: axiom-runtime — Оркестрация и интеграция ✅ 2026-03-26
 
-**Статус:** ⏸️ Отложена (зависит от Фаз 6 и 9)
+**Статус:** ✅ Завершена
 
 **Цель:** Собрать всё в единый runtime. Перенести интеграционные тесты.
 
@@ -848,47 +848,37 @@ const _: () = assert!(std::mem::size_of::<Event>() == 64);  // 64 байта, н
 
 **Шаги:**
 
-1. ⬜ `engine.rs`:
-   - `AxiomEngine` struct — содержит AshtiCore, CausalFrontier, HeartbeatGenerator, Arbiter.
-   - `process_command(ucl: &UclCommand) -> UclResult` — главная точка входа.
-   - Цикл: команда → COM event → frontier → обработка → результат.
+1. ✅ `engine.rs`:
+   - `AxiomEngine` struct — HashMap доменов, states, Arbiter, Guardian, COM.
+   - `process_command(ucl: &UclCommand) -> UclResult` — SpawnDomain, CollapseDomain, InjectToken, TickForward, DualPath, BackupState, CoreReset и др.
+   - `tick_domain()`: heartbeat → update_frontier → process_frontier.
+   - `snapshot()` / `restore_from()`.
 
-2. ⬜ `orchestrator.rs`:
-   - Полный цикл работы уровня (Ashti_Core V2.0, раздел 8):
-     1. Событие → SUTRA(0)
-     2. Передача в EXPERIENCE(9)
-     3. Резонансный поиск → ответ
-     4. Arbiter → классификация + маршрутизация
-     5. GUARDIAN → проверка рефлекса
-     6. Быстрый путь → MAYA(10)
-     7. Медленный путь → ASHTI(1-8)
-     8. Обработка в каждом домене
-     9. Консолидация в MAYA(10)
-     10. Сравнение рефлекса с результатом
-     11. Обратная связь → EXPERIENCE(9)
-     12. Выход из MAYA(10)
+2. ✅ `orchestrator.rs` (приватный):
+   - `route_token(engine, token)` — dual-path через Arbiter:
+     1. `arbiter.route_token(token, 0)` (SUTRA → EXPERIENCE → reflex/ASHTI → MAYA)
+     2. Guardian валидирует reflex
+     3. `finalize_comparison()` → обратная связь в EXPERIENCE
 
-3. ⬜ `guardian.rs`:
-   - GUARDIAN: `peek_state()` для сканирования доменов.
-   - Ингибирование узоров, нарушающих CODEX.
-   - Проверка рефлексов (облегчённая валидация).
+3. ✅ `guardian.rs`:
+   - `validate_reflex(token)`: STATE_LOCKED, sutra_id=0, valence-without-mass → ингибирование.
+   - `scan_domain(state)`: подсчёт CODEX-нарушений в домене.
+   - `violation_count()`, `reset_violations()`.
 
-4. ⬜ `snapshot.rs`:
-   - Сериализация полного состояния (все домены, все токены/связи).
-   - Восстановление из snapshot.
-   - Shell-кэш опционально включается в snapshot (оптимизация).
-   - Frontier НЕ включается (Causal Frontier V1, §14 — восстанавливается из event log).
+4. ✅ `snapshot.rs`:
+   - `EngineSnapshot` + `DomainSnapshot` — конфиги, токены, связи.
+   - Frontier НЕ включается (восстанавливается из event log).
+   - `empty()`, `find_domain()`, `total_token_count()`.
 
-5. ⬜ `adapters.rs`:
-   - **Только trait-границы.** Конкретные адаптеры (REST, CLI, WebSocket) — отдельный проект.
-   - Trait `ExternalAdapter` определяет интерфейс: принять UCL → получить UclResult.
-   - Это соответствует документу "API В AXIOM": ядро не знает о транспорте.
+5. ✅ `adapters.rs`:
+   - Trait `RuntimeAdapter`: `process(&mut self, engine, cmd) -> UclResult`.
+   - Trait `EventObserver`: `on_event(&self, event)`.
+   - `DirectAdapter` — базовая реализация (pass-through).
 
-6. ⬜ Интеграционные тесты:
-   - `full_cycle_test.rs`: UCL команда → полная обработка → результат.
-   - `ashti_routing_test.rs`: паттерн проходит 0→9→1-8→10.
-   - `reflex_path_test.rs`: рефлекс → GUARDIAN → MAYA, параллельно 1-8 → сравнение.
-   - `snapshot_test.rs`: сохранение → восстановление → продолжение.
+6. ✅ Интеграционные тесты (30 тестов):
+   - `engine_tests.rs`: create, add_domain, spawn/collapse/inject/tick/reset/backup.
+   - `snapshot_tests.rs`: capture, token count, restore, roundtrip.
+   - `guardian_tests.rs`: validate_reflex (locked/zero-id/no-mass), scan_domain.
 
 **Критерий:** `cargo test --workspace` — ВСЕ тесты зелёные. Количество тестов >= baseline_test_count.
 
@@ -1302,7 +1292,7 @@ members = [
     "crates/axiom-ucl",            # ✅
     # "crates/axiom-arbiter",      # ⏸️ Отложен
     # "crates/axiom-domain",       # ⏸️ Отложен
-    # "crates/axiom-runtime",      # ⏸️ Отложен
+    "crates/axiom-runtime",      # ✅ Фаза 10
 ]
 
 [workspace.package]
