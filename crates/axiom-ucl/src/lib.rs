@@ -52,7 +52,6 @@ pub enum OpCode {
 }
 
 /// Флаги команд
-#[allow(dead_code)]
 pub mod flags {
     pub const SYNC: u8 = 0x01;           // Синхронное выполнение
     pub const FORCE: u8 = 0x02;           // Принудительное выполнение
@@ -258,7 +257,7 @@ impl UclBuilder {
             factory_preset: preset,
             structural_role: preset, // Временно, потом будет маппинг
             initial_energy: 100.0,
-            seed: target_id as u32,
+            seed: target_id,
             reserved: [0; 36],
         };
         

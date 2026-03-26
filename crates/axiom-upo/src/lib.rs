@@ -47,6 +47,7 @@ pub struct DynamicTrace {
 }
 
 impl DynamicTrace {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         x: i16, y: i16, z: i16,
         weight: f32, frequency: f32,
@@ -206,7 +207,6 @@ impl Screen {
 
 /// Режим обновления UPO.
 #[derive(Clone, Copy, Debug)]
-#[allow(dead_code)]
 pub enum UpdateMode {
     OnEvent,
     Periodic(u64),
@@ -215,7 +215,6 @@ pub enum UpdateMode {
 
 /// Конфигурация UPO.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct UPOConfig {
     pub domain_id: u16,
     pub update_mode: UpdateMode,
@@ -243,12 +242,10 @@ impl Default for UPOConfig {
 }
 
 /// UPO — вычисление метрик и генерация DynamicTrace.
-#[allow(dead_code)]
 pub struct UPO {
     config: UPOConfig,
 }
 
-#[allow(dead_code)]
 impl UPO {
     pub fn new(config: UPOConfig) -> Self {
         Self {
@@ -336,13 +333,13 @@ impl UPO {
         
         for token in tokens {
             let mass = token.mass as f32;
-            for i in 0..3 {
-                sum[i] += (token.velocity[i] as f32) * mass;
+            for (s, v) in sum.iter_mut().zip(token.velocity.iter()) {
+                *s += (*v as f32) * mass;
             }
         }
-        
-        for i in 0..3 {
-            sum[i] /= total_mass;
+
+        for s in &mut sum {
+            *s /= total_mass;
         }
         
         sum

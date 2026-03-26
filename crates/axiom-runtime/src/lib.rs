@@ -6,6 +6,8 @@
 // Главный цикл: UCL → COM → Frontier → State.
 // Интеграция всех компонентов в единый Engine.
 
+//! AXIOM Runtime — оркестрация всей системы: Engine, Guardian, Snapshot, Adapters.
+
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 

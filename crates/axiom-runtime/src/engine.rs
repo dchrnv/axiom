@@ -15,13 +15,21 @@ use crate::orchestrator;
 
 /// Коды ошибок UclResult
 pub mod error_codes {
+    /// Успешное выполнение команды
     pub const OK: u16 = 0;
+    /// Домен не найден
     pub const DOMAIN_NOT_FOUND: u16 = 1001;
+    /// Превышена ёмкость домена
     pub const CAPACITY_EXCEEDED: u16 = 1002;
+    /// Домен с таким ID уже существует
     pub const DOMAIN_ALREADY_EXISTS: u16 = 1003;
+    /// Недопустимый payload команды
     pub const INVALID_PAYLOAD: u16 = 1004;
+    /// Arbiter не готов к обработке
     pub const ARBITER_NOT_READY: u16 = 2001;
+    /// Нарушение правил CODEX Guardian
     pub const GUARDIAN_VIOLATION: u16 = 3001;
+    /// Неизвестный OpCode команды
     pub const UNKNOWN_OPCODE: u16 = 9001;
 }
 
@@ -295,7 +303,7 @@ impl AxiomEngine {
         // Физика: process_frontier
         let mut event_gen = EventGenerator::new();
         domain.process_frontier(
-            &mut state.tokens,
+            &state.tokens,
             &state.connections,
             &mut event_gen,
         )

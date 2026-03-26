@@ -23,7 +23,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     let mut result = engine.arbiter.route_token(token, 0);
 
     // Шаг 3 (fast path): Guardian проверяет рефлекс
-    if let Some(ref reflex_token) = result.reflex.clone() {
+    if let Some(ref reflex_token) = result.reflex {
         if !engine.guardian.validate_reflex(reflex_token) {
             // Рефлекс ингибирован — убираем его из результата
             result.reflex = None;

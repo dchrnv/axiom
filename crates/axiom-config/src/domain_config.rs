@@ -9,36 +9,54 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Константы состояния домена
+/// Домен активен и принимает токены
 pub const DOMAIN_ACTIVE: u32 = 1;
+/// Домен заблокирован — не принимает новые токены
 pub const DOMAIN_LOCKED: u32 = 2;
+/// Домен временный — будет уничтожен после завершения задачи
 pub const DOMAIN_TEMPORARY: u32 = 3;
 
-/// Константы состояния обработки
+/// Домен простаивает
 pub const PROCESSING_IDLE: u8 = 1;
+/// Домен активно обрабатывает токены
 pub const PROCESSING_ACTIVE: u8 = 2;
+/// Домен заморожен
 pub const PROCESSING_FROZEN: u8 = 3;
 
-/// Константы состояния мембраны (Domain V1.3)
-pub const MEMBRANE_OPEN: u8 = 0;      // Полностью открыта — всё проходит
-pub const MEMBRANE_SEMI: u8 = 1;      // Полупроницаемая — фильтрация по порогу
-pub const MEMBRANE_CLOSED: u8 = 2;    // Закрыта — только системные токены
-pub const MEMBRANE_ADAPTIVE: u8 = 3;  // Адаптивная — меняется по контексту
+/// Мембрана полностью открыта — все токены проходят
+pub const MEMBRANE_OPEN: u8 = 0;
+/// Мембрана полупроницаема — фильтрация по порогу массы
+pub const MEMBRANE_SEMI: u8 = 1;
+/// Мембрана закрыта — только системные токены
+pub const MEMBRANE_CLOSED: u8 = 2;
+/// Мембрана адаптивная — меняется по контексту
+pub const MEMBRANE_ADAPTIVE: u8 = 3;
 
 /// Структурные роли доменов в системе Ashti_Core
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StructuralRole {
+    /// Исходный поток (роль 0)
     Sutra = 0,
+    /// Исполнение (роль 1)
     Execution = 1,
+    /// Тень / отражение (роль 2)
     Shadow = 2,
+    /// Кодекс / правила (роль 3)
     Codex = 3,
+    /// Карта / пространство (роль 4)
     Map = 4,
+    /// Зонд / наблюдение (роль 5)
     Probe = 5,
+    /// Логика (роль 6)
     Logic = 6,
+    /// Сновидение / генерация (роль 7)
     Dream = 7,
+    /// Вакуум / нейтральный (роль 8)
     Void = 8,
-    Experience = 9, // Ассоциативная память
+    /// Ассоциативная память (роль 9)
+    Experience = 9,
+    /// Консолидация результатов (роль 10)
     Maya = 10,
 }
 
@@ -46,11 +64,17 @@ pub enum StructuralRole {
 #[repr(u16)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DomainType {
+    /// Логический домен
     Logic = 1,
+    /// Генеративный / сновидческий домен
     Dream = 2,
+    /// Математический домен
     Math = 3,
+    /// Домен паттернов
     Pattern = 4,
+    /// Домен памяти
     Memory = 5,
+    /// Интерфейсный домен
     Interface = 6,
 }
 
@@ -62,67 +86,107 @@ pub enum DomainType {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct DomainConfig {
     // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-    pub reserved_id: u64,       // 8b | Явный резерв для будущих расширений
-    pub domain_id: u16,         // 2b | Уникальный ID Домена
-    pub parent_domain_id: u16,  // 2b | Родительский Домен
-    pub domain_type: u8,        // 1b | Тип (до 255 вариаций)
-    pub structural_role: u8,    // 1b | Роль в Ashti_Core (0-10: SUTRA..MAYA)
-    pub generation: u8,         // 1b | Поколение (эволюционный индекс)
-    pub flags: u8,              // 1b | Битовая маска состояний (Active, Locked)
-    // Offset: 16 байт
+    /// Явный резерв для будущих расширений
+    pub reserved_id: u64,
+    /// Уникальный ID Домена
+    pub domain_id: u16,
+    /// Родительский Домен
+    pub parent_domain_id: u16,
+    /// Тип домена (до 255 вариаций)
+    pub domain_type: u8,
+    /// Роль в Ashti_Core (0-10: SUTRA..MAYA)
+    pub structural_role: u8,
+    /// Поколение (эволюционный индекс)
+    pub generation: u8,
+    /// Битовая маска состояний (Active, Locked)
+    pub flags: u8,
 
     // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
-    pub field_size: [f32; 3],   // 12b| Размеры поля (X, Y, Z)
-    pub gravity_strength: f32,  // 4b | Гравитация (-MAX..+MAX)
-    pub temperature: f32,       // 4b | Температура поля в Кельвинах
-    pub time_dilation: u16,     // 2b | Замедление времени (х100)
-    pub resonance_freq: u16,    // 2b | Базовая частота (Hz)
-    pub pressure: u16,          // 2b | Давление (Pa)
-    pub rebuild_frequency: u16, // 2b | SPACE V6.0: частота перестройки spatial grid (событий)
-    pub friction_coeff: u8,     // 1b | Трение (0..255 -> 0.0..1.0)
-    pub viscosity: u8,          // 1b | Вязкость (0..255 -> 0.0..1.0)
-    pub elasticity: u8,         // 1b | Упругость (0..255 -> 0.0..1.0)
-    pub quantum_noise: u8,      // 1b | Квантовый шум (0..255 -> 0.0..1.0)
-    // Offset: 48 байт
+    /// Размеры поля (X, Y, Z)
+    pub field_size: [f32; 3],
+    /// Гравитация (-MAX..+MAX)
+    pub gravity_strength: f32,
+    /// Температура поля в Кельвинах
+    pub temperature: f32,
+    /// Замедление времени (×100)
+    pub time_dilation: u16,
+    /// Базовая частота (Hz)
+    pub resonance_freq: u16,
+    /// Давление (Pa)
+    pub pressure: u16,
+    /// SPACE V6.0: частота перестройки spatial grid (в событиях)
+    pub rebuild_frequency: u16,
+    /// Трение (0..255 → 0.0..1.0)
+    pub friction_coeff: u8,
+    /// Вязкость (0..255 → 0.0..1.0)
+    pub viscosity: u8,
+    /// Упругость (0..255 → 0.0..1.0)
+    pub elasticity: u8,
+    /// Квантовый шум (0..255 → 0.0..1.0)
+    pub quantum_noise: u8,
 
     // --- 3. СЕМАНТИЧЕСКИЕ ОСИ [16 Байт] ---
-    pub axis_x_ref: u32,        // 4b | Референс концепции оси X
-    pub axis_y_ref: u32,        // 4b | Референс концепции оси Y
-    pub axis_z_ref: u32,        // 4b | Референс концепции оси Z
-    pub axis_config: u32,       // 4b | Конфигурация полюсов (Bit-packed u16x2)
-    // Offset: 64 байт
+    /// Референс концепции оси X
+    pub axis_x_ref: u32,
+    /// Референс концепции оси Y
+    pub axis_y_ref: u32,
+    /// Референс концепции оси Z
+    pub axis_z_ref: u32,
+    /// Конфигурация полюсов (Bit-packed u16×2)
+    pub axis_config: u32,
 
     // --- 4. МЕМБРАНА И ARBITER [32 Байт] ---
-    pub input_filter: u64,      // 8b | 64-bit Bloom Filter или хэш входа
-    pub output_filter: u64,     // 8b | 64-bit Bloom Filter или хэш выхода
+    /// 64-bit Bloom Filter или хэш входа
+    pub input_filter: u64,
+    /// 64-bit Bloom Filter или хэш выхода
+    pub output_filter: u64,
 
-    // -- Блок Arbiter [8 Байт] (V2.1: бывший reserved_membrane) --
-    pub reflex_threshold: u8,   // 1b | Порог рефлекса (0..255 -> 0.0..1.0)
-    pub association_threshold: u8, // 1b | Порог ассоциации (0..255 -> 0.0..1.0)
-    pub arbiter_flags: u8,      // 1b | Битовая маска поведения Arbiter
-    pub reflex_cooldown: u8,    // 1b | Минимальный интервал между рефлексами (в пульсах)
-    pub max_concurrent_hints: u8, // 1b | Макс. кол-во ассоциаций-подсказок одновременно
-    pub feedback_weight_delta: u8, // 1b | Шаг изменения weight при обратной связи (0..255)
-    pub reserved_arbiter: [u8; 2], // 2b | Резерв блока Arbiter
+    // -- Блок Arbiter [8 Байт] --
+    /// Порог рефлекса (0..255 → 0.0..1.0)
+    pub reflex_threshold: u8,
+    /// Порог ассоциации (0..255 → 0.0..1.0)
+    pub association_threshold: u8,
+    /// Битовая маска поведения Arbiter
+    pub arbiter_flags: u8,
+    /// Минимальный интервал между рефлексами (в пульсах)
+    pub reflex_cooldown: u8,
+    /// Макс. количество одновременных ассоциаций-подсказок
+    pub max_concurrent_hints: u8,
+    /// Шаг изменения weight при обратной связи (0..255)
+    pub feedback_weight_delta: u8,
+    /// Резерв блока Arbiter
+    pub reserved_arbiter: [u8; 2],
 
-    pub gate_complexity: u16,   // 2b | Вычислительная сложность шлюзов
-    pub threshold_mass: u16,    // 2b | Порог массы для прохождения
-    pub threshold_temp: u16,    // 2b | Порог температуры для прохождения
-    pub permeability: u8,       // 1b | Проницаемость (0..255 -> 0.0..1.0)
-    pub membrane_state: u8,     // 1b | OPEN/CLOSED/SEMI/ADAPTIVE
-    // Offset: 96 байт
+    /// Вычислительная сложность шлюзов
+    pub gate_complexity: u16,
+    /// Порог массы для прохождения мембраны
+    pub threshold_mass: u16,
+    /// Порог температуры для прохождения мембраны
+    pub threshold_temp: u16,
+    /// Проницаемость (0..255 → 0.0..1.0)
+    pub permeability: u8,
+    /// Состояние мембраны: OPEN/CLOSED/SEMI/ADAPTIVE
+    pub membrane_state: u8,
 
     // --- 5. МЕТАДАННЫЕ [32 Байт] ---
-    pub created_at: u64,        // 8b | COM event_id (Время создания)
-    pub last_update: u64,       // 8b | COM event_id (Последнее обновление)
-    pub token_capacity: u32,    // 4b | Максимальная емкость токенов
-    pub connection_capacity: u32, // 4b | Максимальная емкость связей
-    pub error_count: u16,       // 2b | Счетчик когнитивных ошибок
-    pub processing_state: u8,   // 1b | IDLE/PROCESSING/FROZEN/CRASHED
-    pub complexity_score: u8,   // 1b | Оценка сложности (0..255 -> 0.0..1.0)
-    pub performance_score: u8,  // 1b | Производительность (0..255 -> 0.0..1.0)
-    pub reserved_meta: [u8; 3], // 3b | Добивка до границы 128 байт
-    // Итого: 128 байт. Offset: 128. Без скрытого паддинга.
+    /// COM event_id момента создания
+    pub created_at: u64,
+    /// COM event_id последнего обновления
+    pub last_update: u64,
+    /// Максимальная ёмкость токенов
+    pub token_capacity: u32,
+    /// Максимальная ёмкость связей
+    pub connection_capacity: u32,
+    /// Счётчик когнитивных ошибок
+    pub error_count: u16,
+    /// Состояние обработки: IDLE/PROCESSING/FROZEN/CRASHED
+    pub processing_state: u8,
+    /// Оценка сложности (0..255 → 0.0..1.0)
+    pub complexity_score: u8,
+    /// Производительность (0..255 → 0.0..1.0)
+    pub performance_score: u8,
+    /// Добивка до границы 128 байт
+    pub reserved_meta: [u8; 3],
 }
 
 // Compile-time size assertion

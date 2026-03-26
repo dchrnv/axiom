@@ -450,7 +450,6 @@ where
 /// - Сходится за O(log(bits)) итераций
 /// - Детерминистичен и точен для всех i64
 #[inline]
-/// Целочисленный квадратный корень (для тестов и внутреннего использования)
 pub fn integer_sqrt(n: i64) -> i64 {
     if n <= 0 {
         return 0;
@@ -513,6 +512,12 @@ pub struct SpatialHashGrid {
     pub bucket_heads: Vec<u32>,      // Головы корзин (BUCKET_COUNT элементов)
     pub entries: Vec<CellEntry>,     // Массив записей (растёт по мере добавления)
     pub entry_count: usize,          // Количество активных записей
+}
+
+impl Default for SpatialHashGrid {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SpatialHashGrid {

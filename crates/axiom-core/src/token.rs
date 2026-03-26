@@ -14,7 +14,9 @@ use std::fmt;
 
 /// Флаги состояния токена
 pub const STATE_ACTIVE: u8 = 1;
+/// Токен находится в спящем режиме
 pub const STATE_SLEEPING: u8 = 2;
+/// Токен заблокирован
 pub const STATE_LOCKED: u8 = 3;
 
 /// Токен — элементарная единица пространства
@@ -178,8 +180,8 @@ impl Token {
     /// Значение резонанса (0..=100)
     pub fn compute_resonance(&self, other: &Token) -> u32 {
         // Разница температур (чем меньше, тем лучше резонанс)
-        let temp_diff = (self.temperature as i16 - other.temperature as i16).abs() as u32;
-        let temp_factor = if temp_diff > 100 { 0 } else { 100 - temp_diff };
+        let temp_diff = (self.temperature as i16 - other.temperature as i16).unsigned_abs() as u32;
+        let temp_factor = 100u32.saturating_sub(temp_diff);
 
         // Валентность (среднее значение, преобразуем i8 в положительные значения)
         let val1 = self.valence.max(0) as u32;

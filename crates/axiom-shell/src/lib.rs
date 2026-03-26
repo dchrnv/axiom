@@ -342,7 +342,7 @@ pub fn collect_affected_tokens(connections: &[Connection]) -> Vec<usize> {
 /// ```
 pub fn process_connection_event(cache: &mut DomainShellCache, connection: &Connection) {
     // Собираем затронутые токены (source + target)
-    let affected = collect_affected_tokens(&[connection.clone()]);
+    let affected = collect_affected_tokens(&[*connection]);
 
     // Помечаем каждый затронутый токен как dirty
     for token_idx in affected {
