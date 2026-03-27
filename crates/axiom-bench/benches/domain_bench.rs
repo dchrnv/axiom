@@ -1,8 +1,10 @@
-// Бенчмарки axiom-domain: EventGenerator, resonance_search
+// Бенчмарки axiom-domain: EventGenerator, resonance_search, Arbiter route
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use axiom_core::Token;
 use axiom_domain::EventGenerator;
-use axiom_arbiter::ExperienceModule as Experience;
+use axiom_arbiter::{Arbiter, COM, ExperienceModule as Experience};
+use axiom_config::DomainConfig;
+use std::collections::HashMap;
 use std::time::Duration;
 
 // --- EventGenerator ---
@@ -70,11 +72,83 @@ fn bench_resonance_search(c: &mut Criterion) {
     group.finish();
 }
 
+// ============================================================
+// Arbiter::route_token при разных порогах классификации
+//
+// Пороги управляют выбором пути:
+//   Strict (200/180): мало рефлексов → чаще slow path
+//   Loose  (50/30):   много рефлексов → чаще fast path (если обучена память)
+//
+// 50 traces — достаточно для срабатывания рефлексов при loose порогах.
+// ============================================================
+
+fn make_arbiter(reflex_t: u8, assoc_t: u8, trace_count: usize) -> Arbiter {
+    let configs = [
+        DomainConfig::factory_sutra(100),
+        DomainConfig::factory_execution(101, 100),
+        DomainConfig::factory_shadow(102, 100),
+        DomainConfig::factory_codex(103, 100),
+        DomainConfig::factory_map(104, 100),
+        DomainConfig::factory_probe(105, 100),
+        DomainConfig::factory_logic(106, 100),
+        DomainConfig::factory_dream(107, 100),
+        DomainConfig::factory_void(108, 100),
+        DomainConfig::factory_experience(109, 100),
+        DomainConfig::factory_maya(110, 100),
+    ];
+    let mut domain_map = HashMap::new();
+    for c in &configs {
+        domain_map.insert(c.domain_id as u32, *c);
+    }
+    let mut arbiter = Arbiter::new(domain_map, COM::new());
+    for (role, c) in configs.iter().enumerate() {
+        let _ = arbiter.register_domain(role as u8, c.domain_id as u32);
+    }
+    arbiter.experience_mut().set_thresholds(reflex_t, assoc_t);
+    for i in 0..trace_count {
+        let mut t = Token::new(i as u32 + 1, 100, [0, 0, 0], 1);
+        t.temperature = (i % 256) as u8;
+        t.mass = ((i * 3) % 256) as u8;
+        arbiter.experience_mut().add_trace(t, 0.9, i as u64 + 1);
+    }
+    arbiter
+}
+
+fn bench_arbiter_route(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Arbiter::route_token");
+    group.measurement_time(Duration::from_secs(5));
+    group.sample_size(20);
+
+    let token = Token::new(1, 100, [10, 20, 30], 1);
+
+    // (label, reflex_threshold, assoc_threshold)
+    let configs: &[(&str, u8, u8)] = &[
+        ("strict_200_180", 200, 180),
+        ("loose_50_30",    50,  30),
+    ];
+
+    for &(label, reflex_t, assoc_t) in configs {
+        group.bench_with_input(
+            BenchmarkId::new("thresholds", label),
+            &(reflex_t, assoc_t),
+            |b, &(rt, at)| {
+                b.iter_batched(
+                    || make_arbiter(rt, at, 50),
+                    |mut arbiter| black_box(arbiter.route_token(black_box(token), 0)),
+                    criterion::BatchSize::SmallInput,
+                )
+            },
+        );
+    }
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_check_decay,
     bench_generate_gravity_update,
     bench_generate_collision,
     bench_resonance_search,
+    bench_arbiter_route,
 );
 criterion_main!(benches);

@@ -10,6 +10,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
 axiom-space = { path = "../axiom-space" }
+axiom-shell = { path = "../axiom-shell" }
 axiom-domain = { path = "../axiom-domain" }
 axiom-arbiter = { path = "../axiom-arbiter" }
 axiom-runtime = { path = "../axiom-runtime" }
@@ -29,4 +30,8 @@ harness = false
 
 [[bench]]
 name = "engine_bench"
+harness = false
+
+[[bench]]
+name = "shell_bench"
 harness = false
