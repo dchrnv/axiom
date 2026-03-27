@@ -11,7 +11,7 @@
 //   - docs/spec/Arbiter_V1_0.md
 
 use std::collections::HashMap;
-use axiom_core::Token;
+use axiom_core::{Token, Event};
 use axiom_config::DomainConfig;
 use axiom_arbiter::{Arbiter, COM, RoutingResult};
 use crate::{Domain, DomainState};
@@ -104,14 +104,23 @@ impl AshtiCore {
 
     /// Тик физики всех 11 доменов.
     ///
-    /// Вызывает `on_event()` и `handle_heartbeat()` для каждого домена,
-    /// поддерживая активность физических полей (гравитация, резонанс, затухание).
-    pub fn tick(&mut self) {
+    /// Вызывает `on_event()`, `handle_heartbeat()` и `process_frontier()` для каждого домена.
+    /// Возвращает все физические события, сгенерированные за этот тик.
+    pub fn tick(&mut self) -> Vec<Event> {
         self.pulse += 1;
-        for domain in &mut self.domains {
-            domain.on_event();
-            domain.handle_heartbeat(self.pulse);
+        let mut all_events = Vec::new();
+        for i in 0..self.domains.len() {
+            if let Some(pulse) = self.domains[i].on_event() {
+                self.domains[i].handle_heartbeat(pulse);
+                let tokens = &self.states[i].tokens;
+                let conns  = &self.states[i].connections;
+                let mut gen = crate::physics::EventGenerator::new();
+                gen.set_pulse_id(pulse);
+                let events = self.domains[i].process_frontier(tokens, conns, &mut gen);
+                all_events.extend(events);
+            }
         }
+        all_events
     }
 
     /// Все 11 доменов зарегистрированы и Arbiter готов к маршрутизации.
@@ -162,9 +171,14 @@ impl AshtiCore {
     }
 
     /// Впрыснуть токен в домен по domain_id.
+    ///
+    /// Добавляет токен в DomainState и синхронизирует счётчик active_tokens домена,
+    /// чтобы следующий тик heartbeat учитывал реальное число токенов.
     pub fn inject_token(&mut self, domain_id: u32, token: axiom_core::Token) -> Result<usize, crate::CapacityExceeded> {
         let idx = self.index_of(domain_id).ok_or(crate::CapacityExceeded)?;
-        self.states[idx].add_token(token)
+        let result = self.states[idx].add_token(token)?;
+        self.domains[idx].active_tokens = self.states[idx].token_count();
+        Ok(result)
     }
 
     /// Конфигурации всех доменов (domain_id, DomainConfig) — для snapshot.
