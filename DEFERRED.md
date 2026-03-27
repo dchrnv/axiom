@@ -189,17 +189,16 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
-### 3.3 Events System Integration
+### 3.3 Event Bus (pub/sub)
 
-**Где:** `runtime/src/`
-**Что отложено:** Система событий для COM интеграции
-**Почему:** UCL команды должны генерировать события
-**Когда планируется:** По требованию
+**Что отложено:** Подписочная модель для внешних потребителей событий
+**Почему:** Нужна только при появлении внешних потребителей (REST, gRPC, Python bindings)
+**Когда планируется:** Неопределённо — после реализации адаптеров
 
-**Требуется:**
-- [ ] Event структуры для DomainCreated, TokenInjected, ForceApplied
-- [ ] Event bus для подписки и обработки
-- [ ] Интеграция с PhysicsProcessor
+**Что потребуется:**
+- [ ] Trait `EventSubscriber` / механизм подписки
+- [ ] Роутинг `pending_events` по подписчикам
+- [ ] Интеграция с адаптерами (REST, WebSocket)
 
 ---
 
@@ -379,6 +378,11 @@ _(Нет критических проблем)_
 ---
 
 ## 📝 История изменений
+
+**2026-03-27 (Events System audit):**
+- Секция 3.3 переписана: удалено устаревшее (EventType уже есть, COM реализован)
+- Оставлена только реальная отложенная задача: Event Bus (pub/sub) для внешних потребителей
+- Задача "proброс физических событий в pending_events" перенесена в ROADMAP как следующая
 
 **2026-03-27 (Causal Frontier V2.0):**
 - ✅ Causal Frontier V2.0 реализован: `FrontierConfig` + presets, `FrontierEntity` enum, `begin_cycle/end_cycle`, `frontier_growth_rate`, `StormMetrics`, BitVec dedup, `FrontierProcessor` обновлён
