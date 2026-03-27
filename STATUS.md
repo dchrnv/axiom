@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**374 теста, 0 failures, 0 warnings**
+**387 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -31,9 +31,9 @@ AxiomEngine
 | axiom-shell | 43 | Shell V3.0, семантические профили |
 | axiom-arbiter | 26 | Arbiter V1.0, Experience, AshtiProcessor, Maya, COM |
 | axiom-heartbeat | 11 | Heartbeat V2.0 |
-| axiom-upo | 0 | UPO v2.2 (тесты в DEFERRED) |
+| axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
 | axiom-runtime | 31 | AxiomEngine, Guardian, Snapshot, orchestrator |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **374** | |
+| **Итого** | **387** | |

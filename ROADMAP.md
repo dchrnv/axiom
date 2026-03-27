@@ -1,19 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 9.6
+**Версия:** 9.7
 **Дата:** 2026-03-27
-
----
-
-## 🔜 Следующая задача: axiom-upo тесты
-
-**Файл:** `crates/axiom-upo/src/lib.rs`
-**Объём:** ~8 тестов, один файл `tests/upo_tests.rs`
-
-- `DynamicTrace::new()` / `update()` / `is_active()`
-- `UPOEngine::record_token_change()` / `record_connection_change()` / `generate_patch()`
-- `TraceSourceType` enum значения (Token=1, Connection=2, Field=3)
-- Size assertion: `DynamicTrace` = 128 байт, align 32
 
 ---
 
