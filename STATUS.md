@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**366 тестов, 0 failures, 0 warnings**
+**372 теста, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -25,7 +25,7 @@ AxiomEngine
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 24 | Token, Connection, Event |
-| axiom-frontier | 22 | CausalFrontier, storm, budget |
+| axiom-frontier | 28 | CausalFrontier V2.0, FrontierConfig, FrontierEntity, storm, budget |
 | axiom-config | 33 | DomainConfig (11 factory методов), HeartbeatConfig |
 | axiom-space | 83 | SpatialHashGrid, физика, координаты |
 | axiom-shell | 43 | Shell V3.0, семантические профили |
@@ -36,4 +36,4 @@ AxiomEngine
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
 | axiom-runtime | 29 | AxiomEngine, Guardian, Snapshot, orchestrator |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **366** | |
+| **Итого** | **372** | |
