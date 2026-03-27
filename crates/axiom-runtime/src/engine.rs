@@ -178,8 +178,10 @@ impl AxiomEngine {
     }
 
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
-        self.ashti.tick();
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 11)
+        let events = self.ashti.tick();
+        let count = events.len() as u16;
+        self.pending_events.extend(events);
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
     }
 
     fn handle_dual_path(&mut self, cmd: &UclCommand) -> UclResult {

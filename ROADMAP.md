@@ -1,65 +1,11 @@
 # Axiom Roadmap
 
-**Версия:** 9.5
+**Версия:** 9.6
 **Дата:** 2026-03-27
 
 ---
 
-## 🔄 Следующая задача: Physics Events → AxiomEngine
-
-**Спека:** `drain_events()` должен возвращать реальные физические события
-
-### Проблема
-
-`AshtiCore::tick()` вызывает `on_event()` + `handle_heartbeat()`, но не вызывает
-`process_frontier()`. Поэтому `Domain::generated_events` никогда не попадают
-в `AxiomEngine::pending_events` — `drain_events()` всегда пустой.
-
-### Что нужно сделать
-
-**Шаг 1** — `AshtiCore::tick()` возвращает накопленные события
-
-`crates/axiom-domain/src/ashti_core.rs`
-
-```rust
-pub fn tick(&mut self) -> Vec<Event> {
-    self.pulse += 1;
-    let mut all_events = Vec::new();
-    for (i, domain) in self.domains.iter_mut().enumerate() {
-        if let Some(pulse) = domain.on_event() {
-            domain.handle_heartbeat(pulse);
-            let tokens  = self.states[i].tokens();
-            let conns   = self.states[i].connections();
-            let events  = domain.process_frontier(tokens, conns, &mut EventGenerator::new());
-            all_events.extend(events);
-        }
-    }
-    all_events
-}
-```
-
-**Шаг 2** — `AxiomEngine::handle_tick_forward()` пробрасывает события
-
-`crates/axiom-runtime/src/engine.rs`
-
-```rust
-fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
-    let events = self.ashti.tick();
-    let count = events.len() as u16;
-    self.pending_events.extend(events);
-    make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
-}
-```
-
-**Шаг 3** — Тесты
-
-- `tick()` без токенов → `drain_events()` пустой
-- `tick()` с токенами и decay → события в `drain_events()`
-- `UclResult::events_generated` отражает реальное количество
-
----
-
-## 🔜 Малая задача: axiom-upo тесты
+## 🔜 Следующая задача: axiom-upo тесты
 
 **Файл:** `crates/axiom-upo/src/lib.rs`
 **Объём:** ~8 тестов, один файл `tests/upo_tests.rs`
@@ -72,9 +18,6 @@ fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
 ---
 
 ## 🔮 Долгосрочные цели
-
-### axiom-upo тесты
-UPO v2.2 мигрирован без тестов. Покрыть: `DynamicTrace`, `UPOEngine::record_*`, `generate_patch`. Низкий приоритет.
 
 ### Configuration System
 YAML-загрузка пространственных параметров и semantic_contributions. Требует согласования с DomainConfig 128-byte constraint.

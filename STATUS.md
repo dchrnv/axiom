@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**372 теста, 0 failures, 0 warnings**
+**374 теста, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -34,6 +34,6 @@ AxiomEngine
 | axiom-upo | 0 | UPO v2.2 (тесты в DEFERRED) |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
-| axiom-runtime | 29 | AxiomEngine, Guardian, Snapshot, orchestrator |
+| axiom-runtime | 31 | AxiomEngine, Guardian, Snapshot, orchestrator |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **372** | |
+| **Итого** | **374** | |

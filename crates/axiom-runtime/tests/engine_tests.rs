@@ -109,11 +109,54 @@ fn test_tick_forward_does_not_panic() {
 }
 
 #[test]
-fn test_tick_forward_reports_11_domains() {
+fn test_tick_forward_empty_engine_no_events() {
+    // Без токенов frontier пуст — физических событий нет
     let mut engine = AxiomEngine::new();
     let cmd = make_cmd(OpCode::TickForward, 0);
     let result = engine.process_command(&cmd);
-    assert_eq!(result.events_generated, 11);
+    assert!(result.is_success());
+    assert_eq!(result.events_generated, 0);
+    assert!(engine.drain_events().is_empty());
+}
+
+#[test]
+fn test_drain_events_populated_after_heartbeat() {
+    // HeartbeatConfig::medium() имеет interval=1024.
+    // После 1025 тиков домен получит первый пульс и запустит process_frontier,
+    // который сгенерирует события для инжектированного токена.
+    let mut engine = AxiomEngine::new();
+
+    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 1, 0);
+    inject.payload[0] = (LOGIC_ID & 0xff) as u8;
+    inject.payload[1] = (LOGIC_ID >> 8) as u8;
+    engine.process_command(&inject);
+
+    let mut got_events = false;
+    for _ in 0..1100 {
+        engine.process_command(&make_cmd(OpCode::TickForward, 0));
+        let events = engine.drain_events();
+        if !events.is_empty() {
+            got_events = true;
+            break;
+        }
+    }
+    assert!(got_events, "ожидались физические события после heartbeat pulse");
+}
+
+#[test]
+fn test_drain_events_clears_buffer() {
+    let mut engine = AxiomEngine::new();
+
+    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 1, 0);
+    inject.payload[0] = (LOGIC_ID & 0xff) as u8;
+    inject.payload[1] = (LOGIC_ID >> 8) as u8;
+    engine.process_command(&inject);
+
+    for _ in 0..1100 {
+        engine.process_command(&make_cmd(OpCode::TickForward, 0));
+    }
+    engine.drain_events(); // сброс
+    assert!(engine.drain_events().is_empty()); // повторный вызов — пусто
 }
 
 // ============================================================
