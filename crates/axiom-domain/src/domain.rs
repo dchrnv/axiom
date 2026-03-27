@@ -9,7 +9,7 @@
 
 use axiom_core::{Token, Connection, Event};
 use axiom_config::DomainConfig;
-use axiom_frontier::CausalFrontier;
+use axiom_frontier::{CausalFrontier, FrontierConfig, FrontierEntity};
 use axiom_heartbeat::{HeartbeatConfig, HeartbeatGenerator};
 use axiom_space::SpatialHashGrid;
 
@@ -59,23 +59,24 @@ impl Domain {
 
     /// Создать домен из конфигурации с кастомным heartbeat.
     pub fn with_heartbeat(config: DomainConfig, heartbeat_config: HeartbeatConfig) -> Self {
-        let storm_threshold = (config.token_capacity as usize) / 10;
-        let max_frontier_size = (config.token_capacity as usize) / 5;
-        let max_events_per_cycle = 1000;
-
         let shell_capacity = config.token_capacity as usize;
         let shell_cache = axiom_shell::DomainShellCache::new(shell_capacity);
         let semantic_table = axiom_shell::SemanticContributionTable::default_ashti_core();
+
+        let frontier_config = FrontierConfig {
+            max_frontier_size: (config.token_capacity / 5).max(100),
+            max_events_per_cycle: 1000,
+            storm_threshold: (config.token_capacity / 10).max(50),
+            enable_batch_events: true,
+            token_capacity: config.token_capacity,
+            connection_capacity: config.connection_capacity,
+        };
 
         Self {
             heartbeat: HeartbeatGenerator::new(config.domain_id, heartbeat_config.interval),
             heartbeat_config,
             config,
-            frontier: CausalFrontier::with_config(
-                storm_threshold,
-                max_frontier_size,
-                max_events_per_cycle,
-            ),
+            frontier: CausalFrontier::new(frontier_config),
             spatial_grid: SpatialHashGrid::new(),
             active_tokens: 0,
             active_connections: 0,
@@ -137,61 +138,63 @@ impl Domain {
     ) -> Vec<Event> {
         let mut generated_events = Vec::new();
 
-        while !self.frontier.is_budget_exhausted() && !self.frontier.is_empty() {
-            // --- Обработка токенов ---
-            if let Some(token_idx) = self.frontier.pop_token() {
-                if let Some(token) = tokens.get(token_idx) {
-                    // Затухание
-                    if self.heartbeat_config.enable_decay {
-                        if let Some(event) = event_generator.check_decay(token, DEFAULT_DECAY_RATE) {
+        self.frontier.begin_cycle();
+        while let Some(entity) = self.frontier.pop() {
+            match entity {
+                FrontierEntity::Token(token_idx) => {
+                    if let Some(token) = tokens.get(token_idx as usize) {
+                        // Затухание
+                        if self.heartbeat_config.enable_decay {
+                            if let Some(event) = event_generator.check_decay(token, DEFAULT_DECAY_RATE) {
+                                generated_events.push(event);
+                            }
+                        }
+
+                        // Гравитация
+                        if self.heartbeat_config.enable_gravity
+                            && self.config.gravity_strength.abs() > 0.01
+                        {
+                            let event = event_generator.generate_gravity_update(token);
                             generated_events.push(event);
                         }
-                    }
 
-                    // Гравитация
-                    if self.heartbeat_config.enable_gravity
-                        && self.config.gravity_strength.abs() > 0.01
-                    {
-                        let event = event_generator.generate_gravity_update(token);
-                        generated_events.push(event);
-                    }
+                        // SPACE V6.0: столкновения через spatial hash
+                        if self.heartbeat_config.enable_spatial_collision
+                            && self.spatial_grid.entry_count > 0
+                        {
+                            let collisions = axiom_space::detect_collisions(
+                                token_idx,
+                                (token.position[0], token.position[1], token.position[2]),
+                                DEFAULT_COLLISION_RADIUS,
+                                |idx| {
+                                    tokens
+                                        .get(idx as usize)
+                                        .map(|t| (t.position[0], t.position[1], t.position[2]))
+                                        .unwrap_or((0, 0, 0))
+                                },
+                                &self.spatial_grid,
+                            );
 
-                    // SPACE V6.0: столкновения через spatial hash
-                    if self.heartbeat_config.enable_spatial_collision
-                        && self.spatial_grid.entry_count > 0
-                    {
-                        let collisions = axiom_space::detect_collisions(
-                            token_idx as u32,
-                            (token.position[0], token.position[1], token.position[2]),
-                            DEFAULT_COLLISION_RADIUS,
-                            |idx| {
-                                tokens
-                                    .get(idx as usize)
-                                    .map(|t| (t.position[0], t.position[1], t.position[2]))
-                                    .unwrap_or((0, 0, 0))
-                            },
-                            &self.spatial_grid,
-                        );
+                            for collision_idx in collisions {
+                                if let Some(other_token) = tokens.get(collision_idx as usize) {
+                                    let event = event_generator.generate_collision(token, other_token);
+                                    generated_events.push(event);
 
-                        for collision_idx in collisions {
-                            if let Some(other_token) = tokens.get(collision_idx as usize) {
-                                let event = event_generator.generate_collision(token, other_token);
-                                generated_events.push(event);
+                                    self.frontier.push_token(collision_idx);
 
-                                self.frontier.push_token(collision_idx as usize);
-
-                                // Shell V3.0: помечаем связанные токены как dirty
-                                for conn in connections {
-                                    let involves = (conn.source_id == token.sutra_id
-                                        && conn.target_id == other_token.sutra_id)
-                                        || (conn.source_id == other_token.sutra_id
-                                            && conn.target_id == token.sutra_id);
-                                    if involves {
-                                        axiom_shell::process_connection_event(
-                                            &mut self.shell_cache,
-                                            conn,
-                                        );
-                                        break;
+                                    // Shell V3.0: помечаем связанные токены как dirty
+                                    for conn in connections {
+                                        let involves = (conn.source_id == token.sutra_id
+                                            && conn.target_id == other_token.sutra_id)
+                                            || (conn.source_id == other_token.sutra_id
+                                                && conn.target_id == token.sutra_id);
+                                        if involves {
+                                            axiom_shell::process_connection_event(
+                                                &mut self.shell_cache,
+                                                conn,
+                                            );
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -199,26 +202,21 @@ impl Domain {
                     }
                 }
 
-                self.frontier.increment_processed();
-            }
-
-            // --- Обработка связей ---
-            if self.heartbeat_config.enable_connection_maintenance {
-                if let Some(conn_idx) = self.frontier.pop_connection() {
-                    if let Some(connection) = connections.get(conn_idx) {
-                        if let Some(event) = event_generator
-                            .check_connection_stress(connection, DEFAULT_STRESS_THRESHOLD)
-                        {
-                            generated_events.push(event);
+                FrontierEntity::Connection(conn_idx) => {
+                    if self.heartbeat_config.enable_connection_maintenance {
+                        if let Some(connection) = connections.get(conn_idx as usize) {
+                            if let Some(event) = event_generator
+                                .check_connection_stress(connection, DEFAULT_STRESS_THRESHOLD)
+                            {
+                                generated_events.push(event);
+                            }
+                            axiom_shell::process_connection_event(&mut self.shell_cache, connection);
                         }
-
-                        axiom_shell::process_connection_event(&mut self.shell_cache, connection);
                     }
-
-                    self.frontier.increment_processed();
                 }
             }
         }
+        self.frontier.end_cycle();
 
         self.update_frontier_state();
         generated_events

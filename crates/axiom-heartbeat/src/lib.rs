@@ -218,7 +218,7 @@ pub fn handle_heartbeat(
     if config.batch_size > 0 && total_tokens > 0 {
         for i in 0..config.batch_size {
             let token_idx = ((pulse_number as usize) * config.batch_size + i) % total_tokens;
-            frontier.push_token(token_idx);
+            frontier.push_token(token_idx as u32);
         }
     }
 
@@ -226,7 +226,7 @@ pub fn handle_heartbeat(
     if config.enable_connection_maintenance && config.connection_batch_size > 0 && total_connections > 0 {
         for i in 0..config.connection_batch_size {
             let conn_idx = ((pulse_number as usize) * config.connection_batch_size + i) % total_connections;
-            frontier.push_connection(conn_idx);
+            frontier.push_connection(conn_idx as u32);
         }
     }
 }

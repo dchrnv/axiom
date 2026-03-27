@@ -26,5 +26,7 @@
 pub mod frontier;
 pub mod processor;
 
-pub use frontier::{CausalFrontier, EntityQueue, FrontierState};
+pub use frontier::{
+    CausalFrontier, EntityQueue, FrontierConfig, FrontierEntity, FrontierState, StormMetrics,
+};
 pub use processor::{EvaluationResult, FrontierProcessor, LocalRules};
