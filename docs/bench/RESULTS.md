@@ -1,6 +1,6 @@
-# Axiom Benchmark Results
+# Axiom Benchmark Results — v2
 
-**Дата последнего замера:** 2026-03-27
+**Дата:** 2026-03-27
 **Платформа:** Linux x86-64
 **Профиль:** `release` (optimized)
 **Инструмент:** criterion 0.5
@@ -179,4 +179,11 @@ Reconcile дороже incremental_update на ~10-25 ns/токен (сравн�
 
 ---
 
-*Baseline v2 — 2026-03-27 (добавлены: AshtiCore pipeline, Shell V3.0, Arbiter thresholds)*
+---
+
+## История версий
+
+| Версия | Дата | Что добавлено |
+|--------|------|--------------|
+| v1 | 2026-03-27 | Baseline: axiom-core, axiom-space, EventGenerator, resonance_search, AxiomEngine (add_domain, InjectToken, TickForward, Snapshot) |
+| v2 | 2026-03-27 | AshtiCore pipeline, Shell V3.0 (compute/incremental/reconcile), Arbiter thresholds; рефактор engine_bench под новый API |
