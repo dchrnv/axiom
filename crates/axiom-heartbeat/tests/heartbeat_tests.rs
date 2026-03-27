@@ -1,5 +1,5 @@
 use axiom_core::{EventPriority, EventType};
-use axiom_frontier::CausalFrontier;
+use axiom_frontier::{CausalFrontier, FrontierConfig};
 use axiom_heartbeat::*;
 
 #[test]
@@ -82,7 +82,7 @@ fn test_heartbeat_event_creation() {
 
 #[test]
 fn test_handle_heartbeat_tokens() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 100);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
     let config = HeartbeatConfig::medium();
 
     handle_heartbeat(&mut frontier, 1, &config, 100, 50);
@@ -93,7 +93,7 @@ fn test_handle_heartbeat_tokens() {
 
 #[test]
 fn test_handle_heartbeat_connections() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 100);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
     let mut config = HeartbeatConfig::medium();
     config.enable_connection_maintenance = true;
 
@@ -104,7 +104,7 @@ fn test_handle_heartbeat_connections() {
 
 #[test]
 fn test_handle_heartbeat_deterministic_selection() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 100);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
     let config = HeartbeatConfig {
         batch_size: 3,
         ..HeartbeatConfig::medium()
@@ -129,7 +129,7 @@ fn test_handle_heartbeat_deterministic_selection() {
 
 #[test]
 fn test_heartbeat_wraparound() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 100);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
     let config = HeartbeatConfig {
         batch_size: 5,
         ..HeartbeatConfig::medium()
@@ -147,7 +147,7 @@ fn test_heartbeat_wraparound() {
 
 #[test]
 fn test_heartbeat_full_coverage() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 100);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
     let config = HeartbeatConfig {
         batch_size: 3,
         ..HeartbeatConfig::medium()
@@ -163,7 +163,7 @@ fn test_heartbeat_full_coverage() {
 
     // Проверяем что все токены были добавлены
     for i in 0..total_tokens {
-        assert!(frontier.contains_token(i), "Token {} not covered", i);
+        assert!(frontier.contains_token(i as u32), "Token {} not covered", i);
     }
 }
 

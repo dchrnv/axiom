@@ -1,4 +1,8 @@
-use axiom_frontier::{CausalFrontier, FrontierState};
+use axiom_frontier::{CausalFrontier, FrontierConfig, FrontierEntity, FrontierState};
+
+// ============================================================================
+// EntityQueue tests
+// ============================================================================
 
 #[test]
 fn test_entity_queue_push_pop() {
@@ -24,9 +28,9 @@ fn test_entity_queue_deduplication() {
     let mut queue = EntityQueue::new(10);
 
     assert!(queue.push(1));
-    assert!(!queue.push(1)); // Дубликат
+    assert!(!queue.push(1)); // duplicate
     assert!(queue.push(2));
-    assert!(!queue.push(2)); // Дубликат
+    assert!(!queue.push(2)); // duplicate
 
     assert_eq!(queue.len(), 2);
 }
@@ -45,12 +49,60 @@ fn test_entity_queue_contains() {
     assert!(!queue.contains(3));
 
     queue.pop();
-    assert!(!queue.contains(1)); // После pop visited сбрасывается
+    assert!(!queue.contains(1)); // visited cleared after pop
 }
 
 #[test]
-fn test_frontier_creation() {
-    let frontier = CausalFrontier::new();
+fn test_entity_queue_clear() {
+    use axiom_frontier::EntityQueue;
+
+    let mut queue = EntityQueue::new(10);
+    queue.push(1);
+    queue.push(2);
+    queue.clear();
+
+    assert!(queue.is_empty());
+    // Can re-add after clear
+    assert!(queue.push(1));
+}
+
+// ============================================================================
+// FrontierConfig presets
+// ============================================================================
+
+#[test]
+fn test_frontier_config_presets() {
+    let weak = FrontierConfig::weak();
+    let medium = FrontierConfig::medium();
+    let powerful = FrontierConfig::powerful();
+
+    assert!(weak.max_frontier_size < medium.max_frontier_size);
+    assert!(medium.max_frontier_size < powerful.max_frontier_size);
+
+    assert!(weak.storm_threshold < medium.storm_threshold);
+    assert!(medium.storm_threshold < powerful.storm_threshold);
+
+    assert!(weak.max_events_per_cycle < medium.max_events_per_cycle);
+    assert!(medium.max_events_per_cycle < powerful.max_events_per_cycle);
+}
+
+#[test]
+fn test_frontier_config_default_is_medium() {
+    let default = FrontierConfig::default();
+    let medium = FrontierConfig::medium();
+
+    assert_eq!(default.max_frontier_size, medium.max_frontier_size);
+    assert_eq!(default.storm_threshold, medium.storm_threshold);
+    assert_eq!(default.max_events_per_cycle, medium.max_events_per_cycle);
+}
+
+// ============================================================================
+// CausalFrontier creation
+// ============================================================================
+
+#[test]
+fn test_frontier_creation_default() {
+    let frontier = CausalFrontier::default();
 
     assert_eq!(frontier.size(), 0);
     assert!(frontier.is_empty());
@@ -58,191 +110,291 @@ fn test_frontier_creation() {
 }
 
 #[test]
-fn test_frontier_push_pop_tokens() {
-    let mut frontier = CausalFrontier::new();
+fn test_frontier_creation_with_config() {
+    let config = FrontierConfig::weak();
+    let frontier = CausalFrontier::new(config);
 
-    assert!(frontier.push_token(1));
-    assert!(frontier.push_token(2));
-    assert!(frontier.push_token(3));
+    assert_eq!(frontier.size(), 0);
+    assert!(frontier.is_empty());
+    assert_eq!(frontier.max_frontier_size(), FrontierConfig::weak().max_frontier_size);
+    assert_eq!(frontier.storm_threshold(), FrontierConfig::weak().storm_threshold);
+}
 
-    assert_eq!(frontier.size(), 3);
-    assert_eq!(frontier.pop_token(), Some(1));
-    assert_eq!(frontier.pop_token(), Some(2));
-    assert_eq!(frontier.pop_token(), Some(3));
-    assert_eq!(frontier.pop_token(), None);
+// ============================================================================
+// Push / pop — FrontierEntity API
+// ============================================================================
+
+#[test]
+fn test_frontier_pop_returns_frontier_entity() {
+    let mut frontier = CausalFrontier::default();
+
+    frontier.push_token(1);
+    frontier.push_token(2);
+    frontier.push_connection(10);
+
+    frontier.begin_cycle();
+    // Tokens have priority over connections
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(1)));
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(2)));
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Connection(10)));
+    assert_eq!(frontier.pop(), None);
+    frontier.end_cycle();
 }
 
 #[test]
-fn test_frontier_push_pop_connections() {
-    let mut frontier = CausalFrontier::new();
+fn test_frontier_token_priority_over_connections() {
+    let mut frontier = CausalFrontier::default();
+
+    // Add connection first, then token
+    frontier.push_connection(99);
+    frontier.push_token(1);
+
+    frontier.begin_cycle();
+    // Token should come first
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(1)));
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Connection(99)));
+    frontier.end_cycle();
+}
+
+#[test]
+fn test_frontier_push_pop_deduplication() {
+    let mut frontier = CausalFrontier::default();
+
+    assert!(frontier.push_token(5));
+    assert!(!frontier.push_token(5)); // duplicate
 
     assert!(frontier.push_connection(10));
-    assert!(frontier.push_connection(20));
+    assert!(!frontier.push_connection(10)); // duplicate
 
     assert_eq!(frontier.size(), 2);
-    assert_eq!(frontier.pop_connection(), Some(10));
-    assert_eq!(frontier.pop_connection(), Some(20));
 }
 
 #[test]
-fn test_frontier_mixed_entities() {
-    let mut frontier = CausalFrontier::new();
+fn test_frontier_contains() {
+    let mut frontier = CausalFrontier::default();
 
     frontier.push_token(1);
     frontier.push_connection(10);
-    frontier.push_token(2);
 
-    assert_eq!(frontier.size(), 3);
     assert!(frontier.contains_token(1));
     assert!(frontier.contains_connection(10));
+    assert!(!frontier.contains_token(2));
+    assert!(!frontier.contains_connection(20));
+}
+
+// ============================================================================
+// begin_cycle / end_cycle
+// ============================================================================
+
+#[test]
+fn test_begin_end_cycle_resets_budget() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 3,
+        storm_threshold: 500,
+        enable_batch_events: true,
+        token_capacity: 100,
+        connection_capacity: 100,
+    };
+    let mut frontier = CausalFrontier::new(config);
+
+    for i in 0..5 {
+        frontier.push_token(i);
+    }
+
+    frontier.begin_cycle();
+    // Budget = 3, only 3 pops succeed
+    assert!(frontier.pop().is_some());
+    assert!(frontier.pop().is_some());
+    assert!(frontier.pop().is_some());
+    assert!(frontier.is_budget_exhausted());
+    assert!(frontier.pop().is_none()); // budget exhausted
+    frontier.end_cycle();
+
+    // New cycle — budget resets
+    frontier.begin_cycle();
+    assert!(!frontier.is_budget_exhausted());
+    assert!(frontier.pop().is_some());
+    frontier.end_cycle();
 }
 
 #[test]
-fn test_frontier_state_transitions() {
-    let mut frontier = CausalFrontier::with_config(5, 100, 10);
+fn test_end_cycle_updates_state() {
+    let mut frontier = CausalFrontier::default();
+
+    frontier.push_token(1);
+    frontier.begin_cycle();
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Active);
+
+    frontier.begin_cycle();
+    frontier.pop(); // drain
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Empty);
+}
+
+#[test]
+fn test_frontier_growth_rate() {
+    let mut frontier = CausalFrontier::default();
+
+    // Cycle 1: add 3 tokens
+    frontier.begin_cycle();
+    frontier.push_token(1);
+    frontier.push_token(2);
+    frontier.push_token(3);
+    frontier.end_cycle();
+    let metrics = frontier.metrics();
+    assert_eq!(metrics.frontier_size, 3);
+
+    // Cycle 2: add 2 more (size goes from 3 to 5)
+    frontier.begin_cycle();
+    frontier.push_token(4);
+    frontier.push_token(5);
+    frontier.end_cycle();
+    let metrics = frontier.metrics();
+    assert_eq!(metrics.frontier_size, 5);
+    assert_eq!(metrics.frontier_growth_rate, 2);
+}
+
+// ============================================================================
+// StormMetrics
+// ============================================================================
+
+#[test]
+fn test_storm_metrics_snapshot() {
+    let mut frontier = CausalFrontier::default();
+
+    frontier.push_token(1);
+    frontier.push_token(2);
+    frontier.push_connection(10);
+
+    frontier.begin_cycle();
+    frontier.pop();
+    let metrics = frontier.metrics();
+    frontier.end_cycle();
+
+    assert_eq!(metrics.frontier_size, 2); // 3 - 1 popped = 2 remaining
+    assert_eq!(metrics.events_this_cycle, 1);
+}
+
+// ============================================================================
+// Storm state transitions (V2.0 API)
+// ============================================================================
+
+#[test]
+fn test_frontier_state_transitions_v2() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 1000,
+        storm_threshold: 5,
+        enable_batch_events: true,
+        token_capacity: 100,
+        connection_capacity: 100,
+    };
+    let mut frontier = CausalFrontier::new(config);
 
     // Empty → Active
     frontier.push_token(1);
-    frontier.update_state();
+    frontier.begin_cycle();
+    frontier.end_cycle();
     assert_eq!(frontier.state(), FrontierState::Active);
 
     // Active → Storm
     for i in 2..=10 {
         frontier.push_token(i);
     }
-    frontier.update_state();
+    frontier.begin_cycle();
+    frontier.end_cycle();
     assert_eq!(frontier.state(), FrontierState::Storm);
+    assert!(frontier.is_storm());
 
-    // Storm → Stabilized
-    while frontier.size() > 2 {
-        frontier.pop_token();
+    // Drain until below storm_threshold
+    frontier.begin_cycle();
+    while frontier.size() > 3 {
+        frontier.pop();
     }
-    frontier.update_state();
-    assert_eq!(frontier.state(), FrontierState::Stabilized);
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Stabilizing);
 
-    // Stabilized → Idle
-    frontier.clear();
-    frontier.update_state();
-    assert_eq!(frontier.state(), FrontierState::Idle);
+    // Stabilizing → Empty
+    frontier.begin_cycle();
+    while frontier.pop().is_some() {}
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Empty);
 }
 
-#[test]
-fn test_causal_budget() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 5);
-
-    assert!(!frontier.is_budget_exhausted());
-
-    for _ in 0..5 {
-        frontier.increment_processed();
-    }
-
-    assert!(frontier.is_budget_exhausted());
-
-    frontier.reset_cycle();
-    assert!(!frontier.is_budget_exhausted());
-}
+// ============================================================================
+// Memory limit
+// ============================================================================
 
 #[test]
 fn test_memory_limit() {
-    let mut frontier = CausalFrontier::with_config(10, 5, 100);
+    let config = FrontierConfig {
+        max_frontier_size: 5,
+        max_events_per_cycle: 1000,
+        storm_threshold: 100,
+        enable_batch_events: true,
+        token_capacity: 100,
+        connection_capacity: 100,
+    };
+    let mut frontier = CausalFrontier::new(config);
 
-    // Добавляем до лимита
     for i in 0..5 {
         assert!(frontier.push_token(i));
     }
 
-    // Превышение лимита
+    // At capacity — next push rejected
     assert!(!frontier.push_token(10));
     assert_eq!(frontier.size(), 5);
 }
 
 #[test]
 fn test_memory_usage() {
-    let mut frontier = CausalFrontier::with_config(10, 100, 10);
+    let config = FrontierConfig {
+        max_frontier_size: 100,
+        max_events_per_cycle: 1000,
+        storm_threshold: 50,
+        enable_batch_events: true,
+        token_capacity: 200,
+        connection_capacity: 200,
+    };
+    let mut frontier = CausalFrontier::new(config);
 
     frontier.push_token(1);
     frontier.push_token(2);
-
     assert_eq!(frontier.memory_usage(), 2.0); // 2/100 * 100 = 2%
 
     for i in 3..=50 {
         frontier.push_token(i);
     }
-
     assert_eq!(frontier.memory_usage(), 50.0); // 50/100 * 100 = 50%
 }
 
+// ============================================================================
+// Clear and getters
+// ============================================================================
+
 #[test]
 fn test_frontier_clear() {
-    let mut frontier = CausalFrontier::new();
+    let mut frontier = CausalFrontier::default();
 
     frontier.push_token(1);
     frontier.push_token(2);
     frontier.push_connection(10);
-
-    assert_eq!(frontier.size(), 3);
 
     frontier.clear();
 
     assert_eq!(frontier.size(), 0);
     assert!(frontier.is_empty());
     assert_eq!(frontier.state(), FrontierState::Empty);
-}
 
-#[test]
-fn test_deterministic_order() {
-    let mut frontier = CausalFrontier::new();
-
-    // Добавляем в определённом порядке
-    frontier.push_token(1);
-    frontier.push_token(2);
-    frontier.push_token(3);
-
-    // Извлекаем в том же порядке (FIFO)
-    assert_eq!(frontier.pop_token(), Some(1));
-    assert_eq!(frontier.pop_token(), Some(2));
-    assert_eq!(frontier.pop_token(), Some(3));
-}
-
-#[test]
-fn test_storm_detection_helpers() {
-    let mut frontier = CausalFrontier::with_config(10, 100, 10);
-
-    // Добавляем до порога storm
-    for i in 0..15 {
-        frontier.push_token(i);
-    }
-
-    frontier.update_state();
-
-    assert!(frontier.is_storm());
-    assert_eq!(frontier.storm_threshold(), 10);
-    assert_eq!(frontier.token_count(), 15);
-}
-
-#[test]
-fn test_causal_budget_integration() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 5);
-
-    // Обработка нескольких циклов
-    for _ in 0..5 {
-        frontier.increment_processed();
-    }
-
-    assert!(frontier.is_budget_exhausted());
-
-    // Новый цикл
-    frontier.reset_cycle();
-    assert!(!frontier.is_budget_exhausted());
-
-    // Можем обрабатывать дальше
-    frontier.increment_processed();
-    assert!(!frontier.is_budget_exhausted());
+    // Can add again after clear
+    assert!(frontier.push_token(1));
 }
 
 #[test]
 fn test_frontier_getters() {
-    let mut frontier = CausalFrontier::with_config(100, 1000, 10);
+    let mut frontier = CausalFrontier::new(FrontierConfig::medium());
 
     frontier.push_token(1);
     frontier.push_token(2);
@@ -251,5 +403,21 @@ fn test_frontier_getters() {
     assert_eq!(frontier.token_count(), 2);
     assert_eq!(frontier.connection_count(), 1);
     assert_eq!(frontier.size(), 3);
-    assert_eq!(frontier.max_frontier_size(), 1000);
+    assert_eq!(frontier.max_frontier_size(), FrontierConfig::medium().max_frontier_size);
+    assert_eq!(frontier.storm_threshold(), FrontierConfig::medium().storm_threshold);
+}
+
+#[test]
+fn test_deterministic_fifo_order() {
+    let mut frontier = CausalFrontier::default();
+
+    frontier.push_token(10);
+    frontier.push_token(20);
+    frontier.push_token(30);
+
+    frontier.begin_cycle();
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(10)));
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(20)));
+    assert_eq!(frontier.pop(), Some(FrontierEntity::Token(30)));
+    frontier.end_cycle();
 }

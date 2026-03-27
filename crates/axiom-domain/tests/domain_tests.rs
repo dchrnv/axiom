@@ -667,7 +667,6 @@ fn test_full_flow_multiple_cycles() {
             let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
             total_events += events.len();
 
-            domain.frontier.reset_cycle();
         }
 
         event_generator.set_event_id(1000 + cycle * 10);
