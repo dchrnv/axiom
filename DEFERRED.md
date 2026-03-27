@@ -1,8 +1,8 @@
 # Axiom - Отложенные задачи
 
-**Версия:** 3.7
+**Версия:** 4.0
 **Создан:** 2026-02-11
-**Обновлен:** 2026-03-26
+**Обновлен:** 2026-03-27
 
 ---
 
@@ -380,6 +380,11 @@ _(Нет критических проблем)_
 
 ## 📝 История изменений
 
+**2026-03-27 (Causal Frontier V2.0):**
+- ✅ Causal Frontier V2.0 реализован: `FrontierConfig` + presets, `FrontierEntity` enum, `begin_cycle/end_cycle`, `frontier_growth_rate`, `StormMetrics`, BitVec dedup, `FrontierProcessor` обновлён
+- ✅ axiom-domain, axiom-heartbeat обновлены под V2.0 API
+- 372 тестов (+6 к 366)
+
 **2026-03-27 (AshtiCore complete):**
 - ✅ AshtiCore реализован: `ashti_core.rs` (13 тестов), AxiomEngine рефакторен
 - ✅ axiom-bench: первые результаты зафиксированы в `docs/bench/RESULTS.md`
@@ -465,7 +470,7 @@ _(Нет критических проблем)_
 
 ---
 
-**Версия:** 3.9
+**Версия:** 4.0
 **Последнее обновление:** 2026-03-27
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
