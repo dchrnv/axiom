@@ -19,8 +19,8 @@ use crate::engine::AxiomEngine;
 /// 5.  Консолидированный результат → finalize_comparison → обратная связь в EXPERIENCE
 /// 6.  Возврат RoutingResult
 pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResult {
-    // Шаги 1-4: Arbiter выполняет dual-path routing
-    let mut result = engine.arbiter.route_token(token, 0);
+    // Шаги 1-4: AshtiCore выполняет dual-path routing
+    let mut result = engine.ashti.process(token);
 
     // Шаг 3 (fast path): Guardian проверяет рефлекс
     if let Some(ref reflex_token) = result.reflex {
@@ -33,7 +33,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     // Шаг 5: Финализация — обратная связь в EXPERIENCE (если есть event_id)
     if result.event_id > 0 {
         // Ошибки финализации не являются фатальными (trace может не существовать)
-        let _ = engine.arbiter.finalize_comparison(result.event_id);
+        let _ = engine.ashti.apply_feedback(result.event_id);
     }
 
     result

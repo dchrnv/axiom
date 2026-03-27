@@ -15,6 +15,7 @@ members = [
     "crates/axiom-upo",
     "crates/axiom-ucl",
     "crates/axiom-runtime",
+    "crates/axiom-bench",
 ]
 
 [workspace.package]

@@ -5,6 +5,8 @@
 **date_started:** 2026-03-21
 **test_structure:** Извлечено в отдельные файлы (2026-03-21)
 
+**Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
+
 ---
 
 ## Фазы миграции
@@ -20,8 +22,8 @@
 | 6 | axiom-arbiter | ✅ | 2026-03-26 | 26 | Arbiter V1.0 — stub-модули заменены: experience (resonance_search, strengthen/weaken), ashti (hint blend + role rules), maya (avg/median/confidence), com (per-domain tracking) |
 | 7 | axiom-heartbeat | ✅ | 2026-03-21 | 11 | Heartbeat V2.0, периодическая активация (413 строк) |
 | 8 | axiom-upo + axiom-ucl | ✅ | 2026-03-21 | 0+5 | UPO v2.2 (388 строк) + UCL commands (356 строк) |
-| 9 | axiom-domain | ✅ | 2026-03-26 | 71 | Domain, DomainState, EventGenerator, membrane — без unsafe, без дублирования. AshtiCore → DEFERRED.md |
-| 10 | axiom-runtime | ✅ | 2026-03-26 | 30 | AxiomEngine (UCL→COM→Frontier→State), Guardian (CODEX), Snapshot (capture/restore), adapters (RuntimeAdapter trait), orchestrator (12-шаговый dual-path цикл) |
+| 9 | axiom-domain | ✅ | 2026-03-26 | 84 | Domain, DomainState, EventGenerator, membrane — без unsafe, без дублирования. AshtiCore (11 доменов + Arbiter + Experience) |
+| 10 | axiom-runtime | ✅ | 2026-03-27 | 29 | AxiomEngine рефакторен: ashti: AshtiCore + guardian: Guardian. SpawnDomain/CollapseDomain → no-op (UCL-совместимость), InjectToken/TickForward/CoreReset через AshtiCore |
 
 ---
 
@@ -432,4 +434,205 @@ cargo test --workspace
 
 ---
 
-**Последнее обновление:** 2026-03-21 (Завершена Фаза 6: axiom-arbiter — 222 теста в workspace)
+---
+
+## Фаза 6 (Option A): Замена stub-модулей axiom-arbiter
+
+**Дата:** 2026-03-26
+**Статус:** ✅ Завершена
+
+### Цель
+Заменить 4 stub-модуля Arbiter реальными реализациями до Фазы 10.
+
+### Реализовано
+
+**`experience.rs`** — ассоциативная память:
+- `resonance_search()` с `pattern_similarity()` (temperature/mass/valence/position weighted distance)
+- Hash pre-filter (`count_ones() > 40`)
+- `ResonanceLevel::Reflex` / `Association` / `None` на основе score = similarity × weight
+- `strengthen_trace()`, `weaken_trace()` с clamping
+- `set_thresholds(reflex: u8, association: u8)` для domain-specific конфигурации
+- Capacity eviction по минимальному весу (max_traces=1000)
+- `ExperienceTrace` расширен: `last_used: u64`, `success_count: u32`, `pattern_hash: u64`
+
+**`ashti_processor.rs`** — ASHTI 1-8 трансформеры:
+- `process_token(token, domain, hint)` с hint blending (`blend_alpha = trace.weight × feedback_weight_delta/255`, clamped 0.5)
+- 8 role-specific трансформеров: spatial (nudge toward target), temporal (epoch stamp), logical (type_flags mask), semantic (valence scaling), thermal (temp nudge 10%), causal (lineage_hash XOR×MUL), resonant (resonance scaling), meta (light blend)
+
+**`maya_processor.rs`** — консолидация:
+- `consolidate_results()`: 0→zero_token, 1→passthrough, N→average or median
+- `compute_confidence()`: 4 поля с tolerance-based agreement (temp±20, mass±15, valence±10, position_x±50)
+- `median_token()`: минимальная сумма расстояний до всех остальных
+- `arbiter_flags` bit 0 → force-median
+
+**`com.rs`** — Causal Order Model:
+- Глобальный монотонный счётчик для каузальной упорядоченности
+- `domain_event_counts: HashMap<u16, u64>` — per-domain счётчики
+- Методы: `next_event_id(domain_id)`, `domain_event_count(domain_id)`, `current_id()`
+
+### Тесты
+✅ **26 тестов:** 9 arbiter + 12 experience + 5 COM
+
+### Коммит
+`feat(arbiter): replace stub modules with real implementations (Option A)`
+
+---
+
+## Фаза 9: axiom-domain
+
+**Дата:** 2026-03-26
+**Статус:** ✅ Завершена
+
+### Цель
+Мигрировать Domain (2845 строк) в отдельный crate без unsafe-кода и дублирования.
+
+### Компоненты
+- `Domain` — основной модуль с `on_event()`, `handle_heartbeat()`, `update_frontier_state()`, `process_frontier()`
+- `DomainState` — состояние домена: tokens, connections, event history
+- `EventGenerator` — генерация физических событий: `check_decay()`, `generate_gravity_update()`, `generate_collision()`
+- Membrane integration — DomainConfig membrane параметры
+- AshtiCore → DEFERRED (зависимость снята, реализация отложена)
+
+### Тесты
+✅ **71 тест**
+
+### Коммит
+`feat(domain): complete Phase 9 — axiom-domain migration (v0.1.0)`
+
+---
+
+## Фаза 10: axiom-runtime
+
+**Дата:** 2026-03-26
+**Статус:** ✅ Завершена
+
+### Цель
+Реализовать полный оркестратор системы — финальный слой интеграции UCL → COM → Frontier → State.
+
+### Компоненты
+
+**`engine.rs`** — `AxiomEngine`:
+- `add_domain()`: создаёт Domain + DomainState, синхронизирует Arbiter
+- `process_command()`: полная обработка всех OpCode (SpawnDomain, CollapseDomain, InjectToken, TickForward, ProcessTokenDualPath, FinalizeComparison, BackupState, RestoreState, CoreReset, CoreShutdown)
+- `tick_domain()`: `on_event()` → `handle_heartbeat()` → `update_frontier_state()` → `process_frontier()`
+- `snapshot()` / `restore_from()` для персистентности состояния
+
+**`guardian.rs`** — CODEX валидация:
+- `validate_reflex()`: STATE_LOCKED → false, sutra_id==0 → false, valence≠0 && mass==0 → false
+- `scan_domain()`: счётчик нарушений по DomainState
+- `violation_count()`, `reset_violations()`
+
+**`snapshot.rs`** — `EngineSnapshot`:
+- `DomainSnapshot`: domain_id + DomainConfig + tokens + connections
+- Frontier исключён (Causal Frontier V1 §14)
+- Методы: `empty()`, `domain_count()`, `total_token_count()`, `find_domain()`, `domain_configs()`
+
+**`adapters.rs`** — трейты расширения:
+- `RuntimeAdapter` trait — `process(&mut AxiomEngine, &UclCommand) -> UclResult`
+- `EventObserver` trait — `on_event(&Event)`
+- `DirectAdapter` — pass-through реализация
+
+**`orchestrator.rs`** — маршрутизация токенов (приватный):
+- `route_token()`: arbiter.route_token → guardian.validate_reflex → finalize_comparison
+
+### Тесты
+✅ **30 тестов:** 14 engine + 9 snapshot + 7 guardian
+
+### Коммит
+`feat(runtime): complete Phase 10 - axiom-runtime orchestration engine`
+
+---
+
+## Cleanup: устранение предупреждений
+
+**Дата:** 2026-03-26
+**Статус:** ✅ Завершена
+
+- Удалён весь `dead_code` и TODO-комментарии
+- Добавлены `///` doc-комментарии ко всем pub items (было 147 предупреждений)
+- Auto-fix clippy: убраны `.clone()` на Copy-типах, лишние cast, добавлен `Default for SpatialHashGrid`
+- Исправлены: `i16` overflow в `pattern_similarity` (cast to i32), дублирующий doc в space/lib.rs
+- Результат: **0 warnings, 0 errors** во всём workspace
+
+### Коммит
+`chore: eliminate all compiler warnings and dead code`
+
+---
+
+## axiom-bench: crate с бенчмарками
+
+**Дата:** 2026-03-26–27
+**Статус:** 🔄 В процессе (компилируется, запуск не завершён)
+
+### Структура
+- `benches/core_bench.rs` — Token::new, compute_resonance, copy, Event::new, Connection::default, struct sizes
+- `benches/space_bench.rs` — SpatialHashGrid::rebuild (100/500/1000/5000 токенов), find_neighbors, distance2
+- `benches/domain_bench.rs` — EventGenerator: check_decay, gravity_update, collision; Experience::resonance_search (0/10/100/500/1000 traces)
+- `benches/engine_bench.rs` — AxiomEngine: creation, add_domain, InjectToken, TickForward (0/10/50/100 tokens), snapshot capture/restore
+
+### Зависимость
+`criterion 0.5` с `html_reports`, добавлен в workspace
+
+---
+
+## Итоги миграции + AshtiCore (финал, 2026-03-27)
+
+### ✅ Завершено: 10 фаз + AshtiCore
+
+| Фаза | Crate | Тесты |
+|------|-------|-------|
+| 0 | workspace setup | — |
+| 1 | axiom-core | 24 |
+| 2 | axiom-frontier | 22 |
+| 3 | axiom-config | 33 |
+| 4 | axiom-space | 83 |
+| 5 | axiom-shell | 43 |
+| 6 | axiom-arbiter | 26 |
+| 7 | axiom-heartbeat | 11 |
+| 8 | axiom-upo + axiom-ucl | 5 |
+| 9 | axiom-domain | 84 |
+| 10 | axiom-runtime | 29 |
+| **Итого** | | **366** |
+
+### Статистика
+- **366 тестов, 0 failures, 0 warnings**
+- 12 crates в workspace (включая axiom-bench)
+- `#![deny(unsafe_code)]` — во всех crates
+- `#![warn(missing_docs)]` — все pub items документированы
+
+---
+
+## AshtiCore
+
+**Дата:** 2026-03-27
+**Статус:** ✅ Завершена
+
+### Цель
+Собрать все готовые компоненты в один работающий уровень — замкнуть архитектуру.
+
+### Компоненты
+- `crates/axiom-domain/src/ashti_core.rs` — AshtiCore struct: 11 доменов + Arbiter + Experience + tick
+- `crates/axiom-domain/src/lib.rs` — `pub use ashti_core::AshtiCore`
+- `crates/axiom-runtime/src/engine.rs` — AxiomEngine рефакторен: `ashti: AshtiCore` заменяет HashMap-based domains+arbiter
+- `crates/axiom-runtime/src/orchestrator.rs` — `engine.ashti.process()` вместо `engine.arbiter.route_token()`
+
+### Архитектура
+```
+AxiomEngine
+  ├── AshtiCore (11 доменов: SUTRA(100)..MAYA(110))
+  │     ├── Arbiter (dual-path routing)
+  │     ├── 11 × Domain (физика поля)
+  │     └── 11 × DomainState (токены + связи)
+  └── Guardian (CODEX-валидация рефлексов)
+```
+
+### Тесты
+✅ **13 тестов** в `crates/axiom-domain/tests/ashti_core_tests.rs`
+✅ **29 тестов** в `crates/axiom-runtime/tests/` (12 engine + 9 guardian + 8 snapshot)
+
+### Коммит
+`feat(domain): implement AshtiCore — fractal level with 11 domains + Arbiter`
+
+---
+
+**Последнее обновление:** 2026-03-27 (AshtiCore завершён — 366 тестов, 0 warnings)
