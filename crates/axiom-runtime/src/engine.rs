@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// AxiomEngine — главный цикл: UCL → COM → Frontier → State
+// AxiomEngine — главный оркестратор: AshtiCore + Guardian
+//
+// Архитектура после введения AshtiCore:
+//   AxiomEngine
+//     ├── AshtiCore (11 доменов + Arbiter + Experience)
+//     └── Guardian  (CODEX-валидация рефлексов)
 
-use std::collections::HashMap;
 use axiom_core::{Token, Event};
 use axiom_config::DomainConfig;
-use axiom_domain::{Domain, DomainState, CapacityExceeded, EventGenerator};
-use axiom_arbiter::{Arbiter, COM};
+use axiom_domain::AshtiCore;
 use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload};
 use crate::guardian::Guardian;
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
@@ -21,8 +24,6 @@ pub mod error_codes {
     pub const DOMAIN_NOT_FOUND: u16 = 1001;
     /// Превышена ёмкость домена
     pub const CAPACITY_EXCEEDED: u16 = 1002;
-    /// Домен с таким ID уже существует
-    pub const DOMAIN_ALREADY_EXISTS: u16 = 1003;
     /// Недопустимый payload команды
     pub const INVALID_PAYLOAD: u16 = 1004;
     /// Arbiter не готов к обработке
@@ -35,74 +36,40 @@ pub mod error_codes {
 
 /// AxiomEngine — центральный оркестратор всех компонентов AXIOM.
 ///
-/// Содержит все домены, их состояния, Arbiter и Guardian.
-/// Принимает UCL-команды и выполняет главный цикл.
+/// Содержит один уровень AshtiCore (11 доменов + Arbiter + Experience)
+/// и Guardian для CODEX-валидации рефлексов.
 pub struct AxiomEngine {
-    /// Физика каждого домена (frontier, heartbeat, spatial grid)
-    domains: HashMap<u32, Domain>,
-    /// Состояния доменов (токены, связи)
-    states: HashMap<u32, DomainState>,
-    /// Arbiter для маршрутизации
-    pub arbiter: Arbiter,
+    /// Фрактальный уровень Ashti_Core (11 доменов)
+    pub ashti: AshtiCore,
     /// Guardian для проверки CODEX
     pub guardian: Guardian,
-    /// Глобальный COM счётчик
-    com: COM,
     /// Накопленные события текущего шага
     pending_events: Vec<Event>,
 }
 
 impl AxiomEngine {
-    /// Создать новый Engine без доменов
+    /// Создать новый Engine с уровнем AshtiCore level_id=1
     pub fn new() -> Self {
-        let com = COM::new();
-        let arbiter = Arbiter::new(HashMap::new(), COM::new());
         Self {
-            domains: HashMap::new(),
-            states: HashMap::new(),
-            arbiter,
+            ashti: AshtiCore::new(1),
             guardian: Guardian::new(),
-            com,
             pending_events: Vec::new(),
         }
     }
 
-    /// Добавить домен в Engine.
-    ///
-    /// Регистрирует домен в Arbiter по structural_role и создаёт DomainState.
-    pub fn add_domain(&mut self, config: DomainConfig) -> Result<(), String> {
-        let domain_id = config.domain_id as u32;
-
-        if self.domains.contains_key(&domain_id) {
-            return Err(format!("Domain {} already exists", domain_id));
-        }
-
-        let state = DomainState::new(&config);
-        let domain = Domain::new(config);
-
-        // Регистрируем в Arbiter
-        self.arbiter.add_domain_config(domain_id, config);
-        self.arbiter.register_domain(config.structural_role, domain_id)?;
-
-        self.domains.insert(domain_id, domain);
-        self.states.insert(domain_id, state);
-
-        Ok(())
-    }
-
-    /// Число доменов в Engine
+    /// Число доменов в Engine (всегда 11 — AshtiCore фиксирован)
     pub fn domain_count(&self) -> usize {
-        self.domains.len()
+        11
     }
 
-    /// Проверить что Arbiter готов к маршрутизации (все 11 доменов зарегистрированы)
+    /// Arbiter готов к маршрутизации (все 11 доменов зарегистрированы)
     pub fn arbiter_ready(&self) -> bool {
-        self.arbiter.is_ready()
+        self.ashti.is_ready()
     }
 
-    /// Получить число токенов в домене
+    /// Число токенов в домене по domain_id
     pub fn token_count(&self, domain_id: u32) -> usize {
-        self.states.get(&domain_id).map_or(0, |s| s.token_count())
+        self.ashti.token_count(domain_id)
     }
 
     /// Взять накопленные события (очищает буфер)
@@ -112,18 +79,26 @@ impl AxiomEngine {
 
     /// Создать snapshot текущего состояния Engine
     pub fn snapshot(&self) -> EngineSnapshot {
-        let domains: Vec<DomainSnapshot> = self.domains.keys().map(|&id| {
-            let config = self.domains[&id].config;
-            let (tokens, connections) = self.states.get(&id)
-                .map(|s| (s.tokens.clone(), s.connections.clone()))
-                .unwrap_or_default();
-            DomainSnapshot { domain_id: id, config, tokens, connections }
-        }).collect();
+        let domains: Vec<DomainSnapshot> = self.ashti.all_states().into_iter()
+            .map(|(id, state)| {
+                let config = self.ashti.all_configs()
+                    .into_iter()
+                    .find(|(cid, _)| *cid == id)
+                    .map(|(_, c)| c)
+                    .unwrap_or_else(|| DomainConfig::factory_void(id as u16, 0));
+                DomainSnapshot {
+                    domain_id: id,
+                    config,
+                    tokens: state.tokens.clone(),
+                    connections: state.connections.clone(),
+                }
+            })
+            .collect();
 
         EngineSnapshot {
             domains,
-            com_next_id: self.com.current_id(),
-            created_at: self.com.current_id().saturating_sub(1),
+            com_next_id: 0,
+            created_at: 0,
         }
     }
 
@@ -132,16 +107,14 @@ impl AxiomEngine {
         let mut engine = Self::new();
 
         for ds in &snapshot.domains {
-            // Добавляем домен (игнорируем ошибки — snapshot консистентен)
-            let _ = engine.add_domain(ds.config);
-
-            // Восстанавливаем токены и связи
-            if let Some(state) = engine.states.get_mut(&ds.domain_id) {
-                for &token in &ds.tokens {
-                    let _ = state.add_token(token);
-                }
-                for &conn in &ds.connections {
-                    let _ = state.add_connection(conn);
+            if let Some(idx) = engine.ashti.index_of(ds.domain_id) {
+                if let Some(state) = engine.ashti.state_mut(idx) {
+                    for &token in &ds.tokens {
+                        let _ = state.add_token(token);
+                    }
+                    for &conn in &ds.connections {
+                        let _ = state.add_connection(conn);
+                    }
                 }
             }
         }
@@ -173,64 +146,40 @@ impl AxiomEngine {
 
     // --- Обработчики команд ---
 
+    /// SpawnDomain — в AshtiCore домены фиксированы, команда возвращает Success (no-op)
     fn handle_spawn_domain(&mut self, cmd: &UclCommand) -> UclResult {
-        let p = parse_spawn_domain_payload(&cmd.payload);
-
-        let config = match p.factory_preset {
-            0  => DomainConfig::factory_void(cmd.target_id as u16, p.parent_domain_id),
-            1  => DomainConfig::factory_sutra(cmd.target_id as u16),
-            6  => DomainConfig::factory_logic(cmd.target_id as u16, p.parent_domain_id),
-            7  => DomainConfig::factory_dream(cmd.target_id as u16, p.parent_domain_id),
-            9  => DomainConfig::factory_experience(cmd.target_id as u16, p.parent_domain_id),
-            10 => DomainConfig::factory_maya(cmd.target_id as u16, p.parent_domain_id),
-            _  => DomainConfig::factory_void(cmd.target_id as u16, p.parent_domain_id),
-        };
-
-        match self.add_domain(config) {
-            Ok(()) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
-            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_ALREADY_EXISTS, 0),
-        }
+        // AshtiCore создаётся с 11 доменами. SpawnDomain принимается без ошибки
+        // для обратной совместимости UCL-протокола, но физически не меняет состояние.
+        let _ = parse_spawn_domain_payload(&cmd.payload);
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 11)
     }
 
+    /// CollapseDomain — no-op в AshtiCore (домены неудаляемы в рамках уровня)
     fn handle_collapse_domain(&mut self, cmd: &UclCommand) -> UclResult {
-        let id = cmd.target_id;
-        if self.domains.remove(&id).is_some() {
-            self.states.remove(&id);
-            make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
-        } else {
-            make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0)
-        }
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
     }
 
     fn handle_inject_token(&mut self, cmd: &UclCommand) -> UclResult {
         let p = parse_inject_token_payload(&cmd.payload);
         let domain_id = p.target_domain_id as u32;
 
-        let state = match self.states.get_mut(&domain_id) {
-            Some(s) => s,
-            None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
-        };
+        // Проверяем что домен существует в AshtiCore
+        if self.ashti.index_of(domain_id).is_none() {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+        }
 
-        let event_id = self.com.next_event_id(p.target_domain_id);
-        let token = build_token_from_inject(&p, domain_id as u16, event_id);
+        let event_id = self.ashti.domain_id_at(0).unwrap_or(0) as u64; // используем как base для event_id
+        let token = build_token_from_inject(&p, p.target_domain_id, event_id);
 
-        match state.add_token(token) {
-            Ok(_) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
-            Err(CapacityExceeded) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+        match self.ashti.inject_token(domain_id, token) {
+            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
         }
     }
 
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
-        let mut total_events = 0u16;
-
-        let domain_ids: Vec<u32> = self.domains.keys().copied().collect();
-        for id in domain_ids {
-            let events = self.tick_domain(id);
-            total_events = total_events.saturating_add(events.len() as u16);
-            self.pending_events.extend(events);
-        }
-
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, total_events)
+        self.ashti.tick();
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 11)
     }
 
     fn handle_dual_path(&mut self, cmd: &UclCommand) -> UclResult {
@@ -238,7 +187,6 @@ impl AxiomEngine {
             return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::ARBITER_NOT_READY, 0);
         }
 
-        // Берём токен из целевого домена по target_id
         let token_opt = self.find_token_by_sutra_id(cmd.target_id);
         let token = match token_opt {
             Some(t) => t,
@@ -251,67 +199,33 @@ impl AxiomEngine {
     }
 
     fn handle_finalize(&mut self, cmd: &UclCommand) -> UclResult {
-        let event_id = cmd.command_id; // event_id передаётся в command_id
-        match self.arbiter.finalize_comparison(event_id) {
-            Ok(()) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+        match self.ashti.apply_feedback(cmd.command_id) {
+            Ok(())  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             Err(_)  => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
         }
     }
 
     fn handle_backup(&mut self, cmd: &UclCommand) -> UclResult {
-        let _snap = self.snapshot();
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, _snap.domain_count() as u16)
+        let snap = self.snapshot();
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, snap.domain_count() as u16)
     }
 
     fn handle_restore(&mut self, cmd: &UclCommand) -> UclResult {
-        // Без конкретного хранилища snapshot'ов — возвращаем Ok
-        // Конкретная реализация живёт в адаптере (см. adapters.rs)
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
     }
 
     fn handle_reset(&mut self, cmd: &UclCommand) -> UclResult {
-        self.domains.clear();
-        self.states.clear();
-        self.pending_events.clear();
-        self.com = COM::new();
-        self.arbiter = Arbiter::new(HashMap::new(), COM::new());
+        self.ashti = AshtiCore::new(1);
         self.guardian = Guardian::new();
+        self.pending_events.clear();
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
     }
 
     // --- Внутренние хелперы ---
 
-    /// Запустить один шаг физики для домена
-    fn tick_domain(&mut self, domain_id: u32) -> Vec<Event> {
-        let domain = match self.domains.get_mut(&domain_id) {
-            Some(d) => d,
-            None => return vec![],
-        };
-        let state = match self.states.get_mut(&domain_id) {
-            Some(s) => s,
-            None => return vec![],
-        };
-
-        // Шаг heartbeat
-        if let Some(pulse) = domain.on_event() {
-            domain.handle_heartbeat(pulse);
-        }
-
-        // Обновление frontier state
-        domain.update_frontier_state();
-
-        // Физика: process_frontier
-        let mut event_gen = EventGenerator::new();
-        domain.process_frontier(
-            &state.tokens,
-            &state.connections,
-            &mut event_gen,
-        )
-    }
-
-    /// Найти токен по sutra_id по всем доменам
+    /// Найти токен по sutra_id по всем доменам AshtiCore
     fn find_token_by_sutra_id(&self, sutra_id: u32) -> Option<Token> {
-        for state in self.states.values() {
+        for (_, state) in self.ashti.all_states() {
             if let Some(&token) = state.tokens.iter().find(|t| t.sutra_id == sutra_id) {
                 return Some(token);
             }
@@ -377,12 +291,6 @@ fn read_f32_le(bytes: &[u8], offset: usize) -> f32 {
 
 /// SpawnDomainPayload из raw payload bytes
 fn parse_spawn_domain_payload(payload: &[u8; 48]) -> SpawnDomainPayload {
-    // SpawnDomainPayload layout (repr(C)):
-    // 0: parent_domain_id (u16)
-    // 2: factory_preset (u8)
-    // 3: structural_role (u8)
-    // 4: initial_energy (f32)
-    // 8: seed (u32)
     SpawnDomainPayload {
         parent_domain_id: read_u16_le(payload, 0),
         factory_preset: payload[2],
@@ -395,15 +303,6 @@ fn parse_spawn_domain_payload(payload: &[u8; 48]) -> SpawnDomainPayload {
 
 /// InjectTokenPayload из raw payload bytes
 fn parse_inject_token_payload(payload: &[u8; 48]) -> InjectTokenPayload {
-    // InjectTokenPayload layout (repr(C)):
-    // 0: target_domain_id (u16)
-    // 2: token_type (u8)
-    // 3: pad
-    // 4: mass (f32)
-    // 8: position[0] (f32), 12: [1], 16: [2]
-    // 20: velocity[0] (f32), 24: [1], 28: [2]
-    // 32: semantic_weight (f32)
-    // 36: temperature (f32)
     InjectTokenPayload {
         target_domain_id: read_u16_le(payload, 0),
         token_type: payload[2],

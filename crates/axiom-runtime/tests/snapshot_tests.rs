@@ -1,13 +1,19 @@
 // Integration tests for axiom-runtime Snapshot
+//
+// AshtiCore содержит 11 фиксированных доменов (domain_id 100–110 для level_id=1).
+// snapshot() захватывает все 11 доменов.
+
 use axiom_runtime::{AxiomEngine, EngineSnapshot};
-use axiom_config::DomainConfig;
 use axiom_ucl::{UclCommand, OpCode};
 
-fn engine_with_domains() -> AxiomEngine {
-    let mut engine = AxiomEngine::new();
-    engine.add_domain(DomainConfig::factory_logic(1, 0)).unwrap();
-    engine.add_domain(DomainConfig::factory_logic(2, 0)).unwrap();
-    engine
+const LOGIC_ID: u32 = 106; // level_id(1) * 100 + role(6) = 106
+
+fn inject_into(engine: &mut AxiomEngine, domain_id: u32) {
+    let mut cmd = UclCommand::new(OpCode::InjectToken, domain_id, 100, 0);
+    cmd.payload[0] = (domain_id & 0xff) as u8;
+    cmd.payload[1] = (domain_id >> 8) as u8;
+    cmd.payload[4..8].copy_from_slice(&50.0f32.to_le_bytes());
+    engine.process_command(&cmd);
 }
 
 // ============================================================
@@ -26,24 +32,16 @@ fn test_empty_snapshot() {
 // ============================================================
 
 #[test]
-fn test_snapshot_captures_domain_count() {
-    let engine = engine_with_domains();
+fn test_snapshot_captures_11_domains() {
+    let engine = AxiomEngine::new();
     let snap = engine.snapshot();
-    assert_eq!(snap.domain_count(), 2);
+    assert_eq!(snap.domain_count(), 11);
 }
 
 #[test]
 fn test_snapshot_captures_tokens() {
     let mut engine = AxiomEngine::new();
-    engine.add_domain(DomainConfig::factory_logic(10, 0)).unwrap();
-
-    // Inject a token
-    let mut cmd = UclCommand::new(OpCode::InjectToken, 10, 100, 0);
-    cmd.payload[0] = 10;
-    cmd.payload[1] = 0;
-    let mass_bytes = 50.0f32.to_le_bytes();
-    cmd.payload[4..8].copy_from_slice(&mass_bytes);
-    engine.process_command(&cmd);
+    inject_into(&mut engine, LOGIC_ID);
 
     let snap = engine.snapshot();
     assert_eq!(snap.total_token_count(), 1);
@@ -51,10 +49,11 @@ fn test_snapshot_captures_tokens() {
 
 #[test]
 fn test_snapshot_find_domain() {
-    let engine = engine_with_domains();
+    let engine = AxiomEngine::new();
     let snap = engine.snapshot();
-    assert!(snap.find_domain(1).is_some());
-    assert!(snap.find_domain(99).is_none());
+    assert!(snap.find_domain(100).is_some(), "SUTRA (id=100) должен быть в snapshot");
+    assert!(snap.find_domain(110).is_some(), "MAYA (id=110) должен быть в snapshot");
+    assert!(snap.find_domain(999).is_none(), "несуществующий домен не должен находиться");
 }
 
 // ============================================================
@@ -63,34 +62,38 @@ fn test_snapshot_find_domain() {
 
 #[test]
 fn test_restore_domain_count() {
-    let engine = engine_with_domains();
+    let engine = AxiomEngine::new();
     let snap = engine.snapshot();
     let restored = AxiomEngine::restore_from(&snap);
-    assert_eq!(restored.domain_count(), 2);
+    assert_eq!(restored.domain_count(), 11);
 }
 
 #[test]
 fn test_restore_token_count() {
     let mut engine = AxiomEngine::new();
-    engine.add_domain(DomainConfig::factory_logic(10, 0)).unwrap();
-
-    let mut cmd = UclCommand::new(OpCode::InjectToken, 10, 100, 0);
-    cmd.payload[0] = 10;
-    cmd.payload[1] = 0;
-    let mass_bytes = 50.0f32.to_le_bytes();
-    cmd.payload[4..8].copy_from_slice(&mass_bytes);
-    engine.process_command(&cmd);
+    inject_into(&mut engine, LOGIC_ID);
 
     let snap = engine.snapshot();
     let restored = AxiomEngine::restore_from(&snap);
-    assert_eq!(restored.token_count(10), 1);
+    assert_eq!(restored.token_count(LOGIC_ID), 1);
 }
 
 #[test]
 fn test_snapshot_roundtrip_domain_count() {
-    let engine = engine_with_domains();
+    let engine = AxiomEngine::new();
     let snap1 = engine.snapshot();
     let restored = AxiomEngine::restore_from(&snap1);
     let snap2 = restored.snapshot();
     assert_eq!(snap1.domain_count(), snap2.domain_count());
+}
+
+#[test]
+fn test_snapshot_roundtrip_token_count() {
+    let mut engine = AxiomEngine::new();
+    inject_into(&mut engine, LOGIC_ID);
+
+    let snap1 = engine.snapshot();
+    let restored = AxiomEngine::restore_from(&snap1);
+    let snap2 = restored.snapshot();
+    assert_eq!(snap1.total_token_count(), snap2.total_token_count());
 }

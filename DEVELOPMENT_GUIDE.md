@@ -144,6 +144,63 @@ Token и Connection принадлежат разным слоям бытия:
 
 ---
 
+## 📊 Бенчмарки
+
+**Расположение:** `crates/axiom-bench/`
+
+Один crate, один растущий бенчмарк. Не создавать отдельные бенчи в других crates — всё измерение производительности живёт здесь.
+
+### Структура
+
+```
+crates/axiom-bench/
+├── Cargo.toml               # criterion 0.5 + зависимости на все crates
+└── benches/
+    ├── core_bench.rs        # axiom-core: Token, Connection, Event
+    ├── space_bench.rs       # axiom-space: SpatialHashGrid, distance2
+    ├── domain_bench.rs      # axiom-domain + axiom-arbiter: EventGenerator, resonance_search
+    └── engine_bench.rs      # axiom-runtime: AxiomEngine полный цикл
+```
+
+### Принципы
+
+- **Один crate, один benchmarks suite** — не дублировать измерения в других crates
+- **Охват растёт вместе с моделью** — при добавлении нового модуля/алгоритма добавить bench в соответствующий файл
+- **Ограничивать тяжёлые группы:** `group.measurement_time(Duration::from_secs(5)); group.sample_size(20);`
+- **Мутирующие функции** — использовать `iter_batched` (не `iter`), иначе состояние накапливается между итерациями
+- **Проверять корректность** перед измерением: `cargo test --benches -p axiom-bench` (каждый бенч — 1 итерация, быстро)
+
+### Команды
+
+```bash
+# Проверить корректность (без измерений, ~5 сек)
+cargo test --benches -p axiom-bench
+
+# Запустить конкретный файл
+cargo bench -p axiom-bench --bench core_bench
+cargo bench -p axiom-bench --bench space_bench
+cargo bench -p axiom-bench --bench domain_bench
+cargo bench -p axiom-bench --bench engine_bench
+
+# Запустить конкретную группу
+cargo bench -p axiom-bench --bench engine_bench -- "TickForward"
+
+# Все бенчи (долго, ~5-10 минут)
+cargo bench -p axiom-bench
+```
+
+### Когда дописывать
+
+- Добавлен новый алгоритм в горячем пути → добавить в соответствующий `*_bench.rs`
+- Новый crate с вычислительным ядром → добавить зависимость в `axiom-bench/Cargo.toml` и bench-функции в существующий файл по смыслу
+- Изменена сигнатура benchmarked функции → обновить bench (не создавать дубль)
+
+### Результаты
+
+Хранятся в `docs/bench/` (HTML от criterion) и фиксируются в `docs/bench/RESULTS.md` после значимых изменений модели.
+
+---
+
 ## 🧪 Тестирование
 
 ```bash

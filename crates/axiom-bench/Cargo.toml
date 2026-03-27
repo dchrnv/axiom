@@ -1,0 +1,32 @@
+[package]
+name = "axiom-bench"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+axiom-core = { path = "../axiom-core" }
+axiom-config = { path = "../axiom-config" }
+axiom-space = { path = "../axiom-space" }
+axiom-domain = { path = "../axiom-domain" }
+axiom-arbiter = { path = "../axiom-arbiter" }
+axiom-runtime = { path = "../axiom-runtime" }
+axiom-ucl = { path = "../axiom-ucl" }
+
+[[bench]]
+name = "core_bench"
+harness = false
+
+[[bench]]
+name = "space_bench"
+harness = false
+
+[[bench]]
+name = "domain_bench"
+harness = false
+
+[[bench]]
+name = "engine_bench"
+harness = false

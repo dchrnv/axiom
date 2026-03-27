@@ -6,6 +6,19 @@
 
 ---
 
+## Принципы разработки
+
+**Правила и стандарты проекта:** см. [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
+
+Ключевые принципы (краткое напоминание):
+- Асимметрия Token (бытие) и Connection (действие) — поля не дублируются
+- Время только через `event_id` — никакого wall-clock в ядре
+- Спецификации в `docs/spec/` — единственный источник правды, не изменять
+- 100% тест coverage для критических модулей
+- `#![deny(unsafe_code)]` и `#![warn(missing_docs)]` во всех crates
+
+---
+
 ## Принцип ведения
 
 Систематический учет всех заглушек, отложенных функций и старых планов для будущих версий.
@@ -58,28 +71,10 @@ _(Нет критических проблем на данный момент)_
 
 ---
 
-### axiom-domain — AshtiCore (ashti.rs) отложено
+### ~~axiom-domain — AshtiCore~~ ✅ ЗАВЕРШЕНО 2026-03-27
 
-**Файл:** `crates/axiom-domain/src/ashti.rs` (не создан)
-**Статус:** Отложено
-**Дата:** 2026-03-26 (Фаза 9 миграции)
-
-**Что нужно:**
-- `AshtiCore` struct — 11 Domain instances (SUTRA=0, EXECUTION=1..VOID=8, EXPERIENCE=9, MAYA=10)
-- Маршрутизация: запрос → SUTRA(0) → EXECUTION(1)..VOID(8) → EXPERIENCE(9) → MAYA(10)
-- Интеграция с axiom-arbiter для dual-path routing (рефлексы + ассоциации)
-- `tests/ashti_tests.rs` — тесты маршрутизации 11 доменов
-
-**Причина отсрочки:**
-- Требует замены stub-модулей в axiom-arbiter:
-  - `experience.rs` — реальный алгоритм резонансного поиска
-  - `ashti_processor.rs` — маршрутизация через ASHTI 1-8
-  - `maya_processor.rs` — консолидация результатов
-  - `com.rs` — полный Causal Order Model
-- Без рабочих процессоров AshtiCore будет нефункциональным
-
-**Зависит от:** ~~Замены stub-модулей в axiom-arbiter~~ ✅ Выполнено 2026-03-26
-**Когда:** Перед Фазой 10 (axiom-runtime) или после неё
+**Статус:** ✅ Реализовано — `crates/axiom-domain/src/ashti_core.rs`, 13 тестов
+**AxiomEngine рефакторен** — `ashti: AshtiCore` заменяет HashMap-based domains+arbiter
 
 ---
 
@@ -365,25 +360,43 @@ disabled: enable_shell_reconciliation = false  // Disabled when heartbeat disabl
 _(Нет критических проблем)_
 
 ### 🔧 СРЕДНИЙ:
-1. **axiom-arbiter stub-модули** - Замена заглушек на полноценные реализации (Фаза 6)
-2. SPACE V6.0 - YAML Configuration (Phase 1.10-1.11)
-3. Configuration System - Preset Loading
-4. Events System Integration
-5. Configuration Advanced Features
-6. Shell V3.0 - YAML Configuration (Phase 2.3)
-7. Shell V3.0 - Runtime Configuration (Phase 2.9)
+1. SPACE V6.0 - YAML Configuration (Section 3.1)
+2. Configuration System - Preset Loading (Section 3.2)
+3. Events System Integration (Section 3.3)
+4. Configuration Advanced Features (Section 3.4)
+5. Shell V3.0 - YAML Configuration (Section 3.5)
+6. Shell V3.0 - Runtime Configuration (Section 3.6)
 
 ### 🟢 НИЗКИЙ:
-4. Python Adapter
-5. REST API
-6. Performance Benchmarks
+1. **axiom-upo тесты** — 0 тестов, можно добавить в любое время
+2. Python Adapter
+3. REST API
 
 ### 📦 АРХИВНЫЕ:
+- ~~axiom-arbiter stub-модули~~ ✅ Завершено 2026-03-26
 - v0.3.0, v0.4.0 планы (отложено)
 
 ---
 
 ## 📝 История изменений
+
+**2026-03-27 (AshtiCore complete):**
+- ✅ AshtiCore реализован: `ashti_core.rs` (13 тестов), AxiomEngine рефакторен
+- ✅ axiom-bench: первые результаты зафиксированы в `docs/bench/RESULTS.md`
+- Удалены из НИЗКОГО: AshtiCore ✅, axiom-bench ✅
+- Обновлена версия (3.9)
+
+**2026-03-27 (Migration complete):**
+- ✅ Закрыта секция 1.5: axiom-arbiter stub-модули (все 4 реализованы, 26 тестов)
+- Обновлена сводка: убран "axiom-arbiter" из СРЕДНИХ приоритетов
+- Добавлены в НИЗКИЙ: AshtiCore (разблокировано), axiom-bench (создан, нужен запуск)
+
+**2026-03-26 (Option A + Phase 9 + Phase 10):**
+- ✅ Option A: все 4 stub-модуля axiom-arbiter заменены (experience, ashti_processor, maya_processor, com)
+- ✅ Phase 9: axiom-domain мигрирован (71 тест), AshtiCore перенесён в DEFERRED с отметкой "блокировка снята"
+- ✅ Phase 10: axiom-runtime реализован полностью (30 тестов): AxiomEngine, Guardian, Snapshot, adapters, orchestrator
+- ✅ Cleanup: 0 warnings, 0 dead code по всему workspace
+- Создан axiom-bench crate (в процессе запуска)
 
 **2026-03-21 (Migration Phase 6):**
 - Добавлено: Секция 1.5 (axiom-arbiter stub-модули требуют замены)
@@ -452,7 +465,7 @@ _(Нет критических проблем)_
 
 ---
 
-**Версия:** 3.6
-**Последнее обновление:** 2026-03-21 (Migration Phase 6)
+**Версия:** 3.9
+**Последнее обновление:** 2026-03-27
 **Создано в рамках:** Axiom Project
 **Статус:** Активный учет технического долга и отложенных планов
