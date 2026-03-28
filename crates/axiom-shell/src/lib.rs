@@ -7,7 +7,7 @@
 // Спецификация: docs/spec/Shell_V3_0.md
 
 use bitvec::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Семантический профиль токена (8 слоев × u8)
 ///
