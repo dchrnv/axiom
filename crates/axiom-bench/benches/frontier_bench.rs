@@ -5,7 +5,7 @@
 //   - TickForward с 1000+ токенами под Storm Control: без зависания
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use axiom_frontier::{CausalFrontier, FrontierConfig, FrontierEntity};
+use axiom_frontier::{CausalFrontier, FrontierConfig};
 use std::time::Duration;
 
 // ─────────────────────────────────────────────────────────────────────────────
