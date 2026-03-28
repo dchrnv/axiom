@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**426 тестов, 0 failures, 0 warnings**
+**430 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -29,7 +29,7 @@ AxiomEngine (try_new + Arc<Genome>)
 |-------|-------|----------|
 | axiom-core | 24 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml (Фаза B) |
-| axiom-frontier | 28 | CausalFrontier V2.0, FrontierConfig, FrontierEntity, storm, budget |
+| axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 33 | DomainConfig (11 factory методов), HeartbeatConfig |
 | axiom-space | 83 | SpatialHashGrid, физика, координаты |
 | axiom-shell | 43 | Shell V3.0, семантические профили |
@@ -40,4 +40,4 @@ AxiomEngine (try_new + Arc<Genome>)
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
 | axiom-runtime | 51 | AxiomEngine (try_new), Guardian (CODEX+GENOME), GUARDIAN_CHECK_REQUIRED |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **426** | |
+| **Итого** | **430** | |

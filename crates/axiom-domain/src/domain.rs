@@ -68,6 +68,7 @@ impl Domain {
             max_events_per_cycle: 1000,
             storm_threshold: (config.token_capacity / 10).max(50),
             enable_batch_events: true,
+            batch_size: 20,
             token_capacity: config.token_capacity,
             connection_capacity: config.connection_capacity,
         };
@@ -201,6 +202,9 @@ impl Domain {
                         }
                     }
                 }
+
+                // Batch: при Storm N элементов слиты — пропускаем детальную обработку
+                FrontierEntity::BatchToken(_) | FrontierEntity::BatchConnection(_) => {}
 
                 FrontierEntity::Connection(conn_idx) => {
                     if self.heartbeat_config.enable_connection_maintenance {

@@ -15,6 +15,7 @@ axiom-domain = { path = "../axiom-domain" }
 axiom-arbiter = { path = "../axiom-arbiter" }
 axiom-runtime = { path = "../axiom-runtime" }
 axiom-ucl = { path = "../axiom-ucl" }
+axiom-frontier = { path = "../axiom-frontier" }
 
 [[bench]]
 name = "core_bench"
@@ -34,4 +35,8 @@ harness = false
 
 [[bench]]
 name = "shell_bench"
+harness = false
+
+[[bench]]
+name = "frontier_bench"
 harness = false

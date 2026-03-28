@@ -193,6 +193,7 @@ fn test_begin_end_cycle_resets_budget() {
         max_events_per_cycle: 3,
         storm_threshold: 500,
         enable_batch_events: true,
+        batch_size: 0,
         token_capacity: 100,
         connection_capacity: 100,
     };
@@ -288,6 +289,7 @@ fn test_frontier_state_transitions_v2() {
         max_events_per_cycle: 1000,
         storm_threshold: 5,
         enable_batch_events: true,
+        batch_size: 0,
         token_capacity: 100,
         connection_capacity: 100,
     };
@@ -334,6 +336,7 @@ fn test_memory_limit() {
         max_events_per_cycle: 1000,
         storm_threshold: 100,
         enable_batch_events: true,
+        batch_size: 0,
         token_capacity: 100,
         connection_capacity: 100,
     };
@@ -355,6 +358,7 @@ fn test_memory_usage() {
         max_events_per_cycle: 1000,
         storm_threshold: 50,
         enable_batch_events: true,
+        batch_size: 0,
         token_capacity: 200,
         connection_capacity: 200,
     };
@@ -419,5 +423,121 @@ fn test_deterministic_fifo_order() {
     assert_eq!(frontier.pop(), Some(FrontierEntity::Token(10)));
     assert_eq!(frontier.pop(), Some(FrontierEntity::Token(20)));
     assert_eq!(frontier.pop(), Some(FrontierEntity::Token(30)));
+    frontier.end_cycle();
+}
+
+// ============================================================================
+// Batch Events — Storm mitigation
+// ============================================================================
+
+#[test]
+fn test_batch_tokens_during_storm() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 1000,
+        storm_threshold: 5,
+        enable_batch_events: true,
+        batch_size: 4,
+        token_capacity: 200,
+        connection_capacity: 200,
+    };
+    let mut frontier = CausalFrontier::new(config);
+
+    // Переходим в Storm: добавляем > storm_threshold токенов
+    for i in 0..10 {
+        frontier.push_token(i);
+    }
+    frontier.begin_cycle();
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Storm);
+
+    // При Storm pop() должен вернуть BatchToken
+    frontier.begin_cycle();
+    let entity = frontier.pop().unwrap();
+    assert!(matches!(entity, FrontierEntity::BatchToken(n) if n == 4));
+    frontier.end_cycle();
+}
+
+#[test]
+fn test_batch_size_reduces_pop_count() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 1000,
+        storm_threshold: 3,
+        enable_batch_events: true,
+        batch_size: 5,
+        token_capacity: 200,
+        connection_capacity: 200,
+    };
+    let mut frontier = CausalFrontier::new(config);
+
+    // Добавляем 10 токенов → Storm
+    for i in 0..10 {
+        frontier.push_token(i);
+    }
+    frontier.begin_cycle();
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Storm);
+
+    // При batch_size=5: первый pop → BatchToken(5), потребляет 1 budget
+    frontier.begin_cycle();
+    let first = frontier.pop().unwrap();
+    assert!(matches!(first, FrontierEntity::BatchToken(5)));
+    // frontier.events_this_cycle == 1, не 5
+    assert_eq!(frontier.metrics().events_this_cycle, 1);
+    frontier.end_cycle();
+}
+
+#[test]
+fn test_no_batching_without_storm() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 1000,
+        storm_threshold: 100,
+        enable_batch_events: true,
+        batch_size: 10,
+        token_capacity: 200,
+        connection_capacity: 200,
+    };
+    let mut frontier = CausalFrontier::new(config);
+
+    // Добавляем 3 токена — не Storm
+    for i in 0..3 {
+        frontier.push_token(i);
+    }
+    frontier.begin_cycle();
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Active);
+
+    // Без шторма — обычные Token, не Batch
+    frontier.begin_cycle();
+    assert!(matches!(frontier.pop().unwrap(), FrontierEntity::Token(_)));
+    frontier.end_cycle();
+}
+
+#[test]
+fn test_batch_connections_during_storm() {
+    let config = FrontierConfig {
+        max_frontier_size: 1000,
+        max_events_per_cycle: 1000,
+        storm_threshold: 3,
+        enable_batch_events: true,
+        batch_size: 3,
+        token_capacity: 200,
+        connection_capacity: 200,
+    };
+    let mut frontier = CausalFrontier::new(config);
+
+    // Только связи, без токенов
+    for i in 0..8 {
+        frontier.push_connection(i);
+    }
+    frontier.begin_cycle();
+    frontier.end_cycle();
+    assert_eq!(frontier.state(), FrontierState::Storm);
+
+    frontier.begin_cycle();
+    let entity = frontier.pop().unwrap();
+    assert!(matches!(entity, FrontierEntity::BatchConnection(3)));
     frontier.end_cycle();
 }

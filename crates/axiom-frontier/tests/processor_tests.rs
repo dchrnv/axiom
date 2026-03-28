@@ -125,6 +125,7 @@ fn test_process_respects_budget() {
         max_events_per_cycle: 2,
         storm_threshold: 1000,
         enable_batch_events: true,
+        batch_size: 0,
         token_capacity: 100,
         connection_capacity: 100,
     };
