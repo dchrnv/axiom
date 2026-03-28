@@ -1,173 +1,112 @@
-# 🚀 Axiom Quick Start
-
-> Get up and running with Axiom quickly.
+# Axiom Quick Start
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
-### System Requirements
-- **OS:** Linux (Arch Linux recommended, other distributions may work)
-- **Python:** 3.10+
-- **Rust:** 1.70+ (for development)
-- **Git:** For cloning the repository
-
-### Dependencies
-- **Python packages:** Listed in `pyproject.toml`
-- **Rust toolchain:** For core components
-- **Neurograph:** Storage engine (automatically handled)
-
----
-
-## 🛠️ Installation
-
-### Method 1: Development Setup (Recommended)
+- **OS:** Linux (Arch Linux recommended)
+- **Rust:** 1.75+
 
 ```bash
-# Clone the repository
+# Установить Rust (если не установлен)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+---
+
+## Installation
+
+```bash
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-# Install Python dependencies in development mode
-pip install -e ".[dev]"
+# Собрать и прогнать все тесты
+cargo test --workspace
 
-# Build Rust components
+# Release build
 cargo build --release
-
-# Run tests to verify installation
-cargo test
-```
-
-### Method 2: Production Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/dchrnv/axiom.git
-cd axiom
-
-# Install Python dependencies
-pip install -e "."
-
-# Build optimized Rust components
-cargo build --release
-
-# Verify installation
-python -c "import axiom_core; print('Axiom installed successfully')"
-```
-
-### Method 3: Docker (Coming Soon)
-
-```bash
-# Build Docker image
-docker build -t axiom .
-
-# Run container
-docker run -it axiom
 ```
 
 ---
 
-## 🧪 Verify Installation
+## Basic Usage
 
-### Run Tests
-```bash
-# All tests
-cargo test
+### Minimal example
 
-# Specific module tests
-cargo test token
-cargo test domain
-cargo test connection
+```rust
+use axiom_runtime::AxiomEngine;
+use axiom_ucl::{UclCommand, OpCode};
+
+let mut engine = AxiomEngine::new();
+let cmd = UclCommand::new(OpCode::TickForward, 0, 0, 0);
+engine.process_command(&cmd);
+let events = engine.drain_events();
 ```
 
-### Check Sizes
-```bash
-# Verify structure sizes match specifications
-cargo test debug_print_sizes -- --nocapture
+### Через Gateway (рекомендуется для внешних систем)
+
+```rust
+use axiom_runtime::{Gateway, Channel};
+use axiom_ucl::{UclCommand, OpCode};
+
+let mut gw = Gateway::with_default_engine();
+let mut ch = Channel::new();
+
+ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
+let result = gw.process_channel(&mut ch);
+assert!(result.all_ok());
 ```
 
-### Basic Usage
-```python
-import axiom_core
+### Инъекция токена
 
-# Create a token
-token = axiom_core.Token::new(1, 1, 0)
+```rust
+use axiom_runtime::AxiomEngine;
+use axiom_ucl::{UclCommand, OpCode};
 
-# Create a domain
-domain = axiom_core.DomainConfig::new(
-    1, 
-    axiom_core.DomainType::Logic, 
-    axiom_core.StructuralRole::Ashti1
-)
+let mut engine = AxiomEngine::new();
 
-print(f"Token size: {token.size()} bytes")
-print(f"Domain valid: {domain.validate()}")
+// LOGIC domain = level_id(1)*100 + role(6) = 106
+let mut cmd = UclCommand::new(OpCode::InjectToken, 106, 100, 0);
+cmd.payload[0] = 106u8;  // domain_id lo
+cmd.payload[1] = 0u8;    // domain_id hi
+cmd.payload[4..8].copy_from_slice(&100.0f32.to_le_bytes()); // mass
+engine.process_command(&cmd);
 ```
 
 ---
 
-## 🔧 Development Setup
+## Benchmarks
 
-### IDE Configuration
-- **VS Code:** Install Rust and Python extensions
-- **PyCharm:** Configure Python interpreter and Rust toolchain
-
-### Environment Variables
 ```bash
-# Optional: Set Rust target for optimization
-export RUSTFLAGS="-C target-cpu=native"
-
-# Optional: Enable debug symbols
-export RUSTFLAGS="-g"
+cargo bench -p axiom-bench
 ```
 
-### Common Issues
+Результаты: [docs/bench/RESULTS.md](docs/bench/RESULTS.md)
 
-#### **Issue: Rust not found**
+---
+
+## Documentation
+
+- [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство
+- [STATUS.md](STATUS.md) — текущее состояние
+- [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) — правила разработки
+
+---
+
+## Common Issues
+
+**Rust not found**
 ```bash
-# Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 ```
 
-#### **Issue: Python version mismatch**
+**Build failures**
 ```bash
-# Check Python version
-python --version
-
-# Use correct version if needed
-python3.10 -m pip install -e ".[dev]"
+cargo clean && cargo build --release
 ```
 
-#### **Issue: Build failures**
+**Запустить конкретный тест**
 ```bash
-# Clean and rebuild
-cargo clean
-cargo build --release
+cargo test -p axiom-runtime test_gateway_process
 ```
-
----
-
-## 📚 Next Steps
-
-1. **Read DEVELOPMENT_GUIDE.md** - for development workflow
-2. **Explore docs/spec/** - for module specifications
-3. **Check docs/guides/** - for detailed usage guides
-4. **Check STATUS.md** - for current project status
-5. **Join development** - see CONTRIBUTING.md
-
-### 📖 **Detailed Guides:**
-- **[DomainConfig Guide](docs/guides/DomainConfig_Guide.md)** - Complete DomainConfig V2.0 usage
-- More guides coming soon...
-
----
-
-## 🤝 Need Help?
-
-- **Issues:** [GitHub Issues](https://github.com/dchrnv/axiom/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/dchrnv/axiom/discussions)
-- **Email:** dreeftwood@gmail.com
-
----
-
-**Ready to dive deeper?** See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for the complete development workflow.
