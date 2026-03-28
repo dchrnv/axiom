@@ -12,50 +12,11 @@
 
 ### ~~Шаг 1 — Crate `axiom-genome` (Фаза A)~~ ✅ ГОТОВО
 
-### Шаг 1 — Crate `axiom-genome` (Фаза A)
+### ~~Шаг 2 — Guardian расширяется GENOME~~ ✅ ГОТОВО
 
-Новый crate: `axiom-genome` → зависит только от `axiom-core`.
+### ~~Шаг 3 — `Arc<Genome>` через цепочку конструкторов~~ ✅ ГОТОВО
 
-```
-axiom-genome
-  ├── Genome { version, invariants, access_rules, protocol_rules, config }
-  ├── GenomeInvariants  — размеры структур, архитектурные ограничения
-  ├── AccessRule / Permission / ModuleId / ResourceId
-  ├── ProtocolRule / DataType
-  ├── GenomeConfig      — глобальные параметры Arbiter, Frontier, Heartbeat
-  ├── GenomeIndex       — предвычисленные матрицы для O(1) lookup
-  └── Genome::default_ashti_core() — захардкоженная конфигурация (без serde)
-```
-
-Тесты: O(1) access/protocol lookup, валидация инвариантов, `validate()` → Ok/Err.
-
-### Шаг 2 — Guardian расширяется GENOME
-
-В `axiom-runtime/src/guardian.rs` добавить:
-- `genome: Arc<Genome>` + `genome_index: GenomeIndex`
-- `enforce_access(module, resource, operation) -> bool` — O(1) через матрицу
-- `enforce_protocol(source, target) -> bool` — O(1) через матрицу
-- `scan_domain(domain, domain_id) -> Vec<InhibitAction>`
-- `update_codex(codex_state, action) -> Result`
-- Существующая CODEX-валидация остаётся, `validate_reflex()` расширяется GENOME-проверками
-
-Тесты: enforce_access разрешает/блокирует, enforce_protocol, validate_reflex с GENOME.
-
-### Шаг 3 — `Arc<Genome>` через цепочку конструкторов
-
-```
-AxiomEngine::try_new(genome: Arc<Genome>) -> Result<Self, AxiomError>
-  → Guardian::new(Arc::clone(&genome))
-  → Arbiter::new(Arc::clone(&genome), ...)
-  → AshtiCore::new(Arc::clone(&genome), ...)
-```
-
-Существующие тесты: `AxiomEngine::new()` → `AxiomEngine::try_new(...).unwrap()`.
-
-### Шаг 4 — Arbiter ↔ GUARDIAN интеграция
-
-При `GUARDIAN_CHECK_REQUIRED` бите в DomainConfig — Arbiter вызывает
-`Guardian::validate_reflex()` перед отправкой рефлекса в MAYA.
+### ~~Шаг 4 — Arbiter ↔ GUARDIAN интеграция~~ ✅ ГОТОВО
 
 ### Шаг 5 — Фаза B: `config/genome.yaml` + serde_yaml (опционально)
 

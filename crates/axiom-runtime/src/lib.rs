@@ -21,7 +21,11 @@ pub mod snapshot;
 pub mod adapters;
 mod orchestrator;
 
-pub use engine::AxiomEngine;
-pub use guardian::Guardian;
+pub use engine::{AxiomEngine, AxiomError};
+pub use guardian::{
+    Guardian, ReflexDecision, VetoReason,
+    InhibitAction, InhibitReason,
+    CodexAction, GuardianError, GuardianStats,
+};
 pub use snapshot::{EngineSnapshot, DomainSnapshot};
 pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter};

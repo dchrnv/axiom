@@ -182,6 +182,12 @@ impl AshtiCore {
     }
 
     /// Конфигурации всех доменов (domain_id, DomainConfig) — для snapshot.
+    /// Получить конфиг домена по domain_id.
+    pub fn config_of(&self, domain_id: u32) -> Option<axiom_config::DomainConfig> {
+        let idx = self.index_of(domain_id)?;
+        Some(self.domains[idx].config)
+    }
+
     pub fn all_configs(&self) -> Vec<(u32, axiom_config::DomainConfig)> {
         (0..11).filter_map(|i| {
             let id = self.domain_id_at(i)?;

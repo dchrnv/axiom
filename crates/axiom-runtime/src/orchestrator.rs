@@ -7,6 +7,7 @@
 
 use axiom_core::Token;
 use axiom_arbiter::RoutingResult;
+use axiom_config::GUARDIAN_CHECK_REQUIRED;
 use crate::engine::AxiomEngine;
 
 /// Выполнить полный цикл маршрутизации токена через Arbiter.
@@ -22,9 +23,15 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     // Шаги 1-4: AshtiCore выполняет dual-path routing
     let mut result = engine.ashti.process(token);
 
-    // Шаг 3 (fast path): Guardian проверяет рефлекс
+    // Шаг 3 (fast path): Guardian проверяет рефлекс если GUARDIAN_CHECK_REQUIRED бит установлен
     if let Some(ref reflex_token) = result.reflex {
-        if !engine.guardian.validate_reflex(reflex_token) {
+        // Проверяем arbiter_flags домена-источника (SUTRA = 100)
+        let check_required = engine.ashti
+            .config_of(token.sutra_id)
+            .map(|cfg| cfg.arbiter_flags & GUARDIAN_CHECK_REQUIRED != 0)
+            .unwrap_or(false);
+
+        if check_required && !engine.guardian.validate_reflex(reflex_token).is_allowed() {
             // Рефлекс ингибирован — убираем его из результата
             result.reflex = None;
         }
