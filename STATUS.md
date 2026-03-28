@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-03-27
+**Обновлено:** 2026-03-28
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**387 тестов, 0 failures, 0 warnings**
+**421 тест, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -15,7 +15,7 @@ AxiomEngine
   │     ├── Arbiter (dual-path routing + Experience)
   │     ├── 11 × Domain (физика поля)
   │     └── 11 × DomainState (токены + связи)
-  └── Guardian (CODEX-валидация рефлексов)
+  └── Guardian (CODEX + GENOME валидация рефлексов)
 ```
 
 ---
@@ -25,6 +25,7 @@ AxiomEngine
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 24 | Token, Connection, Event |
+| axiom-genome | 21 | Genome V1.0: конституция, GenomeIndex, AccessRule, ProtocolRule |
 | axiom-frontier | 28 | CausalFrontier V2.0, FrontierConfig, FrontierEntity, storm, budget |
 | axiom-config | 33 | DomainConfig (11 factory методов), HeartbeatConfig |
 | axiom-space | 83 | SpatialHashGrid, физика, координаты |
@@ -34,6 +35,6 @@ AxiomEngine
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
-| axiom-runtime | 31 | AxiomEngine, Guardian, Snapshot, orchestrator |
+| axiom-runtime | 51 | AxiomEngine (try_new), Guardian (CODEX+GENOME), GUARDIAN_CHECK_REQUIRED |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **387** | |
+| **Итого** | **421** | |

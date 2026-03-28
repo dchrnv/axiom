@@ -8,13 +8,30 @@
 //     ├── AshtiCore (11 доменов + Arbiter + Experience)
 //     └── Guardian  (CODEX-валидация рефлексов)
 
+use std::sync::Arc;
 use axiom_core::{Token, Event};
 use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
+use axiom_genome::Genome;
 use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload};
 use crate::guardian::Guardian;
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
+
+/// Ошибки инициализации AxiomEngine.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AxiomError {
+    /// GENOME не прошёл валидацию
+    InvalidGenome(String),
+}
+
+impl std::fmt::Display for AxiomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AxiomError::InvalidGenome(msg) => write!(f, "Invalid GENOME: {msg}"),
+        }
+    }
+}
 
 /// Коды ошибок UclResult
 pub mod error_codes {
@@ -37,24 +54,38 @@ pub mod error_codes {
 /// AxiomEngine — центральный оркестратор всех компонентов AXIOM.
 ///
 /// Содержит один уровень AshtiCore (11 доменов + Arbiter + Experience)
-/// и Guardian для CODEX-валидации рефлексов.
+/// и Guardian для CODEX+GENOME-валидации рефлексов.
 pub struct AxiomEngine {
+    /// Genome — конституция системы (заморожена в Arc после boot)
+    genome: Arc<Genome>,
     /// Фрактальный уровень Ashti_Core (11 доменов)
     pub ashti: AshtiCore,
-    /// Guardian для проверки CODEX
+    /// Guardian для проверки CODEX + GENOME
     pub guardian: Guardian,
     /// Накопленные события текущего шага
     pending_events: Vec<Event>,
 }
 
 impl AxiomEngine {
-    /// Создать новый Engine с уровнем AshtiCore level_id=1
-    pub fn new() -> Self {
-        Self {
+    /// Создать Engine с указанным Genome.
+    ///
+    /// Genome валидируется перед созданием — невалидный Genome → `Err(AxiomError::InvalidGenome)`.
+    /// Это единственный путь boot sequence: Genome создаётся первым, замораживается в `Arc`,
+    /// затем передаётся в Guardian (и далее по цепочке в Шаге 4).
+    pub fn try_new(genome: Arc<Genome>) -> Result<Self, AxiomError> {
+        genome.validate().map_err(|e| AxiomError::InvalidGenome(e.to_string()))?;
+        Ok(Self {
+            genome: Arc::clone(&genome),
             ashti: AshtiCore::new(1),
-            guardian: Guardian::new(),
+            guardian: Guardian::new(genome),
             pending_events: Vec::new(),
-        }
+        })
+    }
+
+    /// Создать новый Engine с захардкоженным Ashti_Core Genome.
+    pub fn new() -> Self {
+        Self::try_new(Arc::new(Genome::default_ashti_core()))
+            .expect("default_ashti_core genome is always valid")
     }
 
     /// Число доменов в Engine (всегда 11 — AshtiCore фиксирован)
@@ -218,7 +249,7 @@ impl AxiomEngine {
 
     fn handle_reset(&mut self, cmd: &UclCommand) -> UclResult {
         self.ashti = AshtiCore::new(1);
-        self.guardian = Guardian::new();
+        self.guardian = Guardian::new(Arc::clone(&self.genome));
         self.pending_events.clear();
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
     }

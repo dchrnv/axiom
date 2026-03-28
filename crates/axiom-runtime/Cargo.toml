@@ -16,3 +16,8 @@ axiom-heartbeat = { path = "../axiom-heartbeat" }
 axiom-frontier = { path = "../axiom-frontier" }
 axiom-upo = { path = "../axiom-upo" }
 axiom-ucl = { path = "../axiom-ucl" }
+axiom-genome = { path = "../axiom-genome" }
+
+[dev-dependencies]
+axiom-genome = { path = "../axiom-genome" }
+axiom-config = { path = "../axiom-config" }

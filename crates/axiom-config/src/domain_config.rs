@@ -32,6 +32,9 @@ pub const MEMBRANE_CLOSED: u8 = 2;
 /// Мембрана адаптивная — меняется по контексту
 pub const MEMBRANE_ADAPTIVE: u8 = 3;
 
+/// Бит в `arbiter_flags`: перед отправкой рефлекса в MAYA требуется проверка GUARDIAN.
+pub const GUARDIAN_CHECK_REQUIRED: u8 = 0x04;
+
 /// Структурные роли доменов в системе Ashti_Core
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

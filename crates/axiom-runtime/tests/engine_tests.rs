@@ -4,7 +4,10 @@
 // domain_count() всегда == 11, arbiter_ready() всегда == true.
 // Домены адресуются по schema: level_id(1) * 100 + role = 100..110.
 
-use axiom_runtime::AxiomEngine;
+use std::sync::Arc;
+use axiom_runtime::{AxiomEngine, AxiomError};
+use axiom_genome::Genome;
+use axiom_config::GUARDIAN_CHECK_REQUIRED;
 use axiom_ucl::{UclCommand, OpCode};
 
 fn make_cmd(opcode: OpCode, target_id: u32) -> UclCommand {
@@ -21,9 +24,34 @@ const LOGIC_ID: u32 = 106;
 #[test]
 fn test_engine_creation() {
     let engine = AxiomEngine::new();
-    // AshtiCore всегда содержит 11 доменов
     assert_eq!(engine.domain_count(), 11);
     assert!(engine.arbiter_ready());
+}
+
+#[test]
+fn test_try_new_with_valid_genome() {
+    let genome = Arc::new(Genome::default_ashti_core());
+    let engine = AxiomEngine::try_new(genome).unwrap();
+    assert_eq!(engine.domain_count(), 11);
+    assert!(engine.arbiter_ready());
+}
+
+#[test]
+fn test_try_new_with_invalid_genome_returns_err() {
+    let mut genome = Genome::default_ashti_core();
+    genome.invariants.token_size = 32; // нарушение инварианта
+    let result = AxiomEngine::try_new(Arc::new(genome));
+    assert!(matches!(result, Err(AxiomError::InvalidGenome(_))));
+}
+
+#[test]
+fn test_try_new_error_contains_description() {
+    let mut genome = Genome::default_ashti_core();
+    genome.config.ashti_domain_count = 5;
+    let result = AxiomEngine::try_new(Arc::new(genome));
+    let err = match result { Err(e) => e, Ok(_) => panic!("expected Err") };
+    let msg = format!("{err}");
+    assert!(msg.contains("GENOME"), "error message should mention GENOME: {msg}");
 }
 
 // ============================================================
@@ -192,6 +220,17 @@ fn test_backup_returns_11_domains() {
     let result = engine.process_command(&cmd);
     assert!(result.is_success());
     assert_eq!(result.events_generated, 11);
+}
+
+// ============================================================
+// ============================================================
+// GUARDIAN_CHECK_REQUIRED бит — Шаг 4
+// ============================================================
+
+/// Проверяем что константа GUARDIAN_CHECK_REQUIRED определена и равна 0x04
+#[test]
+fn test_guardian_check_required_constant() {
+    assert_eq!(GUARDIAN_CHECK_REQUIRED, 0x04);
 }
 
 // ============================================================
