@@ -1,8 +1,8 @@
 # AXIOM Functional Guide
 
-**Версия:** 2.0
+**Версия:** 3.0
 **Дата:** 2026-03-28
-**Статус системы:** 568 тестов, 0 failures
+**Статус системы:** 590 тестов, 0 failures
 
 ---
 
@@ -17,8 +17,9 @@
 7. [Configuration System](#7-configuration-system)
 8. [Causal Horizon и Memory Management](#8-causal-horizon-и-memory-management)
 9. [UCL — команды и AxiomEngine](#9-ucl--команды-и-axiomengine)
-10. [Boot sequence](#10-boot-sequence)
-11. [Примеры кода](#11-примеры-кода)
+10. [Gateway и Channel — внешняя интеграция](#10-gateway-и-channel--внешняя-интеграция)
+11. [Boot sequence](#11-boot-sequence)
+12. [Примеры кода](#12-примеры-кода)
 
 ---
 
@@ -27,7 +28,7 @@
 ### Граф зависимостей crates
 
 ```
-axiom-core          — Token (64B), Connection (64B), Event (32B)
+axiom-core          — Token (64B), Connection (64B), Event (64B)
 axiom-genome        — Genome, GenomeIndex, AccessRule, ProtocolRule
 axiom-config        — DomainConfig (128B), HeartbeatConfig, ConfigLoader
 axiom-space         — SpatialHashGrid, SpatialConfig, физика поля
@@ -38,7 +39,7 @@ axiom-heartbeat     — Heartbeat V2.0
 axiom-upo           — UPO v2.2, DynamicTrace, Screen
 axiom-domain        — Domain, DomainState, AshtiCore, CausalHorizon
 axiom-ucl           — UclCommand, UclResult, OpCode
-axiom-runtime       — AxiomEngine, Guardian, Snapshot, orchestrator
+axiom-runtime       — AxiomEngine, Guardian, Snapshot, Gateway, Channel, Adapters
 ```
 
 Зависимости строго однонаправленные — нет циклов.
@@ -59,6 +60,8 @@ axiom-runtime       — AxiomEngine, Guardian, Snapshot, orchestrator
 | **ConfigLoader** | YAML-инфраструктура: загрузка всех компонентов из файлов |
 | **Heartbeat** | Пульс: периодический push токенов в Frontier |
 | **UCL** | Язык команд: бинарный протокол AxiomEngine |
+| **Gateway** | Единая точка входа: владеет Engine, адаптеры, наблюдатели событий |
+| **Channel** | In-process очередь команд и событий |
 
 ---
 
@@ -567,11 +570,112 @@ engine.prune_after_snapshot(&snap)     // usize удалено
 // Навыки (Этап 7)
 engine.export_skills()                 // Vec<Skill>
 engine.import_skills(&skills)          // usize импортировано
+
+// Внешняя интеграция (Этап 8) — см. раздел 10
+// Gateway и Channel — отдельный слой поверх Engine
 ```
 
 ---
 
-## 10. Boot sequence
+## 10. Gateway и Channel — внешняя интеграция
+
+Gateway — единственная точка, через которую внешние системы взаимодействуют с AXIOM. Владеет `AxiomEngine` и добавляет два слоя: наблюдатели событий и подключение адаптеров.
+
+### Gateway
+
+```rust
+use axiom_runtime::{Gateway, EventObserver, RuntimeAdapter, DirectAdapter};
+
+// Создание
+let mut gw = Gateway::with_default_engine();
+// или с явным Engine:
+let mut gw = Gateway::new(AxiomEngine::new());
+
+// Прямая обработка команды
+let result: UclResult = gw.process(&cmd);
+
+// Через адаптер (валидация, логирование, rate limiting)
+let mut adapter = DirectAdapter;
+let result = gw.process_with(&mut adapter, &cmd);
+
+// Доступ к Engine
+let engine: &AxiomEngine = gw.engine();
+let engine: &mut AxiomEngine = gw.engine_mut();
+
+// Статистика
+gw.processed_count()  // u64 — команд обработано с момента создания
+gw.observer_count()   // usize — число зарегистрированных наблюдателей
+```
+
+### EventObserver
+
+Наблюдатель получает уведомление о каждом `Event`, сгенерированном после выполнения команды.
+
+```rust
+struct MyObserver;
+
+impl EventObserver for MyObserver {
+    fn on_event(&self, event: &Event) {
+        // логирование, метрики, реакция на событие
+    }
+}
+
+gw.register_observer(Box::new(MyObserver));
+```
+
+После `process()` или `process_with()` Gateway автоматически вызывает `drain_and_notify()` — дренирует события Engine и рассылает всем наблюдателям. Можно вызвать вручную если нужно собрать события без команды.
+
+### Channel
+
+Channel — in-process FIFO очередь для асинхронной подачи команд и получения событий.
+
+```rust
+use axiom_runtime::Channel;
+
+let mut ch = Channel::new();
+
+// Внешний код ставит команды
+ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
+ch.send(cmd2);
+
+println!("{} команд ожидает", ch.pending_count());
+
+// Gateway обрабатывает весь батч
+let result = gw.process_channel(&mut ch);
+println!("обработано: {}, ошибок: {}", result.processed, result.errors.len());
+result.all_ok(); // → bool
+
+// События, сгенерированные при обработке, попадают в Channel
+let events: Vec<Event> = ch.drain_events();
+
+// Статистика
+ch.processed_count() // u64 — команд обработано через этот канал (суммарно)
+```
+
+При `process_channel` Gateway:
+1. Извлекает все ожидающие команды (`drain_commands`)
+2. Выполняет каждую через Engine
+3. Уведомляет `EventObserver` о каждом событии
+4. Помещает события в Channel (для `drain_events` вызывающей стороны)
+
+### RuntimeAdapter
+
+Trait-граница для транспортных имплементаций. Ядро не знает о транспорте.
+
+```rust
+pub trait RuntimeAdapter {
+    fn process(&mut self, engine: &mut AxiomEngine, cmd: &UclCommand) -> UclResult;
+}
+
+// Встроенный pass-through (для тестов и простых клиентов)
+let mut adapter = DirectAdapter;
+```
+
+Будущие транспорты (см. [DEFERRED.md](../../DEFERRED.md)): REST (`axum`), gRPC (`tonic`), Python (`pyo3`) — все реализуют `RuntimeAdapter`.
+
+---
+
+## 11. Boot sequence
 
 ```
 1. Genome::from_yaml("config/genome.yaml")  или  Genome::default_ashti_core()
@@ -589,14 +693,22 @@ engine.import_skills(&skills)          // usize импортировано
    let loaded = ConfigLoader::load_all("config/axiom.yaml")?;
    // применить загруженные DomainConfig к Arbiter
 
-4. Система готова к UCL командам и прямым вызовам
+4. Опционально: Gateway (для внешних потребителей)
+   let mut gw = Gateway::new(engine);
+   gw.register_observer(Box::new(my_observer));
+   // Теперь внешние системы взаимодействуют через gw, не напрямую с engine
+
+5. Система готова к командам
+   — через Engine напрямую: engine.process_command(&cmd)
+   — через Gateway: gw.process(&cmd)
+   — через Channel: ch.send(cmd); gw.process_channel(&mut ch)
 ```
 
 После `CoreReset` — AshtiCore и Guardian пересоздаются, `Arc<Genome>` не меняется.
 
 ---
 
-## 11. Примеры кода
+## 12. Примеры кода
 
 ### Создание Engine
 
@@ -704,6 +816,68 @@ println!("загружено доменов: {}", loaded.domains.len());
 // Отдельная загрузка
 let logic_cfg = DomainConfig::from_yaml(Path::new("config/presets/domains/logic.yaml"))?;
 logic_cfg.validate()?;
+```
+
+### Gateway с наблюдателем и Channel
+
+```rust
+use axiom_runtime::{Gateway, Channel, EventObserver};
+use axiom_core::Event;
+use axiom_ucl::{UclCommand, OpCode};
+use std::sync::{Arc, Mutex};
+
+// Наблюдатель — собирает события
+struct EventLog(Arc<Mutex<Vec<u16>>>);
+
+impl EventObserver for EventLog {
+    fn on_event(&self, event: &Event) {
+        self.0.lock().unwrap().push(event.event_type);
+    }
+}
+
+let log = Arc::new(Mutex::new(Vec::new()));
+let mut gw = Gateway::with_default_engine();
+gw.register_observer(Box::new(EventLog(Arc::clone(&log))));
+
+// Channel — асинхронная подача команд
+let mut ch = Channel::new();
+for _ in 0..10 {
+    ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
+}
+
+let result = gw.process_channel(&mut ch);
+println!("обработано: {}, ошибок: {}", result.processed, result.errors.len());
+
+// События доступны через наблюдатель и через канал
+let events_in_channel = ch.drain_events();
+let events_in_log = log.lock().unwrap();
+```
+
+### Полный цикл: Engine + Horizon GC + Gateway
+
+```rust
+use axiom_runtime::{AxiomEngine, Gateway, Channel};
+use axiom_ucl::{UclCommand, OpCode};
+
+let engine = AxiomEngine::new();
+let mut gw = Gateway::new(engine);
+
+// Работаем через Gateway
+let mut ch = Channel::new();
+for _ in 0..1000 {
+    ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
+}
+gw.process_channel(&mut ch);
+
+// Периодическое обслуживание памяти — через engine_mut()
+let engine = gw.engine_mut();
+let horizon = engine.causal_horizon();
+if engine.ashti.experience_mut().prunable_count(horizon) > 50 {
+    let skills = engine.export_skills();
+    let (snap, removed) = engine.snapshot_and_prune();
+    engine.import_skills(&skills);
+    println!("snapshot {}, удалено {}", snap.snapshot_event_id(), removed);
+}
 ```
 
 ---
