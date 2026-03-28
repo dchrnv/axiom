@@ -344,18 +344,27 @@ disabled: enable_shell_reconciliation = false  // Disabled when heartbeat disabl
 
 ### 4.1 Python Adapter
 
-**Где:** `runtime/src/python_adapter.rs`
-**Что отложено:** Python bindings для UCL V2.0
-**Почему:** Внешняя интеграция и CLI
+**Что отложено:** Python bindings для UCL V2.0 через pyo3
+**Точка расширения:** impl `RuntimeAdapter` for PythonAdapter
+**Почему:** Требует тяжёлого внешнего crate (pyo3), не нужен для ядра
 **Когда планируется:** Неопределенно
 
 ---
 
 ### 4.2 REST API
 
-**Где:** `runtime/src/rest_api.rs`
-**Что отложено:** HTTP endpoints для доменов
-**Почему:** Веб-интерфейс и удаленное управление
+**Что отложено:** HTTP endpoints через axum/actix-web
+**Точка расширения:** impl `RuntimeAdapter` for RestAdapter
+**Почему:** Требует тяжёлого внешнего crate (axum), не нужен для ядра
+**Когда планируется:** Неопределенно
+
+---
+
+### 4.3 gRPC Adapter
+
+**Что отложено:** gRPC транспорт через tonic
+**Точка расширения:** impl `RuntimeAdapter` for GrpcAdapter
+**Почему:** Требует tonic + protobuf codegen, не нужен для ядра
 **Когда планируется:** Неопределенно
 
 ---

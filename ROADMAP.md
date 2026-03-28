@@ -150,15 +150,19 @@ Phase 2 (физика): полный поиск при Miss. Физика сох
 
 ---
 
-## 🔮 Этап 8: External Integration Layer
+## ~~✅ Этап 8: External Integration Layer~~ — ЗАВЕРШЁН (590 тестов)
 
 **Цель:** Внешние системы взаимодействуют с AXIOM.
-**Специфицировано, но не реализовано** (из baseline спеки).
 
-- **Gateway** — единая точка входа для внешних запросов
-- **Perceptors** — адаптеры входящих данных (REST, gRPC, Python bindings)
-- **Effectors** — адаптеры исходящих действий
-- **Channels** — асинхронные каналы между уровнями
+### ~~✅ Gateway + Channel~~ — ЗАВЕРШЁН
+- **Gateway** — единая точка входа: владеет `AxiomEngine`, маршрутизирует команды, уведомляет `EventObserver`
+- **Channel** — in-process очередь: `send(cmd)` + `drain_events()`, счётчик обработанных команд
+- **Adapters** — `RuntimeAdapter` + `EventObserver` trait-границы для транспортных имплементаций
+- **22 новых теста**: Gateway (process, process_with, observers), Channel (FIFO, drain, clear), process_channel
+
+### ~~REST/gRPC/Python~~ → DEFERRED
+Перенесено в DEFERRED.md. Требуют тяжёлых внешних crates (axum, tonic, pyo3).
+Текущие trait-границы (`RuntimeAdapter`, `EventObserver`) — точки расширения для будущих транспортов.
 
 ---
 
@@ -173,7 +177,7 @@ Phase 2 (физика): полный поиск при Miss. Физика сох
 | 5 | GridHash | O(1) fast path, < 35 µs pipeline | ✅ 519 тестов |
 | 6 | Адаптивные пороги | Самонастройка, DREAM(7) | ✅ 533 тестов |
 | 7 | Causal Horizon | Долгий запуск, обмен скиллами | ✅ 568 тестов |
-| 8 | External Integration | Gateway, REST, gRPC, Python | 🔮 |
+| 8 | External Integration | Gateway, Channel, adapter traits | ✅ 590 тестов |
 
 ---
 
@@ -188,4 +192,4 @@ Phase 2 (физика): полный поиск при Miss. Физика сох
 
 ---
 
-**Обновлено:** 2026-03-28 (после Этап 6)
+**Обновлено:** 2026-03-28 (Этап 8 завершён)

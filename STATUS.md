@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-03-28 (Этап 6 завершён)
+**Обновлено:** 2026-03-28 (Этап 8 завершён)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**568 тестов, 0 failures, 0 warnings**
+**590 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -38,6 +38,6 @@ AxiomEngine (try_new + Arc<Genome>)
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 99 | Domain, DomainState, EventGenerator, AshtiCore, CausalHorizon |
-| axiom-runtime | 79 | AxiomEngine (try_new, snapshot_and_prune, run_adaptation), Guardian, RoleStats |
+| axiom-runtime | 101 | AxiomEngine, Guardian, RoleStats, Gateway, Channel, Adapters |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **568** | |
+| **Итого** | **590** | |
