@@ -53,6 +53,10 @@ impl<'a, R: LocalRules> FrontierProcessor<'a, R> {
         let result = match entity {
             FrontierEntity::Token(id) => self.rules.evaluate_token(id),
             FrontierEntity::Connection(id) => self.rules.evaluate_connection(id),
+            // Batch элементы уже слиты — соседи не пересчитываются
+            FrontierEntity::BatchToken(_) | FrontierEntity::BatchConnection(_) => {
+                EvaluationResult::NoChange
+            }
         };
 
         if let EvaluationResult::Transform { affected_neighbors } = result {
@@ -60,6 +64,7 @@ impl<'a, R: LocalRules> FrontierProcessor<'a, R> {
                 match neighbor {
                     FrontierEntity::Token(id) => { self.frontier.push_token(id); }
                     FrontierEntity::Connection(id) => { self.frontier.push_connection(id); }
+                    FrontierEntity::BatchToken(_) | FrontierEntity::BatchConnection(_) => {}
                 }
             }
         }

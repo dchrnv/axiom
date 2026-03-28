@@ -12,7 +12,7 @@
 
 ---
 
-## 🔄 Этап 2: Storm Control
+## ~~✅ Этап 2: Storm Control~~ — ЗАВЕРШЁН (430 тестов)
 
 **Цель:** Защита от причинных лавин. CausalFrontier получает state machine, budget, size limit.
 **Важно:** CausalFrontier V2.0 уже в коде — это расширение.
@@ -170,8 +170,8 @@ Snapshot фиксирует состояние. События до `snapshot_ev
 | Этап | Название | Ключевой результат | Статус |
 |------|----------|--------------------|--------|
 | 1 | GENOME + GUARDIAN | Конституция, контроль доступа | ✅ 426 тестов |
-| 2 | Storm Control | Защита от каскадов, state machine | 🔄 следующий |
-| 3 | Configuration System | YAML для всего, снять hardcode | 🔮 |
+| 2 | Storm Control | Защита от каскадов, state machine | ✅ 430 тестов |
+| 3 | Configuration System | YAML для всего, снять hardcode | 🔄 следующий |
 | 4 | REFLECTOR + SKILLSET | Статистика, кристаллизация скиллов | 🔮 |
 | 5 | GridHash | O(1) fast path, < 35 µs pipeline | 🔮 |
 | 6 | Адаптивные пороги | Самонастройка, DREAM(7) | 🔮 |

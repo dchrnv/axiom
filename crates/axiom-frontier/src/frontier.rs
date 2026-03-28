@@ -33,6 +33,8 @@ pub struct FrontierConfig {
     pub storm_threshold: u32,
     /// Включить объединение однотипных событий при шторме.
     pub enable_batch_events: bool,
+    /// Сколько элементов объединять в один Batch при Storm (0 = авто по бюджету).
+    pub batch_size: u32,
     /// Ёмкость для предвыделения BitVec токенов.
     pub token_capacity: u32,
     /// Ёмкость для предвыделения BitVec связей.
@@ -47,6 +49,7 @@ impl FrontierConfig {
             max_events_per_cycle: 100,
             storm_threshold: 500,
             enable_batch_events: true,
+            batch_size: 10,
             token_capacity: 1024,
             connection_capacity: 512,
         }
@@ -59,6 +62,7 @@ impl FrontierConfig {
             max_events_per_cycle: 1000,
             storm_threshold: 5000,
             enable_batch_events: true,
+            batch_size: 20,
             token_capacity: 4096,
             connection_capacity: 2048,
         }
@@ -71,6 +75,7 @@ impl FrontierConfig {
             max_events_per_cycle: 10000,
             storm_threshold: 50000,
             enable_batch_events: false,
+            batch_size: 0,
             token_capacity: 65536,
             connection_capacity: 32768,
         }
@@ -94,6 +99,11 @@ pub enum FrontierEntity {
     Token(u32),
     /// Индекс связи в массиве домена
     Connection(u32),
+    /// Batch: N токенов объединены в один элемент при Storm.
+    /// Поле — число реально слитых токенов.
+    BatchToken(u32),
+    /// Batch: N связей объединены в один элемент при Storm.
+    BatchConnection(u32),
 }
 
 // ============================================================================
@@ -285,11 +295,41 @@ impl CausalFrontier {
 
     /// Извлечь следующую сущность.
     /// Токены имеют приоритет над связями.
+    /// При Storm + enable_batch_events: сливает batch_size элементов в один BatchToken/BatchConnection.
     /// Возвращает `None` если frontier пуст или causal budget исчерпан.
     pub fn pop(&mut self) -> Option<FrontierEntity> {
         if self.events_this_cycle >= self.config.max_events_per_cycle {
             return None;
         }
+
+        let batching = self.config.enable_batch_events
+            && self.config.batch_size > 1
+            && matches!(self.state, FrontierState::Storm | FrontierState::Stabilizing);
+
+        if batching {
+            // Batch tokens
+            if !self.token_queue.is_empty() {
+                let mut count = 0u32;
+                while count < self.config.batch_size {
+                    if self.token_queue.pop().is_none() { break; }
+                    count += 1;
+                }
+                self.events_this_cycle += 1;
+                return Some(FrontierEntity::BatchToken(count));
+            }
+            // Batch connections
+            if !self.connection_queue.is_empty() {
+                let mut count = 0u32;
+                while count < self.config.batch_size {
+                    if self.connection_queue.pop().is_none() { break; }
+                    count += 1;
+                }
+                self.events_this_cycle += 1;
+                return Some(FrontierEntity::BatchConnection(count));
+            }
+            return None;
+        }
+
         if let Some(id) = self.token_queue.pop() {
             self.events_this_cycle += 1;
             return Some(FrontierEntity::Token(id));
