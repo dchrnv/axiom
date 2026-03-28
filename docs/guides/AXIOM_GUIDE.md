@@ -1,8 +1,8 @@
 # AXIOM Functional Guide
 
-**Версия:** 1.0
+**Версия:** 2.0
 **Дата:** 2026-03-28
-**Статус системы:** 426 тестов, 0 failures
+**Статус системы:** 568 тестов, 0 failures
 
 ---
 
@@ -10,71 +10,75 @@
 
 1. [Архитектура](#1-архитектура)
 2. [GENOME — конституция системы](#2-genome--конституция-системы)
-3. [GUARDIAN — контроль правил](#3-guardian--контроль-правил)
+3. [GUARDIAN — контроль и адаптация](#3-guardian--контроль-и-адаптация)
 4. [AshtiCore — 11 доменов](#4-ashticore--11-доменов)
 5. [Causal Frontier V2.0](#5-causal-frontier-v20)
 6. [Arbiter — dual-path routing](#6-arbiter--dual-path-routing)
-7. [UCL — команды и AxiomEngine](#7-ucl--команды-и-axiomengine)
-8. [Boot sequence](#8-boot-sequence)
-9. [Примеры кода](#9-примеры-кода)
+7. [Configuration System](#7-configuration-system)
+8. [Causal Horizon и Memory Management](#8-causal-horizon-и-memory-management)
+9. [UCL — команды и AxiomEngine](#9-ucl--команды-и-axiomengine)
+10. [Boot sequence](#10-boot-sequence)
+11. [Примеры кода](#11-примеры-кода)
 
 ---
 
 ## 1. Архитектура
 
-### Граф зависимостей
+### Граф зависимостей crates
 
 ```
 axiom-core          — Token (64B), Connection (64B), Event (32B)
 axiom-genome        — Genome, GenomeIndex, AccessRule, ProtocolRule
 axiom-config        — DomainConfig (128B), HeartbeatConfig, ConfigLoader
-axiom-space         — SpatialHashGrid, физика поля
-axiom-shell         — Shell V3.0, семантические профили
-axiom-frontier      — CausalFrontier V2.0, FrontierConfig, FrontierEntity
-axiom-arbiter       — Arbiter, Experience, Maya, COM, AshtiProcessor
+axiom-space         — SpatialHashGrid, SpatialConfig, физика поля
+axiom-shell         — Shell V3.0, SemanticContributionTable, семантические профили
+axiom-frontier      — CausalFrontier V2.0, FrontierConfig, FrontierEntity, Storm Control
+axiom-arbiter       — Arbiter, Experience, Reflector, SkillSet, GridHash, COM
 axiom-heartbeat     — Heartbeat V2.0
-axiom-upo           — UPO, DynamicTrace, Screen
-axiom-domain        — Domain, DomainState, AshtiCore (11 доменов)
+axiom-upo           — UPO v2.2, DynamicTrace, Screen
+axiom-domain        — Domain, DomainState, AshtiCore, CausalHorizon
 axiom-ucl           — UclCommand, UclResult, OpCode
 axiom-runtime       — AxiomEngine, Guardian, Snapshot, orchestrator
 ```
 
-Каждый crate зависит только от тех, что левее/выше его. Зависимости строго однонаправленные — нет циклов.
+Зависимости строго однонаправленные — нет циклов.
 
-### Роли компонентов
+### Ролевая карта системы
 
 | Компонент | Роль |
 |-----------|------|
-| **GENOME** | Конституция: неизменяемые правила, инварианты, матрицы доступа |
-| **GUARDIAN** | Страж: проверяет GENOME + CODEX, вето на рефлексы, сканирование доменов |
+| **GENOME** | Конституция: неизменяемые правила, матрицы доступа, инварианты |
+| **GUARDIAN** | Страж: CODEX + GENOME валидация, адаптация порогов, DREAM предложения |
 | **AshtiCore** | Ядро: 11 доменов + Arbiter, физический движок, тик симуляции |
-| **Arbiter** | Маршрутизатор: dual-path routing через Experience и MAYA |
+| **Arbiter** | Маршрутизатор: dual-path routing, REFLECTOR, SKILLSET, GridHash |
+| **Experience** | Ассоциативная память: следы паттернов, двухфазный резонансный поиск |
+| **REFLECTOR** | Статистика рефлексов: per-pattern и per-domain профили |
+| **SKILLSET** | Кристаллизованные навыки: мгновенный ответ без физики поля |
 | **CausalFrontier** | Причинный фронт: приоритизация событий, защита от шторма |
-| **Heartbeat** | Пульс: периодический push токенов в Frontier по интервалу |
+| **CausalHorizon** | Горизонт причинности: контроль роста памяти, pruning |
+| **ConfigLoader** | YAML-инфраструктура: загрузка всех компонентов из файлов |
+| **Heartbeat** | Пульс: периодический push токенов в Frontier |
 | **UCL** | Язык команд: бинарный протокол AxiomEngine |
-| **UPO** | Наблюдатель: DynamicTrace, Screen, детектирование паттернов |
 
 ---
 
 ## 2. GENOME — конституция системы
 
-GENOME — первый компонент, загружаемый при старте системы. Определяет что **никогда не меняется**. После валидации замораживается в `Arc<Genome>` — никакой `&mut Genome` в рантайме.
+GENOME — первый компонент при старте. Определяет что **никогда не меняется**. После валидации замораживается в `Arc<Genome>` — никакого `&mut Genome` в рантайме.
 
 ### Структура
 
 ```rust
 pub struct Genome {
     pub version: u32,
-    pub invariants: GenomeInvariants,   // размеры структур, флаги безопасности
-    pub access_rules: Vec<AccessRule>,  // матрица прав доступа
-    pub protocol_rules: Vec<ProtocolRule>, // разрешённые маршруты данных
-    pub config: GenomeConfig,           // параметры Arbiter, Frontier, Heartbeat
+    pub invariants: GenomeInvariants,
+    pub access_rules: Vec<AccessRule>,
+    pub protocol_rules: Vec<ProtocolRule>,
+    pub config: GenomeConfig,
 }
 ```
 
 ### GenomeInvariants
-
-Физические ограничения, которые compile-time не проверяемы, но обязательны в рантайме:
 
 | Поле | Значение | Смысл |
 |------|----------|-------|
@@ -82,26 +86,11 @@ pub struct Genome {
 | `connection_size` | 64 | Connection всегда 64 байта |
 | `event_size` | 32 | Event всегда 32 байта |
 | `domain_config_size` | 128 | DomainConfig всегда 128 байт |
-| `max_domains` | 11 | Один уровень Ashti_Core = 11 доменов |
-| `no_wall_clock_in_core` | true | `std::time` запрещён внутри ядра |
+| `max_domains` | 11 | Один уровень = 11 доменов |
+| `no_wall_clock_in_core` | true | `std::time` запрещён в ядре |
 | `event_id_monotonic` | true | event_id строго монотонен |
 
-### AccessRule и GenomeIndex
-
-Каждый `AccessRule` задаёт: `module → resource → permission`.
-
-`GenomeIndex` — предвычисленная матрица `[[Permission; 8]; 16]` для O(1) lookup:
-
-```rust
-let genome = Genome::default_ashti_core();
-let index = GenomeIndex::build(&genome);
-
-// O(1) — один индекс в массиве
-index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite); // true
-index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite); // false
-```
-
-Таблица доступа Ashti_Core V2.0:
+### Матрица доступа (Ashti_Core V2.0)
 
 | Модуль | SutraTokens | AshtiField | ExperienceMemory | MayaOutput | CodexRules | GenomeConfig |
 |--------|-------------|------------|-----------------|------------|------------|--------------|
@@ -111,142 +100,97 @@ index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadW
 | Shell | — | Read | Read | — | — | — |
 | Adapters | — | — | — | Read | — | — |
 
-### ProtocolRule
-
-Разрешённые маршруты данных между модулями:
-
-| source → target | data_type | mandatory |
-|----------------|-----------|-----------|
-| Sutra → Experience | TokenReference | ✅ |
-| Experience → Arbiter | ResonanceResponse | ✅ |
-| Arbiter → Logic | PatternHint | ✅ |
-| Logic → Maya | ProcessingResult | ✅ |
-| Logic → Experience | NewExperience | ✅ |
-| Arbiter → Maya | Reflex | — |
-| Maya → Arbiter | ComparisonResult | — |
-| Arbiter → Experience | Feedback | — |
-
-### Загрузка из YAML
+`GenomeIndex` — предвычисленная матрица `[[Permission; 8]; 16]` для O(1) lookup:
 
 ```rust
-// Фаза A: захардкоженная конфигурация
 let genome = Arc::new(Genome::default_ashti_core());
-
-// Фаза B: из файла
+// или из файла:
 let genome = Arc::new(Genome::from_yaml(Path::new("config/genome.yaml"))?);
-// from_yaml автоматически вызывает validate()
 ```
 
-Файл: `config/genome.yaml` — полное описание Ashti_Core V2.0 конституции.
-
-### validate()
-
-Проверяет инварианты, обязательные правила доступа и протоколы:
-
-```rust
-genome.validate()?; // Err(GenomeError::InvariantViolation) / MissingGuardianAccess / ...
-```
-
-Невалидный GENOME → система не запускается (`AxiomEngine::try_new` вернёт `Err`).
+Невалидный GENOME → `AxiomEngine::try_new` вернёт `Err(AxiomError::InvalidGenome)`.
 
 ---
 
-## 3. GUARDIAN — контроль правил
+## 3. GUARDIAN — контроль и адаптация
 
-GUARDIAN — над-доменный страж. Два источника правил: GENOME (абсолютные) + CODEX (пластичные, хранятся в DomainState домена Codex).
+Guardian имеет два источника правил: GENOME (абсолютные) + CODEX (пластичные в DomainState). Начиная с Этапа 6, Guardian также отвечает за адаптацию параметров системы.
 
 ### Создание
 
 ```rust
-// С явным Genome (boot sequence)
 let guardian = Guardian::new(Arc::clone(&genome));
-
-// С дефолтным Genome (удобный конструктор)
-let guardian = Guardian::with_default_genome();
+let guardian = Guardian::with_default_genome(); // для тестов и отладки
 ```
 
-### enforce_access / enforce_protocol
-
-Проверки по GENOME — O(1) через GenomeIndex:
-
-```rust
-// Имеет ли Arbiter право Execute на AshtiField?
-guardian.enforce_access(ModuleId::Arbiter, ResourceId::AshtiField, Permission::Execute);
-
-// Разрешён ли маршрут Sutra → Experience?
-guardian.enforce_protocol(ModuleId::Sutra, ModuleId::Experience);
-```
-
-При отказе — `violation_count` увеличивается, `stats.access_denied/protocol_denied` обновляются.
-
-### validate_reflex
-
-Возвращает `ReflexDecision` (не `bool`). Проверяет GENOME первым, затем CODEX:
+### Валидация рефлексов
 
 ```rust
 match guardian.validate_reflex(&token) {
     ReflexDecision::Allow => { /* отправить рефлекс */ }
-    ReflexDecision::Veto(VetoReason::TokenLocked) => { /* токен заблокирован */ }
-    ReflexDecision::Veto(VetoReason::ValenceWithoutMass) => { /* нарушение физики */ }
-    ReflexDecision::Veto(VetoReason::ZeroSutraId) => { /* нулевой sutra_id */ }
-    ReflexDecision::Veto(VetoReason::GenomeDenied) => { /* GENOME запрещает */ }
+    ReflexDecision::Veto(VetoReason::TokenLocked) => {}
+    ReflexDecision::Veto(VetoReason::ValenceWithoutMass) => {}
+    ReflexDecision::Veto(VetoReason::ZeroSutraId) => {}
+    ReflexDecision::Veto(VetoReason::GenomeDenied) => {}
 }
 ```
 
-CODEX правила:
-1. `STATE_LOCKED` — рефлекс заблокирован
-2. `valence != 0 && mass == 0` — нарушение физики
-3. `sutra_id == 0` — недопустимый токен
+CODEX правила: `STATE_LOCKED`, `valence != 0 && mass == 0`, `sutra_id == 0`.
 
-### scan_domain
+Бит `GUARDIAN_CHECK_REQUIRED` (0x04) в `DomainConfig::arbiter_flags` — orchestrator вызывает validate_reflex перед отправкой рефлекса в MAYA.
 
-Сканирует все токены в DomainState на нарушения CODEX:
+### Сканирование доменов
 
 ```rust
-let actions: Vec<InhibitAction> = guardian.scan_domain(&state);
-for action in &actions {
-    match &action.reason {
-        InhibitReason::ValenceWithoutMass { token_index } => {
-            // токен с индексом token_index нарушает инвариант
-        }
-    }
-}
+let actions: Vec<InhibitAction> = guardian.scan_domain(&domain_state);
+// InhibitReason::ValenceWithoutMass { token_index }
 ```
 
-### update_codex
+### Адаптивные пороги (Этап 6)
 
-Модификация CODEX-домена с проверкой прав GENOME:
+GUARDIAN читает статистику REFLECTOR и корректирует DomainConfig. Вызов через `AxiomEngine::run_adaptation()`:
 
 ```rust
-guardian.update_codex(&mut codex_domain, CodexAction::AddRule(rule_token))?;
-guardian.update_codex(&mut codex_domain, CodexAction::ResetViolations)?;
+// Автоматически: собирает stats → adapt_thresholds → adapt_domain_physics → apply_experience_thresholds
+let updated_domain_ids = engine.run_adaptation();
 ```
 
-### GUARDIAN_CHECK_REQUIRED
+Алгоритм `adapt_thresholds`:
+- `success_rate > 0.8` AND `calls ≥ 10` → снизить `reflex_threshold` на 5 (система учится доверять рефлексам)
+- `success_rate < 0.3` AND `calls ≥ 10` → повысить `reflex_threshold` на 5 (система становится консервативнее)
 
-Бит `0x04` в `DomainConfig::arbiter_flags`. Когда установлен — orchestrator вызывает `validate_reflex` перед отправкой рефлекса в MAYA:
+Алгоритм `adapt_domain_physics`:
+- `success_rate > 0.7` → охладить домен (temperature −5) + ускорить резонанс (resonance_freq +10)
+- `success_rate < 0.3` → нагреть (temperature +5) + замедлить (resonance_freq −10)
+
+### DREAM(7) — предложения CODEX
 
 ```rust
-let config = DomainConfig::factory_sutra(100, 0);
-// config.arbiter_flags |= GUARDIAN_CHECK_REQUIRED;
+// Анализирует Experience: паттерны с weight ≥ 0.9 и success_count ≥ 5
+let proposals: Vec<CodexAction> = engine.dream_propose();
+// CodexAction::AddRule(token) — предложение добавить токен в CODEX
+```
+
+Или через Guardian напрямую с кастомными кандидатами:
+
+```rust
+let proposals = guardian.dream_propose(&candidate_tokens); // до 5 за вызов
 ```
 
 ### Статистика
 
 ```rust
 let stats = guardian.stats();
-println!("allowed: {}, vetoed: {}", stats.reflex_allowed, stats.reflex_vetoed);
-println!("access denied: {}", stats.access_denied);
-println!("domains scanned: {}", stats.domains_scanned);
+// stats.reflex_allowed, stats.reflex_vetoed
+// stats.thresholds_adapted — сколько раз адаптировались пороги
+// stats.dream_proposals    — сколько CodexAction предложений сгенерировано
 ```
 
 ---
 
 ## 4. AshtiCore — 11 доменов
 
-AshtiCore — физический движок одного уровня Ashti_Core. Содержит 11 фиксированных доменов и Arbiter.
-
-### Адресация доменов
+### Адресация
 
 ```
 level_id × 100 + role = domain_id
@@ -259,194 +203,328 @@ level_id × 100 + role = domain_id
   104 = MAP         (роль 4)  — пространство
   105 = PROBE       (роль 5)  — наблюдение
   106 = LOGIC       (роль 6)  — логика
-  107 = DREAM       (роль 7)  — сны
+  107 = DREAM       (роль 7)  — фоновая оптимизация
   108 = VOID        (роль 8)  — пустота
-  109 = EXPERIENCE  (роль 9)  — опыт
+  109 = EXPERIENCE  (роль 9)  — ассоциативная память
   110 = MAYA        (роль 10) — выход
 ```
 
-### tick()
-
-Основной шаг симуляции:
+### Основные методы
 
 ```rust
-let events: Vec<Event> = ashti.tick();
+let mut core = AshtiCore::new(1);
+
+// Тик физики
+let events: Vec<Event> = core.tick();
+
+// Dual-path обработка токена
+let result: RoutingResult = core.process(token);
+
+// Инъекция токена
+core.inject_token(domain_id, token)?;
+
+// Обратная связь в Experience
+core.apply_feedback(event_id)?;
 ```
 
-За один тик:
-1. Каждый домен проверяет Heartbeat — если накопилось `heartbeat_interval` событий, домен делает пульс
-2. При пульсе: `handle_heartbeat` → `process_frontier(tokens, connections, generator)`
-3. `EventGenerator` генерирует физические события из токенов на Frontier
-4. Все события собираются и возвращаются
-
-### inject_token
+### Доступ к компонентам
 
 ```rust
-ashti.inject_token(domain_id, token)?; // синхронизирует Domain.active_tokens
-```
-
-После `inject_token` домен знает актуальное число токенов — это важно для Heartbeat и Frontier.
-
-### process — dual-path routing
-
-```rust
-let result: RoutingResult = ashti.process(token);
-// result.reflex     — быстрый рефлекс (если найден в Experience)
-// result.routed_events — маршрутизированные события
-// result.event_id   — для apply_feedback
-```
-
-### drain_events через AxiomEngine
-
-```rust
-// Через UCL
-engine.process_command(&UclCommand::new(OpCode::TickForward, 0, 1, 0));
-let events = engine.drain_events(); // Vec<Event>
+core.reflector()                // &Reflector — для чтения статистики
+core.experience_mut()           // &mut ExperienceModule
+core.arbiter_domain_configs_mut() // &mut HashMap<u32, DomainConfig>
+core.apply_experience_thresholds() // синхронизировать пороги Experience
+core.export_skills()            // Vec<Skill> — экспорт навыков
+core.import_skills(&skills)     // usize — импортировать навыки, возвращает кол-во импортированных
 ```
 
 ---
 
 ## 5. Causal Frontier V2.0
 
-CausalFrontier — приоритетная очередь событий с защитой от шторма и бюджетом на цикл.
+CausalFrontier — приоритетная очередь событий с защитой от каскадного шторма.
 
-### FrontierConfig
-
-Три предустановки:
+### Пресеты FrontierConfig
 
 ```rust
-FrontierConfig::tight()   // max_events=512,  storm_threshold=1000, budget=50
-FrontierConfig::medium()  // max_events=2048, storm_threshold=5000, budget=200
+FrontierConfig::tight()   // max_events=512,  storm_threshold=1000,  budget=50
+FrontierConfig::medium()  // max_events=2048, storm_threshold=5000,  budget=200
 FrontierConfig::wide()    // max_events=8192, storm_threshold=20000, budget=1000
-```
-
-Или кастомно:
-```rust
-FrontierConfig {
-    max_events: 1024,
-    memory_limit: 4096,
-    storm_threshold: 2000,
-    budget_per_cycle: 100,
-}
 ```
 
 ### FrontierEntity
 
-Тип сущности на Frontier:
-
 ```rust
 pub enum FrontierEntity {
-    Token(u32),        // token_id
-    Connection(u32),   // connection_id
-    Region(u32, u32),  // domain_id, region_id
-    Batch(u32),        // batch_id
+    Token(u32),
+    Connection(u32),
+    Region(u32, u32),
+    Batch(u32),
 }
 ```
 
 ### Жизненный цикл
 
 ```rust
-frontier.begin_cycle();          // сбрасывает бюджет цикла
-while let Some(entity) = frontier.pop() {  // извлекает по приоритету, бюджет --
-    // обработка
-}
-frontier.end_cycle();            // собирает StormMetrics
+frontier.begin_cycle();
+while let Some(entity) = frontier.pop() { /* обработка */ }
+frontier.end_cycle();
 
 let metrics = frontier.storm_metrics();
-println!("rate: {:.2}", metrics.frontier_growth_rate); // > 1.0 = шторм
+// metrics.frontier_growth_rate > 1.0 → шторм
 ```
 
 ### Состояния
 
-| Состояние | Условие |
-|-----------|---------|
-| `FrontierState::Active` | нормальная работа |
-| `FrontierState::Storm` | frontier_growth_rate > 1.0 |
-| `FrontierState::Stabilizing` | storm завершён, идёт стабилизация |
-| `FrontierState::Saturated` | достигнут memory_limit |
-
-### Интеграция с Domain
-
-Domain автоматически создаёт CausalFrontier с `FrontierConfig::medium()`. При `handle_heartbeat`:
-
-```rust
-// Heartbeat пушит все активные токены
-domain.frontier.push(FrontierEntity::Token(id), priority);
-```
-
-При `process_frontier`:
-
-```rust
-domain.process_frontier(&tokens, &connections, &mut generator)
-// → Vec<Event>: физические события от взаимодействия токенов
-```
+`Active` → `Storm` → `Stabilizing` → `Idle`. При достижении `max_events` — `push()` отбрасывает события (Heartbeat подберёт при следующем цикле).
 
 ---
 
 ## 6. Arbiter — dual-path routing
 
-Arbiter реализует два пути обработки токена:
-
 ```
-Token → Experience(9) → resonance_search
-                           ↓
-              Reflex path  │  Slow path
-              (score ≥ t)  │  (score < t)
-                    ↓      │       ↓
-                  MAYA     │   ASHTI(1-8) → Logic → Maya
-                           ↓
-                   finalize_comparison → feedback → Experience
+Token → SKILLSET?  ──yes──→ мгновенный рефлекс (кристаллизованный навык)
+          │no
+          ↓
+      resonance_search [GridHash O(1) Phase 1 → Physics O(N) Phase 2]
+          │
+    score ≥ reflex_t?  ──yes──→  рефлекс (fast path) ─────────────┐
+          │no                                                        │
+          ↓                                                          ↓
+     ASHTI(1-8) slow path → MAYA → consolidated       finalize_comparison
+          │                                                     │
+          └──────────────────────────────────────────→ REFLECTOR + Experience
 ```
 
-### Experience — хранилище опыта
+### Experience — ассоциативная память
 
-Experience использует UPO (Screen + DynamicTrace) для хранения следов:
+Хранит до 1000 следов (`ExperienceTrace`). Каждый след: `pattern: Token`, `weight: f32`, `created_at: u64`, `last_used: u64`, `success_count: u32`.
+
+**Двухфазный поиск:**
+- **Phase 1 (GridHash O(1)):** `AssociativeIndex` ищет следы в той же ячейке grid. Ранний выход при `score ≥ reflex_threshold`.
+- **Phase 2 (Physics O(N)):** FNV-1a prefilter + полный линейный поиск. Активируется при промахе Phase 1.
 
 ```rust
-// Поиск резонанса
-let resonance = experience.resonance_search(&token);
-match resonance.level {
-    ResonanceLevel::Reflex      => { /* быстрый путь */ }
-    ResonanceLevel::Association => { /* медленный путь */ }
-    ResonanceLevel::None        => { /* новый токен */ }
+let result = experience.resonance_search(&token);
+match result.level {
+    ResonanceLevel::Reflex      => { /* быстрый ответ */ }
+    ResonanceLevel::Association => { /* подсказка для slow path */ }
+    ResonanceLevel::None        => { /* новый паттерн */ }
 }
 ```
 
-`DynamicTrace` (32 байта) хранит `pattern: Token` + `weight: f32` + флаги. `Screen` — карта следов с decay и автоочисткой.
+### GridHash
 
-### AshtiProcessor
+```rust
+use axiom_arbiter::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
-Обрабатывает домены ASHTI(1-8) в slow path. Для каждого домена применяет:
-- `arbiter_flags` как маску `type_flags`
-- `reflex_threshold` / `association_threshold` из DomainConfig
-- физику через axiom-space
+let key = grid_hash(&token, 4);          // shift=4 → ячейки 16 квантов
+let key = grid_hash_with_shell(&token, &shell_profile, 4); // + Shell профиль
 
-### Maya (Compare & Decide)
+// AssociativeIndex: HashMap<grid_key, Vec<trace_id>>
+let mut index = AssociativeIndex::new(4);
+index.insert(key, trace_id);
+let traces: Option<&[u64]> = index.lookup(key);
+index.remove_by_trace_id(trace_id);
+```
 
-MAYA финализирует routing: консолидирует результаты медленного пути, сравнивает с рефлексом, принимает финальное решение.
+Смысл `shift`: при `shift=4` позиции [0..15, 0..15, 0..15] попадают в одну ячейку. Чем больше shift, тем грубее квантование.
 
-`arbiter_flags & 0x01` (ForceMedianConsolidation) — принудительное медианное усреднение вместо взвешенного.
+### REFLECTOR — статистика рефлексов
 
-### COM (Causal Order Manager)
+```rust
+// per-pattern
+reflector.record_reflex(pattern_hash, success);
+let stats: Option<&ReflexStats> = reflector.get_stats(pattern_hash);
+// stats.success_count, stats.fail_count, stats.success_rate()
 
-Генерирует монотонные `event_id` и `com_id`. Гарантирует:
-- `event_id` строго возрастает (инвариант GENOME)
-- Причинный порядок событий
+// per-domain (role 1..8)
+reflector.record_domain(role, &shell_profile, success);
+let profile: Option<&DomainProfile> = reflector.domain_profile(role);
+// profile.total_calls()
+// profile.overall_success_rate()
+// profile.layer_success_rate(layer)
+
+// глобально
+let rate: f32 = reflector.global_success_rate();
+```
+
+REFLECTOR автоматически обновляется в `finalize_comparison`. Данные читаются Guardian для `run_adaptation()`.
+
+### SKILLSET — кристаллизованные навыки
+
+Навык кристаллизуется из ExperienceTrace при: `weight ≥ 0.8` AND `success_count ≥ 50`.
+
+```rust
+// Кристаллизация (вызывается автоматически в finalize_comparison)
+skillset.try_crystallize(&trace); // → bool
+
+// Поиск (similarity ≥ 0.9)
+if let Some(skill) = skillset.find_skill(&token) {
+    // мгновенный ответ
+}
+```
+
+**Обмен скиллами между экземплярами:**
+
+```rust
+// Источник
+let snapshot: Vec<Skill> = engine_a.export_skills();
+
+// Получатель (дедупликация + вес × 0.3)
+let imported: usize = engine_b.import_skills(&snapshot);
+```
+
+Импортированные навыки начинают с `activation_weight × 0.3` и `success_count = 0` — система "не доверяет" чужому опыту сразу.
 
 ---
 
-## 7. UCL — команды и AxiomEngine
+## 7. Configuration System
 
-UCL (Unified Command Language) — бинарный протокол команд для AxiomEngine.
+Все параметры системы загружаются из YAML. Никакого hardcode в рантайме.
+
+### ConfigLoader
+
+```rust
+use axiom_config::{ConfigLoader, LoadedAxiomConfig};
+
+let loaded: LoadedAxiomConfig = ConfigLoader::load_all("config/axiom.yaml")?;
+
+// Доступ к конфигам
+let domains: &HashMap<String, DomainConfig> = &loaded.domains;
+let sutra_cfg = &domains["sutra"];
+
+// Пути к другим конфигам (загружаются своими crate'ами)
+let spatial_path = spatial_config_path(&loaded, base);
+let semantic_path = semantic_contributions_path(&loaded, base);
+```
+
+### Структура config/
+
+```
+config/
+  axiom.yaml                    — корневой конфиг (ссылается на остальные)
+  genome.yaml                   — конституция системы
+  presets/
+    domains/                    — 11 пресетов DomainConfig
+      sutra.yaml, execution.yaml, shadow.yaml, codex.yaml,
+      map.yaml, probe.yaml, logic.yaml, dream.yaml,
+      void.yaml, experience.yaml, maya.yaml
+    spatial/
+      tight.yaml, medium.yaml, loose.yaml
+  schema/
+    semantic_contributions.yaml — вклады Shell-слоёв по категориям
+```
+
+### DomainConfig из YAML
+
+```rust
+let cfg = DomainConfig::from_yaml(Path::new("config/presets/domains/logic.yaml"))?;
+cfg.validate()?; // проверка инвариантов (ёмкость, пороги, размеры)
+```
+
+11 factory-методов для создания без YAML: `factory_sutra`, `factory_execution`, ..., `factory_maya`.
+
+### SpatialConfig
+
+```rust
+let spatial = SpatialConfig::from_yaml(Path::new("config/presets/spatial/medium.yaml"))?;
+let grid = SpatialHashGrid::with_config(&spatial);
+
+// Пресеты
+SpatialConfig::tight()   // cell_shift=6,  bucket_count_log2=17 — плотная сетка
+SpatialConfig::medium()  // cell_shift=8,  bucket_count_log2=16
+SpatialConfig::loose()   // cell_shift=10, bucket_count_log2=14 — разреженная
+```
+
+### SemanticContributionTable
+
+```rust
+let table = SemanticContributionTable::from_yaml(
+    Path::new("config/schema/semantic_contributions.yaml")
+)?;
+// Используется Shell V3.0 для вычисления профилей токенов
+```
+
+---
+
+## 8. Causal Horizon и Memory Management
+
+Система предотвращает рост памяти при долгих запусках через механизм причинного горизонта.
+
+### CausalHorizon
+
+Горизонт = `min(token.last_event_id)` по всем активным токенам всех доменов. Монотонный — только растёт.
+
+```rust
+use axiom_domain::CausalHorizon;
+
+let mut horizon = CausalHorizon::new();
+let state_refs: Vec<&DomainState> = states.iter().collect();
+
+// Вычислить текущий горизонт
+let h: u64 = CausalHorizon::compute(&state_refs);
+
+// Обновить (монотонно)
+horizon.advance(&state_refs);
+
+// Проверить устаревание
+horizon.is_behind(last_event_id) // → true если устарел
+```
+
+Через `AxiomEngine`:
+
+```rust
+let h: u64 = engine.causal_horizon();
+let removed: usize = engine.run_horizon_gc(); // удалить устаревшие следы Experience
+```
+
+### Event Log Pruning
+
+Snapshot фиксирует состояние системы. Все следы Experience с `last_used < snapshot.created_at` можно безопасно удалить.
+
+```rust
+// Вариант 1: раздельно
+let snap = engine.snapshot();
+// snap.snapshot_event_id() == engine.causal_horizon() на момент вызова
+let pruned: usize = engine.prune_after_snapshot(&snap);
+
+// Вариант 2: атомарно
+let (snap, pruned) = engine.snapshot_and_prune();
+println!("зафиксировано доменов: {}, удалено следов: {}", snap.domain_count(), pruned);
+```
+
+Инспекция до удаления:
+
+```rust
+let count = engine.ashti.experience_mut().prunable_count(engine.causal_horizon());
+println!("можно удалить {} следов", count);
+```
+
+### Обмен скиллами
+
+Скиллы можно переносить между экземплярами без передачи всей базы Experience:
+
+```rust
+// export / import — см. раздел 6 (SKILLSET)
+// Типичный сценарий: сохранить обученные навыки перед прунингом памяти
+let skills = engine.export_skills();
+engine.snapshot_and_prune();        // очистить старую память
+engine.import_skills(&skills);      // восстановить навыки
+```
+
+---
+
+## 9. UCL — команды и AxiomEngine
 
 ### UclCommand (64 байта)
 
 ```rust
 UclCommand {
-    payload: [u8; 48],  // данные команды
-    command_id: u64,    // уникальный ID
-    target_id: u32,     // целевой domain_id
-    opcode: u16,        // OpCode
+    payload: [u8; 48],
+    command_id: u64,
+    target_id: u32,
+    opcode: u16,
     priority: u8,
     flags: u8,
 }
@@ -456,170 +534,186 @@ UclCommand {
 
 | OpCode | Значение | Действие |
 |--------|----------|---------|
-| `SpawnDomain` | 1000 | no-op (домены фиксированы в AshtiCore) |
-| `CollapseDomain` | 1001 | no-op |
+| `SpawnDomain` | 1000 | no-op (домены фиксированы) |
 | `InjectToken` | 2000 | добавить токен в домен |
-| `TickForward` | 3000 | один шаг симуляции → physics events |
-| `ProcessTokenDualPath` | 4000 | dual-path routing через Arbiter |
-| `FinalizeComparison` | 4001 | обратная связь в Experience |
-| `CoreReset` | 9001 | сбросить состояние (genome сохраняется) |
-| `BackupState` | 9002 | создать snapshot |
-| `RestoreState` | 9003 | восстановить из snapshot |
+| `TickForward` | 3000 | один шаг физики → events |
+| `ProcessTokenDualPath` | 4000 | dual-path routing |
+| `FinalizeComparison` | 4001 | обратная связь → Experience |
+| `BackupState` | 9002 | snapshot |
+| `CoreReset` | 9001 | сбросить состояние |
 | `CoreShutdown` | 9000 | завершение |
 
-### AxiomEngine::try_new
+### Прямые методы AxiomEngine
 
-Основной способ создания Engine — с явной валидацией GENOME:
-
-```rust
-use std::sync::Arc;
-use axiom_genome::Genome;
-use axiom_runtime::{AxiomEngine, AxiomError};
-
-// Из файла
-let genome = Arc::new(Genome::from_yaml(Path::new("config/genome.yaml"))?);
-let engine = AxiomEngine::try_new(genome)?;
-
-// С захардкоженным Genome
-let engine = AxiomEngine::new(); // эквивалент try_new(default_ashti_core()).unwrap()
-```
-
-### process_command
+Помимо UCL, AxiomEngine предоставляет прямой API:
 
 ```rust
-let cmd = UclCommand::new(OpCode::InjectToken, domain_id, command_id, priority);
-// + заполнить payload
+// Физика и маршрутизация
+engine.ashti.tick()                    // шаг физики
+engine.ashti.process(token)            // dual-path
+engine.drain_events()                  // Vec<Event>
 
-let result: UclResult = engine.process_command(&cmd);
-if result.is_success() {
-    println!("events generated: {}", result.events_generated);
-}
-```
+// Адаптация (Этап 6)
+engine.run_adaptation()                // Vec<u32> обновлённых domain_id
+engine.dream_propose()                 // Vec<CodexAction>
 
-### drain_events
+// Memory management (Этап 7)
+engine.causal_horizon()                // u64
+engine.run_horizon_gc()                // usize удалено
+engine.snapshot()                      // EngineSnapshot
+engine.snapshot_and_prune()            // (EngineSnapshot, usize)
+engine.prune_after_snapshot(&snap)     // usize удалено
 
-```rust
-// После одного или нескольких TickForward
-let events: Vec<Event> = engine.drain_events();
-// drain_events очищает внутренний буфер
+// Навыки (Этап 7)
+engine.export_skills()                 // Vec<Skill>
+engine.import_skills(&skills)          // usize импортировано
 ```
 
 ---
 
-## 8. Boot sequence
-
-Порядок инициализации системы:
+## 10. Boot sequence
 
 ```
-1. Genome::from_yaml("config/genome.yaml") или Genome::default_ashti_core()
-   → validate() — проверка инвариантов, обязательных правил
+1. Genome::from_yaml("config/genome.yaml")  или  Genome::default_ashti_core()
+   → validate()
    → Arc::new(genome) — заморозка
 
 2. AxiomEngine::try_new(Arc::clone(&genome))
-   → Guardian::new(Arc::clone(&genome)) — строит GenomeIndex
-   → AshtiCore::new(level_id) — 11 доменов + Arbiter + Experience
-   → pending_events = Vec::new()
+   → Guardian::new(genome) — строит GenomeIndex
+   → AshtiCore::new(level_id=1) — 11 доменов + Arbiter
+     → Experience (max_traces=1000, shift=4)
+     → Reflector, SkillSet
+     → Arbiter регистрирует все 11 доменов
 
-3. Система готова к командам UCL
+3. Опционально: загрузка конфигов
+   let loaded = ConfigLoader::load_all("config/axiom.yaml")?;
+   // применить загруженные DomainConfig к Arbiter
+
+4. Система готова к UCL командам и прямым вызовам
 ```
 
-При невалидном GENOME — `AxiomEngine::try_new` возвращает `Err(AxiomError::InvalidGenome)`, система не запускается.
-
-После `CoreReset` — AshtiCore пересоздаётся, Guardian пересоздаётся с тем же `Arc<Genome>`. Genome не меняется.
+После `CoreReset` — AshtiCore и Guardian пересоздаются, `Arc<Genome>` не меняется.
 
 ---
 
-## 9. Примеры кода
+## 11. Примеры кода
 
-### Создание Engine и инъекция токенов
+### Создание Engine
 
 ```rust
 use std::sync::Arc;
 use axiom_genome::Genome;
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
 
-// Boot
-let genome = Arc::new(Genome::default_ashti_core());
-let mut engine = AxiomEngine::try_new(genome).unwrap();
-
-// Инъекция токена в LOGIC домен (106)
-let mut payload = [0u8; 48];
-// target_domain_id = 106 (LOGIC)
-payload[0] = 106u16.to_le_bytes()[0];
-payload[1] = 106u16.to_le_bytes()[1];
-// mass = 100 (float32 at offset 4)
-payload[4..8].copy_from_slice(&100.0f32.to_le_bytes());
-
-let cmd = UclCommand { payload, command_id: 1, target_id: 106, opcode: 2000, priority: 0, flags: 0 };
-engine.process_command(&cmd);
+let mut engine = AxiomEngine::new(); // дефолтный Genome
+// или:
+let genome = Arc::new(Genome::from_yaml(Path::new("config/genome.yaml"))?);
+let mut engine = AxiomEngine::try_new(genome)?;
 ```
 
-### Симуляция: тик и события
+### Инъекция токена и тик
 
 ```rust
-// Нужно ~1100 тиков для первого heartbeat при medium пресете (интервал 1024)
-for i in 0..1100 {
-    let tick_cmd = UclCommand { payload: [0;48], command_id: i, target_id: 0, opcode: 3000, priority: 0, flags: 0 };
-    engine.process_command(&tick_cmd);
-}
+use axiom_core::Token;
 
+let domain_id = engine.ashti.domain_id_at(6).unwrap(); // LOGIC
+let mut token = Token::new(1, domain_id as u16, [0, 0, 0], 1);
+token.temperature = 200;
+token.mass = 100;
+engine.ashti.inject_token(domain_id, token).unwrap();
+
+// ~1024 тиков до первого heartbeat
+for i in 0..1100u64 {
+    engine.ashti.tick();
+}
 let events = engine.drain_events();
-println!("physics events: {}", events.len());
 ```
 
-### GUARDIAN проверки
+### Dual-path routing с обратной связью
 
 ```rust
-use axiom_runtime::{Guardian, ReflexDecision};
-use axiom_genome::{ModuleId, ResourceId, Permission};
+let token = Token::new(42, 100, [100, 200, 50], 1);
 
-let mut guardian = Guardian::with_default_genome();
+let result = engine.ashti.process(token);
+println!("reflex: {:?}", result.reflex);
+println!("consolidated: {:?}", result.consolidated);
 
-// Проверка GENOME прав
-let ok = guardian.enforce_access(ModuleId::Arbiter, ResourceId::AshtiField, Permission::Execute);
+// Обратная связь: обучаем Experience
+engine.ashti.apply_feedback(result.event_id).ok();
+```
 
-// Проверка рефлекса
-let token = Token::new(42, 106, [0,0,0], 1);
-match guardian.validate_reflex(&token) {
-    ReflexDecision::Allow => println!("рефлекс разрешён"),
-    ReflexDecision::Veto(reason) => println!("вето: {:?}", reason),
+### Цикл адаптации
+
+```rust
+// После накопления статистики (обычно 10+ рефлексов)
+let updated = engine.run_adaptation();
+if !updated.is_empty() {
+    println!("обновлены конфиги доменов: {:?}", updated);
+}
+
+// DREAM предложения
+let proposals = engine.dream_propose();
+for p in &proposals {
+    if let axiom_runtime::CodexAction::AddRule(token) = p {
+        // применить предложение в CODEX
+    }
 }
 ```
 
-### Genome из YAML
+### Memory management при долгом запуске
 
 ```rust
-use std::path::Path;
-use axiom_genome::Genome;
+// Периодически (например, каждые 1000 тиков)
+let horizon = engine.causal_horizon();
+let prunable = engine.ashti.experience_mut().prunable_count(horizon);
 
-let genome = Genome::from_yaml(Path::new("config/genome.yaml"))
-    .expect("genome должен быть валидным при старте");
+if prunable > 100 {
+    // Сохраняем навыки перед очисткой
+    let skills = engine.export_skills();
 
-println!("version: {}", genome.version);
-println!("domains: {}", genome.config.ashti_domain_count);
-println!("heartbeat: {}", genome.config.default_heartbeat_interval);
+    // Snapshot + prune
+    let (snap, removed) = engine.snapshot_and_prune();
+    println!("snapshot event_id: {}, удалено следов: {}", snap.snapshot_event_id(), removed);
+
+    // Навыки не теряются — они в SkillSet, не в Experience
+    println!("навыков сохранено: {}", engine.export_skills().len());
+}
 ```
 
-### Snapshot и restore
+### Обмен навыками между экземплярами
 
 ```rust
-// Сохранить состояние
-let backup_cmd = UclCommand { opcode: 9002, command_id: 99, ..Default::default() };
-engine.process_command(&backup_cmd);
-let snap = engine.snapshot();
+// Экспорт из обученного экземпляра
+let trained_skills = engine_a.export_skills();
+println!("экспортировано: {} навыков", trained_skills.len());
 
-// Восстановить
-let restored = AxiomEngine::restore_from(&snap);
+// Импорт в новый экземпляр (дедупликация + вес × 0.3)
+let imported = engine_b.import_skills(&trained_skills);
+println!("импортировано: {} (без дублей)", imported);
+```
+
+### YAML конфигурация
+
+```rust
+use axiom_config::{ConfigLoader, DomainConfig};
+use std::path::Path;
+
+let loaded = ConfigLoader::load_all(Path::new("config/axiom.yaml"))?;
+println!("загружено доменов: {}", loaded.domains.len());
+
+// Отдельная загрузка
+let logic_cfg = DomainConfig::from_yaml(Path::new("config/presets/domains/logic.yaml"))?;
+logic_cfg.validate()?;
 ```
 
 ---
 
 ## Связанные документы
 
-- [ROADMAP.md](../../ROADMAP.md) — планы разработки
-- [STATUS.md](../../STATUS.md) — текущее состояние, тесты
+- [ROADMAP.md](../../ROADMAP.md) — история и планы разработки
+- [STATUS.md](../../STATUS.md) — текущее состояние, тесты по crates
 - [DEVELOPMENT_GUIDE.md](../../DEVELOPMENT_GUIDE.md) — правила разработки
+- [DEFERRED.md](../../DEFERRED.md) — технический долг и отложенные задачи
 - [docs/spec/GENOME_V1_0.md](../spec/GENOME_V1_0.md) — спецификация GENOME
 - [docs/spec/GUARDIAN_V1_0.md](../spec/GUARDIAN_V1_0.md) — спецификация GUARDIAN
 - [docs/spec/Ashti_Core_V2_1.md](../spec/Ashti_Core_V2_1.md) — архитектура Ashti_Core V2.1
@@ -628,4 +722,4 @@ let restored = AxiomEngine::restore_from(&snap);
 
 ---
 
-**Обновлено:** 2026-03-28
+**Обновлено:** 2026-03-28 (Этапы 1–7 завершены, 568 тестов)

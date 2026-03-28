@@ -1,0 +1,51 @@
+# EXPERIENCE (9) — Ассоциативная память и рефлексы
+# Физика: Низкая гравитация, высокий резонанс. Ничего не забывается.
+reserved_id: 0
+domain_id: 109
+parent_domain_id: 100
+domain_type: 0
+structural_role: 9
+generation: 0
+flags: 0
+
+field_size: [5000.0, 5000.0, 5000.0]
+gravity_strength: 0.5
+temperature: 300.0
+time_dilation: 0
+resonance_freq: 1000
+pressure: 0
+rebuild_frequency: 0
+friction_coeff: 20
+viscosity: 200
+elasticity: 0
+quantum_noise: 0
+
+axis_x_ref: 0
+axis_y_ref: 0
+axis_z_ref: 0
+axis_config: 0
+
+input_filter: 0
+output_filter: 0
+reflex_threshold: 0
+association_threshold: 0
+arbiter_flags: 4
+reflex_cooldown: 0
+max_concurrent_hints: 0
+feedback_weight_delta: 0
+reserved_arbiter: [0, 0]
+gate_complexity: 0
+threshold_mass: 0
+threshold_temp: 0
+permeability: 200
+membrane_state: 1
+
+created_at: 0
+last_update: 0
+token_capacity: 100000
+connection_capacity: 50000
+error_count: 0
+processing_state: 0
+complexity_score: 0
+performance_score: 0
+reserved_meta: [0, 0, 0]

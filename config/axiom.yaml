@@ -1,5 +1,5 @@
 # Axiom Root Configuration
-# Version: 1.0
+# Version: 2.0
 # This file references all configuration modules
 
 # Runtime configuration - system operational parameters
@@ -21,3 +21,9 @@ loader:
   validation: "strict"
   cache_enabled: true
   hot_reload: false
+
+# Presets — готовые конфигурации компонентов системы
+presets:
+  domains_dir: "presets/domains"
+  spatial: "presets/spatial/medium.yaml"
+  semantic_contributions: "schema/semantic_contributions.yaml"

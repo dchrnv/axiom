@@ -38,5 +38,6 @@ pub use domain_config::{
 };
 pub use heartbeat_config::HeartbeatConfig;
 pub use loader::{
-    AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, RuntimeConfig, SchemaConfig,
+    AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, LoadedAxiomConfig,
+    PresetsConfig, RuntimeConfig, SchemaConfig,
 };

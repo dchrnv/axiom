@@ -1,0 +1,6 @@
+# Spatial Config: tight
+# Мелкие ячейки, большая таблица — точный поиск, больше памяти.
+# cell_size = 64, buckets = 131072
+cell_shift: 6
+bucket_count_log2: 17
+initial_capacity: 8192

@@ -17,6 +17,9 @@ mod experience;
 mod ashti_processor;
 mod maya_processor;
 mod com;
+mod reflector;
+mod skillset;
+mod gridhash;
 
 use axiom_core::Token;
 use axiom_config::DomainConfig;
@@ -28,6 +31,9 @@ use std::collections::HashMap;
 // Re-export for tests
 pub use experience::{Experience as ExperienceModule, ResonanceLevel as ResonanceLevelEnum};
 pub use com::COM;
+pub use reflector::{Reflector, ReflexStats, DomainProfile};
+pub use skillset::{Skill, SkillSet};
+pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
 /// Результат маршрутизации токена
 #[derive(Debug, Clone)]
@@ -113,6 +119,10 @@ pub struct Arbiter {
     domains: HashMap<u32, DomainConfig>,
     /// COM для событий
     com: COM,
+    /// REFLECTOR: статистика рефлексов + профили доменов
+    pub reflector: Reflector,
+    /// SKILLSET: кристаллизованные навыки
+    pub skillset: SkillSet,
 }
 
 impl Arbiter {
@@ -124,6 +134,8 @@ impl Arbiter {
             pending_comparisons: HashMap::new(),
             domains,
             com,
+            reflector: Reflector::new(),
+            skillset: SkillSet::new(),
         }
     }
 
@@ -181,6 +193,32 @@ impl Arbiter {
     /// EXPERIENCE (9) → Dual Path: reflex OR (ASHTI 1-8 → MAYA)
     fn route_from_experience(&mut self, token: Token) -> RoutingResult {
         let event_id = self.com.next_event_id(9);
+
+        // 0. SKILLSET: мгновенный ответ если паттерн кристаллизован
+        if let Some((skill_idx, skill)) = self.skillset.find_skill_with_idx(&token) {
+            let reflex_token = skill.pattern;
+            self.skillset.record_activation(skill_idx);
+
+            let ashti_results = self.route_to_ashti(token, None);
+            let consolidated = self.route_to_maya(ashti_results.clone());
+
+            self.pending_comparisons.insert(event_id, PendingComparison {
+                input_pattern: token,
+                reflex_prediction: Some(reflex_token),
+                ashti_results: ashti_results.clone(),
+                consolidated_result: consolidated,
+                created_at: event_id,
+                trace_index: None,
+            });
+
+            return RoutingResult {
+                event_id,
+                reflex: Some(reflex_token),
+                slow_path: ashti_results,
+                consolidated,
+                routed_events: vec![event_id],
+            };
+        }
 
         // 1. Резонансный поиск
         let resonance = self.experience.resonance_search(&token);
@@ -289,13 +327,30 @@ impl Arbiter {
         if let (Some(reflex), Some(consolidated)) = (comparison.reflex_prediction, comparison.consolidated_result) {
             let match_result = self.compare_tokens(&reflex, &consolidated);
 
+            // REFLECTOR: фиксируем результат рефлекса
+            let input_hash = skillset::quick_hash(&comparison.input_pattern);
+            self.reflector.record_reflex(input_hash, match_result);
+
             let weight = if match_result { 0.7 } else { 0.3 };
             self.experience.add_trace(consolidated, weight, event_id);
+
+            // Усиливаем след если рефлекс был успешен
+            if match_result {
+                self.experience.strengthen_by_hash(input_hash, 0.05);
+            }
         } else {
             // Если не было рефлекса, просто добавляем trace
             if let Some(consolidated) = comparison.consolidated_result {
                 self.experience.add_trace(consolidated, 0.5, event_id);
             }
+        }
+
+        // SKILLSET: проверяем кристаллизацию
+        let weight_threshold = self.skillset.crystallization_threshold;
+        let min_success = self.skillset.min_success_count;
+        let candidates = self.experience.find_crystallizable(weight_threshold, min_success);
+        for trace in candidates {
+            self.skillset.try_crystallize(&trace);
         }
 
         Ok(())
@@ -349,6 +404,24 @@ impl Arbiter {
     /// Добавить или обновить конфигурацию домена (для динамического добавления доменов из Engine)
     pub fn add_domain_config(&mut self, domain_id: u32, config: DomainConfig) {
         self.domains.insert(domain_id, config);
+    }
+
+    /// Mutable доступ к HashMap конфигураций доменов (для адаптации порогов)
+    pub fn domain_configs_mut(&mut self) -> &mut HashMap<u32, DomainConfig> {
+        &mut self.domains
+    }
+
+    /// Применить пороги из конфига домена EXPERIENCE к модулю Experience.
+    ///
+    /// Вызывается после обновления конфигов через adapt_thresholds.
+    pub fn apply_experience_thresholds(&mut self) {
+        let exp_domain_id = match self.registry.experience {
+            Some(id) => id,
+            None => return,
+        };
+        if let Some(config) = self.domains.get(&exp_domain_id) {
+            self.experience.set_thresholds(config.reflex_threshold, config.association_threshold);
+        }
     }
 }
 

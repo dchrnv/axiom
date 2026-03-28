@@ -1,0 +1,6 @@
+# Spatial Config: medium
+# Баланс точности и памяти — параметры по умолчанию.
+# cell_size = 256, buckets = 65536
+cell_shift: 8
+bucket_count_log2: 16
+initial_capacity: 4096

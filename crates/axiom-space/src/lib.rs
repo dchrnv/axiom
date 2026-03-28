@@ -4,6 +4,8 @@
 // SPACE V6.0: docs/spec/SPACE_V6_0.md
 // Целочисленная пространственная модель с детерминистичной физикой
 
+use serde::{Deserialize, Serialize};
+
 /// Константы пространственной модели
 ///
 /// CELL_SHIFT определяет размер ячейки как степень двойки:
@@ -715,6 +717,138 @@ impl<'a> Iterator for CellIterator<'a> {
 
                 Some(token_index)
             }
+        }
+    }
+}
+
+// ============================================================================
+// SPATIAL CONFIG
+// ============================================================================
+
+/// Ошибка загрузки конфигурации пространства
+#[derive(Debug)]
+pub enum SpatialConfigError {
+    /// Ошибка чтения файла
+    IoError(String),
+    /// Ошибка парсинга YAML
+    ParseError(String),
+    /// Некорректные параметры
+    ValidationError(String),
+}
+
+impl std::fmt::Display for SpatialConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpatialConfigError::IoError(e) => write!(f, "IO error: {}", e),
+            SpatialConfigError::ParseError(e) => write!(f, "Parse error: {}", e),
+            SpatialConfigError::ValidationError(e) => write!(f, "Validation error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for SpatialConfigError {}
+
+/// Конфигурация пространственного хеш-грида
+///
+/// Параметры определяют компромисс между гранулярностью поиска и памятью:
+/// - `cell_shift`: размер ячейки = 1 << cell_shift (меньше → точнее, больше памяти)
+/// - `bucket_count_log2`: количество корзин = 1 << bucket_count_log2
+/// - `initial_capacity`: предварительная аллокация entries
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpatialConfig {
+    /// Сдвиг для вычисления размера ячейки (cell_size = 1 << cell_shift)
+    pub cell_shift: u32,
+    /// Логарифм числа корзин (bucket_count = 1 << bucket_count_log2)
+    pub bucket_count_log2: u32,
+    /// Начальная ёмкость массива entries
+    pub initial_capacity: u32,
+}
+
+impl SpatialConfig {
+    /// Tight: мелкие ячейки, большая таблица — точный поиск, больше памяти
+    ///
+    /// cell_size = 64, buckets = 131072
+    pub fn tight() -> Self {
+        Self {
+            cell_shift: 6,
+            bucket_count_log2: 17,
+            initial_capacity: 8192,
+        }
+    }
+
+    /// Medium: баланс точности и памяти (параметры по умолчанию)
+    ///
+    /// cell_size = 256, buckets = 65536
+    pub fn medium() -> Self {
+        Self {
+            cell_shift: CELL_SHIFT,
+            bucket_count_log2: BUCKET_COUNT_LOG2,
+            initial_capacity: 4096,
+        }
+    }
+
+    /// Loose: крупные ячейки, меньше памяти — грубый поиск, быстрее rebuild
+    ///
+    /// cell_size = 1024, buckets = 16384
+    pub fn loose() -> Self {
+        Self {
+            cell_shift: 10,
+            bucket_count_log2: 14,
+            initial_capacity: 2048,
+        }
+    }
+
+    /// Загрузить конфигурацию из YAML файла
+    pub fn from_yaml(path: &std::path::Path) -> Result<Self, SpatialConfigError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| SpatialConfigError::IoError(e.to_string()))?;
+        let config: Self = serde_yaml::from_str(&content)
+            .map_err(|e| SpatialConfigError::ParseError(e.to_string()))?;
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Проверить корректность параметров
+    pub fn validate(&self) -> Result<(), SpatialConfigError> {
+        if self.cell_shift == 0 || self.cell_shift > 15 {
+            return Err(SpatialConfigError::ValidationError(
+                format!("cell_shift must be 1..15, got {}", self.cell_shift),
+            ));
+        }
+        if self.bucket_count_log2 < 8 || self.bucket_count_log2 > 24 {
+            return Err(SpatialConfigError::ValidationError(
+                format!("bucket_count_log2 must be 8..24, got {}", self.bucket_count_log2),
+            ));
+        }
+        if self.initial_capacity == 0 {
+            return Err(SpatialConfigError::ValidationError(
+                "initial_capacity must be > 0".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Размер ячейки в квантах
+    pub fn cell_size(&self) -> u32 {
+        1 << self.cell_shift
+    }
+
+    /// Количество корзин
+    pub fn bucket_count(&self) -> usize {
+        1 << self.bucket_count_log2
+    }
+}
+
+impl SpatialHashGrid {
+    /// Создать grid с заданной конфигурацией
+    ///
+    /// В отличие от `new()`, использует параметры из `SpatialConfig`
+    /// вместо глобальных констант.
+    pub fn with_config(config: &SpatialConfig) -> Self {
+        Self {
+            bucket_heads: vec![CellEntry::NONE; config.bucket_count()],
+            entries: Vec::with_capacity(config.initial_capacity as usize),
+            entry_count: 0,
         }
     }
 }

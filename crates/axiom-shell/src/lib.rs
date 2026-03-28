@@ -7,6 +7,7 @@
 // Спецификация: docs/spec/Shell_V3_0.md
 
 use bitvec::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Семантический профиль токена (8 слоев × u8)
 ///
@@ -256,6 +257,72 @@ impl SemanticContributionTable {
 
         table
     }
+
+    /// Загрузить таблицу вкладов из YAML файла
+    ///
+    /// Формат YAML:
+    /// ```yaml
+    /// categories:
+    ///   - category: 1
+    ///     contribution: [20, 5, 0, 0, 5, 0, 0, 0]
+    /// overrides:
+    ///   - link_type: 258
+    ///     contribution: [0, 0, 0, 0, 30, 0, 0, 20]
+    /// ```
+    pub fn from_yaml(path: &std::path::Path) -> Result<Self, ShellConfigError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| ShellConfigError::IoError(e.to_string()))?;
+        let raw: SemanticContributionsYaml = serde_yaml::from_str(&content)
+            .map_err(|e| ShellConfigError::ParseError(e.to_string()))?;
+
+        let mut table = Self::new();
+        for entry in raw.categories {
+            table.set_category(entry.category, entry.contribution);
+        }
+        for entry in raw.overrides.unwrap_or_default() {
+            table.set_override(entry.link_type, entry.contribution);
+        }
+        Ok(table)
+    }
+}
+
+/// Ошибка загрузки Shell конфигурации
+#[derive(Debug)]
+pub enum ShellConfigError {
+    /// Ошибка чтения файла
+    IoError(String),
+    /// Ошибка парсинга YAML
+    ParseError(String),
+}
+
+impl std::fmt::Display for ShellConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ShellConfigError::IoError(e) => write!(f, "IO error: {}", e),
+            ShellConfigError::ParseError(e) => write!(f, "Parse error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ShellConfigError {}
+
+// Вспомогательные типы для десериализации YAML
+#[derive(Deserialize)]
+struct SemanticContributionsYaml {
+    categories: Vec<CategoryEntry>,
+    overrides: Option<Vec<OverrideEntry>>,
+}
+
+#[derive(Deserialize)]
+struct CategoryEntry {
+    category: u8,
+    contribution: [u8; 8],
+}
+
+#[derive(Deserialize)]
+struct OverrideEntry {
+    link_type: u16,
+    contribution: [u8; 8],
 }
 
 impl Default for SemanticContributionTable {

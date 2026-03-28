@@ -1,0 +1,51 @@
+# MAP (4) — Карта мира и фактов
+# Физика: Стабильная среда для достоверных данных.
+reserved_id: 0
+domain_id: 104
+parent_domain_id: 100
+domain_type: 0
+structural_role: 4
+generation: 0
+flags: 0
+
+field_size: [2000.0, 2000.0, 2000.0]
+gravity_strength: 15.0
+temperature: 280.0
+time_dilation: 0
+resonance_freq: 0
+pressure: 0
+rebuild_frequency: 0
+friction_coeff: 40
+viscosity: 200
+elasticity: 0
+quantum_noise: 0
+
+axis_x_ref: 0
+axis_y_ref: 0
+axis_z_ref: 0
+axis_config: 0
+
+input_filter: 0
+output_filter: 0
+reflex_threshold: 200
+association_threshold: 80
+arbiter_flags: 31
+reflex_cooldown: 3
+max_concurrent_hints: 2
+feedback_weight_delta: 40
+reserved_arbiter: [0, 0]
+gate_complexity: 0
+threshold_mass: 0
+threshold_temp: 0
+permeability: 120
+membrane_state: 2
+
+created_at: 0
+last_update: 0
+token_capacity: 10000
+connection_capacity: 5000
+error_count: 0
+processing_state: 0
+complexity_score: 0
+performance_score: 0
+reserved_meta: [0, 0, 0]

@@ -1,0 +1,6 @@
+# Spatial Config: loose
+# Крупные ячейки, меньше памяти — быстрый rebuild при большом числе токенов.
+# cell_size = 1024, buckets = 16384
+cell_shift: 10
+bucket_count_log2: 14
+initial_capacity: 2048

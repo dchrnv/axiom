@@ -1269,3 +1269,119 @@ use axiom_space::*;
         assert_eq!(collisions.len(), 1);
         assert_eq!(collisions[0], 1);
     }
+
+// ─── SpatialConfig ───────────────────────────────────────────────────────────
+
+fn spatial_preset_path(name: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../config/presets/spatial")
+        .join(name)
+}
+
+#[test]
+fn test_spatial_config_presets_valid() {
+    assert!(SpatialConfig::tight().validate().is_ok());
+    assert!(SpatialConfig::medium().validate().is_ok());
+    assert!(SpatialConfig::loose().validate().is_ok());
+}
+
+#[test]
+fn test_spatial_config_medium_matches_constants() {
+    let cfg = SpatialConfig::medium();
+    assert_eq!(cfg.cell_shift, CELL_SHIFT);
+    assert_eq!(cfg.bucket_count_log2, BUCKET_COUNT_LOG2);
+    assert_eq!(cfg.cell_size(), CELL_SIZE as u32);
+    assert_eq!(cfg.bucket_count(), BUCKET_COUNT);
+}
+
+#[test]
+fn test_spatial_config_tight_smaller_cells() {
+    let tight = SpatialConfig::tight();
+    let medium = SpatialConfig::medium();
+    assert!(tight.cell_size() < medium.cell_size());
+    assert!(tight.bucket_count() > medium.bucket_count());
+}
+
+#[test]
+fn test_spatial_config_loose_larger_cells() {
+    let loose = SpatialConfig::loose();
+    let medium = SpatialConfig::medium();
+    assert!(loose.cell_size() > medium.cell_size());
+    assert!(loose.bucket_count() < medium.bucket_count());
+}
+
+#[test]
+fn test_spatial_config_validation_bad_cell_shift() {
+    let mut cfg = SpatialConfig::medium();
+    cfg.cell_shift = 0;
+    assert!(cfg.validate().is_err());
+    cfg.cell_shift = 16;
+    assert!(cfg.validate().is_err());
+}
+
+#[test]
+fn test_spatial_config_validation_bad_bucket_log2() {
+    let mut cfg = SpatialConfig::medium();
+    cfg.bucket_count_log2 = 7;
+    assert!(cfg.validate().is_err());
+    cfg.bucket_count_log2 = 25;
+    assert!(cfg.validate().is_err());
+}
+
+#[test]
+fn test_spatial_hash_grid_with_config() {
+    let cfg = SpatialConfig::tight();
+    let mut grid = SpatialHashGrid::with_config(&cfg);
+
+    // bucket_heads длина соответствует конфигурации
+    assert_eq!(grid.bucket_heads.len(), cfg.bucket_count());
+    assert_eq!(grid.entry_count, 0);
+
+    // insert работает
+    grid.insert(0, 100, 200, 300);
+    assert_eq!(grid.entry_count, 1);
+}
+
+#[test]
+fn test_from_yaml_tight() {
+    let path = spatial_preset_path("tight.yaml");
+    let cfg = SpatialConfig::from_yaml(&path).unwrap();
+    let reference = SpatialConfig::tight();
+    assert_eq!(cfg.cell_shift, reference.cell_shift);
+    assert_eq!(cfg.bucket_count_log2, reference.bucket_count_log2);
+    assert_eq!(cfg.initial_capacity, reference.initial_capacity);
+}
+
+#[test]
+fn test_from_yaml_medium() {
+    let path = spatial_preset_path("medium.yaml");
+    let cfg = SpatialConfig::from_yaml(&path).unwrap();
+    let reference = SpatialConfig::medium();
+    assert_eq!(cfg.cell_shift, reference.cell_shift);
+    assert_eq!(cfg.bucket_count_log2, reference.bucket_count_log2);
+    assert_eq!(cfg.initial_capacity, reference.initial_capacity);
+}
+
+#[test]
+fn test_from_yaml_loose() {
+    let path = spatial_preset_path("loose.yaml");
+    let cfg = SpatialConfig::from_yaml(&path).unwrap();
+    let reference = SpatialConfig::loose();
+    assert_eq!(cfg.cell_shift, reference.cell_shift);
+    assert_eq!(cfg.bucket_count_log2, reference.bucket_count_log2);
+    assert_eq!(cfg.initial_capacity, reference.initial_capacity);
+}
+
+#[test]
+fn test_from_yaml_missing_file() {
+    let result = SpatialConfig::from_yaml(std::path::Path::new("/nonexistent.yaml"));
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_from_yaml_all_presets_valid() {
+    for name in &["tight.yaml", "medium.yaml", "loose.yaml"] {
+        let cfg = SpatialConfig::from_yaml(&spatial_preset_path(name)).unwrap();
+        assert!(cfg.validate().is_ok(), "preset {} invalid", name);
+    }
+}

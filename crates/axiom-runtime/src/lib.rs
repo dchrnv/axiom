@@ -26,6 +26,7 @@ pub use guardian::{
     Guardian, ReflexDecision, VetoReason,
     InhibitAction, InhibitReason,
     CodexAction, GuardianError, GuardianStats,
+    RoleStats,
 };
 pub use snapshot::{EngineSnapshot, DomainSnapshot};
 pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter};

@@ -902,3 +902,68 @@ fn test_shell_v3_invariant_zero_allocation() {
     // Тест проходит если компиляция успешна - функция использует только стек
     assert!(true, "compute_shell must be zero-allocation");
 }
+
+// ─── SemanticContributionTable::from_yaml ────────────────────────────────────
+
+fn schema_path(name: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../config/schema")
+        .join(name)
+}
+
+#[test]
+fn test_from_yaml_loads_ashti_core_preset() {
+    let path = schema_path("semantic_contributions.yaml");
+    let table = SemanticContributionTable::from_yaml(&path).unwrap();
+
+    // Категории совпадают с default_ashti_core()
+    let reference = SemanticContributionTable::default_ashti_core();
+    for cat in 0x01u16..=0x07u16 {
+        assert_eq!(
+            table.get(cat),
+            reference.get(cat),
+            "category 0x{:02X} mismatch",
+            cat
+        );
+    }
+}
+
+#[test]
+fn test_from_yaml_category_structural() {
+    let table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    // 0x01: Structural → [20, 5, 0, 0, 5, 0, 0, 0]
+    assert_eq!(table.get(0x0100), &[20, 5, 0, 0, 5, 0, 0, 0]);
+}
+
+#[test]
+fn test_from_yaml_category_social() {
+    let table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    // 0x05: Social → [0, 0, 0, 5, 0, 25, 0, 0]
+    assert_eq!(table.get(0x0500), &[0, 0, 0, 5, 0, 25, 0, 0]);
+}
+
+#[test]
+fn test_from_yaml_missing_file() {
+    let result = SemanticContributionTable::from_yaml(std::path::Path::new("/nonexistent.yaml"));
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), axiom_shell::ShellConfigError::IoError(_)));
+}
+
+#[test]
+fn test_from_yaml_matches_default_for_all_categories() {
+    let yaml_table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    let default_table = SemanticContributionTable::default_ashti_core();
+
+    // Категории 0x00..0xFF: только 0x01..0x07 имеют вклад
+    for cat in 0x01u8..=0x07u8 {
+        let link_type = (cat as u16) << 8;
+        assert_eq!(
+            yaml_table.get(link_type),
+            default_table.get(link_type),
+            "category {} mismatch",
+            cat
+        );
+    }
+    // Категория 0x00 — нулевой вклад в обоих
+    assert_eq!(yaml_table.get(0x0000), &[0u8; 8]);
+}

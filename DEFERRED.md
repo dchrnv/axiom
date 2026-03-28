@@ -324,6 +324,24 @@ disabled: enable_shell_reconciliation = false  // Disabled when heartbeat disabl
 
 ## 4. 🟢 НИЗКИЙ ПРИОРИТЕТ - ДОЛГОСРОЧНЫЕ ЦЕЛИ
 
+### 4.0 Фрактальные уровни (Этап 7 Шаг 3)
+
+**Откуда:** ROADMAP Этап 7 Шаг 3
+**Причина переноса:** Преждевременное усложнение архитектуры. Базовая функциональность не требует этого.
+
+**Суть задачи:** Протокол 10→0 — MAYA(10) одного уровня AshtiCore подаёт выход на SUTRA(0) следующего. Цепочка нескольких AshtiCore через SkillSet обмен.
+
+**Что потребуется:**
+- [ ] `FractalChain` — связывает два AshtiCore: верхний `maya_output` → нижний `sutra_input`
+- [ ] `AshtiCore::set_sutra_input(token)` — внешний впрыск в SUTRA(0)
+- [ ] `AshtiCore::take_maya_output()` — забрать результат с MAYA(10)
+- [ ] Тесты двухуровневой цепочки
+- [ ] Обмен скиллами между уровнями (SkillSet export/import — см. Шаг 4 Этапа 7)
+
+---
+
+
+
 ### 4.1 Python Adapter
 
 **Где:** `runtime/src/python_adapter.rs`
