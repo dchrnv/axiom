@@ -30,11 +30,14 @@ pub enum VetoReason {
 /// Решение GUARDIAN по рефлексу.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReflexDecision {
+    /// Рефлекс разрешён
     Allow,
+    /// Рефлекс заблокирован с указанием причины
     Veto(VetoReason),
 }
 
 impl ReflexDecision {
+    /// Возвращает `true` если рефлекс разрешён
     pub fn is_allowed(&self) -> bool {
         matches!(self, ReflexDecision::Allow)
     }
@@ -44,12 +47,16 @@ impl ReflexDecision {
 #[derive(Debug, Clone, PartialEq)]
 pub enum InhibitReason {
     /// Токен с валентностью не имеет массы
-    ValenceWithoutMass { token_index: usize },
+    ValenceWithoutMass {
+        /// Индекс токена в списке домена
+        token_index: usize,
+    },
 }
 
 /// Действие ингибирования для домена.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InhibitAction {
+    /// Причина ингибирования
     pub reason: InhibitReason,
 }
 
@@ -94,10 +101,15 @@ pub struct RoleStats {
 /// Статистика GUARDIAN.
 #[derive(Debug, Default, Clone)]
 pub struct GuardianStats {
+    /// Число разрешённых рефлексов
     pub reflex_allowed:    u64,
+    /// Число заблокированных рефлексов
     pub reflex_vetoed:     u64,
+    /// Число отказов доступа по GENOME
     pub access_denied:     u64,
+    /// Число нарушений протокола
     pub protocol_denied:   u64,
+    /// Число просканированных доменов
     pub domains_scanned:   u64,
     /// Число адаптаций порогов (Этап 6)
     pub thresholds_adapted: u64,
@@ -367,18 +379,22 @@ impl Guardian {
     // Accessors
     // ============================================================
 
+    /// Текущее число накопленных нарушений CODEX.
     pub fn violation_count(&self) -> u32 {
         self.violation_count
     }
 
+    /// Сбросить счётчик нарушений.
     pub fn reset_violations(&mut self) {
         self.violation_count = 0;
     }
 
+    /// Статистика операций GUARDIAN.
     pub fn stats(&self) -> &GuardianStats {
         &self.stats
     }
 
+    /// Ссылка на активный Genome.
     pub fn genome(&self) -> &Genome {
         &self.genome
     }
