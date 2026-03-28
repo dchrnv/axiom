@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
+use serde::{Deserialize, Serialize};
 use crate::types::{ModuleId, ResourceId, Permission, DataType};
 
 /// Структурные инварианты системы — физические и архитектурные ограничения.
 /// Эти значения никогда не меняются в рантайме.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenomeInvariants {
     /// Размеры core-структур в байтах
     pub token_size: u16,           // Всегда 64
@@ -40,7 +41,7 @@ impl GenomeInvariants {
 }
 
 /// Правило доступа: кто, к чему, что может.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AccessRule {
     pub module: ModuleId,
     pub resource: ResourceId,
@@ -48,7 +49,7 @@ pub struct AccessRule {
 }
 
 /// Правило протокола: допустимый маршрут данных между модулями.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ProtocolRule {
     pub source: ModuleId,
     pub target: ModuleId,
@@ -57,7 +58,7 @@ pub struct ProtocolRule {
 }
 
 /// Глобальная конфигурация Ashti_Core уровня.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenomeConfig {
     /// Arbiter
     pub arbiter_response_timeout: u64,

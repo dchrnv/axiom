@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
+use serde::{Deserialize, Serialize};
+
 /// Идентификаторы модулей системы.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ModuleId {
     Sutra      = 0,
@@ -26,7 +28,7 @@ pub enum ModuleId {
 pub const MAX_MODULES: usize = 16;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ResourceId {
     SutraTokens      = 0,
@@ -42,7 +44,7 @@ pub enum ResourceId {
 pub const MAX_RESOURCES: usize = 8;
 
 /// Уровень доступа.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Permission {
     None      = 0,
@@ -53,7 +55,7 @@ pub enum Permission {
 }
 
 /// Тип данных, передаваемых по протоколу.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum DataType {
     TokenReference    = 0,

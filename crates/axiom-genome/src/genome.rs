@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
+use std::path::Path;
+use serde::{Deserialize, Serialize};
 use crate::types::{ModuleId, ResourceId, Permission, DataType};
 use crate::rules::{AccessRule, GenomeConfig, GenomeInvariants, ProtocolRule};
 
@@ -33,6 +35,7 @@ impl std::fmt::Display for GenomeError {
 /// Загружается первым, до COM, до доменов, до любых событий.
 /// После загрузки и валидации замораживается в `Arc<Genome>`.
 /// Никто не может получить `&mut Genome`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Genome {
     pub version: u32,
     pub invariants: GenomeInvariants,
@@ -96,6 +99,30 @@ impl Genome {
             protocol_rules,
             config: GenomeConfig::ashti_core_v2(),
         }
+    }
+
+    /// Загрузить GENOME из YAML файла.
+    ///
+    /// После загрузки автоматически вызывается `validate()`.
+    /// Невалидный YAML или нарушение инвариантов → `Err(GenomeError)`.
+    pub fn from_yaml(path: &Path) -> Result<Self, GenomeError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| GenomeError::InvariantViolation(
+                // Нет хорошего способа вернуть динамическую строку через &'static str,
+                // поэтому сигнализируем специальным значением и логируем тип ошибки.
+                // В Фазе C можно добавить GenomeError::IoError(String).
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    "genome yaml file not found"
+                } else {
+                    "failed to read genome yaml file"
+                }
+            ))?;
+
+        let genome: Self = serde_yaml::from_str(&content)
+            .map_err(|_| GenomeError::InvariantViolation("failed to parse genome yaml"))?;
+
+        genome.validate()?;
+        Ok(genome)
     }
 
     /// Валидация GENOME. Невалидный GENOME → система не запускается.
