@@ -54,6 +54,13 @@ impl EngineSnapshot {
         self.domains.iter().map(|d| d.tokens.len()).sum()
     }
 
+    /// Event_id момента snapshot — граница безопасного pruning.
+    ///
+    /// Следы с `last_used < snapshot_event_id` каузально устарели.
+    pub fn snapshot_event_id(&self) -> u64 {
+        self.created_at
+    }
+
     /// Найти snapshot домена по ID
     pub fn find_domain(&self, domain_id: u32) -> Option<&DomainSnapshot> {
         self.domains.iter().find(|d| d.domain_id == domain_id)

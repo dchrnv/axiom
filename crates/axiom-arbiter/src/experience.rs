@@ -4,6 +4,7 @@
 // EXPERIENCE module - ассоциативная память Arbiter V1.0
 
 use axiom_core::Token;
+use crate::gridhash::{grid_hash, AssociativeIndex};
 
 /// Уровень резонанса
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +52,8 @@ pub struct Experience {
     association_threshold: u8,
     /// Максимальное число следов
     max_traces: usize,
+    /// GridHash-индекс для O(1) Phase 1 поиска
+    pub index: AssociativeIndex,
 }
 
 impl Experience {
@@ -61,6 +64,7 @@ impl Experience {
             reflex_threshold: 128,
             association_threshold: 64,
             max_traces: 1000,
+            index: AssociativeIndex::new(4), // shift=4: ячейки 16 квантов
         }
     }
 
@@ -70,24 +74,57 @@ impl Experience {
         self.association_threshold = association_threshold;
     }
 
-    /// Резонансный поиск по паттерну.
+    /// Резонансный поиск по паттерну (двухфазный).
     ///
-    /// Возвращает Reflex если лучший след имеет score >= reflex_threshold/255.0,
-    /// Association если score >= association_threshold/255.0, иначе None.
+    /// **Phase 1 — GridHash (O(1)):**
+    /// Проверяем индекс по grid-ключу токена. Если ячейка найдена и
+    /// лучший след в ней имеет score ≥ reflex_threshold → ранний выход.
+    ///
+    /// **Phase 2 — физика (O(N)):**
+    /// Полный линейный поиск с hash-prefilter. Активируется при промахе Phase 1.
     pub fn resonance_search(&self, token: &Token) -> ResonanceResult {
         if self.traces.is_empty() {
             return ResonanceResult { level: ResonanceLevel::None, trace: None };
         }
 
-        let input_hash = pattern_hash(token);
         let reflex_t = self.reflex_threshold as f32 / 255.0;
-        let assoc_t = self.association_threshold as f32 / 255.0;
+        let assoc_t  = self.association_threshold as f32 / 255.0;
 
+        // ── Phase 1: GridHash O(1) ───────────────────────────────────────────
+        let grid_key = grid_hash(token, self.index.shift);
+        if let Some(trace_ids) = self.index.lookup(grid_key) {
+            let mut best_score = 0.0f32;
+            let mut best_trace: Option<ExperienceTrace> = None;
+
+            for &trace_id in trace_ids {
+                // Найти след по created_at (стабильный ID)
+                if let Some(trace) = self.traces.iter().find(|t| t.created_at == trace_id) {
+                    let similarity = pattern_similarity(token, &trace.pattern);
+                    let score = similarity * trace.weight;
+                    if score > best_score {
+                        best_score = score;
+                        best_trace = Some(trace.clone());
+                    }
+                }
+            }
+
+            // Ранний выход при Reflex-уровне попадания
+            if best_score >= reflex_t {
+                if let Some(trace) = best_trace {
+                    return ResonanceResult {
+                        level: ResonanceLevel::Reflex,
+                        trace: Some(trace),
+                    };
+                }
+            }
+        }
+
+        // ── Phase 2: полный поиск O(N) ───────────────────────────────────────
+        let input_hash = pattern_hash(token);
         let mut best_score = 0.0f32;
         let mut best_idx: Option<usize> = None;
 
         for (i, trace) in self.traces.iter().enumerate() {
-            // Quick pre-filter: if hashes differ by too much, skip
             let hash_dist = (input_hash ^ trace.pattern_hash).count_ones();
             if hash_dist > 40 {
                 continue;
@@ -123,17 +160,21 @@ impl Experience {
     /// Добавить след опыта. Если лимит достигнут, вытесняет след с наименьшим весом.
     pub fn add_trace(&mut self, pattern: Token, weight: f32, created_at: u64) {
         if self.traces.len() >= self.max_traces {
-            // Evict lowest weight trace
+            // Evict lowest weight trace — удаляем из индекса ДО удаления из Vec
             if let Some(min_idx) = self.traces.iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.weight.partial_cmp(&b.weight).unwrap())
                 .map(|(i, _)| i)
             {
+                let evicted_id = self.traces[min_idx].created_at;
+                self.index.remove_by_trace_id(evicted_id);
                 self.traces.remove(min_idx);
             }
         }
 
         let ph = pattern_hash(&pattern);
+        let key = grid_hash(&pattern, self.index.shift);
+
         self.traces.push(ExperienceTrace {
             pattern,
             weight: weight.clamp(0.0, 1.0),
@@ -142,6 +183,9 @@ impl Experience {
             success_count: 0,
             pattern_hash: ph,
         });
+
+        // Добавляем в GridHash-индекс
+        self.index.insert(key, created_at);
     }
 
     /// Усилить след по индексу
@@ -153,15 +197,82 @@ impl Experience {
     }
 
     /// Ослабить след по индексу
+    ///
+    /// Если вес падает до нуля — след удаляется из GridHash-индекса.
     pub fn weaken_trace(&mut self, idx: usize, delta: f32) {
         if let Some(trace) = self.traces.get_mut(idx) {
             trace.weight = (trace.weight - delta).max(0.0);
+            if trace.weight == 0.0 {
+                let trace_id = trace.created_at;
+                self.index.remove_by_trace_id(trace_id);
+            }
         }
     }
 
     /// Получить количество следов
     pub fn trace_count(&self) -> usize {
         self.traces.len()
+    }
+
+    /// Вернуть следы, готовые к кристаллизации в Skill
+    ///
+    /// Возвращает клоны следов у которых weight ≥ weight_threshold
+    /// AND success_count ≥ min_success.
+    pub fn find_crystallizable(
+        &self,
+        weight_threshold: f32,
+        min_success: u32,
+    ) -> Vec<ExperienceTrace> {
+        self.traces
+            .iter()
+            .filter(|t| t.weight >= weight_threshold && t.success_count >= min_success)
+            .cloned()
+            .collect()
+    }
+
+    /// Число следов с `last_used < horizon` — сколько будет удалено при pruning.
+    pub fn prunable_count(&self, horizon: u64) -> usize {
+        if horizon == 0 { return 0; }
+        self.traces.iter().filter(|t| t.last_used < horizon).count()
+    }
+
+    /// Архивировать (удалить) следы, каузально устаревшие за горизонтом.
+    ///
+    /// Удаляет все следы с `last_used < horizon` и чистит AssociativeIndex.
+    /// Возвращает число удалённых следов.
+    pub fn archive_behind_horizon(&mut self, horizon: u64) -> usize {
+        if horizon == 0 {
+            return 0;
+        }
+
+        let mut removed = 0;
+        let mut i = 0;
+        while i < self.traces.len() {
+            if self.traces[i].last_used < horizon {
+                let trace_id = self.traces[i].created_at;
+                self.index.remove_by_trace_id(trace_id);
+                self.traces.swap_remove(i);
+                removed += 1;
+            } else {
+                i += 1;
+            }
+        }
+        removed
+    }
+
+    /// Усилить след по хэшу паттерна (без знания индекса)
+    ///
+    /// Находит лучший след по хэшу и усиливает его. Возвращает true если нашёл.
+    pub fn strengthen_by_hash(&mut self, pattern_hash: u64, delta: f32) -> bool {
+        if let Some(trace) = self.traces.iter_mut()
+            .filter(|t| (t.pattern_hash ^ pattern_hash).count_ones() <= 8)
+            .max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap())
+        {
+            trace.weight = (trace.weight + delta).min(1.0);
+            trace.success_count = trace.success_count.saturating_add(1);
+            return true;
+        }
+        false
     }
 }
 

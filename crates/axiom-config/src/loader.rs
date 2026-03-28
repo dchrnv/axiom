@@ -19,6 +19,35 @@ pub struct AxiomConfig {
     pub schema: SchemaConfig,
     /// Конфигурация загрузчика
     pub loader: LoaderConfig,
+    /// Пресеты (опционально — для совместимости со старыми axiom.yaml)
+    #[serde(default)]
+    pub presets: PresetsConfig,
+}
+
+/// Конфигурация пресетов — пути к готовым конфигурациям компонентов
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PresetsConfig {
+    /// Директория YAML пресетов доменов
+    pub domains_dir: Option<String>,
+    /// Путь к YAML конфигурации пространственного грида
+    pub spatial: Option<String>,
+    /// Путь к YAML таблице семантических вкладов Shell
+    pub semantic_contributions: Option<String>,
+}
+
+/// Результат полной загрузки конфигурации через `ConfigLoader::load_all`
+///
+/// Содержит корневую конфигурацию и все загруженные компоненты.
+/// Конкретные типы (SpatialConfig, SemanticContributionTable) загружаются
+/// через методы соответствующих крейтов по путям из `AxiomConfig::presets`.
+#[derive(Debug)]
+pub struct LoadedAxiomConfig {
+    /// Корневая конфигурация из axiom.yaml
+    pub root: AxiomConfig,
+    /// Загруженные домены (domain_name → raw YAML value)
+    pub domains: HashMap<String, DomainConfig>,
+    /// Heartbeat конфигурация (если загружена)
+    pub heartbeat: Option<HeartbeatConfig>,
 }
 
 /// Конфигурация runtime
@@ -284,6 +313,99 @@ impl ConfigLoader {
             "object" => value.is_mapping(),
             _ => true,
         }
+    }
+
+    /// Загрузить все конфигурации из корневого axiom.yaml
+    ///
+    /// Читает `axiom.yaml`, загружает все компоненты которые в нём указаны.
+    /// Если `presets.domains_dir` задан — загружает все YAML из этой директории.
+    /// Все файлы кэшируются.
+    ///
+    /// # Arguments
+    /// * `root_path` — путь к axiom.yaml
+    ///
+    /// # Returns
+    /// `LoadedAxiomConfig` со всеми загруженными данными.
+    pub fn load_all(&mut self, root_path: &Path) -> Result<LoadedAxiomConfig, ConfigError> {
+        let root = self.load_root(root_path)?;
+
+        let base = root_path.parent().unwrap_or(Path::new("."));
+
+        // Загружаем домены из директории пресетов
+        let mut domains = HashMap::new();
+        if let Some(ref dir) = root.presets.domains_dir {
+            let dir_path = base.join(dir);
+            if dir_path.exists() {
+                for entry in fs::read_dir(&dir_path).map_err(ConfigError::IoError)? {
+                    let entry = entry.map_err(ConfigError::IoError)?;
+                    let path = entry.path();
+                    if path.extension().and_then(|e| e.to_str()) == Some("yaml") {
+                        let name = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let config = self.load_domain_config(&path)?;
+                        domains.insert(name, config);
+                    }
+                }
+            }
+        }
+
+        // Верифицируем путь к spatial (если задан) — загружаем в кэш
+        if let Some(ref spatial_path) = root.presets.spatial {
+            let path = base.join(spatial_path);
+            if path.exists() {
+                self.load_yaml_file(&path)?;
+            }
+        }
+
+        // Верифицируем путь к semantic_contributions (если задан) — загружаем в кэш
+        if let Some(ref semantic_path) = root.presets.semantic_contributions {
+            let path = base.join(semantic_path);
+            if path.exists() {
+                self.load_yaml_file(&path)?;
+            }
+        }
+
+        Ok(LoadedAxiomConfig {
+            root,
+            domains,
+            heartbeat: None,
+        })
+    }
+
+    /// Получить путь к spatial конфигурации из LoadedAxiomConfig
+    ///
+    /// Возвращает абсолютный путь для последующей загрузки через `SpatialConfig::from_yaml`.
+    pub fn spatial_config_path<'a>(
+        &self,
+        loaded: &'a LoadedAxiomConfig,
+        base: &Path,
+    ) -> Option<std::path::PathBuf> {
+        loaded
+            .root
+            .presets
+            .spatial
+            .as_ref()
+            .map(|p| base.join(p))
+    }
+
+    /// Получить путь к semantic_contributions конфигурации из LoadedAxiomConfig
+    ///
+    /// Возвращает абсолютный путь для последующей загрузки через
+    /// `SemanticContributionTable::from_yaml`.
+    pub fn semantic_contributions_path<'a>(
+        &self,
+        loaded: &'a LoadedAxiomConfig,
+        base: &Path,
+    ) -> Option<std::path::PathBuf> {
+        loaded
+            .root
+            .presets
+            .semantic_contributions
+            .as_ref()
+            .map(|p| base.join(p))
     }
 
     /// Очистить кэш

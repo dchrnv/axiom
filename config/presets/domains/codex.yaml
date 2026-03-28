@@ -1,0 +1,51 @@
+# CODEX (3) — Конституция и правила
+# Физика: Высокая стабильность и вязкость. Данные становятся законами.
+reserved_id: 0
+domain_id: 103
+parent_domain_id: 100
+domain_type: 0
+structural_role: 3
+generation: 0
+flags: 0
+
+field_size: [2000.0, 2000.0, 2000.0]
+gravity_strength: 1000.0
+temperature: 10.0
+time_dilation: 0
+resonance_freq: 0
+pressure: 0
+rebuild_frequency: 0
+friction_coeff: 200
+viscosity: 250
+elasticity: 0
+quantum_noise: 0
+
+axis_x_ref: 0
+axis_y_ref: 0
+axis_z_ref: 0
+axis_config: 0
+
+input_filter: 0
+output_filter: 0
+reflex_threshold: 0
+association_threshold: 0
+arbiter_flags: 0
+reflex_cooldown: 0
+max_concurrent_hints: 0
+feedback_weight_delta: 0
+reserved_arbiter: [0, 0]
+gate_complexity: 0
+threshold_mass: 0
+threshold_temp: 0
+permeability: 25
+membrane_state: 2
+
+created_at: 0
+last_update: 0
+token_capacity: 500
+connection_capacity: 50
+error_count: 0
+processing_state: 0
+complexity_score: 0
+performance_score: 0
+reserved_meta: [0, 0, 0]

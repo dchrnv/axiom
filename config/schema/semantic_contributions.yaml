@@ -1,0 +1,45 @@
+# Semantic Contribution Table — Ashti_Core V3.0
+#
+# Определяет вклад каждой категории Connection в семантические слои (L1-L8):
+#   L1: Physical   L2: Sensory   L3: Motor     L4: Emotional
+#   L5: Cognitive  L6: Social    L7: Temporal  L8: Abstract
+#
+# Формат contribution: [L1, L2, L3, L4, L5, L6, L7, L8]
+
+categories:
+  # 0x01: Structural — Part_Of, Contains, Member_Of
+  # Высокий Physical, немного Cognitive
+  - category: 1
+    contribution: [20, 5, 0, 0, 5, 0, 0, 0]
+
+  # 0x02: Semantic — Synonym, Antonym, Hypernym
+  # Высокий Cognitive, немного Abstract
+  - category: 2
+    contribution: [0, 0, 0, 0, 15, 0, 0, 10]
+
+  # 0x03: Causal — Cause, Effect, Enables
+  # Motor, Cognitive, Temporal, Abstract
+  - category: 3
+    contribution: [0, 0, 5, 0, 15, 0, 10, 8]
+
+  # 0x04: Experiential — Feels_Like, Tastes_Like, Sounds_Like
+  # Physical, Sensory, Emotional
+  - category: 4
+    contribution: [5, 20, 0, 15, 0, 0, 0, 0]
+
+  # 0x05: Social — Friend_Of, Reports_To, Belongs_To_Group
+  # Emotional, высокий Social
+  - category: 5
+    contribution: [0, 0, 0, 5, 0, 25, 0, 0]
+
+  # 0x06: Temporal — Precedes, Follows, During
+  # Cognitive, высокий Temporal
+  - category: 6
+    contribution: [0, 0, 0, 0, 5, 0, 25, 0]
+
+  # 0x07: Motor — Used_For, Performed_By, Requires_Action
+  # Physical, высокий Motor, Cognitive
+  - category: 7
+    contribution: [10, 0, 25, 0, 5, 0, 0, 0]
+
+overrides: []

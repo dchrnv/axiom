@@ -14,7 +14,7 @@ use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
 use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload};
-use crate::guardian::Guardian;
+use crate::guardian::{Guardian, RoleStats};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 
@@ -126,11 +126,33 @@ impl AxiomEngine {
             })
             .collect();
 
+        let horizon = self.ashti.compute_horizon();
+
         EngineSnapshot {
             domains,
             com_next_id: 0,
-            created_at: 0,
+            created_at: horizon,
         }
+    }
+
+    /// Удалить из Experience следы с `last_used < snapshot.created_at`.
+    ///
+    /// Безопасно: snapshot уже зафиксировал состояние, стары следы больше не нужны.
+    /// Возвращает число удалённых следов.
+    pub fn prune_after_snapshot(&mut self, snapshot: &EngineSnapshot) -> usize {
+        self.ashti
+            .experience_mut()
+            .archive_behind_horizon(snapshot.created_at)
+    }
+
+    /// Сделать snapshot и сразу выполнить pruning Experience.
+    ///
+    /// Удобная комбинация: фиксируем состояние → удаляем устаревшие следы.
+    /// Возвращает (snapshot, число_удалённых_следов).
+    pub fn snapshot_and_prune(&mut self) -> (EngineSnapshot, usize) {
+        let snap = self.snapshot();
+        let pruned = self.prune_after_snapshot(&snap);
+        (snap, pruned)
     }
 
     /// Восстановить Engine из snapshot
@@ -245,6 +267,101 @@ impl AxiomEngine {
 
     fn handle_restore(&mut self, cmd: &UclCommand) -> UclResult {
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+    }
+
+    // ============================================================
+    // Этап 6: Адаптация порогов (GUARDIAN ← REFLECTOR)
+    // ============================================================
+
+    /// Запустить цикл адаптации: GUARDIAN читает REFLECTOR, обновляет DomainConfig.
+    ///
+    /// Шаг 1: адаптирует reflex_threshold.
+    /// Шаг 2: адаптирует temperature и resonance_freq.
+    /// После обновления конфигов применяет новые пороги к Experience модулю.
+    ///
+    /// Возвращает список domain_id, чьи конфиги изменились.
+    pub fn run_adaptation(&mut self) -> Vec<u32> {
+        // Собираем статистику (иммутабельный заём завершается до мутабельного)
+        let role_stats: Vec<RoleStats> = (1u8..=8).filter_map(|role| {
+            let profile = self.ashti.reflector().domain_profile(role)?;
+            let total = profile.total_calls();
+            if total == 0 { return None; }
+            Some(RoleStats {
+                role,
+                success_rate: profile.overall_success_rate(),
+                total_calls: total,
+            })
+        }).collect();
+
+        if role_stats.is_empty() {
+            return Vec::new();
+        }
+
+        // Адаптируем пороги и физику
+        let configs = self.ashti.arbiter_domain_configs_mut();
+        let mut updated = self.guardian.adapt_thresholds(&role_stats, configs);
+        let phys_updated = self.guardian.adapt_domain_physics(&role_stats, configs);
+        for id in phys_updated {
+            if !updated.contains(&id) {
+                updated.push(id);
+            }
+        }
+
+        // Применяем новые пороги к Experience модулю
+        self.ashti.apply_experience_thresholds();
+
+        updated
+    }
+
+    // ============================================================
+    // Этап 7: Causal Horizon
+    // ============================================================
+
+    /// Вычислить текущий причинный горизонт системы.
+    ///
+    /// `horizon = min(token.last_event_id)` по всем доменам.
+    /// Следы с `last_used < horizon` считаются каузально устаревшими.
+    pub fn causal_horizon(&self) -> u64 {
+        self.ashti.compute_horizon()
+    }
+
+    // ============================================================
+    // Этап 7 Шаг 4: Обмен скиллами
+    // ============================================================
+
+    /// Экспортировать все кристаллизованные навыки из SkillSet.
+    pub fn export_skills(&self) -> Vec<axiom_arbiter::Skill> {
+        self.ashti.export_skills()
+    }
+
+    /// Импортировать навыки из другого экземпляра.
+    ///
+    /// Дубли пропускаются. Возвращает число фактически импортированных.
+    pub fn import_skills(&mut self, skills: &[axiom_arbiter::Skill]) -> usize {
+        self.ashti.import_skills(skills)
+    }
+
+    /// Запустить сборку мусора Experience по причинному горизонту.
+    ///
+    /// Удаляет следы с `last_used < horizon`, чистит AssociativeIndex.
+    /// Возвращает число удалённых следов.
+    pub fn run_horizon_gc(&mut self) -> usize {
+        self.ashti.run_horizon_gc()
+    }
+
+    /// DREAM(7): проанализировать Experience и предложить изменения CODEX.
+    ///
+    /// Извлекает высокоактивные паттерны из Experience (weight ≥ 0.9, success_count ≥ 5)
+    /// и передаёт их Guardian для генерации CodexAction предложений.
+    pub fn dream_propose(&mut self) -> Vec<crate::guardian::CodexAction> {
+        let candidates: Vec<_> = self.ashti
+            .experience_mut()
+            .find_crystallizable(0.9, 5)
+            .into_iter()
+            .map(|t| t.pattern)
+            .collect();
+
+        self.guardian.dream_propose(&candidates)
     }
 
     fn handle_reset(&mut self, cmd: &UclCommand) -> UclResult {

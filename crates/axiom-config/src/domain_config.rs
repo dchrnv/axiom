@@ -727,4 +727,17 @@ impl DomainConfig {
 
         Ok(())
     }
+
+    /// Загрузить DomainConfig из YAML файла.
+    ///
+    /// После загрузки автоматически вызывается `validate()`.
+    pub fn from_yaml(path: &std::path::Path) -> Result<Self, crate::ConfigError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(crate::ConfigError::IoError)?;
+        let config: Self = serde_yaml::from_str(&content)
+            .map_err(crate::ConfigError::ParseError)?;
+        config.validate()
+            .map_err(crate::ConfigError::ValidationError)?;
+        Ok(config)
+    }
 }

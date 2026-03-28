@@ -4,7 +4,9 @@
 // GUARDIAN — над-доменный контроль соблюдения CODEX + GENOME правил
 
 use std::sync::Arc;
+use std::collections::HashMap;
 use axiom_core::{Token, STATE_LOCKED};
+use axiom_config::DomainConfig;
 use axiom_domain::DomainState;
 use axiom_genome::{Genome, GenomeIndex, ModuleId, ResourceId, Permission};
 
@@ -78,14 +80,29 @@ impl std::fmt::Display for GuardianError {
     }
 }
 
+/// Статистика рефлексов по роли домена — входные данные для adapt_thresholds.
+#[derive(Debug, Clone)]
+pub struct RoleStats {
+    /// Структурная роль домена (1..8 = ASHTI)
+    pub role: u8,
+    /// Общая доля успехов [0.0 .. 1.0]
+    pub success_rate: f32,
+    /// Общее число попыток
+    pub total_calls: u32,
+}
+
 /// Статистика GUARDIAN.
 #[derive(Debug, Default, Clone)]
 pub struct GuardianStats {
-    pub reflex_allowed:  u64,
-    pub reflex_vetoed:   u64,
-    pub access_denied:   u64,
-    pub protocol_denied: u64,
-    pub domains_scanned: u64,
+    pub reflex_allowed:    u64,
+    pub reflex_vetoed:     u64,
+    pub access_denied:     u64,
+    pub protocol_denied:   u64,
+    pub domains_scanned:   u64,
+    /// Число адаптаций порогов (Этап 6)
+    pub thresholds_adapted: u64,
+    /// Число DREAM-предложений (Этап 6)
+    pub dream_proposals:   u64,
 }
 
 // ============================================================================
@@ -243,6 +260,107 @@ impl Guardian {
             }
         }
         Ok(())
+    }
+
+    // ============================================================
+    // Этап 6: Адаптивные пороги
+    // ============================================================
+
+    /// Адаптировать reflex_threshold доменов на основе статистики REFLECTOR.
+    ///
+    /// Алгоритм:
+    /// - success_rate > 0.8 && calls ≥ 10 → снизить порог на 5 (до минимума 10)
+    /// - success_rate < 0.3 && calls ≥ 10 → повысить порог на 5 (до максимума 250)
+    ///
+    /// Возвращает список domain_id у которых изменился порог.
+    pub fn adapt_thresholds(
+        &mut self,
+        stats: &[RoleStats],
+        configs: &mut HashMap<u32, DomainConfig>,
+    ) -> Vec<u32> {
+        let mut updated = Vec::new();
+
+        for (domain_id, config) in configs.iter_mut() {
+            let role = config.structural_role;
+            let Some(role_stat) = stats.iter().find(|s| s.role == role) else { continue };
+
+            if role_stat.total_calls < 10 {
+                continue;
+            }
+
+            let changed = if role_stat.success_rate > 0.8 && config.reflex_threshold > 10 {
+                config.reflex_threshold = config.reflex_threshold.saturating_sub(5);
+                true
+            } else if role_stat.success_rate < 0.3 && config.reflex_threshold < 250 {
+                config.reflex_threshold = config.reflex_threshold.saturating_add(5);
+                true
+            } else {
+                false
+            };
+
+            if changed {
+                self.stats.thresholds_adapted += 1;
+                updated.push(*domain_id);
+            }
+        }
+
+        updated
+    }
+
+    /// Адаптировать физические параметры доменов (temperature, resonance_freq).
+    ///
+    /// - success_rate > 0.7 → охладить (−5) и ускорить резонанс (+10 Hz)
+    /// - success_rate < 0.3 → нагреть (+5) и замедлить резонанс (−10 Hz)
+    ///
+    /// Возвращает список domain_id у которых изменились параметры.
+    pub fn adapt_domain_physics(
+        &mut self,
+        stats: &[RoleStats],
+        configs: &mut HashMap<u32, DomainConfig>,
+    ) -> Vec<u32> {
+        let mut updated = Vec::new();
+
+        for (domain_id, config) in configs.iter_mut() {
+            let role = config.structural_role;
+            let Some(role_stat) = stats.iter().find(|s| s.role == role) else { continue };
+
+            if role_stat.total_calls < 10 {
+                continue;
+            }
+
+            let changed = if role_stat.success_rate > 0.7 {
+                config.temperature = (config.temperature - 5.0_f32).max(0.1);
+                config.resonance_freq = config.resonance_freq.saturating_add(10);
+                true
+            } else if role_stat.success_rate < 0.3 {
+                config.temperature = (config.temperature + 5.0_f32).min(500.0);
+                config.resonance_freq = config.resonance_freq.saturating_sub(10);
+                true
+            } else {
+                false
+            };
+
+            if changed {
+                self.stats.thresholds_adapted += 1;
+                updated.push(*domain_id);
+            }
+        }
+
+        updated
+    }
+
+    /// DREAM(7) — предложить изменения CODEX на основе высокоактивных паттернов.
+    ///
+    /// Принимает срез кандидатов (токенов с высоким весом из EXPERIENCE).
+    /// Возвращает CodexAction::AddRule для каждого кандидата (до 5 за вызов).
+    pub fn dream_propose(&mut self, candidates: &[Token]) -> Vec<CodexAction> {
+        let proposals: Vec<CodexAction> = candidates
+            .iter()
+            .take(5)
+            .map(|t| CodexAction::AddRule(*t))
+            .collect();
+        self.stats.dream_proposals += proposals.len() as u64;
+        proposals
     }
 
     // ============================================================

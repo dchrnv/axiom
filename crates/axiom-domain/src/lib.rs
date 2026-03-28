@@ -10,10 +10,12 @@ pub mod domain_state;
 pub mod membrane;
 pub mod physics;
 pub mod ashti_core;
+pub mod causal_horizon;
 
 pub use domain::Domain;
 pub use domain_state::{DomainState, CapacityExceeded};
 pub use ashti_core::AshtiCore;
+pub use causal_horizon::CausalHorizon;
 pub use membrane::{can_enter_domain, can_exit_domain};
 pub use physics::EventGenerator;
 

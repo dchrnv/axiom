@@ -4,6 +4,12 @@ use axiom_config::{
     MEMBRANE_OPEN, MEMBRANE_SEMI, MEMBRANE_CLOSED, MEMBRANE_ADAPTIVE,
 };
 
+fn preset_path(name: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../config/presets/domains")
+        .join(name)
+}
+
 #[test]
 fn test_domain_config_size() {
     assert_eq!(std::mem::size_of::<DomainConfig>(), 128);
@@ -242,4 +248,170 @@ fn test_can_enter() {
     let sutra = DomainConfig::factory_sutra(1);
     // CLOSED → никто не входит
     assert!(!sutra.can_enter(100, 100));
+}
+
+// ─── from_yaml: YAML пресеты для всех 11 доменов ───────────────────────────
+
+#[test]
+fn test_from_yaml_sutra() {
+    let config = DomainConfig::from_yaml(&preset_path("sutra.yaml")).unwrap();
+    assert_eq!(config.structural_role, StructuralRole::Sutra as u8);
+    assert_eq!(config.membrane_state, MEMBRANE_CLOSED);
+    assert_eq!(config.temperature, 0.0);
+    assert_eq!(config.permeability, 0);
+    assert!(config.gravity_strength > 3.0e38);
+    assert_eq!(config.token_capacity, 100);
+    assert_eq!(config.connection_capacity, 1000);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_execution() {
+    let factory = DomainConfig::factory_execution(101, 100);
+    let config = DomainConfig::from_yaml(&preset_path("execution.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.reflex_threshold, factory.reflex_threshold);
+    assert_eq!(config.arbiter_flags, factory.arbiter_flags);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert_eq!(config.connection_capacity, factory.connection_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_shadow() {
+    let factory = DomainConfig::factory_shadow(102, 100);
+    let config = DomainConfig::from_yaml(&preset_path("shadow.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.viscosity, factory.viscosity);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_codex() {
+    let factory = DomainConfig::factory_codex(103, 100);
+    let config = DomainConfig::from_yaml(&preset_path("codex.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.gravity_strength, factory.gravity_strength);
+    assert_eq!(config.arbiter_flags, factory.arbiter_flags);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_map() {
+    let factory = DomainConfig::factory_map(104, 100);
+    let config = DomainConfig::from_yaml(&preset_path("map.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.reflex_threshold, factory.reflex_threshold);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_probe() {
+    let factory = DomainConfig::factory_probe(105, 100);
+    let config = DomainConfig::from_yaml(&preset_path("probe.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.resonance_freq, factory.resonance_freq);
+    assert_eq!(config.elasticity, factory.elasticity);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_logic() {
+    let factory = DomainConfig::factory_logic(106, 100);
+    let config = DomainConfig::from_yaml(&preset_path("logic.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.reflex_threshold, factory.reflex_threshold);
+    assert_eq!(config.permeability, factory.permeability);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_dream() {
+    let factory = DomainConfig::factory_dream(107, 100);
+    let config = DomainConfig::from_yaml(&preset_path("dream.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.gravity_strength, factory.gravity_strength);
+    assert_eq!(config.quantum_noise, factory.quantum_noise);
+    assert_eq!(config.time_dilation, factory.time_dilation);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_void() {
+    let factory = DomainConfig::factory_void(108, 100);
+    let config = DomainConfig::from_yaml(&preset_path("void.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.gravity_strength, factory.gravity_strength);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_experience() {
+    let factory = DomainConfig::factory_experience(109, 100);
+    let config = DomainConfig::from_yaml(&preset_path("experience.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.field_size, factory.field_size);
+    assert_eq!(config.resonance_freq, factory.resonance_freq);
+    assert_eq!(config.arbiter_flags, factory.arbiter_flags);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert_eq!(config.connection_capacity, factory.connection_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_maya() {
+    let factory = DomainConfig::factory_maya(110, 100);
+    let config = DomainConfig::from_yaml(&preset_path("maya.yaml")).unwrap();
+    assert_eq!(config.structural_role, factory.structural_role);
+    assert_eq!(config.membrane_state, factory.membrane_state);
+    assert_eq!(config.temperature, factory.temperature);
+    assert_eq!(config.permeability, factory.permeability);
+    assert_eq!(config.friction_coeff, factory.friction_coeff);
+    assert_eq!(config.token_capacity, factory.token_capacity);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_missing_file() {
+    let result = DomainConfig::from_yaml(std::path::Path::new("/nonexistent/path.yaml"));
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_from_yaml_all_presets_valid() {
+    let presets = [
+        "sutra.yaml", "execution.yaml", "shadow.yaml", "codex.yaml",
+        "map.yaml", "probe.yaml", "logic.yaml", "dream.yaml",
+        "void.yaml", "experience.yaml", "maya.yaml",
+    ];
+    for name in &presets {
+        let path = preset_path(name);
+        let result = DomainConfig::from_yaml(&path);
+        assert!(result.is_ok(), "preset {} failed: {:?}", name, result);
+        assert!(result.unwrap().validate().is_ok(), "preset {} invalid", name);
+    }
 }

@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use axiom_core::{Token, Event};
 use axiom_config::DomainConfig;
 use axiom_arbiter::{Arbiter, COM, RoutingResult};
-use crate::{Domain, DomainState};
+use crate::{Domain, DomainState, CausalHorizon};
 
 /// Один фрактальный уровень Ashti_Core: 11 доменов + маршрутизатор.
 ///
@@ -179,6 +179,59 @@ impl AshtiCore {
         let result = self.states[idx].add_token(token)?;
         self.domains[idx].active_tokens = self.states[idx].token_count();
         Ok(result)
+    }
+
+    /// Доступ к REFLECTOR — статистика рефлексов для адаптации порогов.
+    pub fn reflector(&self) -> &axiom_arbiter::Reflector {
+        &self.arbiter.reflector
+    }
+
+    /// Mutable доступ к HashMap конфигураций доменов в Arbiter.
+    ///
+    /// Используется Guardian для адаптации порогов без раскрытия всего Arbiter.
+    pub fn arbiter_domain_configs_mut(&mut self) -> &mut std::collections::HashMap<u32, axiom_config::DomainConfig> {
+        self.arbiter.domain_configs_mut()
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Этап 7 Шаг 4: Обмен скиллами
+    // ──────────────────────────────────────────────────────────────
+
+    /// Экспортировать все кристаллизованные навыки.
+    pub fn export_skills(&self) -> Vec<axiom_arbiter::Skill> {
+        self.arbiter.skillset.export()
+    }
+
+    /// Импортировать пакет навыков из другого экземпляра.
+    ///
+    /// Возвращает число фактически импортированных (без дублей).
+    pub fn import_skills(&mut self, skills: &[axiom_arbiter::Skill]) -> usize {
+        self.arbiter.skillset.import_batch(skills)
+    }
+
+    /// Применить пороги EXPERIENCE-домена к модулю Experience.
+    ///
+    /// Вызывать после обновления конфигов через `arbiter_domain_configs_mut`.
+    pub fn apply_experience_thresholds(&mut self) {
+        self.arbiter.apply_experience_thresholds();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Этап 7: Causal Horizon
+    // ──────────────────────────────────────────────────────────────
+
+    /// Вычислить текущий причинный горизонт — min(token.last_event_id).
+    pub fn compute_horizon(&self) -> u64 {
+        let state_refs: Vec<&DomainState> = self.states.iter().collect();
+        CausalHorizon::compute(&state_refs)
+    }
+
+    /// Архивировать следы Experience, каузально устаревшие за горизонтом.
+    ///
+    /// Возвращает число удалённых следов.
+    pub fn run_horizon_gc(&mut self) -> usize {
+        let horizon = self.compute_horizon();
+        self.arbiter.experience_mut().archive_behind_horizon(horizon)
     }
 
     /// Конфигурации всех доменов (domain_id, DomainConfig) — для snapshot.
