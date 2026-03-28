@@ -19,6 +19,10 @@ pub mod guardian;
 pub mod snapshot;
 /// Adapters — trait-границы для внешних адаптеров
 pub mod adapters;
+/// Gateway — единая точка входа для внешних запросов
+pub mod gateway;
+/// Channel — in-process очередь команд и событий
+pub mod channel;
 mod orchestrator;
 
 pub use engine::{AxiomEngine, AxiomError};
@@ -30,3 +34,5 @@ pub use guardian::{
 };
 pub use snapshot::{EngineSnapshot, DomainSnapshot};
 pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter};
+pub use gateway::Gateway;
+pub use channel::{Channel, ChannelBatchResult};
