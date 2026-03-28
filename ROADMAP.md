@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 9.8
+**Версия:** 9.9
 **Дата:** 2026-03-28
 
 ---
@@ -9,6 +9,8 @@
 
 **Спека:** [docs/spec/GENOME_V1_0.md](docs/spec/GENOME_V1_0.md), [docs/spec/GUARDIAN_V1_0.md](docs/spec/GUARDIAN_V1_0.md)
 **Архитектура:** [docs/spec/Ashti_Core_V2_1.md](docs/spec/Ashti_Core_V2_1.md)
+
+### ~~Шаг 1 — Crate `axiom-genome` (Фаза A)~~ ✅ ГОТОВО
 
 ### Шаг 1 — Crate `axiom-genome` (Фаза A)
 
@@ -62,6 +64,18 @@ AxiomEngine::try_new(genome: Arc<Genome>) -> Result<Self, AxiomError>
 **Критерий завершения:** `cargo test --workspace` зелёный. Количество тестов ≥ 400.
 GENOME создаётся. GenomeIndex строится. Guardian проверяет по GENOME + CODEX.
 Pipeline работает с `try_new()`.
+
+### Шаг 6 — Функциональный гайд
+
+`docs/guides/AXIOM_GUIDE.md` — детальное описание функционала системы:
+- Архитектура: крейты, зависимости, роли
+- GENOME: конституция, boot sequence, валидация
+- GUARDIAN: CODEX + GENOME проверки, enforce_access/enforce_protocol
+- AshtiCore: 11 доменов, tick(), drain_events()
+- Causal Frontier V2.0: FrontierConfig, pop(), begin/end_cycle
+- Arbiter: dual-path routing, Experience, Maya
+- UCL: команды, AxiomEngine::try_new(), process_command()
+- Примеры кода для ключевых сценариев
 
 ---
 
