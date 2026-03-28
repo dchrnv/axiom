@@ -1,0 +1,59 @@
+# GENOME V1.0 — Конституция системы Axiom (Ashti_Core V2.0)
+# Соответствует Genome::default_ashti_core()
+# Фаза B: загружается через Genome::from_yaml(path)
+
+version: 1
+
+invariants:
+  token_size: 64
+  connection_size: 64
+  event_size: 32
+  domain_config_size: 128
+  max_domains: 11
+  min_intensity_nonzero: true
+  sutra_write_exclusive: true
+  no_wall_clock_in_core: true
+  event_id_monotonic: true
+
+access_rules:
+  # Arbiter
+  - { module: Arbiter,   resource: SutraTokens,      permission: Read      }
+  - { module: Arbiter,   resource: AshtiField,        permission: Execute   }
+  - { module: Arbiter,   resource: ExperienceMemory,  permission: Read      }
+  - { module: Arbiter,   resource: MayaOutput,        permission: Execute   }
+  - { module: Arbiter,   resource: CodexRules,        permission: Read      }
+  - { module: Arbiter,   resource: GenomeConfig,      permission: Read      }
+  # Guardian
+  - { module: Guardian,  resource: SutraTokens,       permission: Read      }
+  - { module: Guardian,  resource: AshtiField,        permission: Control   }
+  - { module: Guardian,  resource: ExperienceMemory,  permission: Control   }
+  - { module: Guardian,  resource: MayaOutput,        permission: Read      }
+  - { module: Guardian,  resource: CodexRules,        permission: ReadWrite }
+  - { module: Guardian,  resource: GenomeConfig,      permission: Read      }
+  # Heartbeat
+  - { module: Heartbeat, resource: AshtiField,        permission: Read      }
+  - { module: Heartbeat, resource: ExperienceMemory,  permission: Read      }
+  - { module: Heartbeat, resource: GenomeConfig,      permission: Read      }
+  # Shell
+  - { module: Shell,     resource: AshtiField,        permission: Read      }
+  - { module: Shell,     resource: ExperienceMemory,  permission: Read      }
+  # Adapters
+  - { module: Adapters,  resource: MayaOutput,        permission: Read      }
+
+protocol_rules:
+  - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }
+  - { source: Experience, target: Arbiter,    data_type: ResonanceResponse, mandatory: true  }
+  - { source: Arbiter,    target: Maya,       data_type: Reflex,            mandatory: false }
+  - { source: Arbiter,    target: Logic,      data_type: PatternHint,       mandatory: true  }
+  - { source: Logic,      target: Maya,       data_type: ProcessingResult,  mandatory: true  }
+  - { source: Logic,      target: Experience, data_type: NewExperience,     mandatory: true  }
+  - { source: Maya,       target: Arbiter,    data_type: ComparisonResult,  mandatory: false }
+  - { source: Arbiter,    target: Experience, data_type: Feedback,          mandatory: false }
+
+config:
+  arbiter_response_timeout: 10000
+  arbiter_storm_threshold: 100
+  default_max_events_per_cycle: 1000
+  default_storm_threshold: 5000
+  default_heartbeat_interval: 1024
+  ashti_domain_count: 11

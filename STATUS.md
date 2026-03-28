@@ -7,16 +7,19 @@
 
 ## Текущее состояние
 
-**421 тест, 0 failures, 0 warnings**
+**426 тестов, 0 failures, 0 warnings**
 
 ```
-AxiomEngine
+AxiomEngine (try_new + Arc<Genome>)
+  ├── Genome (конституция, from_yaml, GenomeIndex O(1))
   ├── AshtiCore — 11 доменов (SUTRA=100..MAYA=110)
   │     ├── Arbiter (dual-path routing + Experience)
-  │     ├── 11 × Domain (физика поля)
+  │     ├── 11 × Domain (физика поля + CausalFrontier V2.0)
   │     └── 11 × DomainState (токены + связи)
-  └── Guardian (CODEX + GENOME валидация рефлексов)
+  └── Guardian (CODEX + GENOME: enforce_access/protocol, validate_reflex)
 ```
+
+**Документация:** [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
 
 ---
 
@@ -25,7 +28,7 @@ AxiomEngine
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 24 | Token, Connection, Event |
-| axiom-genome | 21 | Genome V1.0: конституция, GenomeIndex, AccessRule, ProtocolRule |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml (Фаза B) |
 | axiom-frontier | 28 | CausalFrontier V2.0, FrontierConfig, FrontierEntity, storm, budget |
 | axiom-config | 33 | DomainConfig (11 factory методов), HeartbeatConfig |
 | axiom-space | 83 | SpatialHashGrid, физика, координаты |
@@ -37,4 +40,4 @@ AxiomEngine
 | axiom-domain | 84 | Domain, DomainState, EventGenerator, AshtiCore |
 | axiom-runtime | 51 | AxiomEngine (try_new), Guardian (CODEX+GENOME), GUARDIAN_CHECK_REQUIRED |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **421** | |
+| **Итого** | **426** | |

@@ -1,3 +1,4 @@
+use std::path::Path;
 use axiom_genome::{
     Genome, GenomeError, GenomeIndex,
     ModuleId, ResourceId, Permission, DataType,
@@ -188,4 +189,86 @@ fn test_index_protocol_typed_wrong_type_rejected() {
         ModuleId::Experience,
         DataType::Feedback,
     ));
+}
+
+// ============================================================================
+// from_yaml (Фаза B)
+// ============================================================================
+
+/// Путь к config/genome.yaml относительно workspace root.
+/// В тестах используем CARGO_MANIFEST_DIR чтобы найти workspace root.
+fn genome_yaml_path() -> std::path::PathBuf {
+    // axiom-genome crate находится в crates/axiom-genome/
+    // workspace root — на два уровня выше
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    Path::new(&manifest).join("../../config/genome.yaml")
+}
+
+#[test]
+fn test_from_yaml_valid() {
+    let path = genome_yaml_path();
+    let genome = Genome::from_yaml(&path).expect("config/genome.yaml should parse and validate");
+    assert_eq!(genome.version, 1);
+    assert!(genome.validate().is_ok());
+}
+
+#[test]
+fn test_from_yaml_matches_default() {
+    let path = genome_yaml_path();
+    let yaml_genome = Genome::from_yaml(&path).unwrap();
+    let default_genome = Genome::default_ashti_core();
+
+    // Инварианты совпадают
+    assert_eq!(yaml_genome.invariants.token_size, default_genome.invariants.token_size);
+    assert_eq!(yaml_genome.invariants.max_domains, default_genome.invariants.max_domains);
+    assert_eq!(yaml_genome.invariants.no_wall_clock_in_core, default_genome.invariants.no_wall_clock_in_core);
+
+    // Количество правил совпадает
+    assert_eq!(yaml_genome.access_rules.len(), default_genome.access_rules.len());
+    assert_eq!(yaml_genome.protocol_rules.len(), default_genome.protocol_rules.len());
+
+    // Config совпадает
+    assert_eq!(yaml_genome.config.ashti_domain_count, default_genome.config.ashti_domain_count);
+    assert_eq!(yaml_genome.config.default_heartbeat_interval, default_genome.config.default_heartbeat_interval);
+}
+
+#[test]
+fn test_from_yaml_index_same_behavior() {
+    let path = genome_yaml_path();
+    let yaml_genome = Genome::from_yaml(&path).unwrap();
+    let yaml_index = GenomeIndex::build(&yaml_genome);
+
+    let default_genome = Genome::default_ashti_core();
+    let default_index = GenomeIndex::build(&default_genome);
+
+    // O(1) lookup должны давать одинаковые результаты
+    assert_eq!(
+        yaml_index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite),
+        default_index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite),
+    );
+    assert_eq!(
+        yaml_index.check_protocol(ModuleId::Sutra, ModuleId::Experience),
+        default_index.check_protocol(ModuleId::Sutra, ModuleId::Experience),
+    );
+    assert_eq!(
+        yaml_index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite),
+        default_index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite),
+    );
+}
+
+#[test]
+fn test_from_yaml_missing_file_error() {
+    let result = Genome::from_yaml(Path::new("/nonexistent/path/genome.yaml"));
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_from_yaml_invalid_content_error() {
+    // Пишем невалидный YAML во временный файл
+    let tmp = std::env::temp_dir().join("invalid_genome_test.yaml");
+    std::fs::write(&tmp, "not: valid: genome: yaml: !!!").unwrap();
+    let result = Genome::from_yaml(&tmp);
+    // Может быть либо ParseError либо InvariantViolation — в любом случае Err
+    assert!(result.is_err());
+    let _ = std::fs::remove_file(&tmp);
 }

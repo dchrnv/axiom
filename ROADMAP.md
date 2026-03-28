@@ -5,7 +5,7 @@
 
 ---
 
-## 🔄 Этап 1: GENOME + GUARDIAN
+## ~~🔄 Этап 1: GENOME + GUARDIAN~~ ✅ ЗАВЕРШЁН
 
 **Спека:** [docs/spec/GENOME_V1_0.md](docs/spec/GENOME_V1_0.md), [docs/spec/GUARDIAN_V1_0.md](docs/spec/GUARDIAN_V1_0.md)
 **Архитектура:** [docs/spec/Ashti_Core_V2_1.md](docs/spec/Ashti_Core_V2_1.md)
@@ -18,25 +18,13 @@
 
 ### ~~Шаг 4 — Arbiter ↔ GUARDIAN интеграция~~ ✅ ГОТОВО
 
-### Шаг 5 — Фаза B: `config/genome.yaml` + serde_yaml (опционально)
+### ~~Шаг 5 — Фаза B: `config/genome.yaml` + serde_yaml~~ ✅ ГОТОВО
 
-`Genome::from_yaml(path)`. Тест: `from_yaml` == `default_ashti_core()`.
-
-**Критерий завершения:** `cargo test --workspace` зелёный. Количество тестов ≥ 400.
+**Критерий завершения:** ✅ 426 тестов, `cargo test --workspace` зелёный.
 GENOME создаётся. GenomeIndex строится. Guardian проверяет по GENOME + CODEX.
-Pipeline работает с `try_new()`.
+Pipeline работает с `try_new()`. Гайд написан.
 
-### Шаг 6 — Функциональный гайд
-
-`docs/guides/AXIOM_GUIDE.md` — детальное описание функционала системы:
-- Архитектура: крейты, зависимости, роли
-- GENOME: конституция, boot sequence, валидация
-- GUARDIAN: CODEX + GENOME проверки, enforce_access/enforce_protocol
-- AshtiCore: 11 доменов, tick(), drain_events()
-- Causal Frontier V2.0: FrontierConfig, pop(), begin/end_cycle
-- Arbiter: dual-path routing, Experience, Maya
-- UCL: команды, AxiomEngine::try_new(), process_command()
-- Примеры кода для ключевых сценариев
+### ~~Шаг 6 — Функциональный гайд~~ ✅ ГОТОВО
 
 ---
 
