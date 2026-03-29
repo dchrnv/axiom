@@ -255,4 +255,27 @@ impl AshtiCore {
             Some((id, &self.states[i]))
         }).collect()
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Этап 12: Фрактальные цепочки
+    // ──────────────────────────────────────────────────────────────
+
+    /// Забрать токен из MAYA(10) — выход фрактального уровня.
+    ///
+    /// Снимает последний токен из домена MAYA и синхронизирует счётчик.
+    /// Возвращает `None` если MAYA пуста.
+    pub fn take_maya_output(&mut self) -> Option<Token> {
+        let maya_idx = 10;
+        let token = self.states[maya_idx].tokens.pop()?;
+        self.domains[maya_idx].active_tokens = self.states[maya_idx].token_count();
+        Some(token)
+    }
+
+    /// Впрыснуть токен в SUTRA(0) — вход фрактального уровня.
+    ///
+    /// Эквивалентно `inject_token(level_id * 100, token)`.
+    pub fn set_sutra_input(&mut self, token: Token) -> Result<usize, crate::CapacityExceeded> {
+        let sutra_id = self.level_id as u32 * 100;
+        self.inject_token(sutra_id, token)
+    }
 }

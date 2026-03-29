@@ -5,6 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+# Включить при -C target-cpu=native для авто-векторизации (AVX2/SSE4.2)
+simd = []
+
 [dependencies]
 axiom-core = { path = "../axiom-core" }
 serde      = { workspace = true }

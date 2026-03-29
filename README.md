@@ -4,7 +4,7 @@
 > Pure Rust core.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-590%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-731%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)](#licensing)
 
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 590 tests passing.**
+**Axiom is in active development — core architecture complete, 731 tests passing.**
 
 ---
 
@@ -67,13 +67,15 @@ Every transition has a cause. Every outcome can be traced. Nothing hides behind 
 ```
 Gateway ── единая точка входа для внешних систем
   └── AxiomEngine
-        ├── AshtiCore ── 11 доменов (SUTRA=100 .. MAYA=110)
+        ├── AshtiCore ── 11 доменов (SUTRA .. MAYA)
         │     ├── Arbiter   ── dual-path routing + Experience + Reflector + SkillSet
         │     ├── 11×Domain ── физика поля + CausalFrontier V2.0
         │     └── 11×DomainState ── токены + связи
         └── Guardian  ── CODEX + GENOME: контроль + адаптация + DREAM
 
-Channel ── in-process очередь команд и событий
+FractalChain ── N уровней AshtiCore (MAYA→SUTRA propagation)
+Channel      ── in-process очередь команд и событий
+axiom-agent  ── CLI / Telegram / Shell + ML Inference (VisionPerceptor, AudioPerceptor)
 ```
 
 #### Crates
@@ -83,16 +85,17 @@ Channel ── in-process очередь команд и событий
 | axiom-core | 24 | Token (64B), Connection (64B), Event (64B) |
 | axiom-genome | 26 | Конституция системы, GenomeIndex O(1) |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control |
-| axiom-config | 48 | DomainConfig, ConfigLoader, YAML presets |
-| axiom-space | 95 | SpatialHashGrid, физика поля |
+| axiom-config | 75 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (hot reload) |
+| axiom-space | 110 | SpatialHashGrid, физика поля, batch gravity (SIMD-ready) |
 | axiom-shell | 48 | Shell V3.0, семантические профили |
 | axiom-arbiter | 86 | Arbiter, Experience, REFLECTOR, SKILLSET, GridHash |
 | axiom-heartbeat | 11 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2, DynamicTrace, Screen |
 | axiom-ucl | 5 | UCL: UclCommand, UclResult, OpCode |
-| axiom-domain | 99 | Domain, AshtiCore, CausalHorizon |
-| axiom-runtime | 101 | AxiomEngine, Guardian, Gateway, Channel |
-| **Итого** | **590** | |
+| axiom-domain | 112 | Domain, AshtiCore, CausalHorizon, FractalChain |
+| axiom-runtime | 109 | AxiomEngine, Guardian, Gateway, Channel, EventBus |
+| axiom-agent | 80 | CLI/Telegram/Shell каналы, MLEngine, VisionPerceptor, AudioPerceptor |
+| **Итого** | **731** | |
 
 ---
 
@@ -122,6 +125,8 @@ let result = gw.process_channel(&mut ch);
 ### Documentation
 
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
+- [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
+- [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [STATUS.md](STATUS.md) — текущее состояние, тесты по crates
 - [ROADMAP.md](ROADMAP.md) — сводка завершённых этапов
 - [DEFERRED.md](DEFERRED.md) — технический долг и будущие планы
