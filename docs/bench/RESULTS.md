@@ -1,4 +1,4 @@
-# Axiom Benchmark Results — v4
+# Axiom Benchmark Results — v5
 
 **Дата:** 2026-03-29
 **Платформа:** Linux x86-64
@@ -290,6 +290,69 @@ RUSTFLAGS="-C target-cpu=native" cargo bench --bench fractal_bench -- "apply_gra
 
 ---
 
+## Стресс-тест: 10K → 10M (stress_bench)
+
+### 1. apply_gravity_batch — вычислительный предел
+
+| Токенов | Время | ns/токен | Throughput |
+|---------|-------|---------|-----------|
+| 10 000 | 259.7 µs | 26.0 | **38.5M tok/s** |
+| 100 000 | 2.482 ms | 24.8 | **40.3M tok/s** |
+| 1 000 000 | 25.03 ms | 25.0 | **40.0M tok/s** |
+| 10 000 000 | 283.4 ms | 28.3 | **35.3M tok/s** |
+
+**Наблюдение:** Идеально линейная масштабируемость вплоть до 1M токенов (~25 ns/токен).
+При 10M (+12% к ns/токен) — начинается cache pressure: данные (80 MB) не помещаются в L3.
+
+**Вывод:** 40M tok/s — стабильный вычислительный потолок на данном железе. При `-C target-cpu=native` + AVX2 ожидается 2–3× (~80–120M tok/s).
+
+---
+
+### 2. SpatialHashGrid::rebuild — хеш-таблица при масштабировании
+
+| Токенов | Время | ns/токен | Throughput |
+|---------|-------|---------|-----------|
+| 10 000 | 50.0 µs | 5.0 | **200M tok/s** |
+| 50 000 | 267.4 µs | 5.3 | **187M tok/s** |
+| 100 000 | 575.6 µs | 5.8 | **174M tok/s** |
+| 500 000 | 2.958 ms | 5.9 | **169M tok/s** |
+| 1 000 000 | 5.742 ms | 5.7 | **174M tok/s** |
+
+**Наблюдение:** Практически идеальный O(n) — 5–6 ns/токен на всём диапазоне 10K→1M.
+Незначительная деградация при 100K–500K (cache eviction хеш-таблицы), затем стабилизация.
+
+**Вывод:** SpatialHashGrid — не узкое место даже при 1M токенов (5.7 ms).
+При 1000 Hz тике бюджет 1 ms → до ~175K токенов за один rebuild.
+
+---
+
+### 3. resonance_search (Experience) — поведение на больших данных
+
+| Трейсов | Время (медиана) | Вариация | Комментарий |
+|---------|----------------|---------|------------|
+| 1 000 | 9.62 µs | низкая | Стабильно |
+| 5 000 | 14.84 µs | высокая (12–18 µs) | Реаллокация HashMap |
+| 10 000 | 12.10 µs | средняя (10.5–13.4 µs) | |
+| 50 000 | 11.23 µs | высокая (9.7–15.7 µs) | |
+
+**Наблюдение:** Время поиска практически **не зависит от числа трейсов** — O(1).
+`resonance_search` использует HashMap lookup, а не линейный обход.
+Вариация при 5K–50K обусловлена периодической реаллокацией HashMap при росте.
+
+**Вывод:** Experience масштабируется до 50K трейсов без деградации latency.
+
+---
+
+### Сводка стресс-теста
+
+| Компонент | Потолок throughput | Узкое место |
+|-----------|-------------------|------------|
+| `apply_gravity_batch` | **40M tok/s** (1M) / 35M tok/s (10M) | L3 cache при > 1M |
+| `SpatialHashGrid::rebuild` | **174–200M tok/s** | Практически отсутствует до 1M |
+| `resonance_search` | **O(1)** ~10–15 µs | HashMap realloc при росте |
+
+---
+
 ## Замеченные аномалии — требуют наблюдения
 
 1. **AshtiCore pipeline** — высокая вариация (28–68 µs). Обусловлена `iter_batched`: пересоздание AxiomEngine включает 11 HashMap + Arbiter. Сам pipeline стабилен ~35–50 µs.
@@ -307,3 +370,4 @@ RUSTFLAGS="-C target-cpu=native" cargo bench --bench fractal_bench -- "apply_gra
 | v2 | 2026-03-27 | AshtiCore pipeline, Shell V3.0 (compute/incremental/reconcile), Arbiter thresholds; рефактор engine_bench под новый API |
 | v3 | 2026-03-28 | Этапы 6-8: run_adaptation, snapshot_and_prune, run_horizon_gc, causal_horizon, export_skills, Gateway::process, process_channel |
 | v4 | 2026-03-29 | Этапы 12A-12B: FractalChain (new/tick/inject/exchange_skills), apply_gravity_batch vs scalar (100–10K токенов) |
+| v5 | 2026-03-29 | Стресс-тест: apply_gravity_batch (10K→10M), SpatialHashGrid::rebuild (10K→1M), resonance_search (1K→50K) |
