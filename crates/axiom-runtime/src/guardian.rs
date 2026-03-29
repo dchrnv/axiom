@@ -398,6 +398,25 @@ impl Guardian {
     pub fn genome(&self) -> &Genome {
         &self.genome
     }
+
+    /// Валидировать уверенность ML-модели.
+    ///
+    /// Возвращает `false` (отклонить) если:
+    /// - `confidence < threshold` — слишком низкая уверенность
+    /// - `confidence > 0.99` — аномально высокая (adversarial defense)
+    ///
+    /// Диапазон валидных значений: `[threshold, 0.99]`.
+    pub fn validate_ml_confidence(confidence: f32, threshold: f32) -> bool {
+        confidence >= threshold && confidence <= 0.99
+    }
+
+    /// Валидировать выход ML-модели как вектор уверенностей.
+    ///
+    /// Все элементы должны пройти `validate_ml_confidence`.
+    /// Пустой вектор — невалиден (возвращает `false`).
+    pub fn validate_ml_output(output: &[f32], threshold: f32) -> bool {
+        !output.is_empty() && output.iter().all(|&c| Self::validate_ml_confidence(c, threshold))
+    }
 }
 
 impl Default for Guardian {

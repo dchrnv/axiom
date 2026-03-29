@@ -12,3 +12,5 @@
 pub mod channels;
 /// Конфигурация агента из channels.yaml
 pub mod config;
+/// ML inference (tract-onnx или mock)
+pub mod ml;
