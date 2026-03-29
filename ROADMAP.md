@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 13.0
+**Версия:** 14.0
 **Дата:** 2026-03-29
 **Спека:** [Roadmap_V3_0.md](Roadmap_V3_0.md)
 
@@ -19,101 +19,9 @@
 | 7 | Causal Horizon + Memory | ✅ 568 тестов |
 | 8 | Gateway + Channel | ✅ 590 тестов |
 | 9 | Tech Debt + Event Bus | ✅ 629 тестов |
+| 10 | Agent Layer | ✅ 674 тестов |
 
 Технический долг и будущие планы: [DEFERRED.md](DEFERRED.md)
-
----
-
-## Этап 10: External Integration — Agent Layer
-
-**Цель:** AXIOM взаимодействует с внешним миром. CLI-агент отвечает на команды.
-
-**Зависимости:** Этап 9 (Event Bus нужен для подписки Channel на события MAYA).
-
-**Архитектура:**
-
-```
-stdin / Telegram / WebSocket
-        │
-   [ Perceptor ]  ──→  UclCommand  ──→  Gateway  ──→  AxiomEngine
-                                             │
-   [ Effector  ]  ←──  Event / Result  ←────┘
-        │
-stdout / ответ в чат
-```
-
-Новый бинарник `axiom-agent` (отдельный workspace или `src/bin/`), зависит от `axiom-runtime` + `tokio`.
-
-### 10A. Trait-границы (axiom-runtime)
-
-Добавить в `axiom-runtime/src/adapters.rs`:
-
-```rust
-/// Входящий адаптер: внешний сигнал → UclCommand
-pub trait Perceptor: Send {
-    fn receive(&mut self) -> Option<UclCommand>;
-    fn name(&self) -> &str;
-}
-
-/// Исходящий адаптер: Event / UclResult → внешний мир
-pub trait Effector: Send {
-    fn emit(&mut self, event: &Event);
-    fn emit_result(&mut self, result: &UclResult);
-    fn name(&self) -> &str;
-}
-```
-
-### 10B. CLI Channel (MVP)
-
-`axiom-agent/src/channels/cli.rs`:
-- `CliPerceptor`: читает строку из stdin → `InjectToken` или `TickForward` команда
-- `CliEffector`: форматирует `UclResult` и события MAYA → stdout
-- Минимальный REPL: `> tick`, `> inject <data>`, `> status`, `> quit`
-
-**Тесты:** mock stdin → команда → mock stdout, round-trip без паники.
-
-### 10C. Telegram Channel
-
-`axiom-agent/src/channels/telegram.rs`:
-- `TelegramPerceptor`: polling Telegram Bot API (reqwest), сообщение → `InjectToken`
-- `TelegramEffector`: отправка ответа в чат при событии MAYA
-- Конфиг: `config/channels.yaml` → `telegram.token`, `telegram.chat_id`
-
-**Тесты:** mock HTTP → парсинг update → команда, формирование ответа.
-
-### 10D. Shell Effector
-
-`axiom-agent/src/channels/shell.rs`:
-- `ShellEffector`: выполняет команду при событии с `event_type == ShellCommand`
-- Белый список команд из `config/shell_whitelist.yaml`
-- Guardian проверяет перед исполнением: `enforce_access(Effectors, ShellExec)`
-
-**Тесты:** whitelist allow/deny, Guardian veto, команда из списка выполняется.
-
-### 10E. axiom-agent бинарник
-
-`axiom-agent/src/main.rs`:
-```
-1. Загрузить GENOME из config/genome.yaml
-2. Создать AxiomEngine → Gateway
-3. Загрузить config/channels.yaml → активировать каналы
-4. Запустить EventBus подписки (MAYA events → Effectors)
-5. Основной цикл: Perceptors → Gateway → Effectors
-```
-
-`config/channels.yaml`:
-```yaml
-channels:
-  cli: true
-  telegram:
-    enabled: false
-    token: ""
-  shell:
-    enabled: false
-    whitelist: config/shell_whitelist.yaml
-```
-
-**Критерий:** `./axiom-agent` запускается, принимает команды из stdin, возвращает результат.
 
 ---
 
@@ -121,42 +29,43 @@ channels:
 
 **Цель:** AXIOM видит и слышит через нейросети (ONNX, tract).
 
-**Зависимости:** Этап 10 (нужен axiom-agent с Perceptor/Effector архитектурой).
+**Зависимости:** Этап 10 (Perceptor/Effector архитектура готова).
 
 ### 11A. ML Engine wrapper
 
 `axiom-agent/src/ml/engine.rs`:
 - Обёртка над `tract-onnx` (чистый Rust, no Python)
-- `MLEngine::load(path: &Path) -> Self`
-- `MLEngine::infer(&[f32]) -> Vec<f32>` — синхронный вызов
-- Асинхронная обёртка через `tokio::task::spawn_blocking`
-- Загрузка моделей из `models/` при старте
+- `MLEngine::load(path: &Path) -> Result<Self, MLError>`
+- `MLEngine::infer(&[f32]) -> Result<Vec<f32>, MLError>` — синхронный вызов
+- `MLEngine::input_shape() -> &[usize]` — ожидаемая форма входного тензора
+- Mock-режим для тестов без реальных ONNX файлов
 
 ### 11B. VisionPerceptor
 
 `axiom-agent/src/channels/vision.rs`:
-- Источник: файл изображения / USB-камера (через `v4l2` или `image` crate)
-- Модель: YOLO tiny (ONNX)
-- Выход: токены объектов с координатами → `InjectToken` в LOGIC(106) или MAP(104)
-- Один обнаруженный объект = один Token: `temperature` = confidence × 255, `position` = bbox center
+- Источник: файл изображения (через `image` crate)
+- Модель: ONNX (подключается через MLEngine)
+- Выход: токены объектов → `InjectToken` в LOGIC(106) или MAP(104)
+- Один объект = один Token: `temperature` = confidence × 255, `position` = bbox center
+- `VisionPerceptor::from_image_file(path)` — тестируется без камеры
 
 ### 11C. AudioPerceptor
 
 `axiom-agent/src/channels/audio.rs`:
-- Источник: микрофон (ALSA) или аудиофайл
-- VAD: Silero VAD (ONNX) — отсечение тишины
-- STT: Whisper tiny (ONNX или `whisper-rs`)
-- Выход: распознанный текст → токен в SUTRA(100)
+- Источник: аудиофайл (WAV через `hound` crate)
+- VAD: энергетический порог (без ONNX зависимости для VAD)
+- Выход: обнаруженная речь → токен в SUTRA(100)
+- `AudioPerceptor::from_wav_file(path)` — тестируется без микрофона
 
 ### 11D. GUARDIAN фильтры для ML
 
 Добавить в `axiom-runtime/src/guardian.rs`:
-- `validate_ml_result(confidence: f32, threshold: f32) -> bool`
-- Отклонение при `confidence < genome.config.ml_confidence_threshold`
-- Adversarial defense: отклонение при аномально высоком `confidence` (> 0.99 на неизвестных классах)
+- `validate_ml_confidence(confidence: f32, threshold: f32) -> bool`
+- Отклонение при `confidence < threshold` (по умолчанию 0.5)
+- Adversarial defense: отклонение при `confidence > 0.99` (аномально высокое)
 
-**Тесты:** инференс на тестовых данных (mock), токенизация результата, GUARDIAN фильтрация.
-**Критерий:** Агент распознаёт объекты на изображении и речь. GUARDIAN отсекает низкокачественный вывод.
+**Тесты:** mock инференс, токенизация результата, GUARDIAN фильтрация по порогу.
+**Критерий:** MLEngine инициализируется и принимает f32-тензоры. GUARDIAN отсекает низкокачественный вывод.
 
 ---
 
