@@ -4,6 +4,9 @@
 // SPACE V6.0: docs/spec/SPACE_V6_0.md
 // Целочисленная пространственная модель с детерминистичной физикой
 
+pub mod simd;
+pub use simd::{apply_gravity_batch, apply_accelerations_to_velocities, GravityBatchResult};
+
 use serde::{Deserialize, Serialize};
 
 /// Константы пространственной модели

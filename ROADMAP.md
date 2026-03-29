@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 14.0
+**Версия:** 16.0
 **Дата:** 2026-03-29
 **Спека:** [Roadmap_V3_0.md](Roadmap_V3_0.md)
 
@@ -20,6 +20,8 @@
 | 8 | Gateway + Channel | ✅ 590 тестов |
 | 9 | Tech Debt + Event Bus | ✅ 629 тестов |
 | 10 | Agent Layer | ✅ 674 тестов |
+| 11 | ML Inference | ✅ 708 тестов |
+| 12 | Фракталы и SIMD | ✅ 731 тест |
 
 Технический долг и будущие планы: [DEFERRED.md](DEFERRED.md)
 
@@ -69,40 +71,12 @@
 
 ---
 
-## Этап 12: Фракталы и SIMD
-
-**Цель:** Многоуровневая обработка. Максимальная производительность физики.
-
-**Зависимости:** 8-11 (система должна быть стабильна при долгих запусках).
-
-### 12A. Протокол 10→0 (Фрактальные уровни)
-
-`crates/axiom-domain/src/fractal_chain.rs`:
-- `FractalChain`: связывает два `AshtiCore` — `maya_output → sutra_input`
-- `AshtiCore::set_sutra_input(token: Token)` — внешний впрыск в SUTRA(100)
-- `AshtiCore::take_maya_output() -> Option<Token>` — забрать результат с MAYA(110)
-- `FractalChain::tick()` — шаг по всей цепочке
-- Обмен SkillSet между уровнями через `export/import_batch`
-
-**Тесты:** двухуровневая цепочка, данные проходят от SUTRA-1 до MAYA-2, навыки переносятся.
-
-### 12B. SIMD-оптимизация физики поля
-
-`crates/axiom-space/src/simd.rs`:
-- AVX2 / SSE4.2 batch-обработка позиций токенов
-- Векторизованный `apply_gravity` для N токенов за раз
-- Feature flag `simd` — включается через `RUSTFLAGS="-C target-cpu=native"`
-- Scalar fallback при отсутствии поддержки
-
-**Бенчмарк:** SpatialHashGrid rebuild с SIMD vs scalar на 5000 токенов.
-**Критерий:** SIMD-путь не нарушает детерминизм. 2x+ ускорение физики поля.
-
 ---
 
 ## Граф зависимостей
 
 ```
-9 (Tech Debt) ──→ 10 (Agent) ──→ 11 (ML) ──→ 12 (Фракталы)
+9 (Tech Debt) ──→ 10 (Agent) ──→ 11 (ML) ──→ 12 (Фракталы) ✅
                       │
                  axiom-agent
                (tokio, reqwest)
