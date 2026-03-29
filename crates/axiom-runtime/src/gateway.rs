@@ -9,6 +9,7 @@
 
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult};
+use axiom_config::{ConfigWatcher, LoadedAxiomConfig};
 use crate::engine::AxiomEngine;
 use crate::adapters::{RuntimeAdapter, EventObserver, EventBus};
 use crate::channel::{Channel, ChannelBatchResult};
@@ -25,6 +26,8 @@ pub struct Gateway {
     bus: EventBus,
     /// Счётчик обработанных команд
     processed_count: u64,
+    /// Наблюдатель за конфигурацией (опционально)
+    config_watcher: Option<ConfigWatcher>,
 }
 
 impl Gateway {
@@ -34,6 +37,7 @@ impl Gateway {
             engine,
             bus: EventBus::new(),
             processed_count: 0,
+            config_watcher: None,
         }
     }
 
@@ -118,6 +122,26 @@ impl Gateway {
     /// Общее число подписчиков (broadcast + typed).
     pub fn total_subscriber_count(&self) -> usize {
         self.bus.total_count()
+    }
+
+    /// Подключить наблюдатель за конфигурацией.
+    ///
+    /// После вызова `check_config_reload()` будет проверять изменения файла
+    /// и возвращать новую конфигурацию при необходимости.
+    ///
+    /// **GENOME-инвариант:** горячая перезагрузка никогда не затрагивает GENOME.
+    /// `ConfigLoader::load_all` не читает `genome.yaml` — конституция неизменна.
+    pub fn set_config_watcher(&mut self, watcher: ConfigWatcher) {
+        self.config_watcher = Some(watcher);
+    }
+
+    /// Проверить наличие обновлений конфигурации (неблокирующий вызов).
+    ///
+    /// Если файл конфигурации изменился — возвращает новую `LoadedAxiomConfig`.
+    /// Вызывающий код применяет изменения через `engine_mut()` по своему усмотрению.
+    /// Возвращает `None` если наблюдатель не подключён или изменений не было.
+    pub fn check_config_reload(&self) -> Option<LoadedAxiomConfig> {
+        self.config_watcher.as_ref()?.poll()
     }
 
     /// Обработать все команды из канала.

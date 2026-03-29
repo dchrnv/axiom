@@ -30,3 +30,4 @@ license = "AGPL-3.0-only"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 bitvec = "1"
+notify = "6"
