@@ -606,7 +606,7 @@ fn test_full_heartbeat_to_event_flow() {
     let mut domain = Domain::with_heartbeat(config, heartbeat_config);
     domain.active_tokens = 10;
 
-    let mut tokens: Vec<Token> = (0u32..10)
+    let tokens: Vec<Token> = (0u32..10)
         .map(|i| {
             let mut t = make_token(i, 6);
             t.valence = 5;

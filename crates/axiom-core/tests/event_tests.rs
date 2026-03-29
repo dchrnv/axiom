@@ -117,7 +117,7 @@ fn test_event_type_conversion() {
 #[test]
 #[should_panic(expected = "Unknown event type")]
 fn test_invalid_event_type_conversion() {
-    EventType::from(0xAAAA);
+    let _ = EventType::from(0xAAAA);
 }
 
 #[test]

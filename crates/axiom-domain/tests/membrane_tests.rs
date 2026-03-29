@@ -105,7 +105,7 @@ fn test_unlocked_token_can_exit_open_membrane() {
 
 #[test]
 fn test_locked_token_cannot_exit_semi_membrane() {
-    let mut config = DomainConfig::factory_execution(1, 0); // SEMI
+    let config = DomainConfig::factory_execution(1, 0); // SEMI
     let mut token = make_token(1);
     token.state = STATE_LOCKED;
     assert!(!can_exit_domain(&token, &config));
