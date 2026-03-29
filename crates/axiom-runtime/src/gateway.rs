@@ -10,7 +10,7 @@
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult};
 use crate::engine::AxiomEngine;
-use crate::adapters::{RuntimeAdapter, EventObserver};
+use crate::adapters::{RuntimeAdapter, EventObserver, EventBus};
 use crate::channel::{Channel, ChannelBatchResult};
 
 /// Gateway — единая точка входа для всех внешних взаимодействий с AXIOM.
@@ -22,7 +22,7 @@ use crate::channel::{Channel, ChannelBatchResult};
 /// 4. Уведомляет зарегистрированных наблюдателей
 pub struct Gateway {
     engine: AxiomEngine,
-    observers: Vec<Box<dyn EventObserver>>,
+    bus: EventBus,
     /// Счётчик обработанных команд
     processed_count: u64,
 }
@@ -32,7 +32,7 @@ impl Gateway {
     pub fn new(engine: AxiomEngine) -> Self {
         Self {
             engine,
-            observers: Vec::new(),
+            bus: EventBus::new(),
             processed_count: 0,
         }
     }
@@ -42,12 +42,23 @@ impl Gateway {
         Self::new(AxiomEngine::new())
     }
 
-    /// Зарегистрировать наблюдатель событий.
+    /// Зарегистрировать broadcast-наблюдатель (получает все события).
     ///
-    /// Наблюдатель получает уведомление о каждом `Event`,
-    /// сгенерированном Engine после выполнения команды.
+    /// Эквивалентно `subscribe_all`. Сохранено для обратной совместимости.
     pub fn register_observer(&mut self, observer: Box<dyn EventObserver>) {
-        self.observers.push(observer);
+        self.bus.subscribe_all(observer);
+    }
+
+    /// Подписать наблюдатель на конкретный тип событий.
+    ///
+    /// Наблюдатель получает только события с matching `event_type`.
+    pub fn subscribe(&mut self, event_type: u16, observer: Box<dyn EventObserver>) {
+        self.bus.subscribe(event_type, observer);
+    }
+
+    /// Доступ к Event Bus для расширенной настройки подписок.
+    pub fn event_bus_mut(&mut self) -> &mut EventBus {
+        &mut self.bus
     }
 
     /// Обработать команду через Engine.
@@ -71,18 +82,14 @@ impl Gateway {
         result
     }
 
-    /// Дренировать события Engine и уведомить всех наблюдателей.
+    /// Дренировать события Engine и опубликовать через Event Bus.
     ///
     /// Вызывается автоматически после каждой команды.
     /// Может быть вызван вручную если нужно собрать события без команды.
     pub fn drain_and_notify(&mut self) {
         let events: Vec<Event> = self.engine.drain_events();
         if !events.is_empty() {
-            for event in &events {
-                for observer in &self.observers {
-                    observer.on_event(event);
-                }
-            }
+            self.bus.publish(&events);
         }
     }
 
@@ -103,9 +110,14 @@ impl Gateway {
         self.processed_count
     }
 
-    /// Число зарегистрированных наблюдателей.
+    /// Число broadcast-наблюдателей.
     pub fn observer_count(&self) -> usize {
-        self.observers.len()
+        self.bus.broadcast_count()
+    }
+
+    /// Общее число подписчиков (broadcast + typed).
+    pub fn total_subscriber_count(&self) -> usize {
+        self.bus.total_count()
     }
 
     /// Обработать все команды из канала.
@@ -121,13 +133,11 @@ impl Gateway {
             let ucl_result = self.engine.process_command(cmd);
             let events: Vec<Event> = self.engine.drain_events();
 
-            for event in &events {
-                // Уведомить наблюдателей
-                for observer in &self.observers {
-                    observer.on_event(event);
+            if !events.is_empty() {
+                self.bus.publish(&events);
+                for event in events {
+                    channel.push_event(event);
                 }
-                // Поместить в канал для внешнего получателя
-                channel.push_event(event.clone());
             }
 
             self.processed_count += 1;
