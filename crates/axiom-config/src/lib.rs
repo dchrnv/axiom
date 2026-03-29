@@ -30,6 +30,8 @@ pub mod heartbeat_config;
 pub mod loader;
 /// Пресеты токенов и связей
 pub mod preset;
+/// Горячая перезагрузка конфигурации
+pub mod watcher;
 
 pub use domain_config::{
     DomainConfig, DomainType, StructuralRole,
@@ -44,3 +46,4 @@ pub use loader::{
     PresetsConfig, RuntimeConfig, SchemaConfig,
 };
 pub use preset::{TokenPreset, ConnectionPreset};
+pub use watcher::ConfigWatcher;

@@ -9,3 +9,4 @@ license.workspace = true
 axiom-core = { path = "../axiom-core" }
 serde.workspace = true
 serde_yaml.workspace = true
+notify.workspace = true
