@@ -44,3 +44,7 @@ harness = false
 [[bench]]
 name = "fractal_bench"
 harness = false
+
+[[bench]]
+name = "stress_bench"
+harness = false
