@@ -54,6 +54,8 @@ pub struct Experience {
     max_traces: usize,
     /// GridHash-индекс для O(1) Phase 1 поиска
     pub index: AssociativeIndex,
+    /// Следы напряжения — незавершённые или низко-coherent паттерны (Cognitive Depth V1.0)
+    tension_traces: Vec<TensionTrace>,
 }
 
 impl Experience {
@@ -65,6 +67,7 @@ impl Experience {
             association_threshold: 64,
             max_traces: 1000,
             index: AssociativeIndex::new(4), // shift=4: ячейки 16 квантов
+            tension_traces: Vec::new(),
         }
     }
 
@@ -316,5 +319,64 @@ fn pattern_hash(token: &Token) -> u64 {
 impl Default for Experience {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Этап 13: Internal Drive — напряжение (Tension)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// След напряжения — незавершённая или низко-coherent обработка.
+///
+/// Создаётся когда MAYA возвращает результат с coherence < min_coherence.
+/// Хранит горячий паттерн, который Heartbeat будет подталкивать обратно в pipeline.
+#[derive(Debug, Clone)]
+pub struct TensionTrace {
+    /// Паттерн, который не был обработан до конца
+    pub pattern: Token,
+    /// Температура напряжения (остывает каждый тик)
+    pub temperature: u8,
+    /// Когда создан (event_id)
+    pub created_at: u64,
+}
+
+impl Experience {
+    /// Добавить след напряжения.
+    ///
+    /// `temperature` — начальная горячесть: 255 = максимальное напряжение.
+    pub fn add_tension_trace(&mut self, pattern: Token, temperature: u8, created_at: u64) {
+        self.tension_traces.push(TensionTrace { pattern, temperature, created_at });
+    }
+
+    /// Слить горячие следы напряжения в импульсы.
+    ///
+    /// Возвращает паттерны трейсов с `temperature >= threshold`.
+    /// Сброшенные трейсы удаляются из буфера.
+    pub fn drain_hot_impulses(&mut self, threshold: u8) -> Vec<Token> {
+        let mut hot = Vec::new();
+        self.tension_traces.retain(|t| {
+            if t.temperature >= threshold {
+                hot.push(t.pattern);
+                false  // удалить из буфера
+            } else {
+                true   // оставить
+            }
+        });
+        hot
+    }
+
+    /// Остудить все следы напряжения на `decay` единиц за тик.
+    ///
+    /// Трейсы с temperature == 0 автоматически удаляются.
+    pub fn cool_tension_traces(&mut self, decay: u8) {
+        self.tension_traces.retain_mut(|t| {
+            t.temperature = t.temperature.saturating_sub(decay);
+            t.temperature > 0
+        });
+    }
+
+    /// Число активных следов напряжения.
+    pub fn tension_count(&self) -> usize {
+        self.tension_traces.len()
     }
 }

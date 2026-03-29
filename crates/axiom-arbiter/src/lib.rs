@@ -29,7 +29,7 @@ use maya_processor::MayaProcessor;
 use std::collections::HashMap;
 
 // Re-export for tests
-pub use experience::{Experience as ExperienceModule, ResonanceLevel as ResonanceLevelEnum};
+pub use experience::{Experience as ExperienceModule, ResonanceLevel as ResonanceLevelEnum, TensionTrace};
 pub use com::COM;
 pub use reflector::{Reflector, ReflexStats, DomainProfile};
 pub use skillset::{Skill, SkillSet};
@@ -48,6 +48,11 @@ pub struct RoutingResult {
     pub consolidated: Option<Token>,
     /// События маршрутизации (для COM tracking)
     pub routed_events: Vec<u64>,
+    /// Оценка согласованности ASHTI-результатов (0.0..=1.0).
+    /// < 0.6 → система создаёт tension trace (Cognitive Depth V1.0)
+    pub confidence: f32,
+    /// Число выполненных проходов (1 = обычный, >1 = multi-pass)
+    pub passes: u8,
 }
 
 impl RoutingResult {
@@ -59,6 +64,8 @@ impl RoutingResult {
             slow_path: Vec::new(),
             consolidated: None,
             routed_events: Vec::new(),
+            confidence: 1.0,
+            passes: 0,
         }
     }
 }
@@ -217,6 +224,8 @@ impl Arbiter {
                 slow_path: ashti_results,
                 consolidated,
                 routed_events: vec![event_id],
+                confidence: 1.0,
+                passes: 1,
             };
         }
 
@@ -240,8 +249,8 @@ impl Arbiter {
 
         let ashti_results = self.route_to_ashti(token, hint);
 
-        // 4. Консолидация через MAYA
-        let consolidated = self.route_to_maya(ashti_results.clone());
+        // 4. Консолидация через MAYA (с confidence)
+        let (consolidated, confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
 
         // 5. Сохранить для сравнения
         self.pending_comparisons.insert(event_id, PendingComparison {
@@ -259,6 +268,8 @@ impl Arbiter {
             slow_path: ashti_results,
             consolidated,
             routed_events: vec![event_id],
+            confidence,
+            passes: 1,
         }
     }
 
@@ -278,7 +289,7 @@ impl Arbiter {
         results
     }
 
-    /// Консолидация результатов ASHTI через MAYA
+    /// Консолидация результатов ASHTI через MAYA (без confidence)
     fn route_to_maya(&self, ashti_results: Vec<Token>) -> Option<Token> {
         if ashti_results.is_empty() {
             return None;
@@ -288,6 +299,124 @@ impl Arbiter {
         let maya_domain = self.domains.get(&maya_id)?;
 
         Some(MayaProcessor::consolidate_results(ashti_results, maya_domain))
+    }
+
+    /// Консолидация результатов ASHTI через MAYA с оценкой coherence.
+    fn route_to_maya_with_confidence(&self, ashti_results: Vec<Token>) -> (Option<Token>, f32) {
+        if ashti_results.is_empty() {
+            return (None, 1.0);
+        }
+
+        let maya_id = match self.registry.maya {
+            Some(id) => id,
+            None => return (None, 1.0),
+        };
+        let maya_domain = match self.domains.get(&maya_id) {
+            Some(d) => d,
+            None => return (None, 1.0),
+        };
+
+        let (token, confidence) = MayaProcessor::consolidate_with_confidence(ashti_results, maya_domain);
+        (Some(token), confidence)
+    }
+
+    /// Multi-pass маршрутизация (Cognitive Depth V1.0 — 13A).
+    ///
+    /// Если MAYA возвращает confidence < min_coherence и не исчерпан лимит
+    /// проходов — паттерн обогащается результатом и обрабатывается снова.
+    /// При низком итоговом confidence создаётся tension trace в EXPERIENCE.
+    ///
+    /// `max_passes` и `min_coherence` берутся из конфига домена MAYA.
+    pub fn route_with_multipass(&mut self, token: Token) -> RoutingResult {
+        if !self.is_ready() {
+            return RoutingResult::error("Not all domains registered");
+        }
+
+        let (max_passes, min_coherence_f) = self.maya_multipass_params();
+
+        if max_passes == 0 {
+            // Multi-pass отключён — обычная маршрутизация
+            return self.route_from_experience(token);
+        }
+
+        let event_id = self.com.next_event_id(9);
+        let resonance = self.experience.resonance_search(&token);
+        let reflex = if resonance.level == ResonanceLevel::Reflex {
+            Some(resonance.trace.as_ref().unwrap().pattern)
+        } else {
+            None
+        };
+        let hint = if resonance.level == ResonanceLevel::Association {
+            resonance.trace.as_ref()
+        } else {
+            None
+        };
+
+        let mut current_pattern = token;
+        let mut final_confidence = 1.0f32;
+        let mut final_ashti: Vec<Token> = Vec::new();
+        let mut final_consolidated: Option<Token> = None;
+        let mut passes: u8 = 0;
+
+        for pass in 0..max_passes {
+            passes = pass + 1;
+            let hint_this_pass = if pass == 0 { hint } else { None };
+            let ashti_results = self.route_to_ashti(current_pattern, hint_this_pass);
+            let (consolidated, confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+
+            final_confidence = confidence;
+            final_ashti = ashti_results;
+            final_consolidated = consolidated;
+
+            if confidence >= min_coherence_f || pass + 1 >= max_passes {
+                break;
+            }
+
+            // Обогащаем паттерн для следующего прохода
+            if let Some(ref cons) = final_consolidated {
+                current_pattern.temperature = current_pattern.temperature
+                    .saturating_add(cons.temperature / 2);
+            }
+        }
+
+        // Если итоговый confidence низкий — создаём tension trace
+        if final_confidence < min_coherence_f {
+            let tension_temp = ((1.0 - final_confidence) * 255.0) as u8;
+            self.experience.add_tension_trace(token, tension_temp, event_id);
+        }
+
+        self.pending_comparisons.insert(event_id, PendingComparison {
+            input_pattern: token,
+            reflex_prediction: reflex,
+            ashti_results: final_ashti.clone(),
+            consolidated_result: final_consolidated,
+            created_at: event_id,
+            trace_index: None,
+        });
+
+        RoutingResult {
+            event_id,
+            reflex,
+            slow_path: final_ashti,
+            consolidated: final_consolidated,
+            routed_events: vec![event_id],
+            confidence: final_confidence,
+            passes,
+        }
+    }
+
+    /// Получить параметры multi-pass из конфига MAYA.
+    /// Возвращает (max_passes, min_coherence как 0.0..1.0).
+    fn maya_multipass_params(&self) -> (u8, f32) {
+        let maya_id = match self.registry.maya {
+            Some(id) => id,
+            None => return (0, 0.6),
+        };
+        let maya_domain = match self.domains.get(&maya_id) {
+            Some(d) => d,
+            None => return (0, 0.6),
+        };
+        (maya_domain.max_passes, maya_domain.min_coherence as f32 / 255.0)
     }
 
     /// ASHTI (1-8) → MAYA (уже обработано в route_from_experience)
@@ -302,6 +431,8 @@ impl Arbiter {
             slow_path: vec![token],
             consolidated: None,
             routed_events: vec![event_id],
+            confidence: 1.0,
+            passes: 1,
         }
     }
 
@@ -315,6 +446,8 @@ impl Arbiter {
             slow_path: vec![],
             consolidated: Some(token),
             routed_events: vec![event_id],
+            confidence: 1.0,
+            passes: 1,
         }
     }
 

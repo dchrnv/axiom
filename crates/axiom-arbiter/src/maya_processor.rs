@@ -10,6 +10,24 @@ use axiom_core::Token;
 pub struct MayaProcessor;
 
 impl MayaProcessor {
+    /// Консолидировать результаты и вернуть оценку согласованности (coherence).
+    ///
+    /// Возвращает `(token, confidence)` где confidence ∈ 0.0..=1.0.
+    /// При confidence < порога (min_coherence из DomainConfig) Arbiter может
+    /// инициировать повторный проход (multi-pass, Cognitive Depth V1.0).
+    pub fn consolidate_with_confidence(
+        ashti_results: Vec<Token>,
+        maya_domain: &DomainConfig,
+    ) -> (Token, f32) {
+        let confidence = if ashti_results.len() >= 2 {
+            compute_confidence(&ashti_results)
+        } else {
+            1.0 // один или ноль результатов — нет конфликта
+        };
+        let token = Self::consolidate_results(ashti_results, maya_domain);
+        (token, confidence)
+    }
+
     /// Консолидировать результаты от ASHTI доменов.
     ///
     /// - Если результатов нет → нулевой токен
