@@ -1,5 +1,4 @@
-use axiom_arbiter::{Skill, SkillSet};
-use axiom_arbiter::ExperienceModule;
+use axiom_arbiter::{Skill, SkillSet, ExperienceModule};
 use axiom_core::Token;
 
 fn token_at(x: i16, y: i16, z: i16) -> Token {
@@ -7,18 +6,6 @@ fn token_at(x: i16, y: i16, z: i16) -> Token {
     t.temperature = 100;
     t.mass = 50;
     t
-}
-
-fn make_strong_trace(token: Token) -> axiom_arbiter::ExperienceModule {
-    // Используем Experience публично через ExperienceModule
-    let mut exp = ExperienceModule::new();
-    // Добавить trace с высоким весом — имитируем уже обученный опыт
-    exp.add_trace(token, 0.85, 1);
-    // Но success_count = 0, нужно strengthen_trace несколько раз
-    for _ in 0..50 {
-        exp.strengthen_trace(0, 0.001);
-    }
-    exp
 }
 
 // ─── SkillSet базовые ────────────────────────────────────────────────────────
@@ -42,7 +29,7 @@ fn test_skillset_find_skill_empty() {
 
 #[test]
 fn test_try_crystallize_below_weight_threshold() {
-    let mut ss = SkillSet::new();
+    let ss = SkillSet::new();
     let exp = ExperienceModule::new();
     // Нет следов, нечего кристаллизовать
     let candidates = exp.find_crystallizable(ss.crystallization_threshold, ss.min_success_count);
@@ -52,7 +39,7 @@ fn test_try_crystallize_below_weight_threshold() {
 
 #[test]
 fn test_try_crystallize_insufficient_success_count() {
-    let mut ss = SkillSet::new();
+    let ss = SkillSet::new();
     let mut exp = ExperienceModule::new();
     // Высокий вес, но success_count = 0
     exp.add_trace(token_at(10, 20, 30), 0.9, 1);

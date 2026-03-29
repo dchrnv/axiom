@@ -1236,7 +1236,7 @@ use axiom_space::*;
         // Интеграционный тест: движение + смена ячейки + столкновение
         let old_pos = (100i16, 100i16, 100i16);
         let mut pos = old_pos;
-        let mut vel = (20i16, 0i16, 0i16);
+        let vel = (20i16, 0i16, 0i16);
 
         let mut grid = SpatialHashGrid::new();
         let positions = vec![

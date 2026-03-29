@@ -1,14 +1,10 @@
-use axiom_config::{ConfigError, ConfigLoader, LoadedAxiomConfig};
+use axiom_config::{ConfigError, ConfigLoader};
 
 fn axiom_yaml_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../config/axiom.yaml")
 }
 
-fn config_base() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config")
-}
 
 #[test]
 fn test_config_loader_creation() {

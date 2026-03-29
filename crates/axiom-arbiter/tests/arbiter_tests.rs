@@ -75,7 +75,7 @@ fn test_token_comparison_similar() {
     let com = COM::new();
     let arbiter = Arbiter::new(domains, com);
 
-    let mut token1 = create_test_token(1, 100);
+    let token1 = create_test_token(1, 100);
     let mut token2 = create_test_token(2, 105);  // Slight temp difference
     token2.mass = 102;  // Slight mass difference
 
@@ -89,7 +89,7 @@ fn test_token_comparison_different() {
     let com = COM::new();
     let arbiter = Arbiter::new(domains, com);
 
-    let mut token1 = create_test_token(1, 100);
+    let token1 = create_test_token(1, 100);
     let mut token2 = create_test_token(2, 200);  // Large temp difference
     token2.mass = 200;  // Large mass difference
     token2.valence = -50;  // Different valence

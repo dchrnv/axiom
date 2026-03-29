@@ -146,7 +146,6 @@ fn test_effector_name() {
 #[test]
 fn test_telegram_roundtrip_no_panic() {
     use axiom_runtime::Gateway;
-    use axiom_ucl::UclCommand;
 
     let mut p = TelegramPerceptor::new(test_config());
     let mut e = TelegramEffector::mock(test_config());
