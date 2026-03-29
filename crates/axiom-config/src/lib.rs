@@ -28,6 +28,8 @@
 pub mod domain_config;
 pub mod heartbeat_config;
 pub mod loader;
+/// Пресеты токенов и связей
+pub mod preset;
 
 pub use domain_config::{
     DomainConfig, DomainType, StructuralRole,
@@ -41,3 +43,4 @@ pub use loader::{
     AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, LoadedAxiomConfig,
     PresetsConfig, RuntimeConfig, SchemaConfig,
 };
+pub use preset::{TokenPreset, ConnectionPreset};

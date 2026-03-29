@@ -1,0 +1,14 @@
+# Token Preset: input
+# Базовый токен ввода для домена SUTRA(100)
+
+domain_id: 100
+type_flags: 1
+position: [0, 0, 0]
+velocity: [0, 0, 0]
+valence: 0
+mass: 128
+temperature: 64
+state: 1
+resonance: 440
+
+description: "Базовый токен ввода — вливается в SUTRA для дальнейшей обработки"
