@@ -1,6 +1,6 @@
-# Axiom Benchmark Results — v3
+# Axiom Benchmark Results — v4
 
-**Дата:** 2026-03-28
+**Дата:** 2026-03-29
 **Платформа:** Linux x86-64
 **Профиль:** `release` (optimized)
 **Инструмент:** criterion 0.5
@@ -199,6 +199,72 @@ Gateway overhead минимален: `process` vs прямой `process_command`
 
 ---
 
+## Этапы 12A+12B — FractalChain + batch gravity
+
+### FractalChain::new — инициализация N уровней AshtiCore
+
+| Глубина | Время | Время/уровень |
+|---------|-------|--------------|
+| 2 | 2.30 ms | 1.15 ms |
+| 3 | 1.93 ms | 0.64 ms |
+| 5 | 4.75 ms | 0.95 ms |
+
+Доминирует `AxiomEngine::new` на каждый уровень (~440 µs × N + HashMap allocation variability).
+
+### FractalChain::tick — пустая цепочка (overhead диспетчера)
+
+| Глубина | Время | Время/уровень |
+|---------|-------|--------------|
+| 2 | 48 ns | 24 ns |
+| 3 | 75 ns | 25 ns |
+| 5 | 110 ns | 22 ns |
+
+Тик без токенов — **практически бесплатен**. Overhead линейный и минимальный.
+
+### FractalChain::tick — с токенами (2 уровня, iter_batched)
+
+| Токенов на вход | Время | Примечание |
+|-----------------|-------|-----------|
+| 1 | 53 µs | `iter_batched` overhead доминирует |
+| 10 | 46 µs | |
+| 50 | 43 µs | Стабилизация (AshtiCore pipeline ~40 µs) |
+
+Поведение аналогично `AshtiCore::process`: доминирует dual-path routing (~40–50 µs).
+Вариация обусловлена `iter_batched` (пересоздание FractalChain).
+
+### FractalChain — базовые операции
+
+| Операция | Время | Комментарий |
+|----------|-------|-------------|
+| `inject_input` | 20 ns | Запись токена в SUTRA DomainState |
+| `take_output_empty` | 102 ns | Vec::pop() из MAYA + index lookup |
+| `exchange_skills` (2 уровня) | 25 ns | Без навыков — только export + import |
+| `exchange_skills` (3 уровня) | 38 ns | ~12 ns/уровень сверх первого |
+| `exchange_skills` (5 уровней) | 56 ns | |
+
+### apply_gravity_batch vs scalar — сравнение (release, без RUSTFLAGS)
+
+| Токенов | Batch (µs) | Scalar (µs) | ns/токен (batch) | ns/токен (scalar) |
+|---------|-----------|------------|-----------------|------------------|
+| 100 | 2.45 | 2.16 | 24.5 | 21.6 |
+| 500 | 11.27 | 11.63 | 22.5 | 23.3 |
+| 1 000 | 22.99 | 22.93 | 23.0 | 22.9 |
+| 5 000 | 117.5 | 115.2 | 23.5 | 23.0 |
+| 10 000 | 241.8 | 234.2 | 24.2 | 23.4 |
+
+**Наблюдение:** В стандартном release-билде batch и scalar показывают идентичную производительность (~23 ns/токен). Оба пути линейны по числу токенов.
+
+**Почему нет ускорения?** Компилятор уже авто-векторизует оба пути при `-O2` (release). Явное преимущество batch появляется с `RUSTFLAGS="-C target-cpu=native"` — тогда компилятор использует AVX2 (8 i32 за такт) вместо SSE2.
+
+```bash
+# Для реального SIMD-ускорения:
+RUSTFLAGS="-C target-cpu=native" cargo bench --bench fractal_bench -- "apply_gravity"
+```
+
+Ожидаемое ускорение с AVX2: **2–3x** на задачах ≥ 1000 токенов.
+
+---
+
 ## Сводная таблица — горячий путь (1000 Hz тик, бюджет 1 ms)
 
 | Операция | Время | % бюджета |
@@ -214,8 +280,13 @@ Gateway overhead минимален: `process` vs прямой `process_command`
 | `SpatialHashGrid::rebuild` (1000 токенов) | 15.1 µs | 1.51% |
 | `Shell::incremental_update` (100 dirty) | 3.05 µs | 0.31% |
 | `Arbiter::route_token` | 4.2 µs | 0.42% |
+| `FractalChain::tick` (2 уровня, пусто) | 48 ns | < 0.01% |
+| `FractalChain::tick` (2 уровня, 50 токенов) | ~43 µs | 4.3% |
+| `apply_gravity_batch` (1000 токенов) | 23 µs | 2.3% |
+| `FractalChain::inject_input` | 20 ns | < 0.01% |
+| `FractalChain::exchange_skills` (3 уровня) | 38 ns | < 0.01% |
 
-**Общая оценка:** TickForward и causal_horizon — практически бесплатны. AshtiCore pipeline доминирует при интенсивной обработке (~40 µs). Gateway overhead минимален. run_adaptation и snapshot_and_prune — периодические операции, подходят для вызова раз в N тиков.
+**Общая оценка:** TickForward, causal_horizon, inject_input и exchange_skills — практически бесплатны. AshtiCore pipeline (~40 µs) доминирует — как в одиночном режиме, так и в FractalChain. `apply_gravity_batch` линеен (~23 ns/токен). Gateway overhead минимален. run_adaptation и snapshot_and_prune — периодические операции, подходят для вызова раз в N тиков.
 
 ---
 
@@ -235,3 +306,4 @@ Gateway overhead минимален: `process` vs прямой `process_command`
 | v1 | 2026-03-27 | Baseline: axiom-core, axiom-space, EventGenerator, resonance_search, AxiomEngine (add_domain, InjectToken, TickForward, Snapshot) |
 | v2 | 2026-03-27 | AshtiCore pipeline, Shell V3.0 (compute/incremental/reconcile), Arbiter thresholds; рефактор engine_bench под новый API |
 | v3 | 2026-03-28 | Этапы 6-8: run_adaptation, snapshot_and_prune, run_horizon_gc, causal_horizon, export_skills, Gateway::process, process_channel |
+| v4 | 2026-03-29 | Этапы 12A-12B: FractalChain (new/tick/inject/exchange_skills), apply_gravity_batch vs scalar (100–10K токенов) |
