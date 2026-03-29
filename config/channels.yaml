@@ -1,0 +1,17 @@
+# AXIOM Agent — конфигурация каналов ввода/вывода
+# Версия: 1.0
+
+channels:
+  # CLI-канал (stdin/stdout) — всегда активен по умолчанию
+  cli: true
+
+  # Telegram Bot API (опционально)
+  telegram:
+    enabled: false
+    token: ""      # Получить у @BotFather
+    chat_id: 0     # ID чата для ответов
+
+  # Shell Effector — выполнение команд по событию ShellExec
+  shell:
+    enabled: false
+    whitelist: config/shell_whitelist.yaml

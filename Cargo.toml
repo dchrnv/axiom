@@ -17,6 +17,7 @@ members = [
     "crates/axiom-ucl",
     "crates/axiom-runtime",
     "crates/axiom-bench",
+    "crates/axiom-agent",
 ]
 
 [workspace.package]
@@ -31,3 +32,6 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 bitvec = "1"
 notify = "6"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "blocking"] }

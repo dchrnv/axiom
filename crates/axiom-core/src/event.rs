@@ -95,6 +95,12 @@ pub enum EventType {
     /// Обновление температуры
     ThermodynamicsUpdate = 0x3005,
 
+    // Внешние агентские события (0xE000-0xEFFF)
+    /// Выполнение shell-команды (ShellEffector)
+    ShellExec = 0xE001,
+    /// Ответ MAYA — внешний вывод системы
+    MayaOutput = 0xE002,
+
     // Системные события (0xF000-0xFFFF)
     /// Создание контрольной точки системы
     SystemCheckpoint = 0xF001,
@@ -138,6 +144,8 @@ impl From<u16> for EventType {
             0x3003 => EventType::CollisionDetected,
             0x3004 => EventType::ResonanceTriggered,
             0x3005 => EventType::ThermodynamicsUpdate,
+            0xE001 => EventType::ShellExec,
+            0xE002 => EventType::MayaOutput,
             0xF001 => EventType::SystemCheckpoint,
             0xF002 => EventType::SystemRollback,
             0xF003 => EventType::SystemShutdown,

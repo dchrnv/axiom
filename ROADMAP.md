@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 12.0
-**Дата:** 2026-03-28
+**Версия:** 13.0
+**Дата:** 2026-03-29
 **Спека:** [Roadmap_V3_0.md](Roadmap_V3_0.md)
 
 ---
@@ -18,55 +18,9 @@
 | 6 | Адаптивные пороги | ✅ 533 тестов |
 | 7 | Causal Horizon + Memory | ✅ 568 тестов |
 | 8 | Gateway + Channel | ✅ 590 тестов |
+| 9 | Tech Debt + Event Bus | ✅ 629 тестов |
 
 Технический долг и будущие планы: [DEFERRED.md](DEFERRED.md)
-
----
-
-## Этап 9: Технический долг + Event Bus
-
-**Цель:** Закрыть DEFERRED.md. Подготовить инфраструктуру подписок для внешних каналов.
-
-**Зависимости:** —
-
-### 9A. Event Bus pub/sub
-
-Подписочная модель поверх `EventObserver`. Модули подписываются на конкретные `EventType`, получают уведомления без polling.
-
-**Что добавить в `axiom-runtime/src/adapters.rs`:**
-- `EventBus` struct: `HashMap<u16, Vec<Box<dyn EventObserver>>>` — подписчики по типу события
-- `EventBus::subscribe(event_type: u16, observer: Box<dyn EventObserver>)`
-- `EventBus::publish(&[Event])` — рассылка по подпискам
-- Интеграция в `Gateway`: `drain_and_notify` → `bus.publish(events)`
-
-**Тесты:** subscribe/publish, фильтрация по event_type, несколько подписчиков на один тип.
-
-### 9B. Token/Connection preset loading
-
-Загрузка пресетов токенов и связей из YAML.
-
-**Что добавить в `axiom-config`:**
-- `TokenPreset` struct (поля Token + имя пресета)
-- `ConnectionPreset` struct
-- `ConfigLoader::load_token_presets(path) -> Vec<TokenPreset>`
-- `ConfigLoader::load_connection_presets(path) -> Vec<ConnectionPreset>`
-- Файлы `config/presets/tokens/*.yaml`, `config/presets/connections/*.yaml`
-
-**Тесты:** загрузка YAML, валидация полей, round-trip.
-
-### 9C. Config hot reload
-
-Отслеживание изменений `config/*.yaml` без перезапуска. **Не применяется к GENOME** — конституция неизменна.
-
-**Что добавить:**
-- `ConfigWatcher` в `axiom-config`: `notify` crate (inotify на Linux)
-- `ConfigWatcher::watch(path, callback: Box<dyn Fn(LoadedAxiomConfig)>)`
-- Перезагрузка `DomainConfig`, `HeartbeatConfig`, пресетов
-- `Gateway::set_config_watcher(watcher: ConfigWatcher)` — применяет новые конфиги через `engine_mut()`
-
-**Тесты:** изменение файла → callback вызван, GENOME не перезагружается.
-
-**Критерий:** DEFERRED.md пуст. Event Bus работает. Hot reload не ломает работающий Engine.
 
 ---
 
