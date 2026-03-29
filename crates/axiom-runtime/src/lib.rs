@@ -33,6 +33,6 @@ pub use guardian::{
     RoleStats,
 };
 pub use snapshot::{EngineSnapshot, DomainSnapshot};
-pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter, EventBus};
+pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter, EventBus, Perceptor, Effector};
 pub use gateway::Gateway;
 pub use channel::{Channel, ChannelBatchResult};

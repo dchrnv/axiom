@@ -1,0 +1,9 @@
+# AXIOM Shell Effector — белый список разрешённых команд
+# Только эти команды могут быть выполнены ShellEffector.
+# Сравнение точное — без glob и wildcard.
+
+whitelist:
+  - "echo hello"
+  - "date"
+  - "uptime"
+  - "hostname"

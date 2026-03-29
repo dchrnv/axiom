@@ -1,0 +1,14 @@
+//! AXIOM Agent — внешний слой интеграции.
+//!
+//! Реализует Perceptor/Effector архитектуру для взаимодействия AXIOM с внешним миром:
+//! - CLI (stdin/stdout)
+//! - Telegram Bot API
+//! - Shell Effector (whitelist-защищённый)
+
+#![deny(unsafe_code)]
+#![warn(missing_docs)]
+
+/// Каналы ввода/вывода агента
+pub mod channels;
+/// Конфигурация агента из channels.yaml
+pub mod config;
