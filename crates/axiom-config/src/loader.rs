@@ -9,6 +9,7 @@ use std::path::Path;
 
 use crate::domain_config::DomainConfig;
 use crate::heartbeat_config::HeartbeatConfig;
+use crate::preset::{TokenPreset, ConnectionPreset};
 
 /// Корневая конфигурация Axiom
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,10 @@ pub struct AxiomConfig {
 pub struct PresetsConfig {
     /// Директория YAML пресетов доменов
     pub domains_dir: Option<String>,
+    /// Директория YAML пресетов токенов
+    pub tokens_dir: Option<String>,
+    /// Директория YAML пресетов связей
+    pub connections_dir: Option<String>,
     /// Путь к YAML конфигурации пространственного грида
     pub spatial: Option<String>,
     /// Путь к YAML таблице семантических вкладов Shell
@@ -186,6 +191,64 @@ impl ConfigLoader {
             .map_err(ConfigError::ValidationError)?;
 
         Ok(config)
+    }
+
+    /// Загрузить все пресеты токенов из директории.
+    ///
+    /// Читает все `*.yaml` файлы из `dir`. Имя файла (без расширения) становится
+    /// полем `TokenPreset::name`. Возвращает пустой вектор если директория не существует.
+    pub fn load_token_presets(&mut self, dir: &Path) -> Result<Vec<TokenPreset>, ConfigError> {
+        self.load_presets_from_dir(dir, |name, content| {
+            let mut preset: TokenPreset =
+                serde_yaml::from_str(content).map_err(ConfigError::ParseError)?;
+            preset.name = name.to_string();
+            Ok(preset)
+        })
+    }
+
+    /// Загрузить все пресеты связей из директории.
+    ///
+    /// Читает все `*.yaml` файлы из `dir`. Имя файла (без расширения) становится
+    /// полем `ConnectionPreset::name`. Возвращает пустой вектор если директория не существует.
+    pub fn load_connection_presets(&mut self, dir: &Path) -> Result<Vec<ConnectionPreset>, ConfigError> {
+        self.load_presets_from_dir(dir, |name, content| {
+            let mut preset: ConnectionPreset =
+                serde_yaml::from_str(content).map_err(ConfigError::ParseError)?;
+            preset.name = name.to_string();
+            Ok(preset)
+        })
+    }
+
+    /// Вспомогательный метод: читает все *.yaml из директории и применяет `parse_fn`.
+    fn load_presets_from_dir<T, F>(&mut self, dir: &Path, parse_fn: F) -> Result<Vec<T>, ConfigError>
+    where
+        F: Fn(&str, &str) -> Result<T, ConfigError>,
+    {
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut presets = Vec::new();
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .map_err(ConfigError::IoError)?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().extension().and_then(|x| x.to_str()) == Some("yaml")
+            })
+            .collect();
+        entries.sort_by_key(|e| e.file_name());
+
+        for entry in entries {
+            let path = entry.path();
+            let name = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            let content = fs::read_to_string(&path).map_err(ConfigError::IoError)?;
+            let preset = parse_fn(&name, &content)?;
+            presets.push(preset);
+        }
+        Ok(presets)
     }
 
     /// Загрузить YAML файл с кэшированием

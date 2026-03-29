@@ -25,5 +25,7 @@ loader:
 # Presets — готовые конфигурации компонентов системы
 presets:
   domains_dir: "presets/domains"
+  tokens_dir: "presets/tokens"
+  connections_dir: "presets/connection"
   spatial: "presets/spatial/medium.yaml"
   semantic_contributions: "schema/semantic_contributions.yaml"

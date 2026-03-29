@@ -1,0 +1,14 @@
+# Token Preset: impulse
+# Высокотемпературный токен-импульс для домена LOGIC(106)
+
+domain_id: 106
+type_flags: 3
+position: [0, 0, 0]
+velocity: [10, 0, 0]
+valence: 1
+mass: 64
+temperature: 200
+state: 1
+resonance: 880
+
+description: "Высокоэнергетический импульс — активирует логические цепи в LOGIC"

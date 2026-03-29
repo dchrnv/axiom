@@ -1,0 +1,14 @@
+# Token Preset: anchor
+# Якорный токен с высокой массой для домена CODEX(108)
+
+domain_id: 108
+type_flags: 2
+position: [0, 0, 0]
+velocity: [0, 0, 0]
+valence: -1
+mass: 255
+temperature: 32
+state: 1
+resonance: 220
+
+description: "Якорный токен — стабильная точка привязки в домене CODEX"
