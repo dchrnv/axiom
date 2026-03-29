@@ -100,7 +100,8 @@ pub struct DomainConfig {
     pub reflex_cooldown: u8,    // 1b | Минимальный интервал между рефлексами (в пульсах)
     pub max_concurrent_hints: u8, // 1b | Макс. кол-во ассоциаций-подсказок одновременно
     pub feedback_weight_delta: u8, // 1b | Шаг изменения weight при обратной связи (0..255)
-    pub reserved_arbiter: [u8; 2], // 2b | Резерв блока Arbiter
+    pub max_passes: u8,            // 1b | Макс. проходов multi-pass (0=откл., 3 для MAYA)
+    pub min_coherence: u8,         // 1b | Порог coherence для повторного прохода (153≈0.6)
 
     pub gate_complexity: u16,   // 2b | Вычислительная сложность шлюзов
     pub threshold_mass: u16,    // 2b | Порог массы для прохождения
@@ -165,7 +166,7 @@ impl Default for DomainConfig {
             reflex_cooldown: 0,         // Без ограничений
             max_concurrent_hints: 0,    // Подсказки отключены
             feedback_weight_delta: 0,   // Обратная связь отключена
-            reserved_arbiter: [0; 2],   // Резерв блока Arbiter
+            max_passes: 0, min_coherence: 0,
 
             gate_complexity: 50,        // Сложность ворот (0..255)
             threshold_mass: 1,           // Порог массы (0..65535)
@@ -247,7 +248,7 @@ impl DomainConfig {
             reflex_cooldown: 0,
             max_concurrent_hints: 0,
             feedback_weight_delta: 0,
-            reserved_arbiter: [0; 2],
+            max_passes: 0, min_coherence: 0,
 
             gate_complexity: 0,
             threshold_mass: 0,

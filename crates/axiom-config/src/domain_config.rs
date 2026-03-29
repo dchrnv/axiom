@@ -157,8 +157,10 @@ pub struct DomainConfig {
     pub max_concurrent_hints: u8,
     /// Шаг изменения weight при обратной связи (0..255)
     pub feedback_weight_delta: u8,
-    /// Резерв блока Arbiter
-    pub reserved_arbiter: [u8; 2],
+    /// Макс. количество проходов multi-pass обработки (0 = отключено, рекомендуется 3)
+    pub max_passes: u8,
+    /// Минимальный порог coherence для повторного прохода (0..255 → 0.0..1.0, 153 ≈ 0.6)
+    pub min_coherence: u8,
 
     /// Вычислительная сложность шлюзов
     pub gate_complexity: u16,
@@ -235,7 +237,8 @@ impl Default for DomainConfig {
             reflex_cooldown: 5,
             max_concurrent_hints: 10,
             feedback_weight_delta: 10,
-            reserved_arbiter: [0; 2],
+            max_passes: 0,
+            min_coherence: 0,
             gate_complexity: 100,
             threshold_mass: 0,
             threshold_temp: 0,
@@ -309,7 +312,8 @@ impl DomainConfig {
             reflex_cooldown: 0,
             max_concurrent_hints: 0,
             feedback_weight_delta: 0,
-            reserved_arbiter: [0; 2],
+            max_passes: 0,
+            min_coherence: 0,
             gate_complexity: 0,
             threshold_mass: 0,
             threshold_temp: 0,
@@ -653,6 +657,8 @@ impl DomainConfig {
         config.reflex_cooldown = 0;
         config.max_concurrent_hints = 0;
         config.feedback_weight_delta = 0;
+        config.max_passes = 3;       // до 3 повторных проходов (Cognitive Depth V1.0)
+        config.min_coherence = 153;  // 153/255 ≈ 0.6 — порог повторного прохода
 
         config.token_capacity = 5000;
         config.connection_capacity = 500;

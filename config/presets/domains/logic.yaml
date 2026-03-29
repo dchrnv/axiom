@@ -33,7 +33,8 @@ arbiter_flags: 31
 reflex_cooldown: 5
 max_concurrent_hints: 2
 feedback_weight_delta: 50
-reserved_arbiter: [0, 0]
+max_passes: 0
+min_coherence: 0
 gate_complexity: 0
 threshold_mass: 0
 threshold_temp: 0
