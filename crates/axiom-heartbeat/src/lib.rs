@@ -42,6 +42,11 @@ pub struct HeartbeatConfig {
     /// Активировать Shell reconciliation (Shell V3.0 Phase 2.7)
     /// Пересчёт и проверка семантических профилей токенов
     pub enable_shell_reconciliation: bool,
+
+    /// Активировать Internal Drive — остывание и слив tension traces (Cognitive Depth V1.0)
+    /// При каждом пульсе EXPERIENCE остужает следы напряжения и возвращает горячие
+    /// в pipeline для повторной обработки.
+    pub enable_internal_drive: bool,
 }
 
 impl Default for HeartbeatConfig {
@@ -65,7 +70,8 @@ impl HeartbeatConfig {
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
             attach_pulse_id: false,
-            enable_shell_reconciliation: false, // Disabled for weak hardware
+            enable_shell_reconciliation: false,
+            enable_internal_drive: false, // Отключено на слабом железе
         }
     }
 
@@ -83,7 +89,8 @@ impl HeartbeatConfig {
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
             attach_pulse_id: true,
-            enable_shell_reconciliation: true, // Enabled for medium+ hardware
+            enable_shell_reconciliation: true,
+            enable_internal_drive: true, // Включено на среднем+ железе
         }
     }
 
@@ -101,7 +108,8 @@ impl HeartbeatConfig {
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
             attach_pulse_id: true,
-            enable_shell_reconciliation: true, // Enabled for medium+ hardware
+            enable_shell_reconciliation: true,
+            enable_internal_drive: true, // Включено на мощном железе
         }
     }
 
@@ -117,7 +125,8 @@ impl HeartbeatConfig {
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
             attach_pulse_id: false,
-            enable_shell_reconciliation: false, // Disabled when heartbeat disabled
+            enable_shell_reconciliation: false,
+            enable_internal_drive: false, // Отключено когда heartbeat отключён
         }
     }
 }

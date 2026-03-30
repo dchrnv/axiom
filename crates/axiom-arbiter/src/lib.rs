@@ -556,5 +556,35 @@ impl Arbiter {
             self.experience.set_thresholds(config.reflex_threshold, config.association_threshold);
         }
     }
+
+    /// Обработчик пульса Heartbeat (Cognitive Depth V1.0 — 13B).
+    ///
+    /// Вызывается каждый раз когда `HeartbeatGenerator::on_event()` возвращает `Some(pulse)`.
+    /// Если `enable_internal_drive` — остужает следы напряжения и возвращает горячие
+    /// токены-импульсы для повторной обработки в pipeline.
+    ///
+    /// Параметр `enable_internal_drive` берётся из `HeartbeatConfig::enable_internal_drive`.
+    ///
+    /// Возвращает Vec<Token> с горячими импульсами (пустой если Internal Drive отключён
+    /// или нет горячих следов).
+    pub fn on_heartbeat_pulse(&mut self, _pulse_number: u64, enable_internal_drive: bool) -> Vec<Token> {
+        if !enable_internal_drive {
+            return Vec::new();
+        }
+
+        // Остужаем все следы напряжения на TENSION_DECAY единиц
+        self.experience.cool_tension_traces(TENSION_DECAY);
+
+        // Сливаем горячие следы в импульсы
+        self.experience.drain_hot_impulses(TENSION_DRAIN_THRESHOLD)
+    }
 }
+
+/// Скорость остывания следа напряжения за один пульс Heartbeat.
+/// 10/255 ≈ 4% за пульс → след живёт ~25 пульсов при начальной temperature=255.
+const TENSION_DECAY: u8 = 10;
+
+/// Порог temperature для считывания следа как "горячего" импульса.
+/// 128/255 ≈ 0.5 — половина шкалы активности.
+const TENSION_DRAIN_THRESHOLD: u8 = 128;
 
