@@ -4,7 +4,7 @@
 // ASHTI Processor - обработка токенов через ASHTI 1-8 домены
 
 use axiom_config::DomainConfig;
-use axiom_core::Token;
+use axiom_core::{Token, TOKEN_FLAG_GOAL};
 use crate::experience::ExperienceTrace;
 
 /// ASHTI Processor - обработка токенов через ASHTI 1-8 домены
@@ -94,9 +94,6 @@ fn apply_temporal(domain: &DomainConfig, token: &mut Token) {
     // Stamp the domain's event epoch
     token.last_event_id = domain.created_at;
 }
-
-/// Флаг цели — дублируем здесь чтобы не создавать циклическую зависимость с lib.rs
-const TOKEN_FLAG_GOAL: u16 = 0x0001;
 
 /// Role 3 — логическая обработка (CODEX): маскирование type_flags + goal physics.
 ///

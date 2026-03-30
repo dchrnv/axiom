@@ -12,6 +12,12 @@
 
 use std::fmt;
 
+/// Флаги типа токена в `type_flags` поле
+///
+/// Токен является целью (Goal) — CODEX повышает его mass и temperature,
+/// Arbiter генерирует Goal-импульсы для незавершённых целей.
+pub const TOKEN_FLAG_GOAL: u16 = 0x0001;
+
 /// Флаги состояния токена
 pub const STATE_ACTIVE: u8 = 1;
 /// Токен находится в спящем режиме

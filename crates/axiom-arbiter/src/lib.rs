@@ -37,10 +37,8 @@ pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
 // ── Cognitive Depth V1.0 — 13D: Goal & Curiosity ─────────────────────────────
 
-/// Флаг в `Token::type_flags`: токен является целью (goal).
-/// CODEX(3) применяет особую физику: повышает mass и temperature для удержания.
-/// Arbiter генерирует Goal-импульсы пока weight < GOAL_ACHIEVED_WEIGHT.
-pub const TOKEN_FLAG_GOAL: u16 = 0x0001;
+// Re-export из axiom-core — единственный источник истины для этого флага.
+pub use axiom_core::TOKEN_FLAG_GOAL;
 
 /// Порог веса следа при котором цель считается достигнутой.
 /// Выше этого значения goal-импульсы не генерируются.
