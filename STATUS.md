@@ -1,19 +1,19 @@
 # AXIOM Status
 
-**Обновлено:** 2026-03-29 (Этап 12 завершён)
+**Обновлено:** 2026-03-30 (Этап 13A + 13B завершены)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**731 тест, 0 failures, 0 warnings**
+**757 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
   ├── Genome (конституция, from_yaml, GenomeIndex O(1))
   ├── AshtiCore — 11 доменов (SUTRA=level*100 .. MAYA=level*100+10)
-  │     ├── Arbiter (dual-path routing + Experience + Reflector + SkillSet)
+  │     ├── Arbiter (dual-path routing + Experience + Reflector + SkillSet + Internal Drive)
   │     ├── 11 × Domain (физика поля + CausalFrontier V2.0)
   │     └── 11 × DomainState (токены + связи)
   └── Guardian (CODEX + GENOME: enforce_access, validate_reflex, ML filters)
@@ -44,15 +44,15 @@ axiom-space:
 | axiom-config | 75 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (inotify hot reload) |
 | axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
-| axiom-arbiter | 86 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
-| axiom-heartbeat | 11 | Heartbeat V2.0 |
+| axiom-arbiter | 108 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 112 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
 | axiom-runtime | 109 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters |
 | axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **731** | |
+| **Итого** | **757** | |
 
 ---
 
@@ -72,3 +72,5 @@ axiom-space:
 | 10 | Agent Layer (CLI/Telegram/Shell) | ✅ |
 | 11 | ML Inference | ✅ |
 | 12 | FractalChain + SIMD-физика | ✅ |
+| 13A | Cognitive Depth — Multi-pass + TensionTrace | ✅ |
+| 13B | Cognitive Depth — Heartbeat Internal Drive | ✅ |
