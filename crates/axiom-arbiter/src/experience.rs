@@ -6,6 +6,14 @@
 use axiom_core::Token;
 use crate::gridhash::{grid_hash, AssociativeIndex};
 
+/// Флаг цели в Token::type_flags (Cognitive Depth V1.0 — 13D).
+/// Дублируется здесь чтобы experience.rs не зависел от lib.rs.
+const TOKEN_FLAG_GOAL: u16 = 0x0001;
+
+/// Нижняя граница "зоны любопытства" как доля от порога кристаллизации.
+/// Следы с weight ∈ [0.8 * threshold, threshold) генерируют Curiosity-импульсы.
+const CURIOSITY_BAND: f32 = 0.8;
+
 /// Уровень резонанса
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResonanceLevel {
@@ -261,6 +269,46 @@ impl Experience {
             }
         }
         removed
+    }
+
+    // ── Cognitive Depth V1.0 — 13D: Goal & Curiosity ────────────────────────
+
+    /// Вернуть паттерны незавершённых целей (Cognitive Depth V1.0 — 13D).
+    ///
+    /// Цель = след с `pattern.type_flags & TOKEN_FLAG_GOAL != 0`.
+    /// Незавершённая = `weight < goal_achieved_weight`.
+    ///
+    /// Вес импульса = насколько цель далека от достижения (1.0 = только создана).
+    pub fn check_goal_traces(&self, goal_achieved_weight: f32) -> Vec<(Token, f32)> {
+        self.traces
+            .iter()
+            .filter(|t| {
+                t.pattern.type_flags & TOKEN_FLAG_GOAL != 0
+                    && t.weight < goal_achieved_weight
+            })
+            .map(|t| {
+                let impulse_weight = 1.0 - t.weight / goal_achieved_weight;
+                (t.pattern, impulse_weight.clamp(0.01, 1.0))
+            })
+            .collect()
+    }
+
+    /// Вернуть паттерны-кандидаты на кристаллизацию (Cognitive Depth V1.0 — 13D).
+    ///
+    /// "Любопытные" следы = weight ∈ [0.8 * threshold, threshold).
+    /// Близки к кристаллизации, но ещё не достигли её — система "хочет" их завершить.
+    ///
+    /// Вес импульса = насколько близко к threshold (0.0..1.0).
+    pub fn check_curiosity_candidates(&self, threshold: f32) -> Vec<(Token, f32)> {
+        let low = threshold * CURIOSITY_BAND;
+        self.traces
+            .iter()
+            .filter(|t| t.weight >= low && t.weight < threshold)
+            .map(|t| {
+                let proximity = (t.weight - low) / (threshold - low);
+                (t.pattern, proximity.clamp(0.01, 1.0))
+            })
+            .collect()
     }
 
     /// Усилить след по хэшу паттерна (без знания индекса)

@@ -95,12 +95,25 @@ fn apply_temporal(domain: &DomainConfig, token: &mut Token) {
     token.last_event_id = domain.created_at;
 }
 
-/// Role 3 — логическая обработка: маскирование type_flags
+/// Флаг цели — дублируем здесь чтобы не создавать циклическую зависимость с lib.rs
+const TOKEN_FLAG_GOAL: u16 = 0x0001;
+
+/// Role 3 — логическая обработка (CODEX): маскирование type_flags + goal physics.
+///
+/// Если токен помечен TOKEN_FLAG_GOAL (Cognitive Depth V1.0 — 13D):
+/// - Повышает mass (предотвращает вытеснение из памяти)
+/// - Повышает temperature (удерживает токен активным)
 fn apply_logical(domain: &DomainConfig, token: &mut Token) {
     // Apply domain arbiter_flags as type_flags mask
     let mask = (domain.arbiter_flags as u16) << 8 | domain.arbiter_flags as u16;
     if mask != 0 {
         token.type_flags |= mask;
+    }
+
+    // GOAL physics: цель нельзя забыть — повышаем mass и temperature
+    if token.type_flags & TOKEN_FLAG_GOAL != 0 {
+        token.mass = token.mass.saturating_add(20);
+        token.temperature = token.temperature.saturating_add(15);
     }
 }
 
