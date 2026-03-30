@@ -19,38 +19,23 @@
 **Крейты:** `axiom-arbiter` (основной), `axiom-heartbeat`, `axiom-config`.
 **Новых крейтов нет. Новых доменов нет.**
 
-### 13A — Multi-pass (MAYA + Arbiter)
+### ✅ 13A — Multi-pass (MAYA + Arbiter) — завершено
 
-MAYA возвращает confidence вместе с токеном. Arbiter повторяет проход если confidence < порога.
-
-**Файлы:**
-- `axiom-arbiter/src/maya_processor.rs` — добавить `consolidate_with_confidence(results, domain) -> (Token, f32)`, реиспользовав существующую `compute_confidence()`
-- `axiom-arbiter/src/lib.rs` — добавить `route_from_experience_multipass()` с параметрами `max_passes: u8`, `min_coherence: u8`
-- `axiom-config` — добавить `max_passes: u8`, `min_coherence: u8` в Arbiter-секцию конфига
-
-**Поведение:**
-```
-route_from_experience_multipass(pattern, pass=0)
-  → ASHTI(1-8) → MAYA.consolidate_with_confidence()
-  → if confidence < min_coherence && pass < max_passes:
-      enrich pattern (temperature += result.temperature / 2)
-      → retry with pass+1
-  → else: return final result
-```
-
-**Тесты (~10):** pass=1 при высоком coherence, retry при низком, max_passes соблюдается, итоговое качество растёт.
+- `MayaProcessor::consolidate_with_confidence() -> (Token, f32)`
+- `DomainConfig`: `max_passes: u8`, `min_coherence: u8` (вместо `reserved_arbiter`)
+- `Arbiter::route_with_multipass()` — повторный проход при низком confidence
+- `RoutingResult`: поля `confidence` и `passes`
+- `TensionTrace` создаётся при итоговом confidence < порога
+- **14 тестов**
 
 ---
 
-### 13B — TensionTrace + Heartbeat Internal Drive
+### ✅ 13B — TensionTrace + Heartbeat Internal Drive — завершено
 
-При низком coherence в EXPERIENCE(9) создаётся tension след с горячим токеном. Heartbeat его находит и генерирует внутренний импульс.
-
-**Файлы:**
-- `axiom-arbiter/src/experience.rs` — `add_tension_trace(pattern, coherence_score)` и `drain_pending_impulses() -> Vec<Token>`; tension = ExperienceTrace с `type_flags |= TENSION_FLAG`, высоким temperature, отрицательным valence
-- `axiom-heartbeat/src/lib.rs` — добавить `enable_internal_drive: bool` в `HeartbeatConfig`; при пульсе вызывать `drain_pending_impulses()`
-
-**Тесты (~12):** tension создаётся после низкого coherence, горячие следы drain'ятся, холодные остаются, интеграция с Heartbeat.
+- `HeartbeatConfig::enable_internal_drive` (false для weak/disabled, true для medium/powerful)
+- `Arbiter::on_heartbeat_pulse(pulse, enable_internal_drive) -> Vec<Token>`
+  — остужает следы (decay=10/пульс), сливает горячие (threshold=128) в импульсы
+- **12 тестов**
 
 ---
 
@@ -88,11 +73,11 @@ CODEX генерирует impulse если цель не достигнута. 
 
 | Подэтап | Что | Ожид. тестов |
 |---------|-----|-------------|
-| 13A | Multi-pass MAYA | ~10 |
-| 13B | TensionTrace + Heartbeat | ~12 |
+| 13A | Multi-pass MAYA | 14 ✅ |
+| 13B | TensionTrace + Heartbeat | 12 ✅ |
 | 13C | InternalImpulse + Dominance | ~12 |
 | 13D | Goal + Curiosity | ~12 |
-| **Итого** | | **~46 новых (~777 total)** |
+| **Итого** | | **26 готово, ~24 осталось (~783 total)** |
 
 **Порядок:** 13A → 13B → 13C → 13D.
 
