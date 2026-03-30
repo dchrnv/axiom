@@ -35,6 +35,38 @@ pub use reflector::{Reflector, ReflexStats, DomainProfile};
 pub use skillset::{Skill, SkillSet};
 pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
+// ── Cognitive Depth V1.0 — 13C: Internal Impulse ─────────────────────────────
+
+/// Источник внутреннего импульса (Cognitive Depth V1.0 — 13C).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImpulseSource {
+    /// Внешний сигнал от Perceptors
+    External,
+    /// Напряжение — незавершённая или низко-coherent обработка
+    Tension,
+    /// Незавершение — timeout без ответа
+    Incompletion,
+    /// Любопытство — следы near crystallization threshold
+    Curiosity,
+    /// Цель — CODEX не зафиксировал достижение цели
+    Goal,
+}
+
+/// Внутренний импульс — источник + вес + паттерн.
+///
+/// Вес 0.0..1.0 определяет силу импульса относительно внешних сигналов.
+/// Сравнивается с urgency внешнего сигнала (temperature / 255.0) с учётом
+/// `internal_dominance_factor` из DomainConfig.
+#[derive(Debug, Clone)]
+pub struct InternalImpulse {
+    /// Тип источника
+    pub source: ImpulseSource,
+    /// Вес импульса (0.0..=1.0)
+    pub weight: f32,
+    /// Паттерн для повторной обработки
+    pub pattern: Token,
+}
+
 /// Результат маршрутизации токена
 #[derive(Debug, Clone)]
 pub struct RoutingResult {
@@ -577,6 +609,51 @@ impl Arbiter {
 
         // Сливаем горячие следы в импульсы
         self.experience.drain_hot_impulses(TENSION_DRAIN_THRESHOLD)
+    }
+
+    /// Выбрать следующий паттерн для обработки (Cognitive Depth V1.0 — 13C).
+    ///
+    /// Сравнивает внешний сигнал и внутренний импульс с учётом
+    /// `internal_dominance_factor` из конфига домена MAYA.
+    ///
+    /// - `dominance_factor`: 0..255 → 0.0..2.0 (128 = равновесие)
+    ///   - 0   = чисто реактивная (external всегда побеждает)
+    ///   - 128 = равновесие (сравниваются напрямую)
+    ///   - 255 ≈ 2.0 = задумчивая (internal почти всегда побеждает)
+    ///
+    /// Возвращает `(Token, ImpulseSource)` или `None` если оба пустые (idle).
+    pub fn select_next(
+        external: Option<Token>,
+        internal: Option<InternalImpulse>,
+        dominance_factor: u8,
+    ) -> Option<(Token, ImpulseSource)> {
+        let factor = dominance_factor as f32 / 128.0; // 0..255 → 0.0..~2.0
+
+        match (external, internal) {
+            (None, None) => None,
+            (Some(ext), None) => Some((ext, ImpulseSource::External)),
+            (None, Some(imp)) => Some((imp.pattern, imp.source)),
+            (Some(ext), Some(imp)) => {
+                let ext_urgency = ext.temperature as f32 / 255.0;
+                let int_priority = imp.weight * factor;
+                if int_priority > ext_urgency {
+                    Some((imp.pattern, imp.source))
+                } else {
+                    Some((ext, ImpulseSource::External))
+                }
+            }
+        }
+    }
+
+    /// Получить `internal_dominance_factor` из конфига домена MAYA.
+    pub fn internal_dominance_factor(&self) -> u8 {
+        let maya_id = match self.registry.maya {
+            Some(id) => id,
+            None => return 0,
+        };
+        self.domains.get(&maya_id)
+            .map(|d| d.internal_dominance_factor)
+            .unwrap_or(0)
     }
 }
 

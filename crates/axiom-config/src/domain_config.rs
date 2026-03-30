@@ -190,8 +190,11 @@ pub struct DomainConfig {
     pub complexity_score: u8,
     /// Производительность (0..255 → 0.0..1.0)
     pub performance_score: u8,
+    /// Коэффициент доминирования внутренних импульсов (Cognitive Depth V1.0).
+    /// 0..255 → 0.0..2.0 (128 = равновесие, 0 = чисто реактивная, 255 ≈ 2.0 = задумчивая)
+    pub internal_dominance_factor: u8,
     /// Добивка до границы 128 байт
-    pub reserved_meta: [u8; 3],
+    pub reserved_meta: [u8; 2],
 }
 
 // Compile-time size assertion
@@ -254,7 +257,8 @@ impl Default for DomainConfig {
             processing_state: PROCESSING_IDLE,
             complexity_score: 0,
             performance_score: 255,
-            reserved_meta: [0; 3],
+            internal_dominance_factor: 0,
+            reserved_meta: [0; 2],
         }
     }
 }
@@ -329,7 +333,8 @@ impl DomainConfig {
             processing_state: 0,
             complexity_score: 0,
             performance_score: 0,
-            reserved_meta: [0; 3],
+            internal_dominance_factor: 0,
+            reserved_meta: [0; 2],
         }
     }
 
