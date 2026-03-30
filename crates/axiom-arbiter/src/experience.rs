@@ -3,12 +3,8 @@
 //
 // EXPERIENCE module - ассоциативная память Arbiter V1.0
 
-use axiom_core::Token;
+use axiom_core::{Token, TOKEN_FLAG_GOAL};
 use crate::gridhash::{grid_hash, AssociativeIndex};
-
-/// Флаг цели в Token::type_flags (Cognitive Depth V1.0 — 13D).
-/// Дублируется здесь чтобы experience.rs не зависел от lib.rs.
-const TOKEN_FLAG_GOAL: u16 = 0x0001;
 
 /// Нижняя граница "зоны любопытства" как доля от порога кристаллизации.
 /// Следы с weight ∈ [0.8 * threshold, threshold) генерируют Curiosity-импульсы.
