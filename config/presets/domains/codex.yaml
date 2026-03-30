@@ -49,4 +49,5 @@ error_count: 0
 processing_state: 0
 complexity_score: 0
 performance_score: 0
-reserved_meta: [0, 0, 0]
+internal_dominance_factor: 0
+reserved_meta: [0, 0]

@@ -119,7 +119,8 @@ pub struct DomainConfig {
     pub processing_state: u8,   // 1b | IDLE/PROCESSING/FROZEN/CRASHED
     pub complexity_score: u8,   // 1b | Оценка сложности (0..255 -> 0.0..1.0)
     pub performance_score: u8,  // 1b | Производительность (0..255 -> 0.0..1.0)
-    pub reserved_meta: [u8; 3], // 3b | Добивка до границы 128 байт
+    pub internal_dominance_factor: u8, // 1b | Коэффициент Internal Drive (0..255 → 0.0..2.0, 128=равновесие)
+    pub reserved_meta: [u8; 2],          // 2b | Добивка до границы 128 байт
     // Итого: 128 байт. Offset: 128. Без скрытого паддинга.
 }
 
@@ -183,8 +184,9 @@ impl Default for DomainConfig {
             error_count: 0,              // Счетчик ошибок
             processing_state: PROCESSING_IDLE, // Состояние обработки
             complexity_score: 0,          // Оценка сложности (0..255)
-            performance_score: 255,       // Оценка производительности (0..255)
-            reserved_meta: [0, 0, 0],   // Резерв метаданных
+            performance_score: 255,
+            internal_dominance_factor: 0,
+            reserved_meta: [0; 2],
             // Offset: 112 байт
             // Total: 128 байт
         }
@@ -265,7 +267,8 @@ impl DomainConfig {
             processing_state: 0,
             complexity_score: 0,
             performance_score: 0,
-            reserved_meta: [0; 3],
+            internal_dominance_factor: 0,
+            reserved_meta: [0; 2],
         }
     }
 
