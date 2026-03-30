@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-03-30 (Этап 13A + 13B завершены)
+**Обновлено:** 2026-03-30 (Этап 13 завершён — все подэтапы A/B/C/D)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**757 тестов, 0 failures, 0 warnings**
+**785 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -44,7 +44,7 @@ axiom-space:
 | axiom-config | 75 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (inotify hot reload) |
 | axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
-| axiom-arbiter | 108 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-arbiter | 136 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
@@ -52,7 +52,7 @@ axiom-space:
 | axiom-runtime | 109 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters |
 | axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **757** | |
+| **Итого** | **785** | |
 
 ---
 
@@ -74,3 +74,5 @@ axiom-space:
 | 12 | FractalChain + SIMD-физика | ✅ |
 | 13A | Cognitive Depth — Multi-pass + TensionTrace | ✅ |
 | 13B | Cognitive Depth — Heartbeat Internal Drive | ✅ |
+| 13C | Cognitive Depth — InternalImpulse + Dominance | ✅ |
+| 13D | Cognitive Depth — Goal Persistence + Curiosity | ✅ |

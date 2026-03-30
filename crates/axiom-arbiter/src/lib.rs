@@ -35,6 +35,17 @@ pub use reflector::{Reflector, ReflexStats, DomainProfile};
 pub use skillset::{Skill, SkillSet};
 pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
+// ── Cognitive Depth V1.0 — 13D: Goal & Curiosity ─────────────────────────────
+
+/// Флаг в `Token::type_flags`: токен является целью (goal).
+/// CODEX(3) применяет особую физику: повышает mass и temperature для удержания.
+/// Arbiter генерирует Goal-импульсы пока weight < GOAL_ACHIEVED_WEIGHT.
+pub const TOKEN_FLAG_GOAL: u16 = 0x0001;
+
+/// Порог веса следа при котором цель считается достигнутой.
+/// Выше этого значения goal-импульсы не генерируются.
+pub const GOAL_ACHIEVED_WEIGHT: f32 = 0.9;
+
 // ── Cognitive Depth V1.0 — 13C: Internal Impulse ─────────────────────────────
 
 /// Источник внутреннего импульса (Cognitive Depth V1.0 — 13C).
@@ -643,6 +654,45 @@ impl Arbiter {
                 }
             }
         }
+    }
+
+    /// Генерировать Goal-импульсы для незавершённых целей (Cognitive Depth V1.0 — 13D).
+    ///
+    /// Запускается каждые `check_interval` пульсов (при `pulse_number % check_interval == 0`).
+    /// Возвращает `InternalImpulse` для каждого следа с GOAL-флагом и weight < GOAL_ACHIEVED_WEIGHT.
+    ///
+    /// Вес импульса = насколько далеко от достижения: 1.0 = только создана, ~0 = почти достигнута.
+    pub fn generate_goal_impulses(&self, pulse_number: u64, check_interval: u64) -> Vec<InternalImpulse> {
+        if check_interval == 0 || pulse_number % check_interval != 0 {
+            return Vec::new();
+        }
+
+        self.experience
+            .check_goal_traces(GOAL_ACHIEVED_WEIGHT)
+            .into_iter()
+            .map(|(pattern, weight)| InternalImpulse {
+                source: ImpulseSource::Goal,
+                weight,
+                pattern,
+            })
+            .collect()
+    }
+
+    /// Генерировать Curiosity-импульсы для следов near crystallization threshold
+    /// (Cognitive Depth V1.0 — 13D).
+    ///
+    /// `skill_threshold` — порог кристаллизации (тот же что в `SkillSet`).
+    /// Следы в зоне [0.8 * threshold, threshold) порождают импульс с source=Curiosity.
+    pub fn generate_curiosity_impulses(&self, skill_threshold: f32) -> Vec<InternalImpulse> {
+        self.experience
+            .check_curiosity_candidates(skill_threshold)
+            .into_iter()
+            .map(|(pattern, weight)| InternalImpulse {
+                source: ImpulseSource::Curiosity,
+                weight,
+                pattern,
+            })
+            .collect()
     }
 
     /// Получить `internal_dominance_factor` из конфига домена MAYA.

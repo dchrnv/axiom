@@ -56,30 +56,37 @@ pub struct InternalImpulse { pub source: ImpulseSource, pub weight: f32, pub pat
 
 ---
 
-### 13D — Goal Persistence + Curiosity
+### ✅ 13C — InternalImpulse + Internal Dominance — завершено
 
-CODEX генерирует impulse если цель не достигнута. DREAM генерирует impulse для следов near crystallization threshold.
-
-**Файлы:**
-- `axiom-arbiter/src/ashti_processor.rs` — расширить CODEX(3) physics: `type_flags & GOAL_FLAG` + weight > goal_threshold → пометить goal_pending
-- `axiom-arbiter/src/experience.rs` — `check_curiosity_candidates(skill_threshold) -> Vec<Token>`: следы с weight ∈ [0.8·threshold, threshold)
-- `axiom-arbiter/src/lib.rs` — `generate_goal_impulses()` и `generate_curiosity_impulses()`, вызываются из Heartbeat
-
-**Тесты (~12):** цель без достижения → impulse, достигнутая цель → нет impulse, curiosity при near-threshold кластере.
+- `ImpulseSource`: External, Tension, Incompletion, Curiosity, Goal
+- `InternalImpulse`: source, weight, pattern
+- `Arbiter::select_next(external, internal, dominance_factor)` — 0=реактивная, 128=равновесие, 255=задумчивая
+- `DomainConfig::internal_dominance_factor: u8` (reserved_meta → [2])
+- **14 тестов**
 
 ---
 
-### Итого Этап 13
+### ✅ 13D — Goal Persistence + Curiosity — завершено
 
-| Подэтап | Что | Ожид. тестов |
-|---------|-----|-------------|
-| 13A | Multi-pass MAYA | 14 ✅ |
-| 13B | TensionTrace + Heartbeat | 12 ✅ |
-| 13C | InternalImpulse + Dominance | ~12 |
-| 13D | Goal + Curiosity | ~12 |
-| **Итого** | | **26 готово, ~24 осталось (~783 total)** |
+- `TOKEN_FLAG_GOAL: u16 = 0x0001` — флаг цели в type_flags
+- CODEX(3) physics: goal-токен получает +20 mass, +15 temperature
+- `Experience::check_goal_traces(threshold)` — незавершённые цели
+- `Experience::check_curiosity_candidates(threshold)` — следы в зоне [0.8·t, t)
+- `Arbiter::generate_goal_impulses(pulse, interval)` — Goal-импульсы каждые N пульсов
+- `Arbiter::generate_curiosity_impulses(threshold)` — Curiosity-импульсы
+- **14 тестов**
 
-**Порядок:** 13A → 13B → 13C → 13D.
+---
+
+### ✅ Этап 13 — Когнитивная глубина V1.0 — ЗАВЕРШЁН
+
+| Подэтап | Что | Тестов |
+|---------|-----|--------|
+| 13A | Multi-pass MAYA + TensionTrace | 14 ✅ |
+| 13B | Heartbeat Internal Drive | 12 ✅ |
+| 13C | InternalImpulse + Dominance | 14 ✅ |
+| 13D | Goal Persistence + Curiosity | 14 ✅ |
+| **Итого** | | **54 новых, 785 total** |
 
 ---
 
