@@ -64,6 +64,8 @@ pub struct AxiomEngine {
     pub guardian: Guardian,
     /// Накопленные события текущего шага
     pending_events: Vec<Event>,
+    /// Глобальный COM-счётчик: монотонный источник event_id
+    pub com_next_id: u64,
 }
 
 impl AxiomEngine {
@@ -79,6 +81,7 @@ impl AxiomEngine {
             ashti: AshtiCore::new(1),
             guardian: Guardian::new(genome),
             pending_events: Vec::new(),
+            com_next_id: 1,
         })
     }
 
@@ -86,6 +89,14 @@ impl AxiomEngine {
     pub fn new() -> Self {
         Self::try_new(Arc::new(Genome::default_ashti_core()))
             .expect("default_ashti_core genome is always valid")
+    }
+
+    /// Монотонный COM event_id. Вызывать при каждом создании события на уровне Engine.
+    #[inline]
+    pub fn next_event_id(&mut self) -> u64 {
+        let id = self.com_next_id;
+        self.com_next_id += 1;
+        id
     }
 
     /// Число доменов в Engine (всегда 11 — AshtiCore фиксирован)
@@ -130,7 +141,7 @@ impl AxiomEngine {
 
         EngineSnapshot {
             domains,
-            com_next_id: 0,
+            com_next_id: self.com_next_id,
             created_at: horizon,
         }
     }
@@ -170,6 +181,11 @@ impl AxiomEngine {
                     }
                 }
             }
+        }
+
+        // Восстанавливаем COM-счётчик: новые event_id гарантированно > snapshot.com_next_id
+        if snapshot.com_next_id > 0 {
+            engine.com_next_id = snapshot.com_next_id;
         }
 
         engine
@@ -221,7 +237,7 @@ impl AxiomEngine {
             return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
         }
 
-        let event_id = self.ashti.domain_id_at(0).unwrap_or(0) as u64; // используем как base для event_id
+        let event_id = self.next_event_id();
         let token = build_token_from_inject(&p, p.target_domain_id, event_id);
 
         match self.ashti.inject_token(domain_id, token) {

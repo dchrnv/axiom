@@ -97,3 +97,34 @@ fn test_snapshot_roundtrip_token_count() {
     let snap2 = restored.snapshot();
     assert_eq!(snap1.total_token_count(), snap2.total_token_count());
 }
+
+// ============================================================
+// com_next_id — монотонность после restore
+// ============================================================
+
+#[test]
+fn test_com_next_id_saved_in_snapshot() {
+    let mut engine = AxiomEngine::new();
+    // Инжектируем токены — com_next_id инкрементируется
+    inject_into(&mut engine, LOGIC_ID);
+    inject_into(&mut engine, LOGIC_ID);
+
+    let snap = engine.snapshot();
+    // com_next_id должен быть больше начального (1)
+    assert!(snap.com_next_id > 1, "com_next_id должен сохраняться в snapshot");
+}
+
+#[test]
+fn test_com_next_id_restored_monotonically() {
+    let mut engine = AxiomEngine::new();
+    inject_into(&mut engine, LOGIC_ID);
+    inject_into(&mut engine, LOGIC_ID);
+
+    let snap = engine.snapshot();
+    let saved_com = snap.com_next_id;
+
+    // После restore com_next_id не сбрасывается в 1
+    let restored = AxiomEngine::restore_from(&snap);
+    assert_eq!(restored.com_next_id, saved_com,
+        "com_next_id после restore должен совпадать со snapshot");
+}
