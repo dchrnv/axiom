@@ -177,6 +177,8 @@ pub const EVENT_REVERSIBLE: u8 = 1;
 pub const EVENT_CRITICAL: u8 = 2;
 /// Флаг пакетного события
 pub const EVENT_BATCHED: u8 = 4;
+/// Флаг внутреннего события (от Internal Drive — Cognitive Depth)
+pub const EVENT_INTERNAL: u8 = 8;
 
 /// Event — событие в причинном порядке
 ///
@@ -222,9 +224,25 @@ pub struct Event {
     /// Номер пульса (0 = не привязан к пульсу)
     pub pulse_id: u64,
 
-    // --- РЕЗЕРВ [16 байт] ---
-    /// Резерв для будущих расширений
-    pub _reserved: [u8; 16],
+    // --- РАСШИРЕНИЕ [16 байт] (бывший _reserved) ---
+    /// Домен-источник события (для GUARDIAN enforce_protocol).
+    /// По умолчанию = domain_id. Отличается когда PROBE(5) инициирует событие в EXECUTION(1).
+    pub source_domain: u16,
+
+    /// Явное выравнивание перед u32
+    pub _pad: u16,
+
+    /// ID снапшота на момент создания события.
+    /// Causal Horizon: события с snapshot_event_id < текущего снапшота безопасны для архивации.
+    pub snapshot_event_id: u32,
+
+    /// Inline payload (8 байт структурированных данных).
+    /// Интерпретация зависит от event_type:
+    /// - ShellExec:       [command_index: u16 LE, _: 6]
+    /// - InternalImpulse: [impulse_type: u8, intensity: u8, source_trace: u32 LE, _: 2]
+    /// - TokenMove:       [dx: i16 LE, dy: i16 LE, dz: i16 LE, _: 2]
+    /// - Остальные:       [0u8; 8]
+    pub payload: [u8; 8],
 }
 
 // Проверка размера на этапе компиляции
@@ -267,8 +285,11 @@ impl Event {
             payload_size: 0,
             priority: priority as u8,
             flags: 0,
-            pulse_id: 0, // 0 означает "не привязано к пульсу"
-            _reserved: [0; 16],
+            pulse_id: 0,
+            source_domain: domain_id,
+            _pad: 0,
+            snapshot_event_id: 0,
+            payload: [0; 8],
         }
     }
 
@@ -304,7 +325,10 @@ impl Event {
             priority: priority as u8,
             flags: 0,
             pulse_id,
-            _reserved: [0; 16],
+            source_domain: domain_id,
+            _pad: 0,
+            snapshot_event_id: 0,
+            payload: [0; 8],
         }
     }
 
@@ -330,11 +354,12 @@ impl Event {
 
     /// Проверяет валидность типа события
     fn is_valid_event_type(&self) -> bool {
-        // Проверяем, что можем конвертировать u16 → EventType без паники
+        // Unknown (0xFFFF) намеренно исключён — события с Unknown-типом не проходят validate()
         matches!(
             self.event_type,
             0x0001..=0x000C | 0x0010..=0x0012 | 0x1001..=0x1008 |
-            0x2001..=0x2003 | 0x3001..=0x3005 | 0xF001..=0xF003
+            0x2001..=0x2003 | 0x3001..=0x3005 |
+            0xE001..=0xE002 | 0xF001..=0xF003
         )
     }
 
@@ -354,6 +379,12 @@ impl Event {
     #[inline]
     pub fn is_batched(&self) -> bool {
         (self.flags & EVENT_BATCHED) != 0
+    }
+
+    /// Проверяет, является ли событие внутренним (от Internal Drive)
+    #[inline]
+    pub fn is_internal(&self) -> bool {
+        (self.flags & EVENT_INTERNAL) != 0
     }
 
     /// Получает тип события как enum

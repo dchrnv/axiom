@@ -79,16 +79,13 @@ impl ShellEffector {
         let _ = Command::new("/bin/sh").arg("-c").arg(cmd).status();
     }
 
-    /// Извлечь команду из payload события (UTF-8 строка, trimmed).
-    fn extract_command(event: &Event) -> Option<String> {
-        // payload хранится в первых 48 байтах event (но Event не имеет raw payload)
-        // Используем token_id как косвенный ключ, команда кодируется в виде строки
-        // через event.payload_hash как индекс — либо в будущем через отдельный payload
-        // Для текущей архитектуры: команда передаётся через имя события в payload_hash.
-        // Упрощённо: используем event_id mod whitelist length для MVP
-        // Реальная передача — через UclCommand.payload байты (будущий этап).
-        let _ = event;
-        None // payload в Event не доступен напрямую — вернуть None для текущего MVP
+    /// Извлечь command_index из payload события.
+    ///
+    /// Первые 2 байта payload (LE u16) содержат индекс команды в side-channel таблице Gateway.
+    /// Возвращает None если индекс равен 0 (не задан) или тип события не ShellExec.
+    fn extract_command_index(event: &Event) -> Option<u16> {
+        let idx = u16::from_le_bytes([event.payload[0], event.payload[1]]);
+        if idx > 0 { Some(idx) } else { None }
     }
 }
 
@@ -100,10 +97,10 @@ impl Effector for ShellEffector {
         if event.event_type != SHELL_EXEC_EVENT_TYPE {
             return;
         }
-        // В текущей архитектуре Event не несёт строкового payload.
-        // ShellEffector работает через явный вызов execute_command() в тестах.
-        // В production payload передаётся через UclCommand → event mapping (следующий этап).
-        let _ = Self::extract_command(event);
+        // command_index — индекс в side-channel таблице Gateway.
+        // Gateway хранит маппинг command_index → String, ядро не знает про строки.
+        // Здесь ShellEffector получает индекс; реальный вызов — через execute_command().
+        let _command_index = Self::extract_command_index(event);
     }
 
     fn emit_result(&mut self, _result: &UclResult) {
