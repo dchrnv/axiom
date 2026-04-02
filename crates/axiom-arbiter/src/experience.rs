@@ -170,7 +170,7 @@ impl Experience {
             // Evict lowest weight trace — удаляем из индекса ДО удаления из Vec
             if let Some(min_idx) = self.traces.iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.weight.partial_cmp(&b.weight).unwrap())
+                .min_by(|(_, a), (_, b)| a.weight.total_cmp(&b.weight))
                 .map(|(i, _)| i)
             {
                 let evicted_id = self.traces[min_idx].created_at;
@@ -313,7 +313,7 @@ impl Experience {
     pub fn strengthen_by_hash(&mut self, pattern_hash: u64, delta: f32) -> bool {
         if let Some(trace) = self.traces.iter_mut()
             .filter(|t| (t.pattern_hash ^ pattern_hash).count_ones() <= 8)
-            .max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap())
+            .max_by(|a, b| a.weight.total_cmp(&b.weight))
         {
             trace.weight = (trace.weight + delta).min(1.0);
             trace.success_count = trace.success_count.saturating_add(1);

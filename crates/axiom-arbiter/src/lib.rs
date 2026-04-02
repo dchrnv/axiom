@@ -275,8 +275,7 @@ impl Arbiter {
 
         // 2. Fast path (conditional) - рефлекс
         let reflex = if resonance.level == ResonanceLevel::Reflex {
-            let reflex_token = resonance.trace.as_ref().unwrap().pattern;
-            Some(reflex_token)
+            resonance.trace.as_ref().map(|t| t.pattern)
         } else {
             None
         };
@@ -383,7 +382,7 @@ impl Arbiter {
         let event_id = self.com.next_event_id(9);
         let resonance = self.experience.resonance_search(&token);
         let reflex = if resonance.level == ResonanceLevel::Reflex {
-            Some(resonance.trace.as_ref().unwrap().pattern)
+            resonance.trace.as_ref().map(|t| t.pattern)
         } else {
             None
         };
