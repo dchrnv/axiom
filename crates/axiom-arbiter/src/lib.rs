@@ -44,6 +44,16 @@ pub use axiom_core::TOKEN_FLAG_GOAL;
 /// Выше этого значения goal-импульсы не генерируются.
 pub const GOAL_ACHIEVED_WEIGHT: f32 = 0.9;
 
+/// Допуск по temperature при сравнении рефлекса с результатом ASHTI.
+/// Токены считаются схожими если |reflex.temperature - ashti.temperature| < порог.
+pub const TOKEN_COMPARE_TEMP_TOLERANCE: i16 = 10;
+
+/// Допуск по mass при сравнении рефлекса с результатом ASHTI.
+pub const TOKEN_COMPARE_MASS_TOLERANCE: i16 = 5;
+
+/// Допуск по valence при сравнении рефлекса с результатом ASHTI.
+pub const TOKEN_COMPARE_VALENCE_TOLERANCE: i16 = 2;
+
 // ── Cognitive Depth V1.0 — 13C: Internal Impulse ─────────────────────────────
 
 /// Источник внутреннего импульса (Cognitive Depth V1.0 — 13C).
@@ -532,9 +542,9 @@ impl Arbiter {
     /// Сравнение двух токенов на схожесть (публично для тестов)
     pub fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
         // Проверяем ключевые свойства
-        let temp_match = (reflex.temperature as i16 - ashti.temperature as i16).abs() < 10;
-        let mass_match = (reflex.mass as i16 - ashti.mass as i16).abs() < 5;
-        let valence_match = (reflex.valence - ashti.valence).abs() < 2;
+        let temp_match    = (reflex.temperature as i16 - ashti.temperature as i16).abs() < TOKEN_COMPARE_TEMP_TOLERANCE;
+        let mass_match    = (reflex.mass as i16 - ashti.mass as i16).abs()           < TOKEN_COMPARE_MASS_TOLERANCE;
+        let valence_match = (reflex.valence - ashti.valence).abs()                   < TOKEN_COMPARE_VALENCE_TOLERANCE as i8;
 
         // Позиция: Евклидово расстояние
         let pos_dist = self.euclidean_distance(&reflex.position, &ashti.position);
