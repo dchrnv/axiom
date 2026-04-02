@@ -284,20 +284,18 @@ impl ConfigLoader {
             if let Some(properties) = schema_obj.get("properties") {
                 if let Some(props_obj) = properties.as_mapping() {
                     for (key, schema_value) in props_obj {
+                        let Some(key_str) = key.as_str() else { continue; };
                         if let Some(config_value) = config_obj.get(key) {
-                            self.validate_field(
-                                key.as_str().unwrap(),
-                                config_value,
-                                schema_value,
-                            )?;
+                            self.validate_field(key_str, config_value, schema_value)?;
                         }
                     }
                 }
             } else {
                 // Прямая валидация для плоских схем
                 for (key, schema_value) in schema_obj {
+                    let Some(key_str) = key.as_str() else { continue; };
                     if let Some(config_value) = config_obj.get(key) {
-                        self.validate_field(key.as_str().unwrap(), config_value, schema_value)?;
+                        self.validate_field(key_str, config_value, schema_value)?;
                     }
                 }
             }
