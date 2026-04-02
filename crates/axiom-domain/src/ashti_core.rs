@@ -278,4 +278,17 @@ impl AshtiCore {
         let sutra_id = self.level_id as u32 * 100;
         self.inject_token(sutra_id, token)
     }
+
+    /// Обработать пульс Heartbeat в Arbiter (Cognitive Depth — tension traces).
+    ///
+    /// Охлаждает следы напряжения, возвращает список внутренних импульсов
+    /// готовых к обработке. `enable_internal_drive = false` — система реактивна.
+    pub fn arbiter_heartbeat_pulse(&mut self, pulse_number: u64, enable_internal_drive: bool) -> Vec<axiom_core::Token> {
+        self.arbiter.on_heartbeat_pulse(pulse_number, enable_internal_drive)
+    }
+
+    /// Сгенерировать goal-импульсы (Cognitive Depth — цели из CODEX).
+    pub fn generate_goal_impulses(&self, pulse_number: u64, check_interval: u64) -> Vec<axiom_arbiter::InternalImpulse> {
+        self.arbiter.generate_goal_impulses(pulse_number, check_interval)
+    }
 }

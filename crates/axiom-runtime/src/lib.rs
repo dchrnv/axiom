@@ -25,7 +25,7 @@ pub mod gateway;
 pub mod channel;
 mod orchestrator;
 
-pub use engine::{AxiomEngine, AxiomError};
+pub use engine::{AxiomEngine, AxiomError, TickSchedule};
 pub use guardian::{
     Guardian, ReflexDecision, VetoReason,
     InhibitAction, InhibitReason,

@@ -51,6 +51,42 @@ pub mod error_codes {
     pub const UNKNOWN_OPCODE: u16 = 9001;
 }
 
+/// Расписание периодических задач TickForward.
+///
+/// Каждое поле — интервал в тиках (0 = задача отключена).
+/// Задача выполняется когда `tick_count % interval == 0`.
+#[derive(Debug, Clone, Copy)]
+pub struct TickSchedule {
+    /// Адаптация порогов Guardian (default: 50)
+    pub adaptation_interval:    u32,
+    /// GC следов Experience по causal horizon (default: 500)
+    pub horizon_gc_interval:    u32,
+    /// Snapshot + pruning (default: 5000)
+    pub snapshot_interval:      u32,
+    /// DREAM-предложения CODEX (default: 100)
+    pub dream_interval:         u32,
+    /// Проверка TensionTrace (Cognitive Depth) (default: 10)
+    pub tension_check_interval: u32,
+    /// Проверка GoalPersistence (Cognitive Depth) (default: 10)
+    pub goal_check_interval:    u32,
+    /// Shell reconcile (default: 200)
+    pub reconcile_interval:     u32,
+}
+
+impl Default for TickSchedule {
+    fn default() -> Self {
+        Self {
+            adaptation_interval:    50,
+            horizon_gc_interval:    500,
+            snapshot_interval:      5000,
+            dream_interval:         100,
+            tension_check_interval: 10,
+            goal_check_interval:    10,
+            reconcile_interval:     200,
+        }
+    }
+}
+
 /// AxiomEngine — центральный оркестратор всех компонентов AXIOM.
 ///
 /// Содержит один уровень AshtiCore (11 доменов + Arbiter + Experience)
@@ -66,6 +102,10 @@ pub struct AxiomEngine {
     pending_events: Vec<Event>,
     /// Глобальный COM-счётчик: монотонный источник event_id
     pub com_next_id: u64,
+    /// Монотонный счётчик тиков (TickForward)
+    pub tick_count: u64,
+    /// Расписание периодических задач
+    pub tick_schedule: TickSchedule,
 }
 
 impl AxiomEngine {
@@ -82,6 +122,8 @@ impl AxiomEngine {
             guardian: Guardian::new(genome),
             pending_events: Vec::new(),
             com_next_id: 1,
+            tick_count: 0,
+            tick_schedule: TickSchedule::default(),
         })
     }
 
@@ -247,9 +289,52 @@ impl AxiomEngine {
     }
 
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
+        self.tick_count += 1;
+        let t = self.tick_count;
+        let s = self.tick_schedule;
+
+        // Hot path: физика всех 11 доменов каждый тик
         let events = self.ashti.tick();
         let count = events.len() as u16;
         self.pending_events.extend(events);
+
+        // Warm path: tension traces (Cognitive Depth)
+        if s.tension_check_interval > 0 && t % s.tension_check_interval as u64 == 0 {
+            let impulses = self.ashti.arbiter_heartbeat_pulse(t, true);
+            for token in impulses {
+                let _ = self.ashti.inject_token(token.domain_id as u32, token);
+            }
+        }
+
+        // Warm path: goal impulses (Cognitive Depth)
+        if s.goal_check_interval > 0 && t % s.goal_check_interval as u64 == 0 {
+            let goals = self.ashti.generate_goal_impulses(t, s.goal_check_interval as u64);
+            for impulse in goals {
+                let token = impulse.pattern;
+                let _ = self.ashti.inject_token(token.domain_id as u32, token);
+            }
+        }
+
+        // Warm path: DREAM
+        if s.dream_interval > 0 && t % s.dream_interval as u64 == 0 {
+            let _ = self.dream_propose();
+        }
+
+        // Cold path: адаптация порогов
+        if s.adaptation_interval > 0 && t % s.adaptation_interval as u64 == 0 {
+            let _ = self.run_adaptation();
+        }
+
+        // Cold path: horizon GC
+        if s.horizon_gc_interval > 0 && t % s.horizon_gc_interval as u64 == 0 {
+            let _ = self.run_horizon_gc();
+        }
+
+        // Cold path: snapshot + prune
+        if s.snapshot_interval > 0 && t % s.snapshot_interval as u64 == 0 {
+            let _ = self.snapshot_and_prune();
+        }
+
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
     }
 
