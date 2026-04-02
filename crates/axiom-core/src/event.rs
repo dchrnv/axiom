@@ -101,13 +101,16 @@ pub enum EventType {
     /// Ответ MAYA — внешний вывод системы
     MayaOutput = 0xE002,
 
-    // Системные события (0xF000-0xFFFF)
+    // Системные события (0xF000-0xFFFE)
     /// Создание контрольной точки системы
     SystemCheckpoint = 0xF001,
     /// Откат системы к контрольной точке
     SystemRollback = 0xF002,
     /// Остановка системы
     SystemShutdown = 0xF003,
+
+    /// Неизвестный тип — безопасная замена panic при десериализации
+    Unknown = 0xFFFF,
 }
 
 impl From<u16> for EventType {
@@ -149,7 +152,7 @@ impl From<u16> for EventType {
             0xF001 => EventType::SystemCheckpoint,
             0xF002 => EventType::SystemRollback,
             0xF003 => EventType::SystemShutdown,
-            _ => panic!("Unknown event type: {:#06x}", v),
+            _ => EventType::Unknown,
         }
     }
 }
@@ -411,5 +414,26 @@ impl Snapshot {
             event_count,
             _reserved: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_event_type_does_not_panic() {
+        // Любой неизвестный код → Unknown, не паника
+        assert_eq!(EventType::from(0xBEEF), EventType::Unknown);
+        assert_eq!(EventType::from(0x0000), EventType::Unknown);
+        assert_eq!(EventType::from(0x9999), EventType::Unknown);
+    }
+
+    #[test]
+    fn known_event_types_parse_correctly() {
+        assert_eq!(EventType::from(0x0001), EventType::TokenCreate);
+        assert_eq!(EventType::from(0xE001), EventType::ShellExec);
+        assert_eq!(EventType::from(0xF001), EventType::SystemCheckpoint);
+        assert_eq!(EventType::from(0xFFFF), EventType::Unknown);
     }
 }

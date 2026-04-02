@@ -115,9 +115,11 @@ fn test_event_type_conversion() {
 }
 
 #[test]
-#[should_panic(expected = "Unknown event type")]
 fn test_invalid_event_type_conversion() {
-    let _ = EventType::from(0xAAAA);
+    // Unknown type → EventType::Unknown (не паника)
+    assert_eq!(EventType::from(0xAAAA), EventType::Unknown);
+    assert_eq!(EventType::from(0x0000), EventType::Unknown);
+    assert_eq!(EventType::from(0xFFFF), EventType::Unknown);
 }
 
 #[test]
