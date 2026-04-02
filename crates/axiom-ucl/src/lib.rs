@@ -255,7 +255,11 @@ impl UclBuilder {
         let payload = SpawnDomainPayload {
             parent_domain_id: 0,
             factory_preset: preset,
-            structural_role: preset, // Временно, потом будет маппинг
+            // ВНИМАНИЕ: factory_preset и StructuralRole имеют разные числовые значения.
+            // UCL: 0=Void, 1=Sutra. StructuralRole enum: Sutra=0, Void=8.
+            // structural_role в payload сейчас не используется движком при SpawnDomain.
+            // Маппинг нужен когда SpawnDomain начнёт создавать реальные домены через DomainConfig.
+            structural_role: preset,
             initial_energy: 100.0,
             seed: target_id,
             reserved: [0; 36],
