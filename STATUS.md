@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-02 (Cleanup Plan V1.1 — все 6 фаз завершены)
+**Обновлено:** 2026-04-02 (DEFERRED цикл — D-04..D-09 закрыты)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**797 тестов, 0 failures, 0 warnings**
+**813 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -49,10 +49,10 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 5 | UCL commands |
 | axiom-domain | 112 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 133 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule |
+| axiom-runtime | 136 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule |
 | axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **797** | |
+| **Итого** | **813** | |
 
 ---
 
@@ -77,3 +77,4 @@ axiom-space:
 | 13C | Cognitive Depth — InternalImpulse + Dominance | ✅ |
 | 13D | Cognitive Depth — Goal Persistence + Curiosity | ✅ |
 | Cleanup | Plan_Cleanup_COM_V1_1 — 6 фаз (unwrap, Unknown, Event fields, COM, constants, TickSchedule) | ✅ |
+| DEFERRED | D-06..D-09: tick_count snapshot, UCL no-op, reconcile_all, tolerances, StructuralRole маппинг | ✅ |
