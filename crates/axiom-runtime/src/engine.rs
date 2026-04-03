@@ -342,6 +342,11 @@ impl AxiomEngine {
             let _ = self.run_horizon_gc();
         }
 
+        // Cold path: reconcile семантического пространства
+        if s.reconcile_interval > 0 && t % s.reconcile_interval as u64 == 0 {
+            let _ = self.ashti.reconcile_all();
+        }
+
         // Cold path: snapshot + prune
         if s.snapshot_interval > 0 && t % s.snapshot_interval as u64 == 0 {
             let _ = self.snapshot_and_prune();

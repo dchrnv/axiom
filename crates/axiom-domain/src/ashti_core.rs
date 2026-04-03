@@ -291,4 +291,49 @@ impl AshtiCore {
     pub fn generate_goal_impulses(&self, pulse_number: u64, check_interval: u64) -> Vec<axiom_arbiter::InternalImpulse> {
         self.arbiter.generate_goal_impulses(pulse_number, check_interval)
     }
+
+    /// Согласование семантического пространства всех 11 доменов.
+    ///
+    /// Выполняет три задачи для каждого домена:
+    /// 1. **Spatial grid rebuild** — перестраивает пространственный индекс если
+    ///    `events_since_rebuild >= rebuild_frequency` (DomainConfig).
+    /// 2. **Prune orphaned connections** — удаляет связи, чьи `source_id`/`target_id`
+    ///    ссылаются на несуществующие токены (семантический инвариант).
+    /// 3. **Fix domain_id** — исправляет `token.domain_id` если токен оказался
+    ///    в домене с другим ID (инвариант принадлежности).
+    ///
+    /// Возвращает число удалённых осиротевших связей по всем доменам.
+    pub fn reconcile_all(&mut self) -> usize {
+        let mut pruned_total = 0;
+
+        for i in 0..11 {
+            let domain_id = self.domains[i].config.domain_id;
+
+            // 1. Spatial grid rebuild — клонируем токены чтобы избежать двойного заимствования
+            if self.domains[i].should_rebuild_spatial_grid() {
+                let tokens = self.states[i].tokens.clone();
+                self.domains[i].rebuild_spatial_grid(&tokens);
+            }
+
+            // 2. Удалить осиротевшие связи
+            let live: std::collections::HashSet<u32> = self.states[i].tokens
+                .iter()
+                .map(|t| t.sutra_id)
+                .collect();
+            let before = self.states[i].connections.len();
+            self.states[i].connections.retain(|c| {
+                live.contains(&c.source_id) && live.contains(&c.target_id)
+            });
+            pruned_total += before - self.states[i].connections.len();
+
+            // 3. Исправить domain_id токенов
+            for token in &mut self.states[i].tokens {
+                if token.domain_id != domain_id {
+                    token.domain_id = domain_id;
+                }
+            }
+        }
+
+        pruned_total
+    }
 }
