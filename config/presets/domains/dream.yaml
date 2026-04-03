@@ -1,6 +1,9 @@
 # DREAM (7) — Фоновая оптимизация и галлюцинация
 # Физика: Полный хаос. Нулевая гравитация, высокая температура.
-reserved_id: 0
+token_compare_temp_tolerance: 10
+token_compare_mass_tolerance: 5
+token_compare_valence_tolerance: 2
+_reserved_id_tail: 0
 domain_id: 107
 parent_domain_id: 100
 domain_type: 0
