@@ -253,6 +253,16 @@ impl AxiomEngine {
             OpCode::RestoreState   => self.handle_restore(cmd),
             OpCode::CoreReset      => self.handle_reset(cmd),
             OpCode::CoreShutdown   => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
+            OpCode::LockMembrane
+            | OpCode::ReshapeDomain
+            | OpCode::ApplyForce
+            | OpCode::AnnihilateToken
+            | OpCode::BondTokens
+            | OpCode::SplitToken
+            | OpCode::ChangeTemperature
+            | OpCode::ApplyGravity
+            | OpCode::PhaseTransition => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
         }
     }

@@ -234,6 +234,31 @@ fn test_guardian_check_required_constant() {
 }
 
 // ============================================================
+// Нереализованные UCL опкоды (D-07) — no-op, не ошибка
+// ============================================================
+
+#[test]
+fn test_unimplemented_opcodes_return_success() {
+    let mut engine = AxiomEngine::new();
+    let unimplemented = [
+        OpCode::LockMembrane,
+        OpCode::ReshapeDomain,
+        OpCode::ApplyForce,
+        OpCode::AnnihilateToken,
+        OpCode::BondTokens,
+        OpCode::SplitToken,
+        OpCode::ChangeTemperature,
+        OpCode::ApplyGravity,
+        OpCode::PhaseTransition,
+    ];
+    for opcode in unimplemented {
+        let result = engine.process_command(&make_cmd(opcode, 0));
+        assert!(result.is_success(), "{opcode:?} должен возвращать Success, не UNKNOWN_OPCODE");
+        assert_eq!(result.events_generated, 0);
+    }
+}
+
+// ============================================================
 // Неизвестный opcode
 // ============================================================
 
