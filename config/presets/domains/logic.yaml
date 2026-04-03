@@ -1,6 +1,9 @@
 # LOGIC (6) — Чистое вычисление
 # Физика: Идеальная рабочая среда. Смыслы сталкиваются, вычисляются, летят дальше.
-reserved_id: 0
+token_compare_temp_tolerance: 10
+token_compare_mass_tolerance: 5
+token_compare_valence_tolerance: 2
+_reserved_id_tail: 0
 domain_id: 106
 parent_domain_id: 100
 domain_type: 0

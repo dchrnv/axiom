@@ -153,3 +153,59 @@ fn test_cleanup_old_comparisons() {
     assert_eq!(arbiter.pending_comparisons.len(), 2);  // 500 and 1000 should remain
     assert!(!arbiter.pending_comparisons.contains_key(&100));
 }
+
+// ─── compare_tokens: per-domain tolerances (D-04+D-05) ───────────────────────
+
+#[test]
+fn test_compare_tokens_regression_default_tolerance() {
+    // Без конфига домена → fallback на модульные константы → поведение не изменилось
+    let domains = HashMap::new();
+    let arbiter = Arbiter::new(domains, COM::new());
+
+    let t1 = create_test_token(1, 100);
+    let mut t2 = create_test_token(1, 108); // diff=8 < temp_tol=10
+    t2.mass = 103;                           // diff=3 < mass_tol=5
+    assert!(arbiter.compare_tokens(&t1, &t2), "должен совпадать при дефолтных порогах");
+}
+
+#[test]
+fn test_compare_tokens_strict_tolerance_from_config() {
+    // Домен с tolerance=0 → только точное совпадение по temp/mass
+    let mut cfg = axiom_config::DomainConfig::default();
+    cfg.domain_id = 1;
+    cfg.token_compare_temp_tolerance    = 0;
+    cfg.token_compare_mass_tolerance    = 0;
+    cfg.token_compare_valence_tolerance = 0;
+
+    let mut domains = HashMap::new();
+    domains.insert(1u32, cfg);
+    let arbiter = Arbiter::new(domains, COM::new());
+
+    let t1 = create_test_token(1, 100);
+    let mut t2 = create_test_token(2, 101); // diff=1, но tolerance=0
+    t2.domain_id = 1;
+    // При tolerance=0 temp не совпадает → меньше 3 match → false
+    assert!(!arbiter.compare_tokens(&t2, &t1),
+        "tolerance=0: любое отклонение temperature не засчитывается");
+}
+
+#[test]
+fn test_compare_tokens_wide_tolerance_from_config() {
+    // Домен с очень широким tolerance → большие различия всё равно совпадают
+    let mut cfg = axiom_config::DomainConfig::default();
+    cfg.domain_id = 1;
+    cfg.token_compare_temp_tolerance    = 100;
+    cfg.token_compare_mass_tolerance    = 100;
+    cfg.token_compare_valence_tolerance = 100;
+
+    let mut domains = HashMap::new();
+    domains.insert(1u32, cfg);
+    let arbiter = Arbiter::new(domains, COM::new());
+
+    let t1 = create_test_token(1, 50);
+    let mut t2 = create_test_token(2, 100); // diff=50 < tol=100
+    t2.domain_id = 1;
+    t2.mass = 150;                           // diff=50 < tol=100
+    assert!(arbiter.compare_tokens(&t2, &t1),
+        "широкий tolerance: большие различия должны засчитываться");
+}

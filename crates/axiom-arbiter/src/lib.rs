@@ -541,10 +541,16 @@ impl Arbiter {
 
     /// Сравнение двух токенов на схожесть (публично для тестов)
     pub fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
+        // Берём пороги из конфига домена-источника рефлекса, fallback → модульные константы
+        let cfg = self.domains.get(&(reflex.domain_id as u32));
+        let temp_tol    = cfg.map(|c| c.token_compare_temp_tolerance)   .unwrap_or(TOKEN_COMPARE_TEMP_TOLERANCE);
+        let mass_tol    = cfg.map(|c| c.token_compare_mass_tolerance)   .unwrap_or(TOKEN_COMPARE_MASS_TOLERANCE);
+        let valence_tol = cfg.map(|c| c.token_compare_valence_tolerance).unwrap_or(TOKEN_COMPARE_VALENCE_TOLERANCE);
+
         // Проверяем ключевые свойства
-        let temp_match    = (reflex.temperature as i16 - ashti.temperature as i16).abs() < TOKEN_COMPARE_TEMP_TOLERANCE;
-        let mass_match    = (reflex.mass as i16 - ashti.mass as i16).abs()           < TOKEN_COMPARE_MASS_TOLERANCE;
-        let valence_match = (reflex.valence - ashti.valence).abs()                   < TOKEN_COMPARE_VALENCE_TOLERANCE as i8;
+        let temp_match    = (reflex.temperature as i16 - ashti.temperature as i16).abs() < temp_tol;
+        let mass_match    = (reflex.mass as i16 - ashti.mass as i16).abs()           < mass_tol;
+        let valence_match = (reflex.valence - ashti.valence).abs()                   < valence_tol as i8;
 
         // Позиция: Евклидово расстояние
         let pos_dist = self.euclidean_distance(&reflex.position, &ashti.position);

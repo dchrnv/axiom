@@ -89,8 +89,14 @@ pub enum DomainType {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct DomainConfig {
     // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-    /// Явный резерв для будущих расширений
-    pub reserved_id: u64,
+    /// Допуск по temperature при сравнении рефлекса с результатом ASHTI (default: 10)
+    pub token_compare_temp_tolerance:    i16,
+    /// Допуск по mass при сравнении рефлекса с результатом ASHTI (default: 5)
+    pub token_compare_mass_tolerance:    i16,
+    /// Допуск по valence при сравнении рефлекса с результатом ASHTI (default: 2)
+    pub token_compare_valence_tolerance: i16,
+    /// Резерв (бывший reserved_id, остаток)
+    pub _reserved_id_tail: u16,
     /// Уникальный ID Домена
     pub domain_id: u16,
     /// Родительский Домен
@@ -204,7 +210,10 @@ impl Default for DomainConfig {
     fn default() -> Self {
         Self {
             // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-            reserved_id: 0,
+            token_compare_temp_tolerance:    10,
+            token_compare_mass_tolerance:    5,
+            token_compare_valence_tolerance: 2,
+            _reserved_id_tail: 0,
             domain_id: 1,
             parent_domain_id: 0,
             domain_type: DomainType::Logic as u8,
@@ -280,7 +289,10 @@ impl DomainConfig {
     pub fn default_void() -> Self {
         Self {
             // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-            reserved_id: 0,
+            token_compare_temp_tolerance:    10,
+            token_compare_mass_tolerance:    5,
+            token_compare_valence_tolerance: 2,
+            _reserved_id_tail: 0,
             domain_id: 0,
             parent_domain_id: 0,
             domain_type: 0,
