@@ -249,17 +249,29 @@ fn generate_command_id() -> u64 {
 /// Билдер для удобного создания команд
 pub struct UclBuilder;
 
+/// Преобразовать UCL factory_preset в числовое значение StructuralRole.
+///
+/// UCL и StructuralRole enum используют разные числовые коды для одних ролей:
+/// | Роль  | UCL preset | StructuralRole |
+/// |-------|-----------|----------------|
+/// | Void  | 0         | 8              |
+/// | Sutra | 1         | 0              |
+/// | Остальные | n    | n              |
+pub fn ucl_preset_to_structural_role(preset: u8) -> u8 {
+    match preset {
+        0 => 8, // Void
+        1 => 0, // Sutra
+        n => n, // Остальные совпадают
+    }
+}
+
 impl UclBuilder {
     /// Создать команду SpawnDomain
     pub fn spawn_domain(target_id: u32, preset: u8) -> UclCommand {
         let payload = SpawnDomainPayload {
             parent_domain_id: 0,
             factory_preset: preset,
-            // ВНИМАНИЕ: factory_preset и StructuralRole имеют разные числовые значения.
-            // UCL: 0=Void, 1=Sutra. StructuralRole enum: Sutra=0, Void=8.
-            // structural_role в payload сейчас не используется движком при SpawnDomain.
-            // Маппинг нужен когда SpawnDomain начнёт создавать реальные домены через DomainConfig.
-            structural_role: preset,
+            structural_role: ucl_preset_to_structural_role(preset),
             initial_energy: 100.0,
             seed: target_id,
             reserved: [0; 36],

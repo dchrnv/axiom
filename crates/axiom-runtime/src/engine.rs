@@ -13,7 +13,7 @@ use axiom_core::{Token, Event};
 use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
-use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload};
+use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, ucl_preset_to_structural_role};
 use crate::guardian::{Guardian, RoleStats};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
@@ -558,11 +558,15 @@ fn read_f32_le(bytes: &[u8], offset: usize) -> f32 {
 }
 
 /// SpawnDomainPayload из raw payload bytes
+///
+/// `structural_role` нормализуется через маппинг UCL preset → StructuralRole enum,
+/// чтобы числовые значения совпадали с `StructuralRole` (Sutra=0, Void=8).
 fn parse_spawn_domain_payload(payload: &[u8; 48]) -> SpawnDomainPayload {
+    let factory_preset = payload[2];
     SpawnDomainPayload {
         parent_domain_id: read_u16_le(payload, 0),
-        factory_preset: payload[2],
-        structural_role: payload[3],
+        factory_preset,
+        structural_role: ucl_preset_to_structural_role(factory_preset),
         initial_energy: read_f32_le(payload, 4),
         seed: u32::from_le_bytes([payload[8], payload[9], payload[10], payload[11]]),
         reserved: [0; 36],
