@@ -128,3 +128,39 @@ fn test_com_next_id_restored_monotonically() {
     assert_eq!(restored.com_next_id, saved_com,
         "com_next_id после restore должен совпадать со snapshot");
 }
+
+// ============================================================
+// tick_count — сохранение и восстановление
+// ============================================================
+
+#[test]
+fn test_tick_count_saved_in_snapshot() {
+    let mut engine = AxiomEngine::new();
+    let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    for _ in 0..7 {
+        engine.process_command(&tick_cmd);
+    }
+
+    let snap = engine.snapshot();
+    assert_eq!(snap.tick_count, 7, "tick_count должен сохраняться в snapshot");
+}
+
+#[test]
+fn test_tick_count_restored() {
+    let mut engine = AxiomEngine::new();
+    let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    for _ in 0..42 {
+        engine.process_command(&tick_cmd);
+    }
+
+    let snap = engine.snapshot();
+    let restored = AxiomEngine::restore_from(&snap);
+    assert_eq!(restored.tick_count, 42,
+        "tick_count после restore должен совпадать со snapshot");
+}
+
+#[test]
+fn test_tick_count_zero_in_empty_snapshot() {
+    let snap = EngineSnapshot::empty();
+    assert_eq!(snap.tick_count, 0);
+}
