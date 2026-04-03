@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 19.0
+**Версия:** 20.0
 **Дата:** 2026-04-02
 
 ---
@@ -38,7 +38,24 @@ engine.tick_count  = snapshot.tick_count;  // NEW
 
 ---
 
-### Приоритет 2 — compare_tokens tolerances в DomainConfig (D-04 + D-05)
+### Приоритет 2 — AshtiCore::reconcile_all() (D-09)
+
+**Сложность:** Средняя. **Риск:** Низкий.
+
+Файлы: `crates/axiom-domain/src/ashti_core.rs`, `crates/axiom-runtime/src/engine.rs`
+
+Три задачи в одном методе:
+1. Форсировать `rebuild_spatial_grid()` для доменов где `should_rebuild_spatial_grid() == true`
+2. Удалить связи, чьи `source_id` / `target_id` ссылаются на несуществующие токены
+3. Исправить `token.domain_id` если токен оказался не в своём домене
+
+После реализации: вызов в `handle_tick_forward` по `reconcile_interval` (уже подключён в TickSchedule, поле есть).
+
+Тесты: `test_reconcile_prunes_orphan_connections`, `test_reconcile_rebuilds_spatial_grid`, `test_reconcile_fixes_domain_id`.
+
+---
+
+### Приоритет 3 — compare_tokens tolerances в DomainConfig (D-04 + D-05)
 
 **Сложность:** Средняя. **Риск:** Низкий (regression тест есть).
 
@@ -59,7 +76,7 @@ pub _reserved_id_tail:               u16,  // 2B остаток
 
 ---
 
-### Приоритет 3 — UCL мёртвые опкоды (D-07)
+### Приоритет 4 — UCL мёртвые опкоды (D-07)
 
 **Сложность:** Низкая. **Риск:** Нулевой.
 
@@ -84,7 +101,7 @@ OpCode::LockMembrane
 
 ---
 
-### Приоритет 4 — StructuralRole vs UCL factory_preset (D-08)
+### Приоритет 5 — StructuralRole vs UCL factory_preset (D-08)
 
 **Сложность:** Средняя. **Риск:** Средний (API boundary).
 

@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 10.0
+**Версия:** 11.0
 **Обновлён:** 2026-04-02
 
 ---
@@ -161,6 +161,56 @@ pub const TOKEN_COMPARE_VALENCE_TOLERANCE: i16 = 2;
 **Решение:** Либо привести UCL к StructuralRole нумерации (breaking change API), либо добавить явный маппинг в `handle_spawn_domain`.
 
 **Когда решать:** До реализации динамического SpawnDomain.
+
+---
+
+### D-09 — AshtiCore::reconcile_all() и reconcile_interval
+
+**Где:** `crates/axiom-domain/src/ashti_core.rs`, `crates/axiom-runtime/src/engine.rs`
+
+`TickSchedule.reconcile_interval = 200` существует как поле, но в `handle_tick_forward` нет соответствующего вызова — метода `AshtiCore::reconcile_all()` не существует.
+
+**Семантика reconcile в AXIOM:**
+
+Примирение (reconcile) — периодическая операция согласованности семантического пространства после серии тиков. Включает три задачи:
+
+1. **Пространственная перестройка** — на каждом `Domain` уже есть `rebuild_spatial_grid()` и `should_rebuild_spatial_grid()` (через `events_since_rebuild >= rebuild_frequency`). `reconcile_all()` форсирует перестройку для доменов, у которых флаг поднят, но rebuild ещё не произошёл.
+
+2. **Обрезка осиротевших связей** — `Connection.source_id` / `target_id` ссылаются на `sutra_id` токенов. После удаления токенов из домена связи могут ссылаться на несуществующие токены. Нужна итерация по connections каждого домена с проверкой наличия обоих концов.
+
+3. **Проверка соответствия domain_id** — токен может оказаться в DomainState, чей domain_id не совпадает с `token.domain_id`. Это семантический инвариант: токен обязан знать свой домен.
+
+**Оценка сложности:** Средняя. Задачи 1 и 3 — простые итерации. Задача 2 требует построения множества живых `sutra_id` перед проверкой связей.
+
+**Реализация:**
+```rust
+// ashti_core.rs
+pub fn reconcile_all(&mut self) {
+    for i in 0..11 {
+        if let (Some(state), Some(domain)) =
+            (self.state_mut(i), self.domains.get_mut(i))
+        {
+            // 1. Пространственная перестройка
+            if domain.should_rebuild_spatial_grid() {
+                domain.rebuild_spatial_grid(&state.tokens);
+            }
+            // 2. Осиротевшие связи
+            let live: std::collections::HashSet<u32> =
+                state.tokens.iter().map(|t| t.sutra_id).collect();
+            state.connections.retain(|c| {
+                live.contains(&c.source_id) && live.contains(&c.target_id)
+            });
+            // 3. domain_id токенов
+            let did = self.domain_id_at(i).unwrap_or(0) as u16;
+            for token in &mut state.tokens {
+                token.domain_id = did;
+            }
+        }
+    }
+}
+```
+
+**Когда решать:** Перед первым использованием семантической маршрутизации в живой системе. Без reconcile осиротевшие связи накапливаются, пространственный индекс устаревает.
 
 ---
 
