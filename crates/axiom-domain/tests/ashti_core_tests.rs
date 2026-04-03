@@ -1,7 +1,7 @@
 // Тесты AshtiCore — 11-доменный фрактальный уровень Ashti_Core v2.0
 
 use axiom_domain::AshtiCore;
-use axiom_core::Token;
+use axiom_core::{Token, Connection};
 
 fn make_token(sutra_id: u32, mass: u8, temp: u8) -> Token {
     let mut t = Token::new(sutra_id, 1, [0, 0, 0], 1);
@@ -131,4 +131,80 @@ fn test_state_accessible_for_all_11_domains() {
         assert!(core.state(i).is_some(), "state({i}) должен существовать");
     }
     assert!(core.state(11).is_none(), "state(11) должен быть None");
+}
+
+// --- reconcile_all ---
+
+const LOGIC_DOMAIN: u32 = 106; // level_id(1) * 100 + role(6)
+
+fn inject(core: &mut AshtiCore, domain_id: u32, sutra_id: u32) {
+    let token = Token::new(sutra_id, domain_id as u16, [0, 0, 0], sutra_id as u64);
+    let _ = core.inject_token(domain_id, token);
+}
+
+#[test]
+fn test_reconcile_no_panic_on_empty_core() {
+    let mut core = AshtiCore::new(1);
+    let pruned = core.reconcile_all();
+    assert_eq!(pruned, 0);
+}
+
+#[test]
+fn test_reconcile_prunes_orphaned_connections() {
+    let mut core = AshtiCore::new(1);
+    // Инжектируем токен sutra_id=1
+    inject(&mut core, LOGIC_DOMAIN, 1);
+
+    // Добавляем связь где target_id=999 не существует
+    let idx = core.index_of(LOGIC_DOMAIN).unwrap();
+    let orphan = Connection::new(1, 999, LOGIC_DOMAIN as u16, 1);
+    let _ = core.state_mut(idx).unwrap().add_connection(orphan);
+    assert_eq!(core.state(idx).unwrap().connections.len(), 1);
+
+    let pruned = core.reconcile_all();
+    assert_eq!(pruned, 1, "осиротевшая связь должна быть удалена");
+    assert_eq!(core.state(idx).unwrap().connections.len(), 0);
+}
+
+#[test]
+fn test_reconcile_keeps_valid_connections() {
+    let mut core = AshtiCore::new(1);
+    inject(&mut core, LOGIC_DOMAIN, 10);
+    inject(&mut core, LOGIC_DOMAIN, 20);
+
+    let idx = core.index_of(LOGIC_DOMAIN).unwrap();
+    let valid = Connection::new(10, 20, LOGIC_DOMAIN as u16, 1);
+    let _ = core.state_mut(idx).unwrap().add_connection(valid);
+
+    let pruned = core.reconcile_all();
+    assert_eq!(pruned, 0, "валидная связь не должна удаляться");
+    assert_eq!(core.state(idx).unwrap().connections.len(), 1);
+}
+
+#[test]
+fn test_reconcile_fixes_wrong_domain_id() {
+    let mut core = AshtiCore::new(1);
+    // Токен с неправильным domain_id
+    let mut bad_token = Token::new(42, 999, [0, 0, 0], 1);
+    bad_token.domain_id = 999; // неверный
+    let idx = core.index_of(LOGIC_DOMAIN).unwrap();
+    let _ = core.state_mut(idx).unwrap().add_token(bad_token);
+
+    core.reconcile_all();
+
+    // После reconcile domain_id должен совпадать с реальным доменом
+    let fixed = core.state(idx).unwrap().tokens.last().unwrap();
+    assert_eq!(fixed.domain_id, LOGIC_DOMAIN as u16,
+        "domain_id токена должен быть исправлен на реальный");
+}
+
+#[test]
+fn test_reconcile_does_not_remove_tokens() {
+    let mut core = AshtiCore::new(1);
+    inject(&mut core, LOGIC_DOMAIN, 5);
+    inject(&mut core, LOGIC_DOMAIN, 6);
+
+    core.reconcile_all();
+
+    assert_eq!(core.token_count(LOGIC_DOMAIN), 2, "reconcile не должен удалять живые токены");
 }
