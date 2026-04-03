@@ -30,6 +30,8 @@ pub struct EngineSnapshot {
     pub domains: Vec<DomainSnapshot>,
     /// Следующий event_id глобального COM счётчика
     pub com_next_id: u64,
+    /// Монотонный счётчик тиков на момент snapshot
+    pub tick_count: u64,
     /// Event_id на момент создания snapshot
     pub created_at: u64,
 }
@@ -40,6 +42,7 @@ impl EngineSnapshot {
         Self {
             domains: Vec::new(),
             com_next_id: 1,
+            tick_count: 0,
             created_at: 0,
         }
     }

@@ -184,6 +184,7 @@ impl AxiomEngine {
         EngineSnapshot {
             domains,
             com_next_id: self.com_next_id,
+            tick_count: self.tick_count,
             created_at: horizon,
         }
     }
@@ -225,10 +226,11 @@ impl AxiomEngine {
             }
         }
 
-        // Восстанавливаем COM-счётчик: новые event_id гарантированно > snapshot.com_next_id
+        // Восстанавливаем COM-счётчик и tick_count: монотонность гарантирована
         if snapshot.com_next_id > 0 {
             engine.com_next_id = snapshot.com_next_id;
         }
+        engine.tick_count = snapshot.tick_count;
 
         engine
     }
