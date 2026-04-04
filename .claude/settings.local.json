@@ -5,7 +5,8 @@
       "Bash(cargo test:*)",
       "Bash(git add:*)",
       "Bash(cargo clippy:*)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(cargo bench:*)"
     ]
   }
 }

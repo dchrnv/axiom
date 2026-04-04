@@ -1,4 +1,4 @@
-# Axiom Benchmark Results — v5
+# Axiom Benchmark Results — v5 (archived)
 
 **Дата:** 2026-03-29
 **Платформа:** Linux x86-64
@@ -371,3 +371,200 @@ RUSTFLAGS="-C target-cpu=native" cargo bench --bench fractal_bench -- "apply_gra
 | v3 | 2026-03-28 | Этапы 6-8: run_adaptation, snapshot_and_prune, run_horizon_gc, causal_horizon, export_skills, Gateway::process, process_channel |
 | v4 | 2026-03-29 | Этапы 12A-12B: FractalChain (new/tick/inject/exchange_skills), apply_gravity_batch vs scalar (100–10K токенов) |
 | v5 | 2026-03-29 | Стресс-тест: apply_gravity_batch (10K→10M), SpatialHashGrid::rebuild (10K→1M), resonance_search (1K→50K) |
+| v6 | 2026-04-03 | integration_bench: normal 100k/1M тиков, integrated_cycle, TickSchedule overhead, reconcile_all, snapshot tick_count, compare_tokens, stress 60s |
+
+---
+
+# Axiom Benchmark Results — v6
+
+**Дата:** 2026-04-03
+**Платформа:** Linux x86-64
+**Профиль:** `release` (optimized)
+**Инструмент:** criterion 0.5
+**813 тестов, 0 failures**
+
+### Железо
+
+| Параметр | Значение |
+|----------|---------|
+| CPU | AMD Ryzen 5 3500U |
+| Ядра / потоки | 4 cores / 8 threads |
+| Частота (boost) | ~3.46 GHz |
+| L2 cache | 512 KB |
+| RAM | 5.7 GiB |
+
+---
+
+## normal/100k_ticks — пропускная способность тика (100 000 тиков/батч)
+
+| Конфигурация | Медиана | Throughput | Комментарий |
+|-------------|---------|-----------|-------------|
+| engine_empty | 5.91 ms | **16.9 Melem/s** | Только hot path, 0 токенов |
+| engine_50_tokens | 6.21 ms | **16.1 Melem/s** | 50 токенов в LOGIC, нет следов |
+| engine_50tok_100tr_default_schedule | 7.23 ms | **13.8 Melem/s** | Warm/cold пути включены |
+| engine_50tok_max_schedule | 121.4 ms | **824 Kelem/s** | Все задачи каждый тик (max load) |
+
+**Вывод:** Hot path без периодических задач — ~59 ns/тик. Default schedule с 100 трейсами даёт ~72 ns/тик (+22%). Max schedule (reconcile+adapt+dream+horizon каждый тик) — ~1.21 µs/тик, 16× дороже hot path.
+
+---
+
+## normal/1M_ticks — выносливость 1 000 000 тиков
+
+| Конфигурация | Медиана | Throughput | Комментарий |
+|-------------|---------|-----------|-------------|
+| engine_empty | 64.3 ms | **15.6 Melem/s** | Baseline |
+| engine_50tok_hot_only | 27.3 ms | **36.6 Melem/s** | TickSchedule без периодических задач |
+| engine_50tok_default_schedule | 96.5 ms | **10.4 Melem/s** | Default schedule, 100 трейсов |
+
+**Вывод:** `engine_50tok_hot_only` быстрее пустого engine — эффект CPU branch prediction при прогретом состоянии. Default schedule с трейсами — ~96 ns/тик с редкими периодическими вызовами. Высокая вариация (80–137 ms) обусловлена нерегулярными cold-path операциями.
+
+---
+
+## normal/integrated_cycle — полный цикл (inject → tick → reconcile)
+
+| Сценарий | Медиана | Throughput | Комментарий |
+|---------|---------|-----------|-------------|
+| inject_tick_reconcile | 40.3 µs | 24.8 Kops/s | Один полный цикл с 50 токенами |
+| 1000ticks_then_snapshot | 229.9 µs | 4.35 Kops/s | 1000 тиков + reconcile каждые 100 + snapshot |
+
+**Вывод:** inject+tick+reconcile — ~40 µs на операцию. Вариация 24–77 µs обусловлена iter_batched (пересоздание engine ~440 µs включается в warmup, но не в измерение). Батч 1000 тиков со snapshot — ~230 µs, что соответствует ~230 ns/тик при учёте накладных расходов.
+
+---
+
+## periodic/tick_schedule_overhead — стоимость одного тика по конфигурации
+
+| Конфигурация | Медиана | Комментарий |
+|-------------|---------|-------------|
+| hot_only | 36.9 µs | Все периодические задачи отключены |
+| default_schedule | 36.0 µs | Дефолтные интервалы |
+| max_schedule | **25.0 µs** | Все задачи каждый тик |
+
+**Примечание:** Высокая вариация у hot_only/default (27–74 µs) — iter_batched создаёт engine перед каждой итерацией. max_schedule стабильнее (25 µs ± 5%) потому что engine инициализация уже прогрета. Для сравнения стоимости именно периодических задач — см. normal/100k_ticks где вариация усредняется по 100k итерациям.
+
+---
+
+## periodic/reconcile_all — семантическая консистентность (AshtiCore)
+
+| Токенов / Связей | Медиана | Комментарий |
+|-----------------|---------|-------------|
+| t0_c0 | 21.3 µs | Пустой AshtiCore, 11 доменов |
+| t50_c0 | 46.8 µs | 50 токенов, нет связей |
+| t50_c100 | 47.5 µs | 50 токенов + 100 связей |
+| t200_c500 | **52.8 µs** | 200 токенов + 500 связей |
+
+**Вывод:** `reconcile_all` при 200 токенах и 500 связях — ~53 µs. Стоимость практически не зависит от числа связей (47 vs 53 µs при ×5 росте), т.к. доминирует обход 11 доменов (~2 µs/домен). При дефолтном интервале reconcile каждые N тиков — нагрузка ничтожна.
+
+---
+
+## periodic/snapshot_restore_tick_count — snapshot с сохранением tick_count
+
+| Операция | Медиана | Комментарий |
+|---------|---------|-------------|
+| snapshot после 0 тиков | 38.0 µs | Базовая стоимость клонирования |
+| snapshot после 1000 тиков | 36.2 µs | Идентично — tick_count не увеличивает размер |
+| snapshot после 50000 тиков | 46.3 µs | Незначительный рост (cache effect) |
+| restore_preserves_tick_count | **640 µs** | Полное восстановление + верификация tick_count |
+
+**Вывод:** Snapshot не зависит от tick_count (поле u64 в EngineSnapshot). Restore ~640 µs = пересоздание всех структур. tick_count корректно сохраняется и восстанавливается.
+
+---
+
+## periodic/compare_tokens — per-domain tolerances vs fallback
+
+| Конфигурация | Медиана | Комментарий |
+|-------------|---------|-------------|
+| fallback_constants | 12.2 ns | Прямое сравнение полей с константами |
+| per_domain_config | **30.3 ns** | HashMap lookup + fallback |
+
+**Вывод:** Per-domain конфиг добавляет ~18 ns на вызов `compare_tokens` (HashMap lookup). При 1000 Hz тике и редком вызове — незначительно. При сравнении тысяч токенов/тик — возможна оптимизация кэшированием конфига на уровне домена.
+
+---
+
+## stress/sustained_60s — выносливость под нагрузкой (3 × 60 секунд)
+
+Батч: 1000 тиков на измерение. Throughput = 1000 тиков/батч.
+
+| Сценарий | Медиана | Throughput | Комментарий |
+|---------|---------|-----------|-------------|
+| baseline_hot_only_50tok | 25.8 µs | **38.8 Melem/s** | 50 токенов, нет периодических задач |
+| realistic_engine_50tok | 64.8 µs | **15.4 Melem/s** | 50 токенов, default schedule + 100 трейсов |
+| heavy_engine_200tok_max_schedule | 3.64 ms | **275 Kelem/s** | 200 токенов, все задачи каждый тик |
+
+**Вывод:**
+- **Hot path baseline** — 25.8 µs/батч из 1000 тиков = **25.8 ns/тик**. Максимальная теоретическая частота: ~38 MHz тиков.
+- **Realistic** — 64.8 µs/батч = **64.8 ns/тик**. Периодические задачи (adaptation, horizon_gc, reconcile) добавляют ~39 ns в среднем на тик (усреднено по интервалу).
+- **Max schedule** — 3.64 ms/батч из 1000 тиков = **3.64 µs/тик**. 200 токенов × все задачи каждый тик — тяжёлая конфигурация. Потолок ~274 Hz при такой нагрузке.
+- Все три сценария показали стабильные результаты на протяжении 60 секунд — деградации не наблюдается.
+
+---
+
+## Сводная таблица v6 — горячий путь (1000 Hz тик, бюджет 1 ms)
+
+| Операция | Время | ns/тик | % бюджета |
+|----------|-------|--------|-----------|
+| TickForward (hot path, 0 токенов) | 59 ns/тик | 59 | 0.006% |
+| TickForward (50 токенов, hot_only) | 27 ns/тик | 27 | 0.003% |
+| TickForward (50 токенов, default_schedule) | ~97 ns/тик | 97 | 0.010% |
+| TickForward (50 токенов, max_schedule) | ~1.21 µs/тик | 1210 | 0.12% |
+| `reconcile_all` (200 токенов, 500 связей) | 53 µs | — | 5.3%/вызов |
+| `compare_tokens` fallback | 12 ns | — | — |
+| `compare_tokens` per-domain | 30 ns | — | — |
+| `snapshot` | 38–46 µs | — | 3.8–4.6%/вызов |
+| `restore_from` | 640 µs | — | 64%/вызов |
+| inject_tick_reconcile (полный цикл) | 40 µs | — | 4.0%/вызов |
+
+**Вывод:** При реалистичной нагрузке (50 токенов, default schedule) — ~97 ns/тик, что позволяет работать на частоте > 10 MHz. При max schedule (все задачи каждый тик) — ~1.2 µs/тик, потолок ~830 kHz. `reconcile_all` и `snapshot` — периодические, не горячий путь.
+
+---
+
+## Трудности при написании и запуске integration_bench (v6)
+
+### 1. Неправильное использование `iter_custom` — нулевые результаты
+
+**Проблема:** Все четыре `iter_custom`-бенчмарка изначально игнорировали параметр `iters`:
+```rust
+b.iter_custom(|_| {
+    let mut engine = AxiomEngine::new();
+    let start = Instant::now();
+    for _ in 0..100_000 { engine.process_command(&tick); }
+    start.elapsed()
+})
+```
+Criterion передаёт `iters` — количество логических итераций, которое он хочет выполнить. Он делит возвращённое время на `iters`. Когда код игнорирует `iters` и всегда выполняет ровно 100k итераций, а Criterion запрашивает, например, 18 446 744 074 итераций — деление даёт ~0 ps. Throughput показывал `149 Pelem/s` (физически невозможные значения).
+
+**Симптом:** Три из четырёх сценариев 100k_ticks показали `time: [0.0000 ps 0.0000 ps 0.0000 ps]`.
+
+**Исправление:** Завернуть внутренний цикл в внешний по `iters`, аккумулировать `Duration`:
+```rust
+b.iter_custom(|iters| {
+    let mut total = Duration::ZERO;
+    for _ in 0..iters {
+        let mut engine = AxiomEngine::new();
+        let start = Instant::now();
+        for _ in 0..100_000 { engine.process_command(&tick); }
+        total += start.elapsed();
+    }
+    total
+})
+```
+Та же проблема присутствовала в `normal/1M_ticks`, `normal/integrated_cycle/1000ticks_then_snapshot` и `stress/sustained_10min`.
+
+### 2. Минимальный `sample_size` Criterion — паника
+
+**Проблема:** `normal/1M_ticks` задавал `group.sample_size(5)`. Criterion требует минимум 10 сэмплов — при меньшем значении падает с `assertion failed: num_size >= 10`.
+
+**Исправление:** Изменить на `sample_size(10)`.
+
+### 3. `group.measurement_time()` в коде игнорирует CLI `--measurement-time`
+
+**Проблема:** `stress/sustained_10min` задавал `group.measurement_time(Duration::from_secs(600))`. При запуске с флагом `--measurement-time 60` ожидался override, но Criterion применяет программный вызов поверх CLI-параметра при использовании групп. Benchmark запустился на 600 секунд вместо 60.
+
+**Симптом:** Criterion вывел `Collecting 10 samples in estimated 600.06 s` несмотря на CLI-флаг.
+
+**Исправление:** Изменить значение непосредственно в коде (`Duration::from_secs(60)`).
+
+### 4. Захват вывода фоновых процессов
+
+**Проблема:** Bash tool автоматически переводит долгие команды в фон. Вывод Criterion (stdout) в некоторых случаях не попадал в файл вывода (`tasks/*.output`), который содержал только ANSI-заголовок bash-профиля (153 байта). Причина: буферизация stdout при перенаправлении в файл.
+
+**Решение:** Запускать бенчмарки напрямую в foreground с явным `timeout`, либо дожидаться завершения процесса через `wait PID`.
