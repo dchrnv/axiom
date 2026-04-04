@@ -95,49 +95,65 @@ fn bench_normal_100k(c: &mut Criterion) {
 
     // Пустой engine — только hot path
     group.bench_function("engine_empty", |b| {
-        b.iter_custom(|_| {
-            let mut engine = AxiomEngine::new();
-            let start = Instant::now();
-            for _ in 0..100_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = AxiomEngine::new();
+                let start = Instant::now();
+                for _ in 0..100_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     // 50 токенов в LOGIC
     group.bench_function("engine_50_tokens", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_loaded(50, 0);
-            let start = Instant::now();
-            for _ in 0..100_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_loaded(50, 0);
+                let start = Instant::now();
+                for _ in 0..100_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     // 50 токенов + 100 следов + дефолтный TickSchedule (warm/cold пути)
     group.bench_function("engine_50tok_100tr_default_schedule", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_loaded(50, 100);
-            let start = Instant::now();
-            for _ in 0..100_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_loaded(50, 100);
+                let start = Instant::now();
+                for _ in 0..100_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     // 50 токенов + максимальная нагрузка TickSchedule
     group.bench_function("engine_50tok_max_schedule", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_with_schedule(50, schedule_max_load());
-            let start = Instant::now();
-            for _ in 0..100_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_with_schedule(50, schedule_max_load());
+                let start = Instant::now();
+                for _ in 0..100_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
@@ -147,41 +163,53 @@ fn bench_normal_100k(c: &mut Criterion) {
 fn bench_normal_1m(c: &mut Criterion) {
     let mut group = c.benchmark_group("normal/1M_ticks");
     group.measurement_time(Duration::from_secs(60));
-    group.sample_size(5);
+    group.sample_size(10);
     group.throughput(Throughput::Elements(1_000_000));
 
     let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
 
     group.bench_function("engine_empty", |b| {
-        b.iter_custom(|_| {
-            let mut engine = AxiomEngine::new();
-            let start = Instant::now();
-            for _ in 0..1_000_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = AxiomEngine::new();
+                let start = Instant::now();
+                for _ in 0..1_000_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     group.bench_function("engine_50tok_hot_only", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_with_schedule(50, schedule_hot_only());
-            let start = Instant::now();
-            for _ in 0..1_000_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_with_schedule(50, schedule_hot_only());
+                let start = Instant::now();
+                for _ in 0..1_000_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     group.bench_function("engine_50tok_default_schedule", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_loaded(50, 100);
-            let start = Instant::now();
-            for _ in 0..1_000_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_loaded(50, 100);
+                let start = Instant::now();
+                for _ in 0..1_000_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
@@ -376,18 +404,22 @@ fn bench_integrated_cycle(c: &mut Criterion) {
 
     // Цикл с snapshot каждые 1000 тиков
     group.bench_function("1000ticks_then_snapshot", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_loaded(50, 50);
-            let start = Instant::now();
-            for i in 0..1000u64 {
-                engine.process_command(&tick);
-                if i % 100 == 0 {
-                    engine.ashti.reconcile_all();
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_loaded(50, 50);
+                let start = Instant::now();
+                for i in 0..1000u64 {
+                    engine.process_command(&tick);
+                    if i % 100 == 0 {
+                        engine.ashti.reconcile_all();
+                    }
                 }
+                let snap = engine.snapshot();
+                black_box(snap.tick_count);
+                total += start.elapsed();
             }
-            let snap = engine.snapshot();
-            black_box(snap.tick_count);
-            start.elapsed()
+            total
         })
     });
 
@@ -398,7 +430,7 @@ fn bench_integrated_cycle(c: &mut Criterion) {
 
 fn bench_stress_sustained(c: &mut Criterion) {
     let mut group = c.benchmark_group("stress/sustained_10min");
-    group.measurement_time(Duration::from_secs(600));
+    group.measurement_time(Duration::from_secs(60));
     group.sample_size(10);
     group.warm_up_time(Duration::from_secs(5));
     group.throughput(Throughput::Elements(1_000));
@@ -408,37 +440,49 @@ fn bench_stress_sustained(c: &mut Criterion) {
     // Реалистичный сценарий: 50 токенов, дефолтный schedule
     // reconcile каждые 200, snapshot каждые 5000
     group.bench_function("realistic_engine_50tok", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_loaded(50, 100);
-            let start = Instant::now();
-            for _ in 0..1_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_loaded(50, 100);
+                let start = Instant::now();
+                for _ in 0..1_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     // Нагруженный сценарий: 200 токенов, max schedule
     group.bench_function("heavy_engine_200tok_max_schedule", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_with_schedule(200, schedule_max_load());
-            let start = Instant::now();
-            for _ in 0..1_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_with_schedule(200, schedule_max_load());
+                let start = Instant::now();
+                for _ in 0..1_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
     // Только hot path: baseline для сравнения деградации
     group.bench_function("baseline_hot_only_50tok", |b| {
-        b.iter_custom(|_| {
-            let mut engine = engine_with_schedule(50, schedule_hot_only());
-            let start = Instant::now();
-            for _ in 0..1_000 {
-                black_box(engine.process_command(&tick));
+        b.iter_custom(|iters| {
+            let mut total = std::time::Duration::ZERO;
+            for _ in 0..iters {
+                let mut engine = engine_with_schedule(50, schedule_hot_only());
+                let start = Instant::now();
+                for _ in 0..1_000 {
+                    black_box(engine.process_command(&tick));
+                }
+                total += start.elapsed();
             }
-            start.elapsed()
+            total
         })
     });
 
