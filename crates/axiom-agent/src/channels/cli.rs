@@ -549,6 +549,8 @@ impl CliChannel {
                         self.engine = r.engine;
                         // TickSchedule сохраняем из конфига
                         self.engine.tick_schedule = self.config.tick_schedule;
+                        // D-07: сбрасываем last_save_tick чтобы autosave не завис
+                        self.auto_saver.reset_save_tick(self.engine.tick_count);
                     }
                     Err(e) => println!("  load failed: {e}"),
                 }

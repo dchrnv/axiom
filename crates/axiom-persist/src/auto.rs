@@ -126,6 +126,11 @@ impl AutoSaver {
         })
     }
 
+    /// Сбросить last_save_tick (вызывается после :load чтобы избежать D-07).
+    pub fn reset_save_tick(&mut self, tick: u64) {
+        self.last_save_tick = tick;
+    }
+
     /// Статус для :autosave status.
     pub fn status_line(&self) -> String {
         if !self.config.enabled || self.config.interval_ticks == 0 {

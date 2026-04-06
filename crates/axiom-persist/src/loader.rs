@@ -86,7 +86,7 @@ fn state_to_snapshot(state: &StoredEngineState) -> axiom_runtime::EngineSnapshot
 
     let domains = state.domains.iter().map(|sd| DomainSnapshot {
         domain_id:   sd.domain_id,
-        config:      DomainConfig::factory_void(sd.domain_id as u16, 0),
+        config:      sd.config.unwrap_or_else(|| DomainConfig::factory_void(sd.domain_id as u16, 0)),
         tokens:      sd.tokens.clone(),
         connections: sd.connections.clone(),
     }).collect();
