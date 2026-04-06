@@ -37,6 +37,7 @@ pub const STATE_LOCKED: u8 = 3;
 /// - ФРАКТАЛЬНАЯ НАВИГАЦИЯ (36 байт): lineage_hash, momentum, resonance, last_event_id
 #[repr(C, align(64))]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Token {
     // --- ИДЕНТИФИКАЦИЯ (8 Байт) ---
     /// ID потока (Sutra), которому принадлежит токен

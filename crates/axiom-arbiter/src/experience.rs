@@ -5,6 +5,7 @@
 
 use axiom_core::{Token, TOKEN_FLAG_GOAL};
 use crate::gridhash::{grid_hash, AssociativeIndex};
+use std::cell::Cell;
 
 /// Нижняя граница "зоны любопытства" как доля от порога кристаллизации.
 /// Следы с weight ∈ [0.8 * threshold, threshold) генерируют Curiosity-импульсы.
@@ -23,6 +24,7 @@ pub enum ResonanceLevel {
 
 /// След опыта (паттерн + вес + метаданные)
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExperienceTrace {
     /// Паттерн токена
     pub pattern: Token,
@@ -60,6 +62,9 @@ pub struct Experience {
     pub index: AssociativeIndex,
     /// Следы напряжения — незавершённые или низко-coherent паттерны (Cognitive Depth V1.0)
     tension_traces: Vec<TensionTrace>,
+    /// Число следов, прошедших хэш-фильтр при последнем resonance_search (диагностика).
+    /// Cell позволяет обновлять поле через &self не нарушая API.
+    pub last_traces_matched: Cell<u32>,
 }
 
 impl Experience {
@@ -72,6 +77,7 @@ impl Experience {
             max_traces: 1000,
             index: AssociativeIndex::new(4), // shift=4: ячейки 16 квантов
             tension_traces: Vec::new(),
+            last_traces_matched: Cell::new(0),
         }
     }
 
@@ -130,12 +136,14 @@ impl Experience {
         let input_hash = pattern_hash(token);
         let mut best_score = 0.0f32;
         let mut best_idx: Option<usize> = None;
+        let mut matched_count: u32 = 0;
 
         for (i, trace) in self.traces.iter().enumerate() {
             let hash_dist = (input_hash ^ trace.pattern_hash).count_ones();
             if hash_dist > 40 {
                 continue;
             }
+            matched_count += 1;
 
             let similarity = pattern_similarity(token, &trace.pattern);
             let score = similarity * trace.weight;
@@ -145,6 +153,7 @@ impl Experience {
                 best_idx = Some(i);
             }
         }
+        self.last_traces_matched.set(matched_count);
 
         let level = if best_score >= reflex_t {
             ResonanceLevel::Reflex
@@ -375,6 +384,7 @@ impl Default for Experience {
 /// Создаётся когда MAYA возвращает результат с coherence < min_coherence.
 /// Хранит горячий паттерн, который Heartbeat будет подталкивать обратно в pipeline.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TensionTrace {
     /// Паттерн, который не был обработан до конца
     pub pattern: Token,
@@ -422,5 +432,42 @@ impl Experience {
     /// Число активных следов напряжения.
     pub fn tension_count(&self) -> usize {
         self.tension_traces.len()
+    }
+
+    /// Вернуть все следы опыта (для сериализации).
+    pub fn traces(&self) -> &[ExperienceTrace] {
+        &self.traces
+    }
+
+    /// Вернуть все tension traces (для сериализации).
+    pub fn tension_traces(&self) -> &[TensionTrace] {
+        &self.tension_traces
+    }
+
+    /// Импортировать след с уже применённым weight factor (для загрузки из персистентного хранилища).
+    ///
+    /// В отличие от `add_trace()`, не ограничивает weight и не пересчитывает hash —
+    /// принимает след как есть. Вытесняет слабейший след при достижении лимита.
+    pub fn import_trace(&mut self, trace: ExperienceTrace) {
+        if self.traces.len() >= self.max_traces {
+            if let Some(min_idx) = self.traces.iter()
+                .enumerate()
+                .min_by(|(_, a), (_, b)| a.weight.total_cmp(&b.weight))
+                .map(|(i, _)| i)
+            {
+                let evicted_id = self.traces[min_idx].created_at;
+                self.index.remove_by_trace_id(evicted_id);
+                self.traces.remove(min_idx);
+            }
+        }
+        let key = grid_hash(&trace.pattern, self.index.shift);
+        let trace_id = trace.created_at;
+        self.traces.push(trace);
+        self.index.insert(key, trace_id);
+    }
+
+    /// Импортировать tension trace (для загрузки из персистентного хранилища).
+    pub fn import_tension_trace(&mut self, trace: TensionTrace) {
+        self.tension_traces.push(trace);
     }
 }

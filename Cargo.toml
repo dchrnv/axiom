@@ -5,6 +5,7 @@
 resolver = "2"
 members = [
     "crates/axiom-core",
+    "crates/axiom-persist",
     "crates/axiom-genome",
     "crates/axiom-config",
     "crates/axiom-domain",
