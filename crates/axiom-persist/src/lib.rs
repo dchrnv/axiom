@@ -14,9 +14,15 @@ pub mod manifest;
 pub mod writer;
 pub mod loader;
 pub mod auto;
+pub mod exchange;
 
 pub use error::PersistError;
 pub use manifest::{MemoryManifest, ManifestContents, FORMAT_VERSION};
 pub use writer::{save, WriteOptions};
 pub use loader::{load, LoadResult, IMPORT_WEIGHT_FACTOR};
 pub use auto::{AutoSaver, PersistenceConfig};
+pub use exchange::{
+    export_traces, export_skills,
+    import_traces, import_skills,
+    ImportReport, ExportReport, ExchangeKind,
+};

@@ -90,7 +90,7 @@ axiom-runtime НЕ зависит от axiom-persist. Persist читает из 
 
 ---
 
-### Фаза 4: Обмен знаниями
+### Фаза 4: Обмен знаниями [DONE]
 
 **Crates:** axiom-persist, axiom-agent (CLI)
 
