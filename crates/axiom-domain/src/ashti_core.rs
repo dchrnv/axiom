@@ -133,6 +133,11 @@ impl AshtiCore {
         self.level_id
     }
 
+    /// Иммутабельный доступ к модулю Experience (для диагностики).
+    pub fn experience(&self) -> &axiom_arbiter::ExperienceModule {
+        self.arbiter.experience()
+    }
+
     /// Mutable доступ к модулю Experience для прямого управления следами.
     pub fn experience_mut(&mut self) -> &mut axiom_arbiter::ExperienceModule {
         self.arbiter.experience_mut()
@@ -207,6 +212,13 @@ impl AshtiCore {
     /// Возвращает число фактически импортированных (без дублей).
     pub fn import_skills(&mut self, skills: &[axiom_arbiter::Skill]) -> usize {
         self.arbiter.skillset.import_batch(skills)
+    }
+
+    /// Импортировать навык с явным weight factor (для knowledge exchange).
+    ///
+    /// Возвращает true если навык был добавлен (не дубликат).
+    pub fn import_skill_exchange(&mut self, skill: axiom_arbiter::Skill, weight_factor: f32) -> bool {
+        self.arbiter.skillset.import_skill_exchange(skill, weight_factor)
     }
 
     /// Применить пороги EXPERIENCE-домена к модулю Experience.

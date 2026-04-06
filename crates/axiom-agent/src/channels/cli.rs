@@ -148,7 +148,10 @@ fn format_event_type(et: u16) -> String {
 
 // ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
 
-use axiom_persist::{save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig};
+use axiom_persist::{
+    save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig,
+    export_traces, export_skills, import_traces, import_skills,
+};
 use axiom_runtime::{AxiomEngine, TickSchedule};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::MessageEffector;
@@ -602,6 +605,51 @@ impl CliChannel {
                 let tension = self.engine.ashti.experience().tension_count();
                 println!("  active tension: {}", tension);
             }
+            ":export" => {
+                // :export traces [path] | :export skills [path]
+                let what = parts.get(1).copied().unwrap_or("traces");
+                let path_str = parts.get(2).copied()
+                    .unwrap_or(match what {
+                        "skills" => "axiom-export-skills.json",
+                        _        => "axiom-export-traces.json",
+                    });
+                let path = std::path::Path::new(path_str);
+                match what {
+                    "skills" => match export_skills(&self.engine, path) {
+                        Ok(r) => println!("  exported {} skills → {}", r.exported, r.path),
+                        Err(e) => println!("  export failed: {e}"),
+                    },
+                    "traces" => {
+                        let threshold: f32 = 0.0; // экспортировать все
+                        match export_traces(&self.engine, path, threshold) {
+                            Ok(r) => println!("  exported {} traces → {}", r.exported, r.path),
+                            Err(e) => println!("  export failed: {e}"),
+                        }
+                    }
+                    _ => println!("  Usage: :export traces|skills [path]"),
+                }
+            }
+            ":import" => {
+                // :import traces [path] | :import skills [path]
+                let what = parts.get(1).copied().unwrap_or("traces");
+                let path_str = parts.get(2).copied()
+                    .unwrap_or(match what {
+                        "skills" => "axiom-export-skills.json",
+                        _        => "axiom-export-traces.json",
+                    });
+                let path = std::path::Path::new(path_str);
+                match what {
+                    "skills" => match import_skills(&mut self.engine, path) {
+                        Ok(r) => println!("  {}", r.summary_line()),
+                        Err(e) => println!("  import failed: {e}"),
+                    },
+                    "traces" => match import_traces(&mut self.engine, path) {
+                        Ok(r) => println!("  {}", r.summary_line()),
+                        Err(e) => println!("  import failed: {e}"),
+                    },
+                    _ => println!("  Usage: :import traces|skills [path]"),
+                }
+            }
             _ => {
                 println!("  Unknown command. Type :help for list.");
             }
@@ -621,9 +669,11 @@ const HELP_TEXT: &str = "\
   :tick [N]           — прокрутить N тиков
   :snapshot           — показать info снапшота
   :schedule           — текущий TickSchedule
-  :save [path]           — сохранить состояние (default: axiom-data)
-  :load [path]           — загрузить состояние (default: axiom-data)
-  :memory                — показать статистику памяти
-  :autosave [on N|off]   — вкл/выкл автосохранение (N = интервал тиков)
+  :save [path]              — сохранить состояние (default: axiom-data)
+  :load [path]              — загрузить состояние (default: axiom-data)
+  :memory                   — показать статистику памяти
+  :autosave [on N|off]      — вкл/выкл автосохранение (N = интервал тиков)
+  :export traces|skills [p] — экспортировать знания в JSON-файл
+  :import traces|skills [p] — импортировать с GUARDIAN-валидацией (weight×0.7)
   :help               — этот список
   Любой другой ввод   → InjectToken в SUTRA(100) → результат";

@@ -12,6 +12,7 @@ use crate::experience::ExperienceTrace;
 /// и success_count ≥ min_success_count. Раз кристаллизовавшись,
 /// навык возвращается как единый быстрый ответ без обращения к физике поля.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Skill {
     /// Паттерн токена — суть навыка
     pub pattern: Token,
@@ -175,6 +176,24 @@ impl SkillSet {
             }
         }
         imported
+    }
+
+    /// Импортировать навык с явным weight factor (для exchange — не трогает success_count деления).
+    /// Дедупликация по-прежнему применяется.
+    pub fn import_skill_exchange(&mut self, mut skill: Skill, weight_factor: f32) -> bool {
+        let is_dup = {
+            let threshold = self.activation_similarity;
+            self.skills.iter().any(|s| {
+                let hash_dist = (s.pattern_hash ^ skill.pattern_hash).count_ones();
+                if hash_dist > 40 { return false; }
+                skill_pattern_similarity(&s.pattern, &skill.pattern) >= threshold
+            })
+        };
+        if is_dup { return false; }
+        skill.activation_weight = (skill.activation_weight * weight_factor).max(0.001);
+        skill.success_count = 0;
+        self.skills.push(skill);
+        true
     }
 
     /// Очистить все навыки.
