@@ -71,6 +71,9 @@ pub struct TickSchedule {
     pub goal_check_interval:    u32,
     /// Shell reconcile (default: 200)
     pub reconcile_interval:     u32,
+    /// Автосохранение состояния на диск (default: 0 = отключено).
+    /// При ненулевом значении — сохраняет каждые N тиков.
+    pub persist_check_interval: u32,
 }
 
 impl Default for TickSchedule {
@@ -83,6 +86,7 @@ impl Default for TickSchedule {
             tension_check_interval: 10,
             goal_check_interval:    10,
             reconcile_interval:     200,
+            persist_check_interval: 0,
         }
     }
 }
@@ -265,6 +269,82 @@ impl AxiomEngine {
             | OpCode::PhaseTransition => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
         }
+    }
+
+    /// Обработать команду с наблюдением когнитивного конвейера.
+    ///
+    /// Для `InjectToken`: токен немедленно маршрутизируется через SUTRA→EXPERIENCE→ASHTI→MAYA
+    /// и возвращается диагностический `ProcessingResult` с данными о пути, когерентности,
+    /// рефлексе, tension traces.
+    ///
+    /// Для остальных команд: вызывает `process_command()` и возвращает минимальный результат.
+    ///
+    /// **Не заменяет `process_command()`** — это отдельный путь для CLI/адаптеров.
+    /// Overhead ≈ 10 ns (чтение полей RoutingResult и Experience).
+    pub fn process_and_observe(&mut self, cmd: &UclCommand) -> crate::result::ProcessingResult {
+        use crate::result::{ProcessingResult, ProcessingPath};
+        use axiom_ucl::OpCode;
+
+        let is_inject = matches!(
+            opcode_from_u16(cmd.opcode),
+            Some(OpCode::InjectToken)
+        );
+
+        if is_inject && self.arbiter_ready() {
+            let p = parse_inject_token_payload(&cmd.payload);
+            let event_id = self.next_event_id();
+            let token = build_token_from_inject(&p, p.target_domain_id, event_id);
+
+            let ucl_result = make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
+            let routing = orchestrator::route_token(self, token);
+
+            let reflex_hit = routing.reflex.is_some();
+            let confidence  = routing.confidence;
+            let passes      = routing.passes;
+
+            let path = if passes > 1 {
+                ProcessingPath::MultiPass(passes)
+            } else if reflex_hit {
+                ProcessingPath::Reflex
+            } else {
+                ProcessingPath::SlowPath
+            };
+
+            let dominant_domain_id = routing.consolidated
+                .map(|t| t.domain_id)
+                .unwrap_or(110); // MAYA
+
+            let output_position = routing.consolidated
+                .map(|t| t.position)
+                .unwrap_or([0, 0, 0]);
+
+            // output_shell: диагностическое приближение из полей выходного токена.
+            // L4=эмоциональное(valence), L5=когнитивное(temperature), L6=социальное(mass).
+            let output_shell: [u8; 8] = if let Some(t) = routing.consolidated {
+                [0, 0, 0, t.valence.unsigned_abs(), t.temperature, t.mass, 0, 0]
+            } else {
+                [0u8; 8]
+            };
+
+            let tension_count    = self.ashti.experience().tension_count() as u32;
+            let traces_matched   = self.ashti.experience().last_traces_matched.get();
+
+            return ProcessingResult {
+                ucl_result,
+                path,
+                dominant_domain_id,
+                coherence_score: Some(confidence),
+                tension_count,
+                output_shell,
+                output_position,
+                reflex_hit,
+                traces_matched,
+            };
+        }
+
+        // Все остальные команды — стандартная обработка без диагностики маршрутизации
+        let ucl_result = self.process_command(cmd);
+        ProcessingResult::from_ucl(ucl_result)
     }
 
     // --- Обработчики команд ---

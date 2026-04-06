@@ -148,7 +148,7 @@ fn format_event_type(et: u16) -> String {
 
 // ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
 
-use axiom_persist::{save as persist_save, load as persist_load, WriteOptions};
+use axiom_persist::{save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig};
 use axiom_runtime::{AxiomEngine, TickSchedule};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::MessageEffector;
@@ -168,6 +168,7 @@ pub struct TickScheduleConfig {
     #[serde(default)] pub tension_check_interval: Option<u32>,
     #[serde(default)] pub goal_check_interval:    Option<u32>,
     #[serde(default)] pub reconcile_interval:     Option<u32>,
+    #[serde(default)] pub persist_check_interval: Option<u32>,
 }
 
 impl TickScheduleConfig {
@@ -181,6 +182,7 @@ impl TickScheduleConfig {
         if let Some(v) = self.tension_check_interval { s.tension_check_interval = v; }
         if let Some(v) = self.goal_check_interval    { s.goal_check_interval    = v; }
         if let Some(v) = self.reconcile_interval     { s.reconcile_interval     = v; }
+        if let Some(v) = self.persist_check_interval { s.persist_check_interval = v; }
     }
 }
 
@@ -352,10 +354,11 @@ Options:
 /// Ядро живёт в tick loop (одном потоке). Все обращения к Engine — через
 /// tick loop. tokio не попадает в ядро.
 pub struct CliChannel {
-    engine:    AxiomEngine,
-    perceptor: TextPerceptor,
-    effector:  MessageEffector,
-    config:    CliConfig,
+    engine:     AxiomEngine,
+    perceptor:  TextPerceptor,
+    effector:   MessageEffector,
+    config:     CliConfig,
+    auto_saver: AutoSaver,
 }
 
 impl CliChannel {
@@ -363,10 +366,13 @@ impl CliChannel {
     /// TickSchedule из конфига применяется к Engine при создании.
     pub fn new(mut engine: AxiomEngine, config: CliConfig) -> Self {
         engine.tick_schedule = config.tick_schedule;
+        let persist_interval = engine.tick_schedule.persist_check_interval;
+        let auto_cfg = PersistenceConfig::new(config.data_dir.clone(), persist_interval);
         Self {
             engine,
-            perceptor: TextPerceptor::new(),
-            effector:  MessageEffector::new(),
+            perceptor:  TextPerceptor::new(),
+            effector:   MessageEffector::new(),
+            auto_saver: AutoSaver::new(auto_cfg),
             config,
         }
     }
@@ -431,6 +437,16 @@ impl CliChannel {
             // Ядро тикает каждый интервал
             self.engine.process_command(&tick_cmd);
 
+            // Автосохранение по интервалу
+            if self.auto_saver.tick(&self.engine) {
+                if self.config.verbose {
+                    println!("  [autosave: tick={}]", self.engine.tick_count);
+                }
+            } else if let Some(e) = &self.auto_saver.last_error {
+                eprintln!("[autosave] error: {e}");
+                self.auto_saver.last_error = None; // показываем ошибку один раз
+            }
+
             // Verbose: показать tension traces
             if self.config.verbose {
                 let tension = self.engine.ashti.experience().tension_count();
@@ -447,6 +463,14 @@ impl CliChannel {
         let parts: Vec<&str> = line.splitn(3, ' ').collect();
         match parts[0] {
             ":quit" | ":q" => {
+                // Автосохранение при выходе если включено
+                if self.auto_saver.config.enabled {
+                    let dir = self.auto_saver.config.data_dir.clone();
+                    match self.auto_saver.force_save(&self.engine) {
+                        Ok(_) => println!("  autosaved to {}", dir.display()),
+                        Err(e) => eprintln!("  autosave on quit failed: {e}"),
+                    }
+                }
                 println!("Завершение.");
                 return false;
             }
@@ -526,6 +550,27 @@ impl CliChannel {
                     Err(e) => println!("  load failed: {e}"),
                 }
             }
+            ":autosave" => {
+                match parts.get(1).copied() {
+                    Some("on") => {
+                        let interval = parts.get(2)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(1000u32);
+                        self.auto_saver.set_interval(interval);
+                        // Синхронизируем TickSchedule
+                        self.engine.tick_schedule.persist_check_interval = interval;
+                        println!("  autosave: on  interval={interval} ticks");
+                    }
+                    Some("off") => {
+                        self.auto_saver.set_enabled(false);
+                        self.engine.tick_schedule.persist_check_interval = 0;
+                        println!("  autosave: off");
+                    }
+                    _ => {
+                        println!("{}", self.auto_saver.status_line());
+                    }
+                }
+            }
             ":memory" => {
                 let exp = self.engine.ashti.experience();
                 let traces    = exp.traces().len();
@@ -576,8 +621,9 @@ const HELP_TEXT: &str = "\
   :tick [N]           — прокрутить N тиков
   :snapshot           — показать info снапшота
   :schedule           — текущий TickSchedule
-  :save [path]        — сохранить состояние (default: axiom-data)
-  :load [path]        — загрузить состояние (default: axiom-data)
-  :memory             — показать статистику памяти
+  :save [path]           — сохранить состояние (default: axiom-data)
+  :load [path]           — загрузить состояние (default: axiom-data)
+  :memory                — показать статистику памяти
+  :autosave [on N|off]   — вкл/выкл автосохранение (N = интервал тиков)
   :help               — этот список
   Любой другой ввод   → InjectToken в SUTRA(100) → результат";

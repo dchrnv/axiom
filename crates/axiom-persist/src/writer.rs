@@ -71,10 +71,15 @@ pub fn save(engine: &AxiomEngine, dir: &Path, opts: &WriteOptions) -> Result<Mem
         tension,
     };
 
-    // Записываем engine_state.json
+    // Атомарная запись engine_state.json:
+    //   1. Пишем во временный файл
+    //   2. Переименовываем (atomic на Linux)
+    //   3. Manifest — последним (маркер успешной записи)
     let json = serde_json::to_string(&state)
         .map_err(|e| PersistError::Encode(e.to_string()))?;
-    std::fs::write(dir.join("engine_state.json"), json.as_bytes())?;
+    let tmp_path = dir.join("engine_state.json.tmp");
+    std::fs::write(&tmp_path, json.as_bytes())?;
+    std::fs::rename(&tmp_path, dir.join("engine_state.json"))?;
 
     // Manifest обновляется последним — маркер успешной записи
     let manifest = MemoryManifest::new(snapshot.tick_count, snapshot.com_next_id, contents);

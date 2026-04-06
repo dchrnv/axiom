@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-06 (Memory Persistence V1.0 — Фаза 2)
+**Обновлено:** 2026-04-06 (Memory Persistence V1.0 — Фаза 3)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**848 тестов, 0 failures, 0 warnings**
+**858 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -25,11 +25,12 @@ EventBus — pub/sub: типизированные и broadcast подписки
 axiom-agent:
   ├── Perceptor/Effector: CLI, Telegram, Shell
   ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
-  └── CLI Channel: :save/:load/:memory (через axiom-persist)
+  └── CLI Channel: :save/:load/:memory/:autosave (через axiom-persist)
 
 axiom-persist:
-  └── save/load Engine state: Token+Connection+ExperienceTrace → JSON
-      MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7 для traces
+  ├── save/load Engine state: Token+Connection+ExperienceTrace → JSON (атомарный rename)
+  ├── MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7 для traces
+  └── AutoSaver: интервальное автосохранение, force_save при :quit
 
 axiom-space:
   └── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
@@ -56,9 +57,9 @@ axiom-space:
 | axiom-domain | 112 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
 | axiom-runtime | 136 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule |
 | axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
-| axiom-persist | 15 | MemoryWriter, MemoryLoader, MemoryManifest — save/load + boot sequence |
+| axiom-persist | 25 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver — save/load/boot/autosave |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **848** | |
+| **Итого** | **858** | |
 
 ---
 
