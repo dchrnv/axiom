@@ -23,13 +23,13 @@ mod gridhash;
 
 use axiom_core::Token;
 use axiom_config::DomainConfig;
-use experience::{Experience, ExperienceTrace, ResonanceLevel};
+use experience::{Experience, ResonanceLevel};
 use ashti_processor::AshtiProcessor;
 use maya_processor::MayaProcessor;
 use std::collections::HashMap;
 
-// Re-export for tests
-pub use experience::{Experience as ExperienceModule, ResonanceLevel as ResonanceLevelEnum, TensionTrace};
+// Re-export for tests and axiom-persist
+pub use experience::{Experience as ExperienceModule, ExperienceTrace, ResonanceLevel as ResonanceLevelEnum, TensionTrace};
 pub use com::COM;
 pub use reflector::{Reflector, ReflexStats, DomainProfile};
 pub use skillset::{Skill, SkillSet};

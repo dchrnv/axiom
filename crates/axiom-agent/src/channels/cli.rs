@@ -145,3 +145,425 @@ fn format_event_type(et: u16) -> String {
         other => format!("{:#06x}", other),
     }
 }
+
+// ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
+
+use axiom_persist::{save as persist_save, load as persist_load, WriteOptions};
+use axiom_runtime::{AxiomEngine, TickSchedule};
+use crate::perceptors::text::TextPerceptor;
+use crate::effectors::message::MessageEffector;
+use tokio::sync::mpsc;
+use serde::{Deserialize, Serialize};
+
+// ─── TickSchedule YAML-зеркало ────────────────────────────────────────────────
+
+/// YAML-зеркало TickSchedule для десериализации конфига.
+/// Все поля опциональны — отсутствующие берутся из `TickSchedule::default()`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TickScheduleConfig {
+    #[serde(default)] pub adaptation_interval:    Option<u32>,
+    #[serde(default)] pub horizon_gc_interval:    Option<u32>,
+    #[serde(default)] pub snapshot_interval:      Option<u32>,
+    #[serde(default)] pub dream_interval:         Option<u32>,
+    #[serde(default)] pub tension_check_interval: Option<u32>,
+    #[serde(default)] pub goal_check_interval:    Option<u32>,
+    #[serde(default)] pub reconcile_interval:     Option<u32>,
+}
+
+impl TickScheduleConfig {
+    /// Применить значения из конфига поверх дефолтного TickSchedule.
+    /// Отсутствующие поля (None) не перезаписываются.
+    pub fn apply_to(&self, s: &mut TickSchedule) {
+        if let Some(v) = self.adaptation_interval    { s.adaptation_interval    = v; }
+        if let Some(v) = self.horizon_gc_interval    { s.horizon_gc_interval    = v; }
+        if let Some(v) = self.snapshot_interval      { s.snapshot_interval      = v; }
+        if let Some(v) = self.dream_interval         { s.dream_interval         = v; }
+        if let Some(v) = self.tension_check_interval { s.tension_check_interval = v; }
+        if let Some(v) = self.goal_check_interval    { s.goal_check_interval    = v; }
+        if let Some(v) = self.reconcile_interval     { s.reconcile_interval     = v; }
+    }
+}
+
+// ─── CliConfigFile — YAML-структура ──────────────────────────────────────────
+
+/// Файл конфигурации CLI Channel (axiom-cli.yaml).
+///
+/// Приоритет: **default → файл → CLI-флаги**.
+/// Все поля опциональны — отсутствующее поле = значение по умолчанию.
+///
+/// Расположение файла ищется в следующем порядке:
+///   1. путь из флага `--config <path>`
+///   2. `./axiom-cli.yaml` (рабочая директория)
+///   3. `~/.config/axiom/cli.yaml`
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CliConfigFile {
+    /// Частота тиков ядра в Гц (default: 100)
+    #[serde(default)]
+    pub tick_hz: Option<u32>,
+    /// Подробный вывод tension traces (default: false)
+    #[serde(default)]
+    pub verbose: Option<bool>,
+    /// Строка приглашения (default: "axiom> ")
+    #[serde(default)]
+    pub prompt: Option<String>,
+    /// Расписание периодических задач ядра
+    #[serde(default)]
+    pub tick_schedule: Option<TickScheduleConfig>,
+}
+
+impl CliConfigFile {
+    /// Загрузить конфиг из YAML-файла. Возвращает `None` если файл не найден.
+    /// Ошибки парсинга выводятся в stderr и считаются как "файл не найден".
+    pub fn load(path: &std::path::Path) -> Option<Self> {
+        let content = std::fs::read_to_string(path).ok()?;
+        match serde_yaml::from_str::<Self>(&content) {
+            Ok(cfg) => Some(cfg),
+            Err(e) => {
+                eprintln!("[axiom-cli] config parse error in {}: {}", path.display(), e);
+                None
+            }
+        }
+    }
+
+    /// Найти и загрузить конфиг из стандартных расположений.
+    /// Если `explicit_path` задан — ищем только там.
+    pub fn find_and_load(explicit_path: Option<&str>) -> Option<Self> {
+        if let Some(p) = explicit_path {
+            return Self::load(std::path::Path::new(p));
+        }
+        // 1. Рабочая директория
+        let local = std::path::Path::new("axiom-cli.yaml");
+        if local.exists() {
+            return Self::load(local);
+        }
+        // 2. ~/.config/axiom/cli.yaml
+        if let Some(home) = std::env::var_os("HOME") {
+            let xdg = std::path::PathBuf::from(home).join(".config/axiom/cli.yaml");
+            if xdg.exists() {
+                return Self::load(&xdg);
+            }
+        }
+        None
+    }
+}
+
+// ─── CliConfig — рабочая конфигурация ────────────────────────────────────────
+
+/// Рабочая конфигурация CliChannel.
+/// Собирается из трёх источников: default → YAML-файл → CLI-флаги.
+pub struct CliConfig {
+    /// Частота тиков ядра в Гц (default: 100)
+    pub tick_hz: u32,
+    /// Подробный вывод tension traces после каждого тика (default: false)
+    pub verbose: bool,
+    /// Строка приглашения (default: "axiom> ")
+    pub prompt: String,
+    /// TickSchedule для применения к Engine при старте
+    pub tick_schedule: TickSchedule,
+}
+
+impl Default for CliConfig {
+    fn default() -> Self {
+        Self {
+            tick_hz: 100,
+            verbose: false,
+            prompt: "axiom> ".to_string(),
+            tick_schedule: TickSchedule::default(),
+        }
+    }
+}
+
+impl CliConfig {
+    /// Построить конфиг из трёх источников: default → YAML-файл → CLI-флаги.
+    ///
+    /// Поиск конфига: `--config <path>` → `./axiom-cli.yaml` → `~/.config/axiom/cli.yaml`
+    pub fn from_args_or_default() -> Self {
+        let args: Vec<String> = std::env::args().collect();
+
+        // Извлечь --config path до основного парсинга
+        let explicit_config = args.windows(2)
+            .find(|w| w[0] == "--config")
+            .map(|w| w[1].as_str());
+
+        // Слой 1: defaults
+        let mut config = Self::default();
+
+        // Слой 2: YAML-файл
+        if let Some(file) = CliConfigFile::find_and_load(explicit_config) {
+            if let Some(v) = file.tick_hz    { config.tick_hz   = v; }
+            if let Some(v) = file.verbose    { config.verbose   = v; }
+            if let Some(v) = file.prompt     { config.prompt    = v; }
+            if let Some(s) = file.tick_schedule {
+                s.apply_to(&mut config.tick_schedule);
+            }
+        }
+
+        // Слой 3: CLI-флаги (перекрывают файл)
+        let mut i = 1;
+        while i < args.len() {
+            match args[i].as_str() {
+                "--tick-hz" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.tick_hz = val.parse().unwrap_or(config.tick_hz);
+                    }
+                }
+                "--verbose" | "-v" => config.verbose = true,
+                "--config"         => { i += 1; } // уже обработано выше
+                "--help" | "-h" => {
+                    eprintln!("{}", USAGE);
+                    std::process::exit(0);
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+        config
+    }
+}
+
+const USAGE: &str = "\
+Usage: axiom-cli [OPTIONS]
+
+Options:
+  --tick-hz N      Tick frequency in Hz (default: 100)
+  --verbose, -v    Show tension traces after each tick
+  --config <path>  Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
+  --help, -h       Show this message";
+
+/// Асинхронный CLI интерфейс к ядру AXIOM.
+///
+/// Два независимых потока выполнения:
+///   1. stdin reader — читает строки и отправляет через mpsc
+///   2. tick loop    — тикает ядро по интервалу, принимает ввод из mpsc
+///
+/// Ядро живёт в tick loop (одном потоке). Все обращения к Engine — через
+/// tick loop. tokio не попадает в ядро.
+pub struct CliChannel {
+    engine:    AxiomEngine,
+    perceptor: TextPerceptor,
+    effector:  MessageEffector,
+    config:    CliConfig,
+}
+
+impl CliChannel {
+    /// Создать новый CliChannel.
+    /// TickSchedule из конфига применяется к Engine при создании.
+    pub fn new(mut engine: AxiomEngine, config: CliConfig) -> Self {
+        engine.tick_schedule = config.tick_schedule;
+        Self {
+            engine,
+            perceptor: TextPerceptor::new(),
+            effector:  MessageEffector::new(),
+            config,
+        }
+    }
+
+    /// Запустить интерактивный цикл (блокирует до :quit или EOF).
+    pub async fn run(&mut self) {
+        let (tx, mut rx) = mpsc::channel::<String>(64);
+
+        // stdin reader task
+        tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let stdin = tokio::io::stdin();
+            let mut reader = BufReader::new(stdin);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                match reader.read_line(&mut line).await {
+                    Ok(0) | Err(_) => break, // EOF или ошибка
+                    Ok(_) => {
+                        let trimmed = line.trim().to_string();
+                        if tx.send(trimmed).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        let tick_ms = 1000 / self.config.tick_hz.max(1);
+        let mut interval = tokio::time::interval(
+            tokio::time::Duration::from_millis(tick_ms as u64)
+        );
+        let tick_cmd = axiom_ucl::UclCommand::new(axiom_ucl::OpCode::TickForward, 0, 100, 0);
+
+        loop {
+            interval.tick().await;
+
+            // Обработать все сообщения из stdin (non-blocking)
+            loop {
+                match rx.try_recv() {
+                    Ok(line) if line.is_empty() => {}
+
+                    Ok(line) if line.starts_with(':') => {
+                        if !self.handle_meta_command(&line) {
+                            return; // :quit
+                        }
+                    }
+
+                    Ok(line) => {
+                        // Пользовательский ввод → TextPerceptor → process_and_observe
+                        let cmd = self.perceptor.perceive(&line);
+                        let result = self.engine.process_and_observe(&cmd);
+                        let out = self.effector.format_result(&result);
+                        print!("{}", out);
+                    }
+
+                    Err(mpsc::error::TryRecvError::Empty) => break,
+                    Err(mpsc::error::TryRecvError::Disconnected) => return,
+                }
+            }
+
+            // Ядро тикает каждый интервал
+            self.engine.process_command(&tick_cmd);
+
+            // Verbose: показать tension traces
+            if self.config.verbose {
+                let tension = self.engine.ashti.experience().tension_count();
+                if tension > 0 {
+                    println!("  [tension: {} active]", tension);
+                }
+            }
+        }
+    }
+
+    /// Обработать служебную команду (:status, :quit, ...).
+    /// Возвращает false если нужно завершить.
+    fn handle_meta_command(&mut self, line: &str) -> bool {
+        let parts: Vec<&str> = line.splitn(3, ' ').collect();
+        match parts[0] {
+            ":quit" | ":q" => {
+                println!("Завершение.");
+                return false;
+            }
+            ":help" => {
+                println!("{}", HELP_TEXT);
+            }
+            ":status" => {
+                println!("  tick_count: {}", self.engine.tick_count);
+                let tension = self.engine.ashti.experience().tension_count();
+                println!("  tension:    {}", tension);
+            }
+            ":domains" => {
+                for offset in 0..=10u16 {
+                    let id = 100 + offset;
+                    let count = self.engine.token_count(id as u32);
+                    println!("  {} ({}) — {} tokens", id,
+                        crate::effectors::message::domain_name(id), count);
+                }
+            }
+            ":tokens" => {
+                if let Some(id_str) = parts.get(1) {
+                    if let Ok(id) = id_str.parse::<u32>() {
+                        let count = self.engine.token_count(id);
+                        println!("  domain {}: {} tokens", id, count);
+                    } else {
+                        println!("  Usage: :tokens <domain_id>");
+                    }
+                }
+            }
+            ":verbose" => {
+                match parts.get(1).copied() {
+                    Some("on")  => { self.config.verbose = true;  println!("  verbose: on"); }
+                    Some("off") => { self.config.verbose = false; println!("  verbose: off"); }
+                    _ => println!("  verbose: {}", if self.config.verbose { "on" } else { "off" }),
+                }
+            }
+            ":tick" => {
+                let n: u64 = parts.get(1)
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1);
+                let tick_cmd = axiom_ucl::UclCommand::new(axiom_ucl::OpCode::TickForward, 0, 100, 0);
+                for _ in 0..n {
+                    self.engine.process_command(&tick_cmd);
+                }
+                println!("  ticked {} times. tick_count={}", n, self.engine.tick_count);
+            }
+            ":snapshot" => {
+                let snap = self.engine.snapshot();
+                println!("  snapshot: tick_count={} domains={}", snap.tick_count, snap.domains.len());
+            }
+            ":save" => {
+                let dir_str = parts.get(1).copied().unwrap_or("axiom-data");
+                let dir = std::path::Path::new(dir_str);
+                match persist_save(&self.engine, dir, &WriteOptions::default()) {
+                    Ok(m) => println!(
+                        "  saved to {dir_str} (tick={}, traces={}, tokens={})",
+                        m.tick_count, m.contents.traces, m.contents.tokens
+                    ),
+                    Err(e) => println!("  save failed: {e}"),
+                }
+            }
+            ":load" => {
+                let dir_str = parts.get(1).copied().unwrap_or("axiom-data");
+                let dir = std::path::Path::new(dir_str);
+                match persist_load(dir) {
+                    Ok(r) => {
+                        println!(
+                            "  loaded from {dir_str} (tick={}, traces={}, tension={})",
+                            r.engine.tick_count, r.traces_imported, r.tension_imported
+                        );
+                        self.engine = r.engine;
+                        // TickSchedule сохраняем из конфига
+                        self.engine.tick_schedule = self.config.tick_schedule;
+                    }
+                    Err(e) => println!("  load failed: {e}"),
+                }
+            }
+            ":memory" => {
+                let exp = self.engine.ashti.experience();
+                let traces    = exp.traces().len();
+                let tension   = exp.tension_count();
+                let snap      = self.engine.snapshot();
+                let tokens: usize  = snap.domains.iter().map(|d| d.tokens.len()).sum();
+                let conns: usize   = snap.domains.iter().map(|d| d.connections.len()).sum();
+                println!("  tick_count:  {}", self.engine.tick_count);
+                println!("  tokens:      {}", tokens);
+                println!("  connections: {}", conns);
+                println!("  traces:      {}", traces);
+                println!("  tension:     {}", tension);
+            }
+            ":schedule" => {
+                let s = self.engine.tick_schedule;
+                println!("  adaptation:    {}", s.adaptation_interval);
+                println!("  horizon_gc:    {}", s.horizon_gc_interval);
+                println!("  snapshot:      {}", s.snapshot_interval);
+                println!("  dream:         {}", s.dream_interval);
+                println!("  tension_check: {}", s.tension_check_interval);
+                println!("  goal_check:    {}", s.goal_check_interval);
+                println!("  reconcile:     {}", s.reconcile_interval);
+            }
+            ":traces" => {
+                let tension = self.engine.ashti.experience().tension_count();
+                println!("  tension traces: {}", tension);
+            }
+            ":tension" => {
+                let tension = self.engine.ashti.experience().tension_count();
+                println!("  active tension: {}", tension);
+            }
+            _ => {
+                println!("  Unknown command. Type :help for list.");
+            }
+        }
+        true
+    }
+}
+
+const HELP_TEXT: &str = "\
+  :quit / :q          — завершить
+  :status             — tick_count, tension
+  :domains            — список доменов с числом токенов
+  :tokens <domain_id> — токены в домене
+  :traces             — tension traces
+  :tension            — активные tension traces
+  :verbose [on/off]   — переключить подробный вывод
+  :tick [N]           — прокрутить N тиков
+  :snapshot           — показать info снапшота
+  :schedule           — текущий TickSchedule
+  :save [path]        — сохранить состояние (default: axiom-data)
+  :load [path]        — загрузить состояние (default: axiom-data)
+  :memory             — показать статистику памяти
+  :help               — этот список
+  Любой другой ввод   → InjectToken в SUTRA(100) → результат";

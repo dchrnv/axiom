@@ -31,6 +31,7 @@ pub const FLAG_CRITICAL: u32 = 8;
 /// Содержит топологию, динамику, шлюзы и метаданные связи.
 #[repr(C, align(64))]
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Connection {
     // --- ТОПОЛОГИЯ (16 Байт) ---
     /// ID токена-источника связи

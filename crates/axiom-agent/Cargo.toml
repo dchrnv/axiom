@@ -9,12 +9,17 @@ license.workspace = true
 name = "axiom-agent"
 path = "src/main.rs"
 
+[[bin]]
+name = "axiom-cli"
+path = "bin/axiom-cli.rs"
+
 [dependencies]
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
 axiom-ucl = { path = "../axiom-ucl" }
 axiom-runtime = { path = "../axiom-runtime" }
 axiom-genome = { path = "../axiom-genome" }
+axiom-persist = { path = "../axiom-persist" }
 serde.workspace = true
 serde_yaml.workspace = true
 serde_json.workspace = true
