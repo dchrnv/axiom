@@ -34,11 +34,12 @@ pub fn save(engine: &AxiomEngine, dir: &Path, opts: &WriteOptions) -> Result<Mem
     let snapshot = engine.snapshot();
     let experience = engine.ashti.experience();
 
-    // Домены
+    // Домены (сохраняем DomainConfig для полного восстановления)
     let domains: Vec<StoredDomain> = snapshot.domains.iter().map(|ds| StoredDomain {
         domain_id:   ds.domain_id,
         tokens:      ds.tokens.clone(),
         connections: ds.connections.clone(),
+        config:      Some(ds.config),
     }).collect();
 
     // Experience traces с фильтром по threshold

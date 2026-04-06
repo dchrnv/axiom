@@ -9,13 +9,20 @@
 use serde::{Deserialize, Serialize};
 use axiom_core::{Token, Connection};
 use axiom_arbiter::{ExperienceTrace, TensionTrace};
+use axiom_config::DomainConfig;
 
 /// Состояние одного домена на диске.
+///
+/// `config` опционален для обратной совместимости: файлы записанные до
+/// Memory Persistence V1.1 не содержат это поле → десериализуется как `None`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StoredDomain {
     pub domain_id: u32,
     pub tokens: Vec<Token>,
     pub connections: Vec<Connection>,
+    /// DomainConfig домена на момент сохранения (None в старых файлах)
+    #[serde(default)]
+    pub config: Option<DomainConfig>,
 }
 
 /// Experience trace на диске.

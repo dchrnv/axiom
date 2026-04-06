@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 13.0
+**Версия:** 14.0
 **Обновлён:** 2026-04-06
 
 ---
@@ -101,17 +101,11 @@ let input_size = input_fact.shape.as_concrete()
 
 ---
 
-### D-05 — axiom-persist: DomainConfig не сохраняется
+### ~~D-05~~ — axiom-persist: DomainConfig не сохраняется **[RESOLVED 2026-04-06]**
 
-**Где:** `crates/axiom-persist/src/loader.rs:state_to_snapshot()`
-
-При десериализации `state_to_snapshot()` создаёт `DomainConfig::factory_void()` для всех доменов вместо оригинальных конфигов. Это значит что кастомные `reflex_threshold`, `association_threshold`, `capacity` и другие параметры конфигурации **не переживают** save/load.
-
-На практике сейчас не критично — AshtiCore v1 использует фиксированные конфиги из `AshtiCore::new()`. Но при появлении динамической конфигурации (`:domain config …`) это приведёт к потере настроек.
-
-**Как исправить:** Добавить `axiom-config` serde feature, сохранять `Vec<(u32, DomainConfig)>` в `StoredEngineState`, восстанавливать через `AshtiCore::arbiter_domain_configs_mut()` после `restore_from()`.
-
-**Когда:** При появлении динамической конфигурации доменов.
+Сохранение: `StoredDomain.config: Option<DomainConfig>` с `#[serde(default)]`.
+Загрузка: `sd.config.unwrap_or_else(|| DomainConfig::factory_void(...))`.
+Обратная совместимость сохранена — старые файлы десериализуются с `None → factory_void`.
 
 ---
 
@@ -127,32 +121,18 @@ let input_size = input_fact.shape.as_concrete()
 
 ---
 
-### D-07 — axiom-persist: AutoSaver не сбрасывает last_save_tick после :load
+### ~~D-07~~ — axiom-persist: AutoSaver не сбрасывает last_save_tick после :load **[RESOLVED 2026-04-06]**
 
-**Где:** `crates/axiom-agent/src/channels/cli.rs`, обработчик `:load`
-
-После `:load` `engine` заменяется новым, но `auto_saver.last_save_tick` остаётся прежним. Если загруженный engine имеет `tick_count < last_save_tick` (например, загрузили старый save), autosave не сработает до тех пор пока `tick_count` не догонит старое значение.
-
-**Как исправить:** После `:load` добавить:
-```rust
-self.auto_saver.last_save_tick = r.engine.tick_count;
-```
-
-**Когда:** При первом баге связанном с autosave после :load.
+Добавлен метод `AutoSaver::reset_save_tick(tick: u64)`.
+В обработчике `:load`: `self.auto_saver.reset_save_tick(self.engine.tick_count)`.
 
 ---
 
-### D-08 — axiom-persist/skillset: дублирование import-логики
+### ~~D-08~~ — axiom-persist/skillset: дублирование import-логики **[RESOLVED 2026-04-06]**
 
-**Где:** `crates/axiom-arbiter/src/skillset.rs`
-
-Есть два метода импорта навыков:
-- `import_skill()` — внутренний, weight × 0.3 (для FractalChain)
-- `import_skill_exchange()` — для knowledge exchange, weight × factor
-
-Оба делают дедупликацию, отличаются только коэффициентом. Унификация: один `import_skill_with_factor(skill, factor)` + константы `FRACTAL_IMPORT_FACTOR = 0.3`, `EXCHANGE_IMPORT_FACTOR = 0.7`.
-
-**Когда:** При следующем рефакторинге skillset.rs.
+Унифицировано через `import_skill_with_factor(skill, factor) -> bool`.
+Константы `FRACTAL_IMPORT_FACTOR = 0.3`, `EXCHANGE_IMPORT_FACTOR = 0.7`.
+`import_skill()` и `import_skill_exchange()` делегируют в общий метод.
 
 ---
 

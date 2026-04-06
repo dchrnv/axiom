@@ -140,47 +140,17 @@ impl SkillSet {
         &self.skills
     }
 
-    /// Импортировать навык из другого экземпляра с пониженным весом
-    pub fn import_skill(&mut self, mut skill: Skill) {
-        skill.activation_weight *= 0.3; // Импортированные начинают с низкого веса
-        skill.success_count = 0;
-        self.skills.push(skill);
-    }
+    /// Коэффициент снижения веса при импорте через FractalChain.
+    pub const FRACTAL_IMPORT_FACTOR: f32 = 0.3;
+    /// Коэффициент снижения веса при knowledge exchange (:import skills).
+    pub const EXCHANGE_IMPORT_FACTOR: f32 = 0.7;
 
-    /// Экспортировать все навыки (клоны) для передачи другому экземпляру.
-    pub fn export(&self) -> Vec<Skill> {
-        self.skills.clone()
-    }
-
-    /// Импортировать пакет навыков из другого экземпляра.
+    /// Базовый импорт навыка с явным weight factor и дедупликацией.
     ///
-    /// Каждый навык:
-    /// - проходит дедупликацию (не импортируется если уже есть похожий)
-    /// - получает вес × 0.3 и success_count = 0
-    ///
-    /// Возвращает число фактически импортированных навыков.
-    pub fn import_batch(&mut self, skills: &[Skill]) -> usize {
-        let mut imported = 0;
-        for skill in skills {
-            let is_dup = {
-                let threshold = self.activation_similarity;
-                self.skills.iter().any(|s| {
-                    let hash_dist = (s.pattern_hash ^ skill.pattern_hash).count_ones();
-                    if hash_dist > 40 { return false; }
-                    skill_pattern_similarity(&s.pattern, &skill.pattern) >= threshold
-                })
-            };
-            if !is_dup {
-                self.import_skill(skill.clone());
-                imported += 1;
-            }
-        }
-        imported
-    }
-
-    /// Импортировать навык с явным weight factor (для exchange — не трогает success_count деления).
-    /// Дедупликация по-прежнему применяется.
-    pub fn import_skill_exchange(&mut self, mut skill: Skill, weight_factor: f32) -> bool {
+    /// Возвращает `true` если навык был добавлен (не дубликат).
+    /// `success_count` сбрасывается — импортированный навык должен
+    /// подтвердить себя в новом контексте.
+    pub fn import_skill_with_factor(&mut self, mut skill: Skill, weight_factor: f32) -> bool {
         let is_dup = {
             let threshold = self.activation_similarity;
             self.skills.iter().any(|s| {
@@ -194,6 +164,32 @@ impl SkillSet {
         skill.success_count = 0;
         self.skills.push(skill);
         true
+    }
+
+    /// Импортировать навык из FractalChain (weight × 0.3).
+    pub fn import_skill(&mut self, skill: Skill) {
+        self.import_skill_with_factor(skill, Self::FRACTAL_IMPORT_FACTOR);
+    }
+
+    /// Экспортировать все навыки (клоны) для передачи другому экземпляру.
+    pub fn export(&self) -> Vec<Skill> {
+        self.skills.clone()
+    }
+
+    /// Импортировать пакет навыков из другого экземпляра (FractalChain, weight × 0.3).
+    ///
+    /// Возвращает число фактически импортированных (без дублей).
+    pub fn import_batch(&mut self, skills: &[Skill]) -> usize {
+        skills.iter()
+            .filter(|s| self.import_skill_with_factor((*s).clone(), Self::FRACTAL_IMPORT_FACTOR))
+            .count()
+    }
+
+    /// Импортировать навык через knowledge exchange (weight × 0.7).
+    ///
+    /// Возвращает `true` если навык был добавлен (не дубликат).
+    pub fn import_skill_exchange(&mut self, skill: Skill, weight_factor: f32) -> bool {
+        self.import_skill_with_factor(skill, weight_factor)
     }
 
     /// Очистить все навыки.
