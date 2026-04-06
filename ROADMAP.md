@@ -72,7 +72,7 @@ axiom-runtime НЕ зависит от axiom-persist. Persist читает из 
 
 ---
 
-### Фаза 3: Автосохранение (кристаллизация)
+### Фаза 3: Автосохранение (кристаллизация) [DONE]
 
 **Crates:** axiom-persist, axiom-runtime (PersistenceConfig), axiom-agent
 

@@ -13,8 +13,10 @@ pub mod format;
 pub mod manifest;
 pub mod writer;
 pub mod loader;
+pub mod auto;
 
 pub use error::PersistError;
 pub use manifest::{MemoryManifest, ManifestContents, FORMAT_VERSION};
 pub use writer::{save, WriteOptions};
 pub use loader::{load, LoadResult, IMPORT_WEIGHT_FACTOR};
+pub use auto::{AutoSaver, PersistenceConfig};
