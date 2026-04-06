@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-06 (Memory Persistence V1.0 — Фаза 1)
+**Обновлено:** 2026-04-06 (Memory Persistence V1.0 — Фаза 2)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**843 тестов, 0 failures, 0 warnings**
+**848 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine (try_new + Arc<Genome>)
@@ -56,9 +56,9 @@ axiom-space:
 | axiom-domain | 112 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
 | axiom-runtime | 136 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule |
 | axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
-| axiom-persist | 10 | MemoryWriter, MemoryLoader, MemoryManifest — save/load Engine state (JSON) |
+| axiom-persist | 15 | MemoryWriter, MemoryLoader, MemoryManifest — save/load + boot sequence |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **843** | |
+| **Итого** | **848** | |
 
 ---
 

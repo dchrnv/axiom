@@ -260,6 +260,8 @@ pub struct CliConfig {
     pub prompt: String,
     /// TickSchedule для применения к Engine при старте
     pub tick_schedule: TickSchedule,
+    /// Директория хранилища (default: "./axiom-data"). Используется в :save/:load
+    pub data_dir: String,
 }
 
 impl Default for CliConfig {
@@ -269,6 +271,7 @@ impl Default for CliConfig {
             verbose: false,
             prompt: "axiom> ".to_string(),
             tick_schedule: TickSchedule::default(),
+            data_dir: "axiom-data".to_string(),
         }
     }
 }
@@ -310,6 +313,13 @@ impl CliConfig {
                 }
                 "--verbose" | "-v" => config.verbose = true,
                 "--config"         => { i += 1; } // уже обработано выше
+                "--data-dir" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.data_dir = val.clone();
+                    }
+                }
+                "--no-load" => {} // обрабатывается в bin/axiom-cli.rs
                 "--help" | "-h" => {
                     eprintln!("{}", USAGE);
                     std::process::exit(0);
@@ -326,10 +336,12 @@ const USAGE: &str = "\
 Usage: axiom-cli [OPTIONS]
 
 Options:
-  --tick-hz N      Tick frequency in Hz (default: 100)
-  --verbose, -v    Show tension traces after each tick
-  --config <path>  Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
-  --help, -h       Show this message";
+  --tick-hz N       Tick frequency in Hz (default: 100)
+  --verbose, -v     Show tension traces after each tick
+  --config <path>   Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
+  --data-dir <path> Data directory for save/load (default: ./axiom-data)
+  --no-load         Skip loading from data directory on startup
+  --help, -h        Show this message";
 
 /// Асинхронный CLI интерфейс к ядру AXIOM.
 ///
@@ -486,7 +498,8 @@ impl CliChannel {
                 println!("  snapshot: tick_count={} domains={}", snap.tick_count, snap.domains.len());
             }
             ":save" => {
-                let dir_str = parts.get(1).copied().unwrap_or("axiom-data");
+                let dir_str = parts.get(1).copied()
+                    .unwrap_or(self.config.data_dir.as_str());
                 let dir = std::path::Path::new(dir_str);
                 match persist_save(&self.engine, dir, &WriteOptions::default()) {
                     Ok(m) => println!(
@@ -497,7 +510,8 @@ impl CliChannel {
                 }
             }
             ":load" => {
-                let dir_str = parts.get(1).copied().unwrap_or("axiom-data");
+                let dir_str = parts.get(1).copied()
+                    .unwrap_or(self.config.data_dir.as_str());
                 let dir = std::path::Path::new(dir_str);
                 match persist_load(dir) {
                     Ok(r) => {

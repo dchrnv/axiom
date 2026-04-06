@@ -19,7 +19,7 @@ axiom-runtime НЕ зависит от axiom-persist. Persist читает из 
 
 ---
 
-### Фаза 1: Формат + `:save` + `:load` [ТЕКУЩАЯ]
+### Фаза 1: Формат + `:save` + `:load` [DONE]
 
 **Crates:** axiom-core, axiom-persist (новый), axiom-agent
 
@@ -53,7 +53,7 @@ axiom-runtime НЕ зависит от axiom-persist. Persist читает из 
 
 ---
 
-### Фаза 2: Boot sequence — загрузка при старте
+### Фаза 2: Boot sequence — загрузка при старте [DONE]
 
 **Crates:** axiom-persist, axiom-agent (bin/axiom-cli.rs)
 
