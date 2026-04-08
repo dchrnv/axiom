@@ -1,0 +1,62 @@
+# axiom-cli.yaml — Конфигурация CLI Channel
+#
+# Приоритет: default → этот файл → CLI-флаги
+# Все поля опциональны. Отсутствующее поле = значение по умолчанию.
+#
+# Расположение (поиск в порядке):
+#   1. путь из --config <path>
+#   2. ./axiom-cli.yaml  (рабочая директория — этот файл)
+#   3. ~/.config/axiom/cli.yaml
+
+# ─── Основные параметры ──────────────────────────────────────────────────────
+
+# Частота тиков ядра в Гц.
+# Один тик = TickForward. Горячий путь (физика) — каждый тик.
+# tick_hz: 100       # default: 100 Hz → 10 ms/тик
+# tick_hz: 1         # медленный режим: 1 сек/тик, видно каждый шаг
+# tick_hz: 1000      # стресс/бенчмарк
+tick_hz: 100
+
+# Показывать tension traces после каждого тика если > 0.
+# verbose: false     # default
+verbose: false
+
+# Строка приглашения (пока не выводится — зарезервировано для будущего)
+# prompt: "axiom> "  # default
+
+# ─── TickSchedule — расписание периодических задач ───────────────────────────
+#
+# Значения — интервал в тиках (0 = задача отключена).
+# Отсутствующие поля сохраняют значение по умолчанию.
+#
+# Производительность (RESULTS.md v6, 50 токенов, t50 c100):
+#   tension_check  ~25 µs/вызов   → default: каждые 10 тиков
+#   goal_check     ~25 µs/вызов   → default: каждые 10 тиков
+#   dream          ~20 µs/вызов   → default: каждые 100 тиков
+#   adaptation     ~25-30 µs      → default: каждые 50 тиков
+#   reconcile      ~48 µs         → default: каждые 200 тиков
+#   horizon_gc     ~30 µs         → default: каждые 500 тиков
+#   snapshot       ~40 µs         → default: каждые 5000 тиков
+
+tick_schedule:
+  # Обработка TensionTraces из EXPERIENCE (Cognitive Depth — незавершённые паттерны)
+  tension_check_interval: 10
+
+  # GoalPersistence: инжект goal-импульсов если цель не достигнута
+  goal_check_interval: 10
+
+  # DREAM: CODEX предлагает ассоциативные паттерны
+  dream_interval: 100
+
+  # Адаптация порогов Arbiter по статистике рефлексов
+  adaptation_interval: 50
+
+  # Reconcile: rebuild spatial grid, prune orphaned connections, fix domain_id
+  reconcile_interval: 200
+
+  # Horizon GC: удаление трейсов за causal horizon
+  horizon_gc_interval: 500
+
+  # Auto-snapshot + prune Experience (0 = отключено по умолчанию в этом файле)
+  # Включить если нужно периодически сохранять снапшоты в памяти
+  snapshot_interval: 5000

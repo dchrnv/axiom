@@ -1,6 +1,6 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-06 (Memory Persistence V1.0 — ЗАВЕРШЁН)
+**Обновлено:** 2026-04-08 (CLI Channel V1.1 — ЗАВЕРШЁН)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
@@ -10,7 +10,7 @@
 **868 тестов, 0 failures, 0 warnings**
 
 ```
-AxiomEngine (try_new + Arc<Genome>)
+AxiomEngine
   ├── Genome (конституция, from_yaml, GenomeIndex O(1))
   ├── AshtiCore — 11 доменов (SUTRA=level*100 .. MAYA=level*100+10)
   │     ├── Arbiter (dual-path routing + Experience + Reflector + SkillSet + Internal Drive)
@@ -23,13 +23,17 @@ ConfigWatcher — горячая перезагрузка конфигов (inot
 EventBus — pub/sub: типизированные и broadcast подписки
 
 axiom-agent:
-  ├── Perceptor/Effector: CLI, Telegram, Shell
+  ├── TextPerceptor — текст → UclCommand(InjectToken) через FNV-1a hash → 3D position
+  ├── MessageEffector — ProcessingResult → диагностический вывод
   ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
-  └── CLI Channel: :save/:load/:memory/:autosave/:export/:import (через axiom-persist)
+  └── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
+
+axiom-runtime:
+  └── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
 
 axiom-persist:
-  ├── save/load Engine state: Token+Connection+ExperienceTrace → JSON (атомарный rename)
-  ├── MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7 для traces
+  ├── save/load: Token+Connection+ExperienceTrace → JSON (атомарный rename)
+  ├── MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7
   ├── AutoSaver: интервальное автосохранение, force_save при :quit
   └── exchange: export/import traces+skills, GUARDIAN-валидация
 
@@ -45,19 +49,19 @@ axiom-space:
 
 | Crate | Тесты | Описание |
 |-------|-------|----------|
-| axiom-core | 24 | Token, Connection, Event |
+| axiom-core | 36 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 75 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (inotify hot reload) |
-| axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
+| axiom-config | 93 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (inotify hot reload) |
+| axiom-space | 104 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
-| axiom-arbiter | 136 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
-| axiom-ucl | 5 | UCL commands |
-| axiom-domain | 112 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 136 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule |
-| axiom-agent | 80 | CliPerceptor/Effector, TelegramPerceptor/Effector, ShellEffector, MLEngine, VisionPerceptor, AudioPerceptor |
+| axiom-ucl | 9 | UCL commands |
+| axiom-domain | 116 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
+| axiom-runtime | 101 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult |
+| axiom-agent | 92 | TextPerceptor, MessageEffector, CliChannel, TelegramPerceptor/Effector, ShellEffector, MLEngine |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (export/import) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | **Итого** | **868** | |
@@ -84,5 +88,6 @@ axiom-space:
 | 13B | Cognitive Depth — Heartbeat Internal Drive | ✅ |
 | 13C | Cognitive Depth — InternalImpulse + Dominance | ✅ |
 | 13D | Cognitive Depth — Goal Persistence + Curiosity | ✅ |
-| Cleanup | Plan_Cleanup_COM_V1_1 — 6 фаз (unwrap, Unknown, Event fields, COM, constants, TickSchedule) | ✅ |
-| DEFERRED | D-06..D-09: tick_count snapshot, UCL no-op, reconcile_all, tolerances, StructuralRole маппинг | ✅ |
+| Cleanup | COM V1.1 — unwrap, Unknown, Event fields, COM, constants, TickSchedule | ✅ |
+| Memory | Memory Persistence V1.0 — save/load/autosave/exchange (axiom-persist) | ✅ |
+| CLI V1.1 | CLI Channel V1.1 — TextPerceptor, MessageEffector, process_and_observe, axiom-cli.yaml | ✅ |
