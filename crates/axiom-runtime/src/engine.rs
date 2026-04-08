@@ -95,6 +95,10 @@ impl Default for TickSchedule {
 ///
 /// Содержит один уровень AshtiCore (11 доменов + Arbiter + Experience)
 /// и Guardian для CODEX+GENOME-валидации рефлексов.
+///
+/// Axiom Sentinel V1.0: Hardware-Aware Topology.
+/// При создании определяет число аппаратных потоков и создаёт `rayon::ThreadPool`
+/// с `worker_count - 1` потоками (один резервируется под ОС/Gateway).
 pub struct AxiomEngine {
     /// Genome — конституция системы (заморожена в Arc после boot)
     genome: Arc<Genome>,
@@ -110,6 +114,12 @@ pub struct AxiomEngine {
     pub tick_count: u64,
     /// Расписание периодических задач
     pub tick_schedule: TickSchedule,
+    /// Число аппаратных потоков, определённых при boot (available_parallelism).
+    /// Минимум 1.
+    pub worker_count: usize,
+    /// Rayon ThreadPool для параллельных операций (фазы 2, 3 Sentinel).
+    /// Размер пула = max(1, worker_count - 1).
+    pub thread_pool: rayon::ThreadPool,
 }
 
 impl AxiomEngine {
@@ -120,6 +130,9 @@ impl AxiomEngine {
     /// затем передаётся в Guardian (и далее по цепочке в Шаге 4).
     pub fn try_new(genome: Arc<Genome>) -> Result<Self, AxiomError> {
         genome.validate().map_err(|e| AxiomError::InvalidGenome(e.to_string()))?;
+        let worker_count = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
         Ok(Self {
             genome: Arc::clone(&genome),
             ashti: AshtiCore::new(1),
@@ -128,6 +141,8 @@ impl AxiomEngine {
             com_next_id: 1,
             tick_count: 0,
             tick_schedule: TickSchedule::default(),
+            worker_count,
+            thread_pool: build_thread_pool(worker_count),
         })
     }
 
@@ -589,6 +604,17 @@ impl Default for AxiomEngine {
 }
 
 // --- Утилиты ---
+
+/// Создать rayon::ThreadPool с `max(1, worker_count - 1)` потоков.
+///
+/// Один поток резервируется под ОС/Gateway tick loop.
+fn build_thread_pool(worker_count: usize) -> rayon::ThreadPool {
+    let threads = worker_count.saturating_sub(1).max(1);
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .expect("rayon ThreadPool build failed")
+}
 
 fn make_result(command_id: u64, status: CommandStatus, error_code: u16, events: u16) -> UclResult {
     UclResult {
