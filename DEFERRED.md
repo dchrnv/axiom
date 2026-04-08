@@ -110,6 +110,23 @@ let input_size = input_fact.shape.as_concrete()
 
 ---
 
+### D-07 — JSON-schema валидация конфигов
+
+**Где:** `axiom-cli.yaml`, `crates/axiom-config/src/loader.rs`
+
+Сейчас при невалидном YAML в `axiom-cli.yaml` или конфигах доменов — panic или молчаливый дефолт. Нет чёткого сообщения что именно неверно.
+
+**Что нужно:**
+- Crate `schemars` — генерация JSON Schema из Rust-структур через `#[derive(JsonSchema)]`
+- Crate `jsonschema` — валидация документа против схемы
+- Добавить `#[derive(JsonSchema)]` на `CliConfig`, `TickScheduleConfig`, `DomainConfig`, `PersistenceConfig`
+- В `ConfigLoader::load()` и `CliConfig::from_yaml()` — валидировать перед десериализацией, выводить human-readable ошибку с путём к проблемному полю
+- Опционально: команда `axiom-cli --dump-schema` — выводит актуальную JSON Schema для `axiom-cli.yaml`
+
+**Когда:** При появлении интернета (нужны `schemars`, `jsonschema` из crates.io).
+
+---
+
 ## Внешние адаптеры (требуют интернета)
 
 **Точка расширения:** `RuntimeAdapter` trait в `axiom-runtime/src/adapters.rs`.
