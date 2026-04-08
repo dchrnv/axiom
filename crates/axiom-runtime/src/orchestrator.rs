@@ -20,8 +20,13 @@ use crate::engine::AxiomEngine;
 /// 5.  Консолидированный результат → finalize_comparison → обратная связь в EXPERIENCE
 /// 6.  Возврат RoutingResult
 pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResult {
-    // Шаги 1-4: AshtiCore выполняет dual-path routing
-    let mut result = engine.ashti.process(token);
+    // Шаги 1-4: AshtiCore выполняет dual-path routing.
+    // Используем параллельный поиск (Sentinel Фаза 2) — при traces < PARALLEL_THRESHOLD
+    // автоматически деградирует до последовательного без накладных расходов.
+    //
+    // Split borrow: engine.ashti (&mut) и engine.thread_pool (&) — разные поля, ОК.
+    let pool = &engine.thread_pool;
+    let mut result = engine.ashti.process_parallel(token, pool);
 
     // Шаг 3 (fast path): Guardian проверяет рефлекс если GUARDIAN_CHECK_REQUIRED бит установлен
     if let Some(ref reflex_token) = result.reflex {

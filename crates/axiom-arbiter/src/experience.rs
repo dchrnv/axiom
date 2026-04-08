@@ -11,6 +11,10 @@ use std::cell::Cell;
 /// Следы с weight ∈ [0.8 * threshold, threshold) генерируют Curiosity-импульсы.
 const CURIOSITY_BAND: f32 = 0.8;
 
+/// Порог для переключения на параллельный поиск (Axiom Sentinel V1.0, Фаза 2).
+/// При `traces.len() < PARALLEL_THRESHOLD` используется последовательный поиск.
+pub const PARALLEL_THRESHOLD: usize = 512;
+
 /// Уровень резонанса
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResonanceLevel {
@@ -170,6 +174,101 @@ impl Experience {
         ResonanceResult {
             level,
             trace: best_idx.map(|i| self.traces[i].clone()),
+        }
+    }
+
+    /// Параллельный резонансный поиск (Axiom Sentinel V1.0, Фаза 2).
+    ///
+    /// При `traces.len() < PARALLEL_THRESHOLD` автоматически возвращается к
+    /// последовательному `resonance_search()` без накладных расходов rayon.
+    ///
+    /// При большом числе следов Phase 2 выполняется параллельно:
+    /// каждый поток обрабатывает свой чанк traces через `fold`, результаты
+    /// объединяются через `reduce` без mutex.
+    ///
+    /// Phase 1 (GridHash O(1)) всегда последовательная.
+    pub fn resonance_search_parallel(&self, token: &Token, pool: &rayon::ThreadPool) -> ResonanceResult {
+        if self.traces.len() < PARALLEL_THRESHOLD {
+            return self.resonance_search(token);
+        }
+
+        let reflex_t = self.reflex_threshold as f32 / 255.0;
+        let assoc_t  = self.association_threshold as f32 / 255.0;
+
+        // ── Phase 1: GridHash O(1) — однопоточная, без накладных расходов ──
+        let grid_key = grid_hash(token, self.index.shift);
+        if let Some(trace_ids) = self.index.lookup(grid_key) {
+            let mut best_score = 0.0f32;
+            let mut best_trace: Option<ExperienceTrace> = None;
+            for &trace_id in trace_ids {
+                if let Some(trace) = self.traces.iter().find(|t| t.created_at == trace_id) {
+                    let score = pattern_similarity(token, &trace.pattern) * trace.weight;
+                    if score > best_score {
+                        best_score = score;
+                        best_trace = Some(trace.clone());
+                    }
+                }
+            }
+            if best_score >= reflex_t {
+                if let Some(trace) = best_trace {
+                    return ResonanceResult { level: ResonanceLevel::Reflex, trace: Some(trace) };
+                }
+            }
+        }
+
+        // ── Phase 2: параллельный полный поиск ───────────────────────────────
+        //
+        // Каждый поток ведёт локальный аккумулятор (best_score, best_idx, matched_count).
+        // Начальное значение (0.0, usize::MAX, 0) означает "ничего не найдено".
+        // reduce объединяет результаты потоков без mutex.
+        let input_hash = pattern_hash(token);
+
+        // Извлекаем срез ДО install чтобы не захватывать self (содержит Cell<u32> → !Sync).
+        let traces: &[ExperienceTrace] = &self.traces;
+
+        let (best_score, best_idx, matched_count) = pool.install(|| {
+            use rayon::prelude::*;
+            traces
+                .par_iter()
+                .enumerate()
+                .fold(
+                    || (0.0f32, usize::MAX, 0u32),
+                    |acc, (i, trace)| {
+                        let hash_dist = (input_hash ^ trace.pattern_hash).count_ones();
+                        if hash_dist > 40 {
+                            return acc;
+                        }
+                        let score = pattern_similarity(token, &trace.pattern) * trace.weight;
+                        let matched = acc.2 + 1;
+                        if score > acc.0 { (score, i, matched) } else { (acc.0, acc.1, matched) }
+                    },
+                )
+                .reduce(
+                    || (0.0f32, usize::MAX, 0u32),
+                    |(s1, i1, c1), (s2, i2, c2)| {
+                        let c = c1 + c2;
+                        if s1 >= s2 { (s1, i1, c) } else { (s2, i2, c) }
+                    },
+                )
+        });
+
+        self.last_traces_matched.set(matched_count);
+
+        let level = if best_score >= reflex_t {
+            ResonanceLevel::Reflex
+        } else if best_score >= assoc_t {
+            ResonanceLevel::Association
+        } else {
+            ResonanceLevel::None
+        };
+
+        if level == ResonanceLevel::None {
+            return ResonanceResult { level, trace: None };
+        }
+
+        ResonanceResult {
+            level,
+            trace: if best_idx == usize::MAX { None } else { Some(self.traces[best_idx].clone()) },
         }
     }
 
