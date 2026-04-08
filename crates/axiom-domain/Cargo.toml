@@ -13,4 +13,5 @@ axiom-frontier = { path = "../axiom-frontier" }
 axiom-heartbeat = { path = "../axiom-heartbeat" }
 axiom-space = { path = "../axiom-space" }
 axiom-shell = { path = "../axiom-shell" }
+rayon = { workspace = true }
 serde = { workspace = true }

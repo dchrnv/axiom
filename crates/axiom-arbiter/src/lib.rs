@@ -13,7 +13,7 @@
 // - docs/spec/Arbiter_V1_0.md (каноническая)
 // - docs/spec/Ashti_Core_v2_0.md
 
-mod experience;
+pub mod experience;
 mod ashti_processor;
 mod maya_processor;
 mod com;
@@ -240,16 +240,48 @@ impl Arbiter {
         }
     }
 
+    /// Параллельная маршрутизация токена (Axiom Sentinel V1.0, Фаза 2).
+    ///
+    /// Для domain 0 (SUTRA) использует параллельный resonance search.
+    /// Для остальных доменов делегирует в `route_token` (параллелизм там не нужен).
+    pub fn route_token_parallel(&mut self, token: Token, source_domain: u8, pool: &rayon::ThreadPool) -> RoutingResult {
+        if !self.is_ready() {
+            return RoutingResult::error("Not all domains registered");
+        }
+        match source_domain {
+            0 => self.route_from_sutra_parallel(token, pool),
+            _ => self.route_token(token, source_domain),
+        }
+    }
+
     /// SUTRA (0) → EXPERIENCE (9)
     fn route_from_sutra(&mut self, token: Token) -> RoutingResult {
         let _event_id = self.com.next_event_id(0);
-
-        // Токен от SUTRA всегда идёт в EXPERIENCE
-        self.route_from_experience(token)
+        self.route_from_experience_core(token, None)
     }
 
-    /// EXPERIENCE (9) → Dual Path: reflex OR (ASHTI 1-8 → MAYA)
+    /// SUTRA (0) → EXPERIENCE (9) [параллельный, Sentinel Фаза 2]
+    fn route_from_sutra_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult {
+        let _event_id = self.com.next_event_id(0);
+        self.route_from_experience_core(token, Some(pool))
+    }
+
+    /// EXPERIENCE (9) → Dual Path: reflex OR (ASHTI 1-8 → MAYA) [последовательный]
     fn route_from_experience(&mut self, token: Token) -> RoutingResult {
+        self.route_from_experience_core(token, None)
+    }
+
+    /// EXPERIENCE (9) → Dual Path [параллельный, Sentinel Фаза 2]
+    pub fn route_from_experience_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult {
+        self.route_from_experience_core(token, Some(pool))
+    }
+
+    /// EXPERIENCE (9) → Dual Path: reflex OR (ASHTI 1-8 → MAYA) [параллельный, Sentinel Фаза 2].
+    ///
+    /// При `pool = Some(p)` Phase 2 resonance search выполняется параллельно через rayon.
+    /// При `pool = None` — обычный последовательный поиск.
+    /// Если traces < PARALLEL_THRESHOLD, pool игнорируется.
+    fn route_from_experience_core(&mut self, token: Token, pool: Option<&rayon::ThreadPool>) -> RoutingResult {
         let event_id = self.com.next_event_id(9);
 
         // 0. SKILLSET: мгновенный ответ если паттерн кристаллизован
@@ -280,8 +312,11 @@ impl Arbiter {
             };
         }
 
-        // 1. Резонансный поиск
-        let resonance = self.experience.resonance_search(&token);
+        // 1. Резонансный поиск (последовательный или параллельный)
+        let resonance = match pool {
+            Some(p) => self.experience.resonance_search_parallel(&token, p),
+            None    => self.experience.resonance_search(&token),
+        };
 
         // 2. Fast path (conditional) - рефлекс
         let reflex = if resonance.level == ResonanceLevel::Reflex {

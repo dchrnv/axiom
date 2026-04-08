@@ -94,6 +94,15 @@ impl AshtiCore {
         self.arbiter.route_token(token, 0)
     }
 
+    /// Параллельная обработка токена (Axiom Sentinel V1.0, Фаза 2).
+    ///
+    /// Идентична `process()`, но при наличии достаточного числа traces в Experience
+    /// Phase 2 resonance search выполняется параллельно через `pool`.
+    /// При `traces.len() < PARALLEL_THRESHOLD` — автоматический fallback на sequential.
+    pub fn process_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult {
+        self.arbiter.route_token_parallel(token, 0, pool)
+    }
+
     /// Применить обратную связь после завершения сравнения.
     ///
     /// Усиляет или ослабляет след в Experience в зависимости от совпадения

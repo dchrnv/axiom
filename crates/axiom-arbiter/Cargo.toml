@@ -12,6 +12,7 @@ serde = ["dep:serde", "axiom-core/serde"]
 [dependencies]
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
+rayon = { workspace = true }
 
 [dependencies.serde]
 workspace = true
