@@ -20,26 +20,6 @@ axiom-ucl → axiom-upo                          axiom-agent
 
 ---
 
-## Следующее: Commit CLI Channel V1.1
-
-Готовые неотслеживаемые файлы, требуют коммита:
-
-- `crates/axiom-runtime/src/result.rs` — `ProcessingResult`, `ProcessingPath`
-- `crates/axiom-runtime/tests/process_and_observe_tests.rs` — 7 тестов
-- `crates/axiom-agent/src/perceptors/text.rs` — `TextPerceptor` (FNV-1a → 3D position)
-- `crates/axiom-agent/src/effectors/message.rs` — `MessageEffector` (результат → диагностика)
-- `axiom-cli.yaml` — эталонный конфиг с комментариями
-- `crates/axiom-runtime/src/lib.rs` — экспорты `ProcessingResult`, `ProcessingPath`
-- `crates/axiom-agent/src/lib.rs` — `pub mod perceptors`, `pub mod effectors`
-
-**CLI Channel V1.1 уже полностью интегрирован** в `cli.rs`:
-- `TextPerceptor` преобразует пользовательский ввод в токен (FNV-1a → позиция)
-- `MessageEffector` форматирует `ProcessingResult` для stdout
-- `axiom-cli.yaml` загружается при старте (`--config` → `./axiom-cli.yaml` → `~/.config/axiom/cli.yaml`)
-- `process_and_observe()` используется вместо `process_command()` для диагностики
-
----
-
 ## Следующий этап: Axiom Sentinel V1.0
 
 **Спека:** [docs/architecture/Axiom Sentinel v1.0.md](docs/architecture/Axiom%20Sentinel%20v1.0.md)
