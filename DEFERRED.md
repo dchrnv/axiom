@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 14.0
-**Обновлён:** 2026-04-06
+**Версия:** 15.0
+**Обновлён:** 2026-04-08
 
 ---
 
@@ -64,28 +64,7 @@ payload:          [u8;8] // 8B
 
 ---
 
-## Отложенные функции (без срока)
-
-### Справка: MLEngine input_size/output_size = 0
-
-**Статус:** Отложен. НЕ реализовывать сейчас.
-
-Проблема в `crates/axiom-agent/src/ml/engine.rs:120-123`. При загрузке ONNX через `tract` размеры тензоров не извлекаются — оба остаются 0. Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
-
-**Когда исправлять:** При первой реальной ONNX-модели.
-
-**Как исправлять:**
-```rust
-let input_fact = model.input_fact(0)
-    .map_err(|e| MLError::ModelLoad(format!("No input fact: {}", e)))?;
-let input_size = input_fact.shape.as_concrete()
-    .map(|s| s.iter().product::<usize>())
-    .unwrap_or(0);
-```
-
----
-
-## Memory Persistence V1.0 — технический долг
+## Отложенные функции
 
 ### D-04 — axiom-persist: serde_json вместо bincode
 
@@ -95,55 +74,51 @@ let input_size = input_fact.shape.as_concrete()
 - В 3–5× крупнее бинарного (критично при тысячах traces)
 - В 2–4× медленнее сериализации/десериализации
 
-**Как исправить:** Когда будет интернет — добавить `bincode = { version = "2", features = ["serde"] }` в `[workspace.dependencies]`, заменить `serde_json::to_string`/`from_slice` на `bincode::serde::encode_to_vec`/`decode_from_slice` в writer.rs и loader.rs. Расширение файла `.json` → `.bin`.
+**Как исправить:** Добавить `bincode = { version = "2", features = ["serde"] }` в `[workspace.dependencies]`, заменить `serde_json::to_string`/`from_slice` на `bincode::serde::encode_to_vec`/`decode_from_slice`. Расширение файла `.json` → `.bin`.
 
-**Когда:** При следующей работе с axiom-persist или при появлении интернета.
-
----
-
-### ~~D-05~~ — axiom-persist: DomainConfig не сохраняется **[RESOLVED 2026-04-06]**
-
-Сохранение: `StoredDomain.config: Option<DomainConfig>` с `#[serde(default)]`.
-Загрузка: `sd.config.unwrap_or_else(|| DomainConfig::factory_void(...))`.
-Обратная совместимость сохранена — старые файлы десериализуются с `None → factory_void`.
+**Когда:** При появлении интернета.
 
 ---
 
-### D-06 — axiom-persist: data_dir дублируется в CliConfig и PersistenceConfig
+### D-05 — axiom-persist: data_dir дублируется в CliConfig и PersistenceConfig
 
 **Где:** `crates/axiom-agent/src/channels/cli.rs`
 
-`CliConfig.data_dir` и `AutoSaver.config.data_dir` — два отдельных поля. После `:autosave on N` без явного пути `AutoSaver` использует `PersistenceConfig.data_dir` (инициализируется из `CliConfig.data_dir` при создании CliChannel), но если пользователь меняет `CliConfig.data_dir` в рантайме (сейчас нет такой команды) — `AutoSaver` не синхронизируется.
+`CliConfig.data_dir` и `AutoSaver.config.data_dir` — два отдельных поля. `AutoSaver` инициализируется из `CliConfig.data_dir` при создании, но не синхронизируется при runtime-изменении.
 
-**Как исправить:** `AutoSaver` держать ссылку на `&str` из `CliConfig`, или убрать дублирование через единый `data_dir` в `CliChannel`.
+**Как исправить:** Единый `data_dir` в `CliChannel`, или `AutoSaver` держит `&str` из `CliConfig`.
 
 **Когда:** При добавлении команды `:set data-dir <path>`.
 
 ---
 
-### ~~D-07~~ — axiom-persist: AutoSaver не сбрасывает last_save_tick после :load **[RESOLVED 2026-04-06]**
+### D-06 — MLEngine: input_size/output_size = 0 при загрузке ONNX
 
-Добавлен метод `AutoSaver::reset_save_tick(tick: u64)`.
-В обработчике `:load`: `self.auto_saver.reset_save_tick(self.engine.tick_count)`.
+**Где:** `crates/axiom-agent/src/ml/engine.rs:120-123`
+
+При загрузке ONNX через `tract` размеры тензоров не извлекаются. Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
+
+**Как исправить:**
+```rust
+let input_fact = model.input_fact(0)?;
+let input_size = input_fact.shape.as_concrete()
+    .map(|s| s.iter().product::<usize>())
+    .unwrap_or(0);
+```
+
+**Когда:** При первой реальной ONNX-модели.
 
 ---
 
-### ~~D-08~~ — axiom-persist/skillset: дублирование import-логики **[RESOLVED 2026-04-06]**
+## Внешние адаптеры (требуют интернета)
 
-Унифицировано через `import_skill_with_factor(skill, factor) -> bool`.
-Константы `FRACTAL_IMPORT_FACTOR = 0.3`, `EXCHANGE_IMPORT_FACTOR = 0.7`.
-`import_skill()` и `import_skill_exchange()` делегируют в общий метод.
-
----
-
-### WebSocket / REST / gRPC / Python / JSON-schema
-
-**Точки расширения:** `RuntimeAdapter` trait готов (`axiom-runtime/src/adapters.rs`).
+**Точка расширения:** `RuntimeAdapter` trait в `axiom-runtime/src/adapters.rs`.
 
 | Адаптер | Требует | Статус |
 |---|---|---|
 | WebSocket | axum / actix-web | не начат |
-| REST | axum / actix-web | не начат |
+| REST API | axum / actix-web | не начат |
 | gRPC | tonic + protobuf | не начат |
 | Python bindings | pyo3 | не начат |
-| JSON-schema валидация конфигов | — | не начат |
+
+**Когда:** При появлении интернета и конкретной задачи интеграции.

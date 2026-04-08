@@ -24,8 +24,11 @@ pub mod gateway;
 /// Channel — in-process очередь команд и событий
 pub mod channel;
 mod orchestrator;
+/// ProcessingResult — диагностический результат process_and_observe()
+pub mod result;
 
 pub use engine::{AxiomEngine, AxiomError, TickSchedule};
+pub use result::{ProcessingResult, ProcessingPath};
 pub use guardian::{
     Guardian, ReflexDecision, VetoReason,
     InhibitAction, InhibitReason,

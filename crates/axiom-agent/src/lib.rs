@@ -14,3 +14,7 @@ pub mod channels;
 pub mod config;
 /// ML inference (tract-onnx или mock)
 pub mod ml;
+/// Perceptors — преобразование внешних сигналов в UclCommand
+pub mod perceptors;
+/// Effectors — форматирование результатов ядра для вывода
+pub mod effectors;

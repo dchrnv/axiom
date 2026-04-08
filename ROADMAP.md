@@ -1,108 +1,90 @@
 # Axiom Roadmap
 
-**Версия:** 22.0
-**Дата:** 2026-04-06
+**Версия:** 23.0
+**Дата:** 2026-04-08
 
 ---
 
-## Текущая задача: Memory Persistence V1.0
+## Текущее состояние
 
-**Спека:** [docs/spec/Memory_Persistence_V1_0.md](docs/spec/Memory_Persistence_V1_0.md)
+Все этапы до CLI Channel V1.1 включительно завершены. 868 тестов.
 
-Новый crate `axiom-persist`. Граф зависимостей:
 ```
-axiom-core (serde feature) ←── axiom-persist ──→ axiom-runtime
-                                     ↑
-                               axiom-agent (CLI команды :save/:load)
+axiom-core → axiom-arbiter → axiom-domain → axiom-runtime
+                                                    ↑
+axiom-config → axiom-genome → axiom-frontier    axiom-persist
+axiom-space → axiom-shell → axiom-heartbeat         ↑
+axiom-ucl → axiom-upo                          axiom-agent
+                                                (axiom-cli)
 ```
-axiom-runtime НЕ зависит от axiom-persist. Persist читает из runtime, не наоборот.
 
 ---
 
-### Фаза 1: Формат + `:save` + `:load` [DONE]
+## Следующее: Commit CLI Channel V1.1
 
-**Crates:** axiom-core, axiom-persist (новый), axiom-agent
+Готовые неотслеживаемые файлы, требуют коммита:
 
-**Подготовка:**
-- [ ] `bincode = "2"` в `[workspace.dependencies]`
-- [ ] `axiom-persist` добавить в workspace members
-- [ ] `serde` feature в `axiom-core`:
-  - `serde` как optional dependency
-  - `#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]` на Token, Connection, Event
-  - Без feature — компилируется как раньше (zero deps)
+- `crates/axiom-runtime/src/result.rs` — `ProcessingResult`, `ProcessingPath`
+- `crates/axiom-runtime/tests/process_and_observe_tests.rs` — 7 тестов
+- `crates/axiom-agent/src/perceptors/text.rs` — `TextPerceptor` (FNV-1a → 3D position)
+- `crates/axiom-agent/src/effectors/message.rs` — `MessageEffector` (результат → диагностика)
+- `axiom-cli.yaml` — эталонный конфиг с комментариями
+- `crates/axiom-runtime/src/lib.rs` — экспорты `ProcessingResult`, `ProcessingPath`
+- `crates/axiom-agent/src/lib.rs` — `pub mod perceptors`, `pub mod effectors`
 
-**axiom-persist:**
-- [ ] `MemoryManifest` — YAML-структура (version, checksum, tick_count, com_next_id, contents)
-- [ ] `MemoryWriter::save(snapshot, path)` — сериализация по порядку (engine_state → tokens → connections → traces → manifest)
-- [ ] `MemoryLoader::load(path)` — десериализация + import weight factor (0.7×) для traces
-- [ ] Структура на диске: `axiom-data/{meta,tokens,traces,codex,map,context,reflector,config}/`
-- [ ] Ошибки: `PersistError` (NotFound, CorruptManifest, VersionMismatch, Io, Decode)
-
-**axiom-agent (CLI):**
-- [ ] `:save [path]` — сохранить snapshot через `MemoryWriter`
-- [ ] `:load [path]` — загрузить через `MemoryLoader`, применить к engine
-- [ ] `:memory` — показать что в памяти (скиллы, трейсы, dirty)
-- [ ] При `:quit` — автоматический `:save` если persistence включён
-
-**Тесты (axiom-persist):**
-- [ ] `save → load` — snapshot восстанавливается идентично
-- [ ] Traces при загрузке получают weight × 0.7
-- [ ] Повреждённый manifest → `PersistError::CorruptManifest`
-- [ ] Несовместимая версия формата → `PersistError::VersionMismatch`
-- [ ] Пустой engine → save → load → engine пустой
+**CLI Channel V1.1 уже полностью интегрирован** в `cli.rs`:
+- `TextPerceptor` преобразует пользовательский ввод в токен (FNV-1a → позиция)
+- `MessageEffector` форматирует `ProcessingResult` для stdout
+- `axiom-cli.yaml` загружается при старте (`--config` → `./axiom-cli.yaml` → `~/.config/axiom/cli.yaml`)
+- `process_and_observe()` используется вместо `process_command()` для диагностики
 
 ---
 
-### Фаза 2: Boot sequence — загрузка при старте [DONE]
+## Следующий этап: Axiom Sentinel V1.0
 
-**Crates:** axiom-persist, axiom-agent (bin/axiom-cli.rs)
+**Спека:** [docs/architecture/Axiom Sentinel v1.0.md](docs/architecture/Axiom%20Sentinel%20v1.0.md)
 
-- [ ] `bin/axiom-cli.rs`: при старте проверять `axiom-data/manifest.yaml`
-  - Есть и валидный → `MemoryLoader::load()` → применить к engine
-  - Нет или повреждён → чистый старт (warning в stderr)
-- [ ] Флаг `--data-dir <path>` в CLI (default: `./axiom-data`)
-- [ ] Флаг `--no-load` для принудительного чистого старта
-- [ ] После загрузки: пересчёт Shell из Connection (если есть API), перестройка SpatialHashGrid
-- [ ] Banner: показывать "Loaded from axiom-data (tick=N, traces=M)" или "Fresh start"
+Цель: адаптивный движок с аппаратной осведомлённостью и параллельной обработкой.  
+Целевой показатель: «мыслительный акт» ≤ 1 ms при любой нагрузке.
 
-**Тесты:**
-- [ ] save → restart (новый engine) → load → рефлексы работают (traces подтягиваются)
-- [ ] Отсутствие `axiom-data/` → чистый старт без паники
-- [ ] `--no-load` → чистый старт даже при наличии axiom-data
+**Доступные зависимости (в cargo-кэше):** `rayon 1.11.0`
 
 ---
 
-### Фаза 3: Автосохранение (кристаллизация) [DONE]
+### Фаза 1: Hardware-Aware Topology
 
-**Crates:** axiom-persist, axiom-runtime (PersistenceConfig), axiom-agent
+**Crates:** axiom-runtime
 
-- [ ] `PersistenceConfig` в runtime config (enabled, data_dir, thresholds, intervals)
-- [ ] Dirty buffer в axiom-persist: отслеживать изменённые traces/rules с момента последнего flush
-- [ ] Интеграция с TickSchedule: новый интервал `persist_check_interval`
-- [ ] Flush logic: `dirty_count > flush_threshold` ИЛИ `tick_count - last_flush > max_interval`
-- [ ] Порядок записи (атомарность manifest): engine_state → skills → codex → context → reflector → traces → map → manifest
-- [ ] Скилл записывается немедленно при кристаллизации (write_on_crystallize)
-
-**Тесты:**
-- [ ] Кристаллизация скилла → файл появляется на диске без явного `:save`
-- [ ] Рестарт → скилл загружается из файла
-- [ ] Прерванная запись (manifest не обновлён) → загрузка откатывается к предыдущему состоянию
+- [ ] `AxiomEngine::new()`: `std::thread::available_parallelism()` → `worker_count`
+- [ ] Хранить `worker_count` в `AxiomEngine` (или `EngineConfig`)
+- [ ] `rayon::ThreadPool::new(worker_count - 1)` — 1 поток резервируется под ОС/Gateway
+- [ ] Вынести `ThreadPool` в `AxiomEngine`, переиспользовать во всех параллельных операциях
+- [ ] Тесты: `worker_count >= 1`, Engine не паникует при `worker_count = 1`
 
 ---
 
-### Фаза 4: Обмен знаниями [DONE]
+### Фаза 2: Parallel Resonance Search
 
-**Crates:** axiom-persist, axiom-agent (CLI)
+**Crates:** axiom-arbiter
 
-- [ ] `:export skills <path>` — экспорт SKILLSET в отдельную директорию
-- [ ] `:export traces <path>` — экспорт трейсов > threshold
-- [ ] `:import skills <path>` — импорт с `IMPORT_WEIGHT_FACTOR = 0.7`
-- [ ] GUARDIAN-валидация импорта: проверка CODEX-совместимости
-- [ ] `imported/` субдиректория: система распознаёт и применяет weight factor
+- [ ] `Experience::resonance_search_parallel(token, pool)` через `rayon::scope`
+- [ ] Чанки по `L2_CACHE_BYTES / size_of::<ExperienceTrace>()` (L2 = 512 KB → ~8K traces/chunk)
+- [ ] Reduce без mutex: `par_iter().max_by_key(|t| score(t, token))`
+- [ ] Переключатель: `traces.len() < 512` → последовательный путь (без overhead rayon)
+- [ ] Тесты: `parallel_result == sequential_result` для идентичных данных
 
-**Тесты:**
-- [ ] export из A → import в B → скиллы активируются (но с пониженным weight)
-- [ ] GUARDIAN блокирует CODEX-нарушающий импорт
+---
+
+### Фаза 3: Variable Tick Rate
+
+**Crates:** axiom-runtime, axiom-agent
+
+- [ ] `AdaptiveTickRate` в `TickSchedule`: `min_hz`, `max_hz`, `current_hz`
+- [ ] Повышение hz: `tension_count > threshold` ИЛИ `MultiPass` ИЛИ внешний ввод
+- [ ] Понижение hz: N тиков без ввода + без tension traces (cooldown)
+- [ ] `CliChannel`: пересчитывать `tokio::time::interval` при изменении `current_hz`
+- [ ] Команда `:tickrate` — показать текущий hz и причину
+- [ ] Тесты: hz повышается при tension, снижается при idle N тиков
 
 ---
 
