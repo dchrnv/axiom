@@ -17,6 +17,7 @@ use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload
 use crate::guardian::{Guardian, RoleStats};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
+use crate::adaptive::AdaptiveTickRate;
 
 /// Ошибки инициализации AxiomEngine.
 #[derive(Debug, Clone, PartialEq)]
@@ -74,6 +75,9 @@ pub struct TickSchedule {
     /// Автосохранение состояния на диск (default: 0 = отключено).
     /// При ненулевом значении — сохраняет каждые N тиков.
     pub persist_check_interval: u32,
+    /// Адаптивная частота тиков (Axiom Sentinel V1.0, Фаза 3).
+    /// Управляет частотой главного цикла CliChannel при включённом adaptive mode.
+    pub adaptive_tick: AdaptiveTickRate,
 }
 
 impl Default for TickSchedule {
@@ -87,6 +91,7 @@ impl Default for TickSchedule {
             goal_check_interval:    10,
             reconcile_interval:     200,
             persist_check_interval: 0,
+            adaptive_tick:          AdaptiveTickRate::default(),
         }
     }
 }

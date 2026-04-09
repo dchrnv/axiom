@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-08 (CLI Channel V1.1 — ЗАВЕРШЁН)
+**Обновлено:** 2026-04-09 (Axiom Sentinel V1.0 — ЗАВЕРШЁН)
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**868 тестов, 0 failures, 0 warnings**
+**900 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -29,7 +29,9 @@ axiom-agent:
   └── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
 
 axiom-runtime:
-  └── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
+  ├── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
+  ├── Orchestrator — параллельная маршрутизация + Guardian check + apply_feedback
+  └── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
 
 axiom-persist:
   ├── save/load: Token+Connection+ExperienceTrace → JSON (атомарный rename)
@@ -60,11 +62,11 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 116 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 101 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult |
+| axiom-runtime | 117 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator |
 | axiom-agent | 92 | TextPerceptor, MessageEffector, CliChannel, TelegramPerceptor/Effector, ShellEffector, MLEngine |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (export/import) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **868** | |
+| **Итого** | **900** | |
 
 ---
 
@@ -91,3 +93,4 @@ axiom-space:
 | Cleanup | COM V1.1 — unwrap, Unknown, Event fields, COM, constants, TickSchedule | ✅ |
 | Memory | Memory Persistence V1.0 — save/load/autosave/exchange (axiom-persist) | ✅ |
 | CLI V1.1 | CLI Channel V1.1 — TextPerceptor, MessageEffector, process_and_observe, axiom-cli.yaml | ✅ |
+| Sentinel | Axiom Sentinel V1.0 — Hardware Topology, Parallel Resonance Search, Variable Tick Rate | ✅ |
