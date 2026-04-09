@@ -397,7 +397,7 @@ impl CliChannel {
     pub fn new(mut engine: AxiomEngine, config: CliConfig) -> Self {
         engine.tick_schedule = config.tick_schedule;
         let persist_interval = engine.tick_schedule.persist_check_interval;
-        let auto_cfg = PersistenceConfig::new(config.data_dir.clone(), persist_interval);
+        let auto_cfg = PersistenceConfig::new(persist_interval);
         Self {
             engine,
             perceptor:  TextPerceptor::new(),
@@ -480,7 +480,8 @@ impl CliChannel {
             self.engine.process_command(&tick_cmd);
 
             // Автосохранение по интервалу
-            if self.auto_saver.tick(&self.engine) {
+            let data_dir = std::path::Path::new(&self.config.data_dir);
+            if self.auto_saver.tick(&self.engine, data_dir) {
                 if self.config.verbose {
                     println!("  [autosave: tick={}]", self.engine.tick_count);
                 }
@@ -530,9 +531,9 @@ impl CliChannel {
             ":quit" | ":q" => {
                 // Автосохранение при выходе если включено
                 if self.auto_saver.config.enabled {
-                    let dir = self.auto_saver.config.data_dir.clone();
-                    match self.auto_saver.force_save(&self.engine) {
-                        Ok(_) => println!("  autosaved to {}", dir.display()),
+                    let data_dir = std::path::Path::new(&self.config.data_dir);
+                    match self.auto_saver.force_save(&self.engine, data_dir) {
+                        Ok(_) => println!("  autosaved to {}", data_dir.display()),
                         Err(e) => eprintln!("  autosave on quit failed: {e}"),
                     }
                 }
@@ -634,7 +635,8 @@ impl CliChannel {
                         println!("  autosave: off");
                     }
                     _ => {
-                        println!("{}", self.auto_saver.status_line());
+                        let data_dir = std::path::Path::new(&self.config.data_dir);
+                        println!("{}", self.auto_saver.status_line(data_dir));
                     }
                 }
             }
