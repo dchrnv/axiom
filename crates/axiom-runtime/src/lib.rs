@@ -26,6 +26,8 @@ pub mod channel;
 mod orchestrator;
 /// ProcessingResult — диагностический результат process_and_observe()
 pub mod result;
+/// AdaptiveTickRate — Variable Tick Rate (Axiom Sentinel V1.0, Фаза 3)
+pub mod adaptive;
 
 pub use engine::{AxiomEngine, AxiomError, TickSchedule};
 pub use result::{ProcessingResult, ProcessingPath};
@@ -39,3 +41,4 @@ pub use snapshot::{EngineSnapshot, DomainSnapshot};
 pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter, EventBus, Perceptor, Effector};
 pub use gateway::Gateway;
 pub use channel::{Channel, ChannelBatchResult};
+pub use adaptive::{AdaptiveTickRate, TickRateReason};

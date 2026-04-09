@@ -152,7 +152,7 @@ use axiom_persist::{
     save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig,
     export_traces, export_skills, import_traces, import_skills,
 };
-use axiom_runtime::{AxiomEngine, TickSchedule};
+use axiom_runtime::{AxiomEngine, TickSchedule, AdaptiveTickRate, TickRateReason, ProcessingPath};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::MessageEffector;
 use tokio::sync::mpsc;
@@ -172,6 +172,16 @@ pub struct TickScheduleConfig {
     #[serde(default)] pub goal_check_interval:    Option<u32>,
     #[serde(default)] pub reconcile_interval:     Option<u32>,
     #[serde(default)] pub persist_check_interval: Option<u32>,
+    /// Минимальная частота тиков, Гц (default: 60)
+    #[serde(default)] pub adaptive_min_hz:   Option<u32>,
+    /// Максимальная частота тиков, Гц (default: 1000)
+    #[serde(default)] pub adaptive_max_hz:   Option<u32>,
+    /// Шаг увеличения при триггере, Гц (default: 200)
+    #[serde(default)] pub adaptive_step_up:  Option<u32>,
+    /// Шаг уменьшения за cooldown-цикл, Гц (default: 20)
+    #[serde(default)] pub adaptive_step_down: Option<u32>,
+    /// Число idle-тиков до снижения hz (default: 50)
+    #[serde(default)] pub adaptive_cooldown: Option<u32>,
 }
 
 impl TickScheduleConfig {
@@ -186,6 +196,11 @@ impl TickScheduleConfig {
         if let Some(v) = self.goal_check_interval    { s.goal_check_interval    = v; }
         if let Some(v) = self.reconcile_interval     { s.reconcile_interval     = v; }
         if let Some(v) = self.persist_check_interval { s.persist_check_interval = v; }
+        if let Some(v) = self.adaptive_min_hz        { s.adaptive_tick.min_hz   = v; }
+        if let Some(v) = self.adaptive_max_hz        { s.adaptive_tick.max_hz   = v; }
+        if let Some(v) = self.adaptive_step_up       { s.adaptive_tick.step_up  = v; }
+        if let Some(v) = self.adaptive_step_down     { s.adaptive_tick.step_down = v; }
+        if let Some(v) = self.adaptive_cooldown      { s.adaptive_tick.cooldown  = v; }
     }
 }
 
@@ -214,6 +229,9 @@ pub struct CliConfigFile {
     /// Расписание периодических задач ядра
     #[serde(default)]
     pub tick_schedule: Option<TickScheduleConfig>,
+    /// Включить адаптивную частоту тиков (Axiom Sentinel V1.0, Фаза 3)
+    #[serde(default)]
+    pub adaptive_tick_rate: Option<bool>,
 }
 
 impl CliConfigFile {
@@ -267,6 +285,8 @@ pub struct CliConfig {
     pub tick_schedule: TickSchedule,
     /// Директория хранилища (default: "./axiom-data"). Используется в :save/:load
     pub data_dir: String,
+    /// Включить адаптивную частоту тиков (Axiom Sentinel V1.0, Фаза 3)
+    pub adaptive_tick_rate: bool,
 }
 
 impl Default for CliConfig {
@@ -277,6 +297,7 @@ impl Default for CliConfig {
             prompt: "axiom> ".to_string(),
             tick_schedule: TickSchedule::default(),
             data_dir: "axiom-data".to_string(),
+            adaptive_tick_rate: false,
         }
     }
 }
@@ -298,9 +319,10 @@ impl CliConfig {
 
         // Слой 2: YAML-файл
         if let Some(file) = CliConfigFile::find_and_load(explicit_config) {
-            if let Some(v) = file.tick_hz    { config.tick_hz   = v; }
-            if let Some(v) = file.verbose    { config.verbose   = v; }
-            if let Some(v) = file.prompt     { config.prompt    = v; }
+            if let Some(v) = file.tick_hz           { config.tick_hz           = v; }
+            if let Some(v) = file.verbose           { config.verbose           = v; }
+            if let Some(v) = file.prompt            { config.prompt            = v; }
+            if let Some(v) = file.adaptive_tick_rate { config.adaptive_tick_rate = v; }
             if let Some(s) = file.tick_schedule {
                 s.apply_to(&mut config.tick_schedule);
             }
@@ -317,6 +339,7 @@ impl CliConfig {
                     }
                 }
                 "--verbose" | "-v" => config.verbose = true,
+                "--adaptive"       => config.adaptive_tick_rate = true,
                 "--config"         => { i += 1; } // уже обработано выше
                 "--data-dir" => {
                     i += 1;
@@ -343,10 +366,14 @@ Usage: axiom-cli [OPTIONS]
 Options:
   --tick-hz N       Tick frequency in Hz (default: 100)
   --verbose, -v     Show tension traces after each tick
+  --adaptive        Enable adaptive tick rate (Sentinel V1.0 Phase 3)
   --config <path>   Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
   --data-dir <path> Data directory for save/load (default: ./axiom-data)
   --no-load         Skip loading from data directory on startup
   --help, -h        Show this message";
+
+/// Минимальное число активных tension traces для повышения hz тика.
+const ADAPTIVE_TENSION_THRESHOLD: usize = 3;
 
 /// Асинхронный CLI интерфейс к ядру AXIOM.
 ///
@@ -404,14 +431,21 @@ impl CliChannel {
             }
         });
 
-        let tick_ms = 1000 / self.config.tick_hz.max(1);
+        // При адаптивном режиме начальный hz берётся из adaptive_tick.current_hz,
+        // иначе — из tick_hz конфига.
+        let tick_ms = 1000u64 / self.config.tick_hz.max(1) as u64;
+        let mut current_interval_ms = tick_ms;
         let mut interval = tokio::time::interval(
-            tokio::time::Duration::from_millis(tick_ms as u64)
+            tokio::time::Duration::from_millis(tick_ms)
         );
         let tick_cmd = axiom_ucl::UclCommand::new(axiom_ucl::OpCode::TickForward, 0, 100, 0);
 
         loop {
             interval.tick().await;
+
+            // Флаги состояния итерации для адаптивного тика
+            let mut had_input    = false;
+            let mut had_multipass = false;
 
             // Обработать все сообщения из stdin (non-blocking)
             loop {
@@ -419,6 +453,7 @@ impl CliChannel {
                     Ok(line) if line.is_empty() => {}
 
                     Ok(line) if line.starts_with(':') => {
+                        had_input = true;
                         if !self.handle_meta_command(&line) {
                             return; // :quit
                         }
@@ -426,8 +461,12 @@ impl CliChannel {
 
                     Ok(line) => {
                         // Пользовательский ввод → TextPerceptor → process_and_observe
+                        had_input = true;
                         let cmd = self.perceptor.perceive(&line);
                         let result = self.engine.process_and_observe(&cmd);
+                        if matches!(result.path, ProcessingPath::MultiPass(_)) {
+                            had_multipass = true;
+                        }
                         let out = self.effector.format_result(&result);
                         print!("{}", out);
                     }
@@ -455,6 +494,29 @@ impl CliChannel {
                 let tension = self.engine.ashti.experience().tension_count();
                 if tension > 0 {
                     println!("  [tension: {} active]", tension);
+                }
+            }
+
+            // Адаптивная частота тиков (Axiom Sentinel V1.0, Фаза 3)
+            if self.config.adaptive_tick_rate {
+                let tension = self.engine.ashti.experience().tension_count();
+                let adaptive = &mut self.engine.tick_schedule.adaptive_tick;
+                if had_input {
+                    adaptive.trigger(TickRateReason::ExternalInput);
+                } else if had_multipass {
+                    adaptive.trigger(TickRateReason::MultiPass);
+                } else if tension >= ADAPTIVE_TENSION_THRESHOLD {
+                    adaptive.trigger(TickRateReason::TensionHigh);
+                } else {
+                    adaptive.on_idle_tick();
+                }
+
+                let new_ms = adaptive.interval_ms();
+                if new_ms != current_interval_ms {
+                    current_interval_ms = new_ms;
+                    interval = tokio::time::interval(
+                        tokio::time::Duration::from_millis(new_ms)
+                    );
                 }
             }
         }
@@ -607,6 +669,14 @@ impl CliChannel {
                 let tension = self.engine.ashti.experience().tension_count();
                 println!("  active tension: {}", tension);
             }
+            ":tickrate" => {
+                let a = &self.engine.tick_schedule.adaptive_tick;
+                println!("  current_hz:  {} Hz", a.current_hz);
+                println!("  reason:      {}", a.last_reason);
+                println!("  idle_ticks:  {}", a.idle_ticks);
+                println!("  range:       {}..{} Hz", a.min_hz, a.max_hz);
+                println!("  adaptive:    {}", if self.config.adaptive_tick_rate { "on" } else { "off" });
+            }
             ":export" => {
                 // :export traces [path] | :export skills [path]
                 let what = parts.get(1).copied().unwrap_or("traces");
@@ -671,6 +741,7 @@ const HELP_TEXT: &str = "\
   :tick [N]           — прокрутить N тиков
   :snapshot           — показать info снапшота
   :schedule           — текущий TickSchedule
+  :tickrate           — текущая частота тиков и причина (Sentinel Phase 3)
   :save [path]              — сохранить состояние (default: axiom-data)
   :load [path]              — загрузить состояние (default: axiom-data)
   :memory                   — показать статистику памяти

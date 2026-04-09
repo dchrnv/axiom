@@ -1,13 +1,13 @@
 # Axiom Roadmap
 
-**Версия:** 23.0
-**Дата:** 2026-04-08
+**Версия:** 24.0
+**Дата:** 2026-04-09
 
 ---
 
 ## Текущее состояние
 
-Все этапы до CLI Channel V1.1 включительно завершены. 868 тестов.
+Все этапы до Axiom Sentinel V1.0 включительно завершены. 900 тестов.
 
 ```
 axiom-core → axiom-arbiter → axiom-domain → axiom-runtime
@@ -55,16 +55,16 @@ axiom-ucl → axiom-upo                          axiom-agent
 
 ---
 
-### Фаза 3: Variable Tick Rate
+### Фаза 3: Variable Tick Rate ✅
 
 **Crates:** axiom-runtime, axiom-agent
 
-- [ ] `AdaptiveTickRate` в `TickSchedule`: `min_hz`, `max_hz`, `current_hz`
-- [ ] Повышение hz: `tension_count > threshold` ИЛИ `MultiPass` ИЛИ внешний ввод
-- [ ] Понижение hz: N тиков без ввода + без tension traces (cooldown)
-- [ ] `CliChannel`: пересчитывать `tokio::time::interval` при изменении `current_hz`
-- [ ] Команда `:tickrate` — показать текущий hz и причину
-- [ ] Тесты: hz повышается при tension, снижается при idle N тиков
+- [x] `AdaptiveTickRate` в `TickSchedule`: `min_hz`, `max_hz`, `current_hz`
+- [x] Повышение hz: `tension_count > threshold` ИЛИ `MultiPass` ИЛИ внешний ввод
+- [x] Понижение hz: N тиков без ввода + без tension traces (cooldown)
+- [x] `CliChannel`: пересчитывать `tokio::time::interval` при изменении `current_hz`
+- [x] Команда `:tickrate` — показать текущий hz и причину
+- [x] Тесты: hz повышается при tension, снижается при idle N тиков
 
 ---
 
