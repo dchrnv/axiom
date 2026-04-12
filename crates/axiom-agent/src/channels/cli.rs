@@ -488,6 +488,10 @@ pub struct CliChannel {
     last_tension: usize,
     /// Тик последнего вывода tps (для :watch tps)
     last_tps_tick: u64,
+    /// Счётчик multi-pass событий с момента запуска
+    multipass_count: u64,
+    /// Последний multi-pass результат (число проходов)
+    last_multipass_n: u8,
 }
 
 impl CliChannel {
@@ -508,6 +512,8 @@ impl CliChannel {
             last_traces:  0,
             last_tension: 0,
             last_tps_tick: 0,
+            multipass_count: 0,
+            last_multipass_n: 0,
             config,
         }
     }
@@ -569,8 +575,10 @@ impl CliChannel {
                         had_input = true;
                         let cmd = self.perceptor.perceive(&line);
                         let result = self.engine.process_and_observe(&cmd);
-                        if matches!(result.path, ProcessingPath::MultiPass(_)) {
+                        if let ProcessingPath::MultiPass(n) = result.path {
                             had_multipass = true;
+                            self.multipass_count += 1;
+                            self.last_multipass_n = n;
                         }
                         let out = self.effector.format_result(
                             &result,
@@ -688,7 +696,32 @@ impl CliChannel {
                 return false;
             }
             ":help" => {
-                println!("{}", HELP_TEXT);
+                match parts.get(1).copied() {
+                    None => println!("{}", HELP_TEXT),
+                    Some(cmd) => {
+                        let topic = if cmd.starts_with(':') { cmd } else { &line[..] };
+                        match topic {
+                            ":trace"       => println!("{}", HELP_TRACE),
+                            ":connections" => println!("{}", HELP_CONNECTIONS),
+                            ":dream"       => println!("{}", HELP_DREAM),
+                            ":multipass"   => println!("{}", HELP_MULTIPASS),
+                            ":reflector"   => println!("{}", HELP_REFLECTOR),
+                            ":impulses"    => println!("{}", HELP_IMPULSES),
+                            ":traces"      => println!("  :traces — experience traces top-20 по weight. Колонки: #, Weight, tmp/mss/val, (x,y,z), Age, Hash."),
+                            ":tension"     => println!("  :tension — активные tension traces с temperature и возрастом."),
+                            ":depth"       => println!("  :depth — параметры Cognitive Depth: max_passes, min_coherence, internal_dominance."),
+                            ":arbiter"     => println!("  :arbiter — thresholds per domain + reflector stats."),
+                            ":guardian"    => println!("  :guardian — GUARDIAN stats: reflex_allowed/vetoed, access_denied, etc."),
+                            ":frontier"    => println!("  :frontier — Causal Frontier size + mem% по всем доменам."),
+                            ":domain"      => println!("  :domain <id> — полные детали домена: capacity, physics, arbiter, membrane."),
+                            ":events"      => println!("  :events [N] — последние N COM-событий из кольцевого буфера (max 256)."),
+                            ":perf"        => println!("  :perf — avg/peak ns/тик, actual Hz, процент бюджета, periodic task counters."),
+                            ":status"      => println!("  :status — tick_count, com_next_id, uptime, Hz, memory summary, cognitive params."),
+                            ":watch"       => println!("  :watch <traces|tension|tps> — следить за изменениями в реальном времени."),
+                            _ => println!("  No help for '{}'. Type :help for full list.", cmd),
+                        }
+                    }
+                }
             }
             ":status" => {
                 let exp    = self.engine.ashti.experience();
@@ -1104,6 +1137,162 @@ impl CliChannel {
                 println!("  thresholds adapted:   {}", s.thresholds_adapted);
                 println!("  dream proposals:      {}", s.dream_proposals);
             }
+            ":trace" => {
+                match parts.get(1).and_then(|s| s.parse::<usize>().ok()) {
+                    None => println!("  Usage: :trace <index>  (1-based, same as :traces output)"),
+                    Some(idx) if idx == 0 => println!("  index must be ≥ 1"),
+                    Some(idx) => {
+                        let exp   = self.engine.ashti.experience();
+                        let traces = exp.traces();
+                        // Сортируем так же как :traces — по weight desc
+                        let mut sorted: Vec<_> = traces.iter().enumerate().collect();
+                        sorted.sort_by(|a, b| b.1.weight.total_cmp(&a.1.weight));
+                        match sorted.get(idx - 1) {
+                            None => println!("  trace #{} not found (total: {})", idx, traces.len()),
+                            Some((_, t)) => {
+                                let tick = self.engine.tick_count;
+                                let age  = tick.saturating_sub(t.created_at);
+                                let [x, y, z] = t.pattern.position;
+                                println!("  ══ Experience Trace #{} ════════════════", idx);
+                                println!("  weight:        {:.4}", t.weight);
+                                println!("  success_count: {}", t.success_count);
+                                println!("  pattern_hash:  {:#018x}", t.pattern_hash);
+                                println!("  created_at:    {} (age: {} ticks)", t.created_at, age);
+                                println!("  last_used:     {}", t.last_used);
+                                println!("  ── pattern (token) ────────────────────");
+                                println!("  position:      ({}, {}, {})", x, y, z);
+                                println!("  temperature:   {}", t.pattern.temperature);
+                                println!("  mass:          {}", t.pattern.mass);
+                                println!("  valence:       {}", t.pattern.valence);
+                                println!("  velocity:      ({}, {}, {})",
+                                    t.pattern.velocity[0],
+                                    t.pattern.velocity[1],
+                                    t.pattern.velocity[2]);
+                                println!("  type_flags:    {:#04x}", t.pattern.type_flags);
+                            }
+                        }
+                    }
+                }
+            }
+            ":connections" => {
+                let states = self.engine.ashti.all_states();
+                let filter_id = parts.get(1).and_then(|s| s.parse::<u16>().ok());
+                let mut total = 0usize;
+                println!("  ══ Connections ════════════════════════");
+                for (id, state) in &states {
+                    if let Some(fid) = filter_id {
+                        if *id != fid { continue; }
+                    }
+                    if state.connections.is_empty() { continue; }
+                    println!("  ── domain {} ({}) ── {} connections",
+                        id, domain_name(*id), state.connections.len());
+                    for (i, c) in state.connections.iter().take(10).enumerate() {
+                        println!("  {:>3}  {:>8}→{:<8}  strength={:.2}  stress={:.2}  type={:#06x}",
+                            i + 1, c.source_id, c.target_id,
+                            c.strength, c.current_stress, c.link_type);
+                    }
+                    if state.connections.len() > 10 {
+                        println!("  ... и ещё {}", state.connections.len() - 10);
+                    }
+                    total += state.connections.len();
+                }
+                if total == 0 {
+                    println!("  no connections");
+                } else {
+                    println!("  ── total: {} connections", total);
+                }
+            }
+            ":dream" => {
+                let exp         = self.engine.ashti.experience();
+                let candidates  = exp.find_crystallizable(0.9, 5);
+                let gs          = self.engine.guardian.stats();
+                println!("  ══ DREAM ═══════════════════════════════");
+                println!("  dream_proposals:  {}", gs.dream_proposals);
+                println!("  crystallizable:   {} (weight≥0.9, success≥5)", candidates.len());
+                if candidates.is_empty() {
+                    println!("  (no candidates — more experience needed)");
+                } else {
+                    println!("  {:>3}  {:>6}  {:>5}  {:>10}",
+                        "#", "Weight", "Succ", "Hash");
+                    for (i, t) in candidates.iter().enumerate() {
+                        println!("  {:>3}  {:.4}  {:>5}  {:#010x}",
+                            i + 1, t.weight, t.success_count,
+                            t.pattern_hash & 0xFFFFFFFF);
+                    }
+                }
+            }
+            ":multipass" => {
+                println!("  ══ Multi-Pass Statistics ══════════════");
+                println!("  total events:     {}", self.engine.com_next_id);
+                println!("  multipass count:  {}", self.multipass_count);
+                let rate = if self.engine.com_next_id > 0 {
+                    self.multipass_count as f64 / self.engine.com_next_id as f64 * 100.0
+                } else { 0.0 };
+                println!("  multipass rate:   {:.2}%", rate);
+                if self.multipass_count > 0 {
+                    println!("  last passes:      {}", self.last_multipass_n);
+                }
+                let (max_passes, min_coh) = self.engine.maya_multipass_params();
+                println!("  ── config ─────────────────────────────");
+                println!("  max_passes:       {}", max_passes);
+                println!("  min_coherence:    {:.2}", min_coh);
+            }
+            ":reflector" => {
+                let reflector = self.engine.ashti.reflector();
+                println!("  ══ REFLECTOR — Per-Domain ═════════════");
+                println!("  {:>5}  {:>10}  {:>8}  {:>8}  {:>8}",
+                    "Role", "Name", "Success", "Total", "Rate");
+                let mut has_data = false;
+                for role in 1u8..=8 {
+                    if let Some(profile) = reflector.domain_profile(role) {
+                        let total = profile.total_calls();
+                        if total == 0 { continue; }
+                        has_data = true;
+                        let rate = profile.overall_success_rate();
+                        let domain_id = self.engine.ashti.level_id() * 100 + role as u16;
+                        println!("  {:>5}  {:>10}  {:>8}  {:>8}  {:>7.1}%",
+                            role, domain_name(domain_id),
+                            (rate * total as f32) as u32, total, rate * 100.0);
+                    }
+                }
+                if !has_data {
+                    println!("  no reflector data yet");
+                }
+                println!("  ── global ─────────────────────────────");
+                println!("  patterns tracked: {}", reflector.tracked_patterns());
+                println!("  reflex success:   {}  fail: {}",
+                    reflector.total_success(), reflector.total_fail());
+            }
+            ":impulses" => {
+                let tick     = self.engine.tick_count;
+                let interval = self.engine.tick_schedule.goal_check_interval;
+                // Goal impulses (read-only call)
+                let goals = self.engine.ashti.generate_goal_impulses(tick, interval as u64);
+                // Curiosity candidates (traces near crystallization)
+                let exp         = self.engine.ashti.experience();
+                let curiosity   = exp.find_crystallizable(0.72, 2); // near threshold
+                let tension_n   = exp.tension_count();
+                println!("  ══ Pending Impulses ═══════════════════");
+                println!("  tension traces:  {} (each may generate impulse)", tension_n);
+                println!("  goal impulses:   {}", goals.len());
+                println!("  curiosity cands: {}", curiosity.len());
+                if !goals.is_empty() {
+                    println!("  ── goal ───────────────────────────────");
+                    for (i, imp) in goals.iter().enumerate() {
+                        let [x, y, z] = imp.pattern.position;
+                        println!("  {:>3}  weight={:.2}  pos=({},{},{})",
+                            i + 1, imp.weight, x, y, z);
+                    }
+                }
+                if !curiosity.is_empty() {
+                    println!("  ── curiosity (near crystallization) ───");
+                    for (i, t) in curiosity.iter().take(5).enumerate() {
+                        println!("  {:>3}  weight={:.4}  success={}  {:#010x}",
+                            i + 1, t.weight, t.success_count,
+                            t.pattern_hash & 0xFFFFFFFF);
+                    }
+                }
+            }
             ":watch" => {
                 match parts.get(1).copied() {
                     None => {
@@ -1173,6 +1362,39 @@ impl CliChannel {
     }
 }
 
+const HELP_TRACE: &str = "\
+  :trace <index>
+  Детали одного experience trace. Индекс — тот же что в :traces (1-based, top by weight).
+  Показывает: weight, success_count, pattern_hash, created_at/age, last_used,
+  а также поля Token паттерна (position, temperature, mass, valence, velocity).";
+
+const HELP_CONNECTIONS: &str = "\
+  :connections [domain_id]
+  Связи в домене: source→target, strength, current_stress, link_type.
+  Без аргумента — все домены. С аргументом — только указанный домен. Top-10 per domain.";
+
+const HELP_DREAM: &str = "\
+  :dream
+  Состояние DREAM-цикла: число кристаллизуемых паттернов (weight≥0.9, success≥5)
+  и суммарное число DREAM-proposals от GUARDIAN с момента запуска.";
+
+const HELP_MULTIPASS: &str = "\
+  :multipass
+  Статистика multi-pass обработки: сколько событий вызвали повторные проходы,
+  процент от всех COM-событий, и число проходов в последнем multipass.";
+
+const HELP_REFLECTOR: &str = "\
+  :reflector
+  Per-domain точность REFLECTOR: success/total/rate для ролей 1–8.
+  Показывает только домены у которых есть данные. Также global stats.";
+
+const HELP_IMPULSES: &str = "\
+  :impulses
+  Диагностика очереди внутренних импульсов:
+  - tension traces (каждый активный может генерировать impulse)
+  - goal impulses (traces с GOAL-флагом, weight < достигнуто)
+  - curiosity candidates (traces near crystallization threshold)";
+
 const HELP_TEXT: &str = "\
   ── состояние ──────────────────────────────────────────────
   :status               — расширенный статус ядра
@@ -1187,11 +1409,17 @@ const HELP_TEXT: &str = "\
 
   ── experience / когнитивный слой ──────────────────────────
   :traces               — experience traces (top-20 по weight)
+  :trace <index>        — детали одного trace
   :tension              — активные tension traces
   :depth                — Cognitive Depth: параметры и состояние
   :arbiter              — пороги Arbiter по доменам + Reflector
+  :reflector            — per-domain accuracy REFLECTOR
   :guardian             — статистика GUARDIAN: approved/vetoed
   :frontier             — состояние Causal Frontier по доменам
+  :dream                — DREAM-цикл: кристаллизуемые паттерны
+  :multipass            — статистика multi-pass событий
+  :impulses             — очередь pending impulses (goal/curiosity/tension)
+  :connections [id]     — связи в домене
 
   ── производительность ─────────────────────────────────────
   :perf                 — ns/тик, пик, actual Hz, периодические задачи
@@ -1214,6 +1442,6 @@ const HELP_TEXT: &str = "\
   :import traces|skills [p] — импорт с GUARDIAN-валидацией (weight×0.7)
 
   ── прочее ─────────────────────────────────────────────────
-  :help                 — этот список
+  :help [command]       — этот список или детали команды (:help :trace)
   :quit / :q            — выход (с автосохранением)
   Любой другой ввод     → InjectToken в SUTRA(100) → результат";

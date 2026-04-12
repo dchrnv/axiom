@@ -341,6 +341,104 @@ axiom> :unwatch tension
   unwatched: tension
 ```
 
+### Trace
+
+```
+:trace <index>
+```
+Полные детали одного experience trace (индекс из вывода `:traces`, 1-based):
+```
+  ══ Experience Trace #1 ════════════════
+  weight:        0.7200
+  success_count: 42
+  pattern_hash:  0x00a7f3b2c1e4d5f6
+  created_at:    1200 (age: 3081 ticks)
+  last_used:     4218
+  ── pattern (token) ────────────────────
+  position:      (1823, 5950, 10514)
+  temperature:   180
+  mass:          100
+  valence:       0
+  velocity:      (0, 0, 0)
+  type_flags:    0x01
+```
+
+### Connections
+
+```
+:connections [domain_id]
+```
+Связи в доменах. Без аргумента — все домены, с аргументом — один:
+```
+  ══ Connections ════════════════════════
+  ── domain 101 (EXECUTION) ── 3 connections
+    1    1234→5678   strength=0.85  stress=0.12  type=0x0001
+    2    1234→9012   strength=0.60  stress=0.05  type=0x0001
+```
+
+### Dream
+
+```
+:dream
+```
+Состояние DREAM-цикла: паттерны готовые к кристаллизации:
+```
+  ══ DREAM ═══════════════════════════════
+  dream_proposals:  3
+  crystallizable:   2 (weight≥0.9, success≥5)
+    #  Weight  Succ        Hash
+    1  0.9300     7  0xf3b2c1e4
+    2  0.9100     5  0xd5e4f3a2
+```
+
+### Multipass
+
+```
+:multipass
+```
+Статистика multi-pass событий:
+```
+  ══ Multi-Pass Statistics ══════════════
+  total events:     847305
+  multipass count:  12
+  multipass rate:   0.00%
+  last passes:      2
+  ── config ─────────────────────────────
+  max_passes:       3
+  min_coherence:    0.60
+```
+
+### Reflector
+
+```
+:reflector
+```
+Per-domain точность REFLECTOR (роли 1–8):
+```
+  ══ REFLECTOR — Per-Domain ═════════════
+  Role        Name  Success    Total    Rate
+     1   EXECUTION       40       42   95.2%
+     6       LOGIC        5        8   62.5%
+  ── global ─────────────────────────────
+  patterns tracked: 12
+  reflex success:   42  fail: 3
+```
+
+### Impulses
+
+```
+:impulses
+```
+Диагностика очереди внутренних импульсов:
+```
+  ══ Pending Impulses ═══════════════════
+  tension traces:  2 (each may generate impulse)
+  goal impulses:   0
+  curiosity cands: 1
+  ── curiosity (near crystallization) ───
+    1  weight=0.7200  success=15  0xf3b2c1e4
+```
+
 ### Производительность
 
 ```
