@@ -1,8 +1,8 @@
-# AXIOM MODULE SPECIFICATION: COM V1.1
+# AXIOM MODULE SPECIFICATION: COM V1.2
 
 **Статус:** Актуальная спецификация (core)
-**Версия:** 1.1.0
-**Дата:** 2026-03-20
+**Версия:** 1.2.0
+**Дата:** 2026-04-10
 **Название:** Causal Order Model (Причинно-следственная модель порядка)
 **Формат:** 64 байта на событие, `repr(C, align(64))`
 **Связанные спеки:** Token V5.2, Connection V5.0, Domain V1.2, UPO v2.3, Heartbeat V2.0
@@ -43,39 +43,83 @@ Event увеличен до 64 байт (одна кэш-линия) для ра
 #[repr(C, align(64))]
 pub struct Event {
     // --- ПРИЧИННОСТЬ [16 байт] ---
-    pub event_id: u64,          // Монотонный причинный индекс (COM)
-    pub parent_event_id: u64,   // Предыдущее событие в цепочке
+    pub event_id: u64,           // Монотонный причинный индекс (COM)
+    pub parent_event_id: u64,    // Предыдущее событие в цепочке
 
     // --- СОДЕРЖАНИЕ [16 байт] ---
-    pub payload_hash: u64,      // Хеш содержимого (валидация/детерминизм)
-    pub target_id: u32,         // ID целевого объекта (Token/Connection)
-    pub source_id: u32,         // ID источника
+    pub payload_hash: u64,       // Хеш содержимого (валидация/детерминизм)
+    pub target_id: u32,          // ID целевого объекта (Token/Connection)
+    pub source_id: u32,          // ID источника
 
     // --- ИДЕНТИФИКАЦИЯ [8 байт] ---
-    pub domain_id: u16,         // Домен события
-    pub event_type: u16,        // Тип события (EventType enum)
-    pub payload_size: u16,      // Размер payload в байтах (0..65535)
-    pub priority: u8,           // Приоритет (0..255)
-    pub flags: u8,              // Флаги (CRITICAL, REVERSIBLE, etc.)
+    pub domain_id: u16,          // Домен-цель события
+    pub event_type: u16,         // Тип события (EventType enum)
+    pub payload_size: u16,       // Размер payload в байтах (0..65535)
+    pub priority: u8,            // Приоритет (0..255)
+    pub flags: u8,               // Флаги (CRITICAL, REVERSIBLE, etc.)
 
     // --- HEARTBEAT [8 байт] ---
-    pub pulse_id: u64,          // Номер пульса Heartbeat (0 = не привязан к пульсу)
+    pub pulse_id: u64,           // Номер пульса Heartbeat (0 = не привязан к пульсу)
 
-    // --- РЕЗЕРВ [16 байт] ---
-    pub _reserved: [u8; 16],    // Резерв для будущих расширений
+    // --- РАСШИРЕНИЕ [16 байт] ---
+    pub source_domain: u16,      // Домен-инициатор (≠ domain_id только для PROBE → EXECUTION)
+    pub event_subtype: u16,      // Второй уровень классификации (0 = SUBTYPE_NONE)
+    pub snapshot_event_id: u32,  // event_id снапшота на момент создания (Causal Horizon)
+    pub payload: [u8; 8],        // Inline payload (интерпретация зависит от event_type)
 }
 // Итого: 16 + 16 + 8 + 8 + 16 = 64 байта
-// Padding: 0 (поля упорядочены по убыванию размера внутри блоков)
 ```
+
+### Поле `event_subtype`
+
+Второй уровень классификации внутри одного `event_type`. Устанавливается вручную после создания события (не входит в `Event::new()`). По умолчанию `0` (`SUBTYPE_NONE`) — обратная совместимость со всем существующим кодом.
+
+#### Подтипы для TokenMove / TokenMoved
+
+| Константа | Значение | Семантика |
+|---|---|---|
+| `SUBTYPE_NONE` | 0 | Не указан |
+| `SUBTYPE_GRAVITY` | 1 | Движение от гравитации |
+| `SUBTYPE_MANUAL` | 2 | Ручное перемещение (ApplyForce) |
+| `SUBTYPE_COLLISION` | 3 | Отскок от столкновения |
+| `SUBTYPE_IMPULSE` | 4 | Внутренний импульс (Cognitive Depth) |
+| `SUBTYPE_INERTIA` | 5 | Инерционное движение |
+| `SUBTYPE_ATTRACTOR` | 6 | Движение к target |
+
+#### Подтипы для ConnectionCreate
+
+| Константа | Значение | Семантика |
+|---|---|---|
+| `SUBTYPE_RESONANCE` | 1 | Связь создана резонансом |
+| `SUBTYPE_COLLISION_LINK` | 2 | Связь создана столкновением |
+| `SUBTYPE_IMPORTED` | 3 | Связь импортирована (persistence) |
+
+#### Подтипы для SystemCheckpoint
+
+| Константа | Значение | Семантика |
+|---|---|---|
+| `SUBTYPE_MANUAL_SAVE` | 1 | Ручное сохранение (`:save`) |
+| `SUBTYPE_AUTO_SAVE` | 2 | Автосохранение |
+| `SUBTYPE_SHUTDOWN_SAVE` | 3 | Сохранение при `:quit` |
+
+### Поле `payload`
+
+Inline payload — 8 байт, структурированных данных. Интерпретация по `event_type`:
+
+| event_type | Структура payload |
+|---|---|
+| `ShellExec` | `[command_index: u16 LE, _: 6]` |
+| `InternalImpulse` | `[impulse_type: u8, intensity: u8, source_trace: u32 LE, _: 2]` |
+| `TokenMove` | `[dx: i16 LE, dy: i16 LE, dz: i16 LE, _: 2]` |
+| Остальные | `[0u8; 8]` |
 
 ### Изменения относительно V1.0:
 
-1. **Размер**: 32 → 64 байта (полная кэш-линия для оптимизации доступа)
-2. **Alignment**: 32 → 64 (совмещение с размером кэш-линии)
-3. **Добавлено поле**: `pulse_id: u64` (интеграция с Heartbeat V2.0)
-4. **Оптимизировано**: `payload_size: u32 → u16` (65535 байт достаточно для любого payload)
-5. **Резерв**: `_reserved: [u8; 4] → [u8; 16]` (место для будущих расширений)
-6. **Упорядочивание**: Поля переупорядочены по убыванию размера внутри логических блоков для исключения padding
+1. **Размер**: 32 → 64 байта (полная кэш-линия)
+2. **Alignment**: 32 → 64
+3. **Добавлен** `pulse_id: u64` (Heartbeat V2.0)
+4. **Оптимизирован** `payload_size: u32 → u16`
+5. **Резерв заменён** расширением: `source_domain`, `event_subtype`, `snapshot_event_id`, `payload`
 
 ---
 
@@ -229,6 +273,7 @@ fn validate_event(event: &Event, timeline: &Timeline) -> bool {
 
 ## 12. История изменений
 
+- **V1.2**: Расширение `_reserved[16]` заменено конкретными полями: `source_domain`, `event_subtype`, `snapshot_event_id`, `payload`. Добавлен раздел `event_subtype` с таблицами констант (D-02).
 - **V1.1**: Event расширен до 64 байт. Добавлен `pulse_id` (Heartbeat V2.0). `payload_size` сокращён до u16. Резерв 16 байт. Добавлены семантические типы событий Event-Driven V1.
 - **V1.0**: Каноническая спецификация с полной структурой Event (32 байта)
 - **V0.x**: Концептуальные описания без детальной реализации
