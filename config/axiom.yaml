@@ -20,7 +20,7 @@ loader:
   format: "yaml"
   validation: "strict"
   cache_enabled: true
-  hot_reload: false
+  # hot_reload — перенесено в axiom-cli.yaml (поле hot_reload: bool)
 
 # Presets — готовые конфигурации компонентов системы
 presets:
@@ -29,3 +29,4 @@ presets:
   connections_dir: "presets/connection"
   spatial: "presets/spatial/medium.yaml"
   semantic_contributions: "schema/semantic_contributions.yaml"
+  # heartbeat_file: "presets/heartbeat.yaml"  # опционально

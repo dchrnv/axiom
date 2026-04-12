@@ -1,8 +1,8 @@
 # CLI Channel — Руководство пользователя и оператора
 
-**Версия:** 1.0  
-**Дата:** 2026-04-05  
-**Реализация:** CLI Channel V1.1  
+**Версия:** 2.0  
+**Дата:** 2026-04-12  
+**Реализация:** CLI Channel V1.1 + Config V1.0  
 **Запуск:** `cargo run --bin axiom-cli -- [флаги]`
 
 ---
@@ -63,6 +63,54 @@ cargo run --bin axiom-cli -- --help
 > `100` — стандартная работа (default)  
 > `1000` — стресс-тест, бенчмарк
 
+### `--adaptive`
+
+| Параметр | Значение по умолчанию | Где применяется |
+|----------|----------------------|-----------------|
+| `adaptive_tick_rate` | `false` | `CliConfig::adaptive_tick_rate` |
+
+Включает Axiom Sentinel V1.0 Phase 3 — адаптивную частоту тиков. Частота автоматически повышается при пользовательском вводе, multipass, активном tension, и снижается во время простоя.
+
+### `--detail <level>`
+
+| Параметр | Значение по умолчанию | Допустимые значения | Где применяется |
+|----------|----------------------|---------------------|-----------------|
+| `detail_level` | `min` | `off` / `min` / `mid` / `max` | `CliConfig::detail_level` |
+
+Уровень детализации вывода при текстовом вводе (управляет `MessageEffector`):
+- `off` — только path + domain (2 строки)
+- `min` — краткий вывод: path, domain, coherence, traces, position (default)
+- `mid` — routing + output без секции input
+- `max` — полный вывод: input / routing / output + Δpos + event_id
+
+### `--hot-reload`
+
+| Параметр | Значение по умолчанию | Где применяется |
+|----------|----------------------|-----------------|
+| `hot_reload` | `false` | `CliConfig::hot_reload` |
+
+Включает горячую перезагрузку `config/axiom.yaml`. При изменении файла `tick_schedule` применяется к работающему ядру без перезапуска. Остальные параметры (`tick_hz`, `verbose`, `detail_level`) требуют перезапуска.
+
+При старте выводится:
+```
+[config] hot-reload enabled (watching config/axiom.yaml)
+```
+
+При изменении файла:
+```
+[config] reloaded tick_schedule (tick=12345)
+```
+
+Можно также задать в `axiom-cli.yaml`: `hot_reload: true`.
+
+### `--data-dir <path>`
+
+Директория хранилища для `:save` / `:load` (default: `./axiom-data`).
+
+### `--no-load`
+
+Пропустить загрузку из директории данных при старте.
+
 ### `--verbose` / `-v`
 
 | Параметр | Значение по умолчанию | Где применяется |
@@ -100,9 +148,12 @@ cargo run --bin axiom-cli -- --help
 # axiom-cli.yaml
 
 # Основные параметры
-tick_hz: 100        # Гц, default: 100
-verbose: false      # default: false
-# prompt: "axiom> " # зарезервировано
+tick_hz: 100            # Гц, default: 100
+verbose: false          # default: false
+# prompt: "axiom> "    # зарезервировано
+adaptive_tick_rate: false  # Sentinel V1.0 Phase 3, default: false
+detail_level: min       # off|min|mid|max, default: min
+hot_reload: false       # горячая перезагрузка config/axiom.yaml, default: false
 
 # Расписание периодических задач ядра
 # Значения — интервал в тиках (0 = отключено)
@@ -117,6 +168,10 @@ tick_schedule:
 ```
 
 Все поля опциональны — отсутствующее поле = значение по умолчанию, не ошибка.
+
+> **Горячая перезагрузка:** `hot_reload: true` включает слежение за `config/axiom.yaml`.
+> При его изменении `tick_schedule` подхватывается на лету. Изменения `tick_hz`, `verbose`,
+> `detail_level` требуют перезапуска — они читаются только при старте.
 
 ### Пример: только-горячий-путь (максимальная скорость)
 
@@ -433,16 +488,14 @@ engine.tick_schedule.reconcile_interval     = 1;
 
 ## 9. Что добавить в следующих версиях
 
-Сейчас не реализовано (вне MVP):
+Сейчас не реализовано:
 
 | Функция | Приоритет | Описание |
 |---------|-----------|----------|
 | Пример `reflex` в действии | Высокий | Повторный ввод одного текста — второй раз должен попасть в рефлекс (если weight > threshold) |
-| `:set schedule <field> <N>` | Средний | Изменение TickSchedule из CLI без перезапуска |
 | `:inject <domain_id> <text>` | Средний | Инжект в любой домен, не только SUTRA |
-| Persistent snapshot | Средний | Сохранение/загрузка EXPERIENCE на диск между запусками |
 | ANSI цвет | Низкий | `reflex` — зелёный, `multi-pass` — жёлтый, `tension` — красный |
-| `:set tick-hz N` | Низкий | Изменение частоты тика без перезапуска |
+| `:set tick-hz N` | Низкий | Изменение частоты тика без перезапуска (сейчас только через `hot_reload: true` и `tick_hz` в файле не подхватывается — только `tick_schedule`) |
 
 ---
 

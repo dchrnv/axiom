@@ -3,10 +3,10 @@
 //
 // exchange.rs — обмен знаниями между экземплярами AXIOM.
 //
-// `:export traces/skills <path>` → сохранить в JSON
+// `:export traces/skills <path>` → сохранить в bincode
 // `:import traces/skills <path>` → загрузить + GUARDIAN валидация + weight factor
 //
-// Формат файла: ExchangePackage (JSON), один файл.
+// Формат файла: ExchangePackage (bincode), один файл.
 // Manifest не требуется — exchange package самодостаточен.
 
 use serde::{Deserialize, Serialize};
@@ -126,7 +126,7 @@ pub struct ExportReport {
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 
-/// Экспортировать ExperienceTraces с weight ≥ threshold в JSON-файл.
+/// Экспортировать ExperienceTraces с weight ≥ threshold в бинарный файл.
 pub fn export_traces(
     engine: &AxiomEngine,
     path: &Path,
@@ -145,7 +145,7 @@ pub fn export_traces(
         traces,
     };
 
-    write_json(path, &pkg)?;
+    write_bin(path, &pkg)?;
     Ok(ExportReport {
         kind: ExchangeKind::Traces,
         exported: count,
@@ -153,7 +153,7 @@ pub fn export_traces(
     })
 }
 
-/// Экспортировать Skills (кристаллизованные навыки) в JSON-файл.
+/// Экспортировать Skills (кристаллизованные навыки) в бинарный файл.
 pub fn export_skills(engine: &AxiomEngine, path: &Path) -> Result<ExportReport, PersistError> {
     let skills: Vec<StoredSkill> = engine.ashti.export_skills()
         .iter()
@@ -166,7 +166,7 @@ pub fn export_skills(engine: &AxiomEngine, path: &Path) -> Result<ExportReport, 
         skills,
     };
 
-    write_json(path, &pkg)?;
+    write_bin(path, &pkg)?;
     Ok(ExportReport {
         kind: ExchangeKind::Skills,
         exported: count,
@@ -176,13 +176,13 @@ pub fn export_skills(engine: &AxiomEngine, path: &Path) -> Result<ExportReport, 
 
 // ─── IMPORT ───────────────────────────────────────────────────────────────────
 
-/// Импортировать ExperienceTraces из JSON-файла.
+/// Импортировать ExperienceTraces из бинарного файла.
 ///
 /// GUARDIAN-валидация: каждый trace.pattern проверяется через `validate_reflex`.
 /// Принятые traces получают weight × IMPORT_WEIGHT_FACTOR (0.7).
 pub fn import_traces(engine: &mut AxiomEngine, path: &Path) -> Result<ImportReport, PersistError> {
     let bytes = std::fs::read(path)?;
-    let pkg: TracePackage = serde_json::from_slice(&bytes)
+    let (pkg, _): (TracePackage, _) = bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
         .map_err(|e| PersistError::Decode(e.to_string()))?;
 
     if pkg.header.kind != ExchangeKind::Traces {
@@ -211,13 +211,13 @@ pub fn import_traces(engine: &mut AxiomEngine, path: &Path) -> Result<ImportRepo
     Ok(report)
 }
 
-/// Импортировать Skills из JSON-файла.
+/// Импортировать Skills из бинарного файла.
 ///
 /// GUARDIAN-валидация: каждый skill.pattern проверяется через `validate_reflex`.
 /// Принятые skills получают activation_weight × IMPORT_WEIGHT_FACTOR (0.7).
 pub fn import_skills(engine: &mut AxiomEngine, path: &Path) -> Result<ImportReport, PersistError> {
     let bytes = std::fs::read(path)?;
-    let pkg: SkillPackage = serde_json::from_slice(&bytes)
+    let (pkg, _): (SkillPackage, _) = bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
         .map_err(|e| PersistError::Decode(e.to_string()))?;
 
     if pkg.header.kind != ExchangeKind::Skills {
@@ -265,15 +265,15 @@ fn make_header(kind: ExchangeKind, source_tick: u64, count: u32) -> ExchangeHead
     }
 }
 
-fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), PersistError> {
+fn write_bin<T: Serialize>(path: &Path, value: &T) -> Result<(), PersistError> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)?;
         }
     }
-    let json = serde_json::to_string(value)
+    let bytes = bincode::serde::encode_to_vec(value, bincode::config::standard())
         .map_err(|e| PersistError::Encode(e.to_string()))?;
-    std::fs::write(path, json.as_bytes())?;
+    std::fs::write(path, &bytes)?;
     Ok(())
 }
 

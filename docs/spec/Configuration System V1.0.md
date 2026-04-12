@@ -1,7 +1,7 @@
 # AXIOM Configuration System Specification V1.0
 
-**Version:** 1.0
-**Status:** Foundational
+**Version:** 1.1
+**Status:** Active
 **Scope:** Runtime configuration and semantic schema definition for Axiom.
 
 ---
@@ -295,15 +295,100 @@ Dynamic runtime behavior must be implemented in runtime systems, not in configur
 
 ---
 
-# 12. Future Extensions
+# 12. Hot Reload
+
+The configuration system supports live reload of configuration without process restart.
+
+## 12.1 Mechanism
+
+A `ConfigWatcher` subscribes to filesystem events on the configuration directory via the platform notification API (inotify on Linux, FSEvents on macOS, ReadDirectoryChanges on Windows).
+
+When the root configuration file changes, `ConfigWatcher::poll()` returns a freshly loaded `LoadedAxiomConfig`.
+
+The poll operation is non-blocking. Multiple file change events between poll calls are collapsed into a single reload.
+
+## 12.2 Scope
+
+Hot reload applies only to configuration that can be safely mutated at runtime.
+
+**Reloadable:**
+- `TickSchedule` — periodic task intervals applied to a running Engine instance
+
+**Not reloadable (requires restart):**
+- tick frequency (`tick_hz`)
+- output verbosity
+- data directory path
+- any parameter that affects initialization state
+
+## 12.3 Invariants
+
+- The watcher never blocks the runtime loop.
+- A failed reload is silently ignored — the previous configuration remains active.
+- GENOME configuration is explicitly excluded from hot reload scope and must never be reloaded at runtime.
+
+---
+
+# 13. Component Configuration Loading
+
+## 13.1 HeartbeatConfig
+
+`HeartbeatConfig` defines periodic activation parameters for background processes (Heartbeat V2.0).
+
+It is loaded as part of `load_all` when `presets.heartbeat_file` is specified in the root configuration.
+
+```
+presets:
+  heartbeat_file: "presets/heartbeat.yaml"
+```
+
+If the path is absent or the file does not exist, `LoadedAxiomConfig.heartbeat` is `None`. This is not an error — the runtime uses its own default.
+
+`HeartbeatConfig` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `interval` | `u32` | Events between pulses (must be > 0) |
+| `batch_size` | `usize` | Tokens added to frontier per pulse |
+| `connection_batch_size` | `usize` | Connections added to frontier per pulse |
+| `enable_decay` | `bool` | Token decay activation |
+| `enable_gravity` | `bool` | Gravitational update activation |
+| `enable_spatial_collision` | `bool` | Spatial collision checks |
+| `enable_connection_maintenance` | `bool` | Connection maintenance |
+| `enable_thermodynamics` | `bool` | Thermodynamic processes |
+| `attach_pulse_id` | `bool` | Attach pulse_id to generated events |
+| `enable_shell_reconciliation` | `bool` | Shell V3.0 reconciliation |
+
+Built-in presets available in code: `weak()`, `medium()`, `powerful()`, `disabled()`.
+
+## 13.2 Presets Directory Layout
+
+```
+config/
+  axiom.yaml
+  presets/
+    domains/        ← DomainConfig YAML files (one per domain)
+    tokens/         ← TokenPreset YAML files
+    connection/     ← ConnectionPreset YAML files
+    spatial/        ← SpatialConfig YAML files
+    heartbeat.yaml  ← HeartbeatConfig (optional, path in axiom.yaml)
+  schema/
+    semantic_contributions.yaml
+    domain.yaml / token.yaml / connection.yaml / grid.yaml / upo.yaml
+  runtime/
+    runtime.yaml / runtime_schema.yaml
+```
+
+---
+
+# 14. Future Extensions
 
 The configuration system is designed to support future capabilities without architectural changes.
 
 Possible future features include:
 
 - schema version migration
-- configuration validation CLI
-- schema visualization tools
+- configuration validation CLI (`axiom-cli --dump-schema`, D-07)
+- JSON Schema validation via `schemars` + `jsonschema` (D-07, requires internet)
 - environment profiles
 - configuration diff and inspection
 
@@ -311,7 +396,7 @@ These features must operate on the existing configuration structures without cha
 
 ---
 
-# 13. Non-Goals
+# 15. Non-Goals
 
 The configuration system explicitly does not support:
 
@@ -324,7 +409,7 @@ These capabilities introduce instability and are intentionally excluded.
 
 ---
 
-# 14. Summary
+# 16. Summary
 
 The Axiom configuration system provides a stable foundation based on several key ideas:
 

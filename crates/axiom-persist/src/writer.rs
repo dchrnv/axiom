@@ -26,7 +26,7 @@ impl Default for WriteOptions {
 /// Записывает состояние Engine в директорию `dir`.
 ///
 /// Создаёт директорию если не существует.
-/// Порядок записи: engine_state.json → manifest.yaml (последним).
+/// Порядок записи: engine_state.bin → manifest.yaml (последним).
 /// Если запись прервана до manifest → при загрузке чистый старт.
 pub fn save(engine: &AxiomEngine, dir: &Path, opts: &WriteOptions) -> Result<MemoryManifest, PersistError> {
     std::fs::create_dir_all(dir)?;
@@ -72,15 +72,15 @@ pub fn save(engine: &AxiomEngine, dir: &Path, opts: &WriteOptions) -> Result<Mem
         tension,
     };
 
-    // Атомарная запись engine_state.json:
+    // Атомарная запись engine_state.bin:
     //   1. Пишем во временный файл
     //   2. Переименовываем (atomic на Linux)
     //   3. Manifest — последним (маркер успешной записи)
-    let json = serde_json::to_string(&state)
+    let bytes = bincode::serde::encode_to_vec(&state, bincode::config::standard())
         .map_err(|e| PersistError::Encode(e.to_string()))?;
-    let tmp_path = dir.join("engine_state.json.tmp");
-    std::fs::write(&tmp_path, json.as_bytes())?;
-    std::fs::rename(&tmp_path, dir.join("engine_state.json"))?;
+    let tmp_path = dir.join("engine_state.bin.tmp");
+    std::fs::write(&tmp_path, &bytes)?;
+    std::fs::rename(&tmp_path, dir.join("engine_state.bin"))?;
 
     // Manifest обновляется последним — маркер успешной записи
     let manifest = MemoryManifest::new(snapshot.tick_count, snapshot.com_next_id, contents);

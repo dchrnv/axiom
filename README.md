@@ -1,10 +1,10 @@
 # Axiom
 
-> High-performance cognitive architecture engine.
-> Pure Rust core.
+> Движок когнитивной архитектуры на чистом Rust.
+> Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-797%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-919%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)](#licensing)
@@ -15,55 +15,52 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 797 tests passing.**
+**Axiom is in active development — core architecture complete, 919 tests passing.**
 
 ---
 
-### 🤖 AXIOM: AI Disclaimer
+### 🤖 Как это сделано
 
-> За исключением этого предупреждения, **весь код в этом репозитории написан искусственным интеллектом**.
+> Весь код в этом репозитории — за исключением этих слов — написан ИИ.
 >
-> Здесь смешаны мои промпты, моя концепция и архитектура, тесты и тонны кода, в котором ИИ пытался угадать, чего я хочу на самом деле. Моя роль заключалась в архитектурном проектировании, отборе лучших идей и бесконечном цикле: *«скормить ошибку теста — получить исправление»*.
+> Я занимался концепцией, архитектурой, техническими решениями и обратной связью. ИИ занимался реализацией. Это новый способ строить вещи, и я не вижу смысла делать вид, что всё иначе.
 >
-> Я честно старался вычитывать результат, но ни одна строчка не прошла проверку на «человеческую логику». Мы с ИИ уже разошлись во взглядах на качество кода.
-> **«Код проходит все тесты, кроме теста на здравый смысл».**
+> Я читал, отклонял, спорил и переделывал — но не каждую строчку и не с той скрупулёзностью, которой она могла бы заслуживать. Так и работает этот процесс.
+>
+> **«Идеи мои. Архитектура моя. Баги — честно пополам.»**
 
-**🛠 Окружение**
-Код написан на **Arch Linux**. Совместимость с Windows/Mac — **нулевая (или случайная)** — ни я, ни ИИ не пытались это проверить.
+**🛠 Окружение:** Написано на **Arch Linux** — потому что жизнь слишком коротка для систем, которые принимают решения за тебя. Совместимость с Windows и Mac не тестировалась и не была целью. Если вдруг заработало — считайте это счастливым случаем, я разберусь с этим позже.
 
-**⚖️ Отказ от ответственности**
-Не рекомендуется для продакшена без понимания того, что внутри. Если он сожжёт ваш процессор, вызовет экзистенциальный кризис или обидит вашу кошку — мы с нейросетью не виноваты.
-*Врачи могут ошибаться и делать ложные заявления — искусственный интеллект делает это ещё увереннее. Используйте на свой страх и риск.*
+**🐱 Предупреждение:** Не для продакшена без понимания что внутри. Если сожжёт CPU — это физика. Если вызовет вопросы о природе мышления — это и был план. Если обидит кошку — напишите мне, это уже серьёзно.
 
 ---
 
-### Core Philosophy
+### Что такое Axiom
 
-Axiom begins with a deliberately uncomfortable idea:
+Большинство AI-систем обучаются. Axiom — работает по-другому.
 
-> **What if intelligence is not something we train — but something that emerges when the structure is right?**
+Идея простая и неудобная одновременно: **а что если интеллект — это не то, чему обучают, а то, что возникает само, когда структура правильная?**
 
-Most modern AI systems optimize behavior. **Axiom experiments with conditions.**
+Вместо весов, градиентов и вероятностного вывода — **семантическая физика**. Концепции существуют в виде **токенов** — объектов с позицией, массой, температурой и валентностью в трёхмерном семантическом пространстве. Токены живут внутри **доменов** — изолированных сред с локальными физическими правилами: притяжение и отталкивание, инерция, мембранная фильтрация, давление.
 
-This is not another neural network, and not an attempt to simulate the human brain.
-Axiom is an exploration of whether coherent cognition can arise from deterministic rules acting within a structured semantic space.
+Это не нейросеть. Это не симуляция мозга. Это эксперимент с вопросом: **может ли связное поведение возникнуть из детерминированных правил?**
 
-**Think less "model" — more engine.**
+Рассуждение здесь — не последовательность шагов. Оно разворачивается как **эволюция состояния**.
 
-#### Semantic Physics
-Instead of weights, gradients, or probabilistic inference, Axiom operates on **semantic physics**.
-Concepts exist inside **Domains** — bounded environments with local rules:
-- Attraction and repulsion.
-- Inertia and resistance.
-- Interaction constraints.
+#### Что внутри
 
-Reasoning is not executed step-by-step. **It unfolds as state evolution.**
+- **AshtiCore** — 11 доменов от SUTRA (вход) до MAYA (консолидация). Каждый домен — физическое поле со своей конфигурацией.
+- **Arbiter** — двойная маршрутизация: быстрый рефлекс через Experience или медленный проход по всем доменам. Как System 1 / System 2 — только без нейронов.
+- **Guardian** — CODEX-проверки и GENOME-ограничения. Системные правила, которые нельзя обойти.
+- **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
+- **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
+- **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
 
-#### Determinism as a Feature
-Axiom is intentionally deterministic.
-Every transition has a cause. Every outcome can be traced. Nothing hides behind opaque vectors.
+#### Детерминизм — это не ограничение
 
-**This is not a limitation — it is the experiment.**
+Каждый переход имеет причину. Каждый результат можно отследить. Ничто не скрывается за непрозрачными векторами.
+
+Это сознательный выбор. **Это и есть эксперимент.**
 
 ---
 

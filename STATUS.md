@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-09 (Axiom Sentinel V1.0 — ЗАВЕРШЁН)
+**Обновлено:** 2026-04-12
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**900 тестов, 0 failures, 0 warnings**
+**919 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -27,17 +27,24 @@ axiom-agent:
   ├── MessageEffector — ProcessingResult → диагностический вывод
   ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
   └── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
+      CLI Extended V1.0: :domain/:events/:frontier/:guardian/:watch/:config/:trace/:connections
+      :dream/:multipass/:reflector/:impulses/:schema/:help — горячая перезагрузка (--hot-reload)
 
 axiom-runtime:
   ├── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
   ├── Orchestrator — параллельная маршрутизация + Guardian check + apply_feedback
   └── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
 
-axiom-persist:
-  ├── save/load: Token+Connection+ExperienceTrace → JSON (атомарный rename)
+axiom-config (Config V1.0 + D-07):
+  ├── PresetsConfig.heartbeat_file → LoadedAxiomConfig.heartbeat (Option<HeartbeatConfig>)
+  ├── ConfigWatcher подключён к CliChannel (hot_reload в axiom-cli.yaml / --hot-reload)
+  └── schema — JsonSchema на всех конфигах, validate_yaml<T>(), :schema CLI-команда
+
+axiom-persist (D-04):
+  ├── save/load: Token+Connection+ExperienceTrace → bincode (атомарный rename)
   ├── MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7
   ├── AutoSaver: интервальное автосохранение, force_save при :quit
-  └── exchange: export/import traces+skills, GUARDIAN-валидация
+  └── exchange: export/import traces+skills (bincode), GUARDIAN-валидация
 
 axiom-space:
   └── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
@@ -51,22 +58,22 @@ axiom-space:
 
 | Crate | Тесты | Описание |
 |-------|-------|----------|
-| axiom-core | 36 | Token, Connection, Event |
+| axiom-core | 34 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 93 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher (inotify hot reload) |
-| axiom-space | 104 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
+| axiom-config | 84 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, JsonSchema |
+| axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
-| axiom-domain | 116 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 117 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator |
-| axiom-agent | 92 | TextPerceptor, MessageEffector, CliChannel, TelegramPerceptor/Effector, ShellEffector, MLEngine |
-| axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (export/import) |
+| axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
+| axiom-runtime | 162 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator |
+| axiom-agent | 95 | TextPerceptor, MessageEffector, CliChannel + CLI Extended V1.0, MLEngine |
+| axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **900** | |
+| **Итого** | **919** | |
 
 ---
 
@@ -94,3 +101,7 @@ axiom-space:
 | Memory | Memory Persistence V1.0 — save/load/autosave/exchange (axiom-persist) | ✅ |
 | CLI V1.1 | CLI Channel V1.1 — TextPerceptor, MessageEffector, process_and_observe, axiom-cli.yaml | ✅ |
 | Sentinel | Axiom Sentinel V1.0 — Hardware Topology, Parallel Resonance Search, Variable Tick Rate | ✅ |
+| CLI Ext | CLI Extended V1.0 (Phase 1-3) — 13 новых команд, detail levels, multipass tracker | ✅ |
+| Config | Config V1.0 — HeartbeatConfig load, ConfigWatcher→CliChannel, hot_reload | ✅ |
+| D-04 | axiom-persist: bincode вместо serde_json (3-5× меньше, 2-4× быстрее) | ✅ |
+| D-07 | JSON-schema валидация конфигов — schemars + jsonschema, :schema CLI-команда | ✅ |

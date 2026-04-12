@@ -3,11 +3,12 @@
 //! Heartbeat V2.0: Периодическая активация фоновых процессов через причинный порядок
 
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 
 /// Конфигурация Heartbeat для домена
 ///
 /// Heartbeat V2.0, раздел 7: Configuration
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct HeartbeatConfig {
     /// Количество событий между пульсами
     pub interval: u32,

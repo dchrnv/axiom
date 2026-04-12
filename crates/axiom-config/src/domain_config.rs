@@ -8,6 +8,7 @@
 //! 5. Метаданные [32 байта]
 
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 
 /// Домен активен и принимает токены
 pub const DOMAIN_ACTIVE: u32 = 1;
@@ -37,7 +38,7 @@ pub const GUARDIAN_CHECK_REQUIRED: u8 = 0x04;
 
 /// Структурные роли доменов в системе Ashti_Core
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum StructuralRole {
     /// Исходный поток (роль 0)
     Sutra = 0,
@@ -65,7 +66,7 @@ pub enum StructuralRole {
 
 /// Типы доменов
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum DomainType {
     /// Логический домен
     Logic = 1,
@@ -86,7 +87,7 @@ pub enum DomainType {
 /// Размер: 128 байт, выравнивание: 128 байт
 /// Соответствует спецификации V2.1
 #[repr(C, align(128))]
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DomainConfig {
     // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
     /// Допуск по temperature при сравнении рефлекса с результатом ASHTI (default: 10)

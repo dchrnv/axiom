@@ -119,7 +119,7 @@ fn test_autosave_file_created_automatically() {
     saver.tick(&engine, &dir);
 
     assert!(dir.join("manifest.yaml").exists(),   "manifest должен появиться");
-    assert!(dir.join("engine_state.json").exists(), "engine_state должен появиться");
+    assert!(dir.join("engine_state.bin").exists(), "engine_state должен появиться");
 }
 
 // ─── Тест 7: После autosave — load восстанавливает состояние ─────────────────
@@ -153,7 +153,7 @@ fn test_interrupted_write_old_state_survives() {
 
     let tick_before = engine.tick_count;
 
-    let tmp_path = dir.join("engine_state.json.tmp");
+    let tmp_path = dir.join("engine_state.bin.tmp");
     std::fs::write(&tmp_path, b"garbage corrupted data").unwrap();
 
     let result = load(&dir).expect("load should succeed with orphaned .tmp file");

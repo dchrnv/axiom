@@ -1,8 +1,8 @@
 # Axiom Configuration Guide
 
-**Версия:** 1.0  
-**Последнее обновление:** 2026-03-08  
-**Статус:** Configuration System V1.0 реализована и интегрирована
+**Версия:** 2.0  
+**Последнее обновление:** 2026-04-12  
+**Статус:** Config V1.0 завершён — heartbeat загрузка + hot reload подключён к CLI
 
 ---
 
@@ -54,7 +54,7 @@ config/
 
 ```yaml
 # Axiom Root Configuration
-# Version: 1.0
+# Version: 2.0
 
 # Runtime configuration - системные параметры
 runtime:
@@ -75,7 +75,19 @@ loader:
   validation: "strict"
   cache_enabled: true
   hot_reload: false
+
+# Presets — готовые конфигурации компонентов
+presets:
+  domains_dir: "presets/domains"          # директория YAML-пресетов доменов
+  tokens_dir: "presets/tokens"            # директория YAML-пресетов токенов
+  connections_dir: "presets/connection"   # директория YAML-пресетов связей
+  spatial: "presets/spatial/medium.yaml"  # конфигурация SpatialHashGrid
+  semantic_contributions: "schema/semantic_contributions.yaml"
+  # heartbeat_file: "presets/heartbeat.yaml"  # опционально — HeartbeatConfig
 ```
+
+Все поля в секции `presets` опциональны. Отсутствие `heartbeat_file` → `LoadedAxiomConfig.heartbeat = None`.  
+Несуществующий файл в `heartbeat_file` → `None` без ошибки (graceful degradation).
 
 ### Конфигурация Runtime (`config/runtime/runtime.yaml`)
 
@@ -266,43 +278,81 @@ domain_template:
 ### Базовая инициализация
 
 ```rust
-use crate::config::{initialize, ConfigLoader};
+use axiom_config::{ConfigLoader, ConfigError};
+use std::path::Path;
 
-// Инициализация конфигурационной системы
-let config = initialize()?;
-println!("Configuration loaded successfully!");
-
-// Создание загрузчика
 let mut loader = ConfigLoader::new();
 ```
 
-### Загрузка конфигураций
+### Полная загрузка через `load_all`
+
+`load_all` — основной метод. Читает `axiom.yaml`, загружает все указанные компоненты:
 
 ```rust
-use std::path::Path;
+let loaded = loader.load_all(Path::new("config/axiom.yaml"))?;
 
-// Загрузка корневой конфигурации
-let root_config = loader.load_root(Path::new("../config/axiom.yaml"))?;
-
-// Загрузка runtime конфигурации
-let runtime_config = loader.load_runtime(Path::new("../config/runtime/runtime.yaml"))?;
-
-// Загрузка схем
-let domain_schema = loader.load_schema("domain", Path::new("../config/schema/domain.yaml"))?;
-let token_schema = loader.load_schema("token", Path::new("../config/schema/token.yaml"))?;
+// loaded.root       — AxiomConfig (корневая конфигурация)
+// loaded.domains    — HashMap<String, DomainConfig> (11 доменов)
+// loaded.heartbeat  — Option<HeartbeatConfig> (если heartbeat_file задан)
 ```
 
-### Валидация конфигураций
+Что загружается автоматически:
+- все `*.yaml` из `presets.domains_dir` → `loaded.domains`
+- `presets.spatial` → кэш (для последующей загрузки через `SpatialConfig`)
+- `presets.semantic_contributions` → кэш
+- `presets.heartbeat_file` → `loaded.heartbeat` (если файл существует)
+
+### LoadedAxiomConfig
 
 ```rust
-// Валидация конфигурации по схеме
-loader.validate(&runtime_config, &runtime_schema)?;
+pub struct LoadedAxiomConfig {
+    pub root:      AxiomConfig,                   // корневая конфигурация
+    pub domains:   HashMap<String, DomainConfig>, // name → config (e.g. "logic", "maya")
+    pub heartbeat: Option<HeartbeatConfig>,       // None если heartbeat_file не задан
+}
+```
 
-// Получение значений конфигурации
-use crate::config::get_config_value;
+Пример использования `heartbeat`:
 
-let threads = get_config_value(&config, "runtime.system.threads");
-let max_tokens = get_config_value(&config, "runtime.system.max_tokens");
+```rust
+let loaded = loader.load_all(Path::new("config/axiom.yaml"))?;
+if let Some(hb) = loaded.heartbeat {
+    println!("heartbeat interval: {}", hb.interval);
+    println!("gravity enabled: {}", hb.enable_gravity);
+}
+```
+
+### Загрузка отдельных компонентов
+
+```rust
+// DomainConfig из файла
+let domain = loader.load_domain_config(Path::new("config/presets/domains/logic.yaml"))?;
+
+// HeartbeatConfig из файла
+let hb = loader.load_heartbeat_config(Path::new("config/presets/heartbeat.yaml"))?;
+
+// Пресеты токенов из директории
+let tokens = loader.load_token_presets(Path::new("config/presets/tokens"))?;
+
+// Пресеты связей из директории
+let conns = loader.load_connection_presets(Path::new("config/presets/connection"))?;
+```
+
+### Пути к spatial и semantic_contributions
+
+```rust
+let base = Path::new("config");
+let spatial_path = loader.spatial_config_path(&loaded, base);
+let sem_path     = loader.semantic_contributions_path(&loaded, base);
+// → Option<PathBuf> для последующей загрузки через соответствующие крейты
+```
+
+### Валидация конфигурации по схеме
+
+```rust
+// Ручная валидация YAML-значения против схемы
+loader.validate(&config_value, &schema_value)?;
+// Проверяет: required поля, типы, minimum/maximum для числовых полей
 ```
 
 ---
@@ -503,6 +553,78 @@ mod tests {
 
 ---
 
+## 🔄 Горячая перезагрузка (ConfigWatcher)
+
+`ConfigWatcher` следит за `axiom.yaml` через inotify (Linux) / FSEvents (macOS) и перезагружает конфигурацию при изменении файла.
+
+### Как включить в CLI
+
+Три равнозначных способа:
+
+```bash
+# 1. CLI-флаг
+cargo run --bin axiom-cli -- --hot-reload
+
+# 2. axiom-cli.yaml
+hot_reload: true
+
+# 3. Программно
+```
+
+### Что перезагружается
+
+| Параметр | Перезагружается | Примечание |
+|----------|-----------------|------------|
+| `tick_schedule.*` | ✅ | Применяется к живому Engine без остановки |
+| `tick_hz` | ❌ | Требует перезапуска |
+| `verbose` | ❌ | Требует перезапуска |
+| `detail_level` | ❌ | Требует перезапуска |
+
+Механизм: при изменении `axiom.yaml` тик-петля CLI перечитывает `axiom-cli.yaml` и применяет из него новый `tick_schedule` к `engine.tick_schedule`.
+
+### Программное использование
+
+```rust
+use axiom_config::{ConfigWatcher, ConfigLoader};
+use std::time::Duration;
+
+let watcher = ConfigWatcher::new("config/axiom.yaml")?;
+
+loop {
+    if let Some(new_cfg) = watcher.poll() {
+        // new_cfg — LoadedAxiomConfig с обновлёнными данными
+        println!("Config reloaded: {} domains", new_cfg.domains.len());
+        if let Some(hb) = new_cfg.heartbeat {
+            println!("New heartbeat interval: {}", hb.interval);
+        }
+    }
+    std::thread::sleep(Duration::from_millis(500));
+}
+```
+
+`poll()` неблокирующий. Несколько изменений файла между вызовами `poll()` сворачиваются в одну перезагрузку.
+
+### HeartbeatConfig — пример файла
+
+`config/presets/heartbeat.yaml`:
+
+```yaml
+interval: 1024
+batch_size: 10
+connection_batch_size: 5
+enable_decay: true
+enable_gravity: true
+enable_spatial_collision: true
+enable_connection_maintenance: true
+enable_thermodynamics: true
+attach_pulse_id: true
+enable_shell_reconciliation: true
+```
+
+Пресеты из кода: `HeartbeatConfig::weak()`, `HeartbeatConfig::medium()`, `HeartbeatConfig::powerful()`, `HeartbeatConfig::disabled()`.
+
+---
+
 ## 🔧 Troubleshooting
 
 ### Частые проблемы
@@ -592,6 +714,6 @@ println!("Token schema: {}", config.schema.token);
 
 ---
 
-**Последнее обновление:** 2026-03-08  
-**Версия Configuration System:** V1.0  
-**Статус:** ✅ Реализована и интегрирована с основными модулями
+**Последнее обновление:** 2026-04-12  
+**Версия Configuration System:** V1.0 (Config V1.0)  
+**Статус:** ✅ Heartbeat загрузка реализована. ConfigWatcher подключён к CLI-каналу.

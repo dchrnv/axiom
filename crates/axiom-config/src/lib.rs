@@ -30,6 +30,8 @@ pub mod heartbeat_config;
 pub mod loader;
 /// Пресеты токенов и связей
 pub mod preset;
+/// JSON-схемы и валидация
+pub mod schema;
 /// Горячая перезагрузка конфигурации
 pub mod watcher;
 

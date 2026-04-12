@@ -31,7 +31,7 @@ pub struct LoadResult {
 ///
 /// Алгоритм:
 /// 1. Проверить manifest.yaml (наличие, версия)
-/// 2. Прочитать engine_state.json
+/// 2. Прочитать engine_state.bin
 /// 3. Восстановить Engine через `restore_from(snapshot)`
 /// 4. Импортировать traces с weight × IMPORT_WEIGHT_FACTOR
 /// 5. Импортировать tension traces
@@ -39,13 +39,13 @@ pub fn load(dir: &Path) -> Result<LoadResult, PersistError> {
     // 1. Manifest
     let manifest = MemoryManifest::load_from(dir)?;
 
-    // 2. engine_state.json
-    let state_path = dir.join("engine_state.json");
+    // 2. engine_state.bin
+    let state_path = dir.join("engine_state.bin");
     if !state_path.exists() {
         return Err(PersistError::NotFound(state_path.display().to_string()));
     }
     let bytes = std::fs::read(&state_path)?;
-    let state: StoredEngineState = serde_json::from_slice(&bytes)
+    let (state, _): (StoredEngineState, _) = bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
         .map_err(|e| PersistError::Decode(e.to_string()))?;
 
     // 3. Восстановить токены/связи через EngineSnapshot

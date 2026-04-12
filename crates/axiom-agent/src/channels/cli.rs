@@ -149,6 +149,7 @@ fn format_event_type(et: u16) -> String {
 
 // ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
 
+use axiom_config::{self, ConfigWatcher};
 use axiom_persist::{
     save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig,
     export_traces, export_skills, import_traces, import_skills,
@@ -158,6 +159,7 @@ use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::{MessageEffector, DetailLevel, domain_name};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use std::collections::VecDeque;
 
 // ─── PerfTracker — счётчик производительности тиков ──────────────────────────
@@ -227,7 +229,7 @@ fn fmt_ns(ns: u64) -> String {
 /// YAML-зеркало TickSchedule для десериализации конфига.
 /// Все поля опциональны — отсутствующие берутся из `TickSchedule::default()`.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct TickScheduleConfig {
     #[serde(default)] pub adaptation_interval:    Option<u32>,
     #[serde(default)] pub horizon_gc_interval:    Option<u32>,
@@ -280,7 +282,7 @@ impl TickScheduleConfig {
 ///   1. путь из флага `--config <path>`
 ///   2. `./axiom-cli.yaml` (рабочая директория)
 ///   3. `~/.config/axiom/cli.yaml`
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct CliConfigFile {
     /// Частота тиков ядра в Гц (default: 100)
     #[serde(default)]
@@ -300,6 +302,9 @@ pub struct CliConfigFile {
     /// Уровень детализации вывода: off / min / mid / max (default: min)
     #[serde(default)]
     pub detail_level: Option<String>,
+    /// Горячая перезагрузка config/axiom.yaml во время работы (default: false)
+    #[serde(default)]
+    pub hot_reload: Option<bool>,
 }
 
 impl CliConfigFile {
@@ -357,6 +362,8 @@ pub struct CliConfig {
     pub adaptive_tick_rate: bool,
     /// Уровень детализации вывода при текстовом вводе (default: Min)
     pub detail_level: DetailLevel,
+    /// Горячая перезагрузка config/axiom.yaml во время работы (default: false)
+    pub hot_reload: bool,
 }
 
 impl Default for CliConfig {
@@ -369,6 +376,7 @@ impl Default for CliConfig {
             data_dir: "axiom-data".to_string(),
             adaptive_tick_rate: false,
             detail_level: DetailLevel::Min,
+            hot_reload: false,
         }
     }
 }
@@ -394,6 +402,7 @@ impl CliConfig {
             if let Some(v) = file.verbose           { config.verbose           = v; }
             if let Some(v) = file.prompt            { config.prompt            = v; }
             if let Some(v) = file.adaptive_tick_rate { config.adaptive_tick_rate = v; }
+            if let Some(v) = file.hot_reload        { config.hot_reload         = v; }
             if let Some(ref s) = file.detail_level {
                 if let Some(d) = DetailLevel::from_str(s) {
                     config.detail_level = d;
@@ -416,6 +425,7 @@ impl CliConfig {
                 }
                 "--verbose" | "-v" => config.verbose = true,
                 "--adaptive"       => config.adaptive_tick_rate = true,
+                "--hot-reload"     => config.hot_reload = true,
                 "--detail" => {
                     i += 1;
                     if let Some(val) = args.get(i) {
@@ -455,6 +465,7 @@ Options:
   --config <path>   Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
   --data-dir <path> Data directory for save/load (default: ./axiom-data)
   --no-load         Skip loading from data directory on startup
+  --hot-reload      Watch config/axiom.yaml and reload tick_schedule on change
   --help, -h        Show this message";
 
 /// Минимальное число активных tension traces для повышения hz тика.
@@ -492,6 +503,8 @@ pub struct CliChannel {
     multipass_count: u64,
     /// Последний multi-pass результат (число проходов)
     last_multipass_n: u8,
+    /// Горячая перезагрузка config/axiom.yaml (None если hot_reload выключен)
+    config_watcher: Option<ConfigWatcher>,
 }
 
 impl CliChannel {
@@ -501,6 +514,22 @@ impl CliChannel {
         engine.tick_schedule = config.tick_schedule;
         let persist_interval = engine.tick_schedule.persist_check_interval;
         let auto_cfg = PersistenceConfig::new(persist_interval);
+
+        let config_watcher = if config.hot_reload {
+            match ConfigWatcher::new("config/axiom.yaml") {
+                Ok(w) => {
+                    eprintln!("[config] hot-reload enabled (watching config/axiom.yaml)");
+                    Some(w)
+                }
+                Err(e) => {
+                    eprintln!("[config] hot-reload init failed: {e}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Self {
             engine,
             perceptor:    TextPerceptor::new(),
@@ -514,6 +543,7 @@ impl CliChannel {
             last_tps_tick: 0,
             multipass_count: 0,
             last_multipass_n: 0,
+            config_watcher,
             config,
         }
     }
@@ -640,6 +670,25 @@ impl CliChannel {
             } else if let Some(e) = &self.auto_saver.last_error {
                 eprintln!("[autosave] error: {e}");
                 self.auto_saver.last_error = None; // показываем ошибку один раз
+            }
+
+            // Горячая перезагрузка config/axiom.yaml
+            if let Some(ref watcher) = self.config_watcher {
+                if let Some(new_cfg) = watcher.poll() {
+                    // Применяем только tick_schedule — остальные параметры
+                    // (tick_hz, verbose, detail_level) требуют перезапуска
+                    let mut new_schedule = self.config.tick_schedule;
+                    // Читаем CliConfigFile поверх нового axiom.yaml для tick_schedule
+                    if let Some(cli_file) = CliConfigFile::find_and_load(None) {
+                        if let Some(s) = cli_file.tick_schedule {
+                            s.apply_to(&mut new_schedule);
+                        }
+                    }
+                    self.engine.tick_schedule = new_schedule;
+                    self.config.tick_schedule = new_schedule;
+                    let _ = new_cfg; // axiom.yaml загружен для триггера, schedule из cli файла
+                    eprintln!("[config] reloaded tick_schedule (tick={})", self.engine.tick_count);
+                }
             }
 
             // Verbose: статус ядра — только после пользовательского ввода,
@@ -1354,6 +1403,34 @@ impl CliChannel {
                 println!("  step_down:        {}", s.adaptive_tick.step_down);
                 println!("  cooldown:         {}", s.adaptive_tick.cooldown);
             }
+            ":schema" => {
+                let kind = parts.get(1).copied().unwrap_or("axiom");
+                match kind {
+                    "axiom" => {
+                        println!("{}", axiom_config::schema::axiom_schema_json());
+                    }
+                    "domain" => {
+                        println!("{}", axiom_config::schema::domain_schema_json());
+                    }
+                    "heartbeat" => {
+                        println!("{}", axiom_config::schema::heartbeat_schema_json());
+                    }
+                    "cli" => {
+                        let schema = schemars::schema_for!(CliConfigFile);
+                        match serde_json::to_string_pretty(&schema) {
+                            Ok(s) => println!("{s}"),
+                            Err(e) => println!("  error: {e}"),
+                        }
+                    }
+                    _ => {
+                        println!("  Usage: :schema [axiom|domain|heartbeat|cli]");
+                        println!("    axiom     — JSON-схема axiom.yaml (корневой конфиг)");
+                        println!("    domain    — JSON-схема доменного конфига (presets/domains/)");
+                        println!("    heartbeat — JSON-схема heartbeat.yaml");
+                        println!("    cli       — JSON-схема axiom-cli.yaml");
+                    }
+                }
+            }
             _ => {
                 println!("  Unknown command. Type :help for list.");
             }
@@ -1438,8 +1515,11 @@ const HELP_TEXT: &str = "\
   :save [path]              — сохранить состояние
   :load [path]              — загрузить состояние
   :autosave [on N|off]      — автосохранение каждые N тиков
-  :export traces|skills [p] — экспорт знаний в JSON
+  :export traces|skills [p] — экспорт знаний в bincode
   :import traces|skills [p] — импорт с GUARDIAN-валидацией (weight×0.7)
+
+  ── схемы ──────────────────────────────────────────────────
+  :schema [axiom|domain|heartbeat|cli]  — JSON-схема конфига (для редакторов)
 
   ── прочее ─────────────────────────────────────────────────
   :help [command]       — этот список или детали команды (:help :trace)

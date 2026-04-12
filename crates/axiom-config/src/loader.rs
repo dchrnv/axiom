@@ -3,6 +3,7 @@
 //! Реализует единую систему загрузки и валидации конфигураций для Axiom
 
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -12,7 +13,7 @@ use crate::heartbeat_config::HeartbeatConfig;
 use crate::preset::{TokenPreset, ConnectionPreset};
 
 /// Корневая конфигурация Axiom
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AxiomConfig {
     /// Конфигурация runtime
     pub runtime: RuntimeConfig,
@@ -26,7 +27,7 @@ pub struct AxiomConfig {
 }
 
 /// Конфигурация пресетов — пути к готовым конфигурациям компонентов
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct PresetsConfig {
     /// Директория YAML пресетов доменов
     pub domains_dir: Option<String>,
@@ -38,6 +39,8 @@ pub struct PresetsConfig {
     pub spatial: Option<String>,
     /// Путь к YAML таблице семантических вкладов Shell
     pub semantic_contributions: Option<String>,
+    /// Путь к YAML файлу HeartbeatConfig (опционально)
+    pub heartbeat_file: Option<String>,
 }
 
 /// Результат полной загрузки конфигурации через `ConfigLoader::load_all`
@@ -56,7 +59,7 @@ pub struct LoadedAxiomConfig {
 }
 
 /// Конфигурация runtime
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RuntimeConfig {
     /// Путь к файлу runtime конфигурации
     pub file: String,
@@ -65,7 +68,7 @@ pub struct RuntimeConfig {
 }
 
 /// Конфигурация схем
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SchemaConfig {
     /// Путь к схеме домена
     pub domain: String,
@@ -80,7 +83,7 @@ pub struct SchemaConfig {
 }
 
 /// Конфигурация загрузчика
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LoaderConfig {
     /// Формат конфигурационных файлов
     pub format: String,
@@ -88,8 +91,6 @@ pub struct LoaderConfig {
     pub validation: String,
     /// Включить кэширование загруженных конфигураций
     pub cache_enabled: bool,
-    /// Включить горячую перезагрузку конфигурации
-    pub hot_reload: bool,
 }
 
 /// Ошибки загрузки конфигурации
@@ -136,16 +137,13 @@ impl ConfigLoader {
     pub fn load_root(&mut self, path: &Path) -> Result<AxiomConfig, ConfigError> {
         let content = fs::read_to_string(path).map_err(ConfigError::IoError)?;
 
-        let config: AxiomConfig =
-            serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
+        let config: AxiomConfig = crate::schema::validate_yaml(&content)?;
 
         // Кэшируем корневую конфигурацию
         let cache_key = path.to_string_lossy().to_string();
         self.cache.insert(
             cache_key,
-            serde_yaml::to_value(&config).map_err(|e| {
-                ConfigError::ParseError(e)
-            })?,
+            serde_yaml::to_value(&config).map_err(ConfigError::ParseError)?,
         );
 
         Ok(config)
@@ -168,13 +166,9 @@ impl ConfigLoader {
     /// Загрузить DomainConfig из YAML
     pub fn load_domain_config(&mut self, path: &Path) -> Result<DomainConfig, ConfigError> {
         let content = fs::read_to_string(path).map_err(ConfigError::IoError)?;
-        let config: DomainConfig =
-            serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
+        let config: DomainConfig = crate::schema::validate_yaml(&content)?;
 
-        // Валидация
-        config
-            .validate()
-            .map_err(ConfigError::ValidationError)?;
+        config.validate().map_err(ConfigError::ValidationError)?;
 
         Ok(config)
     }
@@ -182,13 +176,9 @@ impl ConfigLoader {
     /// Загрузить HeartbeatConfig из YAML
     pub fn load_heartbeat_config(&mut self, path: &Path) -> Result<HeartbeatConfig, ConfigError> {
         let content = fs::read_to_string(path).map_err(ConfigError::IoError)?;
-        let config: HeartbeatConfig =
-            serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
+        let config: HeartbeatConfig = crate::schema::validate_yaml(&content)?;
 
-        // Валидация
-        config
-            .validate()
-            .map_err(ConfigError::ValidationError)?;
+        config.validate().map_err(ConfigError::ValidationError)?;
 
         Ok(config)
     }
@@ -429,10 +419,22 @@ impl ConfigLoader {
             }
         }
 
+        // Загружаем HeartbeatConfig если путь задан
+        let heartbeat = if let Some(ref hb_path) = root.presets.heartbeat_file.clone() {
+            let path = base.join(hb_path);
+            if path.exists() {
+                Some(self.load_heartbeat_config(&path)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         Ok(LoadedAxiomConfig {
             root,
             domains,
-            heartbeat: None,
+            heartbeat,
         })
     }
 

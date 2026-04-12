@@ -12,8 +12,10 @@ axiom-runtime = { path = "../axiom-runtime" }
 axiom-config  = { path = "../axiom-config" }
 serde         = { workspace = true }
 serde_yaml    = { workspace = true }
-serde_json    = { workspace = true }
+bincode       = { workspace = true }
+schemars      = { workspace = true }
 
 [dev-dependencies]
 axiom-ucl   = { path = "../axiom-ucl" }
 axiom-agent = { path = "../axiom-agent" }
+bincode     = { workspace = true }

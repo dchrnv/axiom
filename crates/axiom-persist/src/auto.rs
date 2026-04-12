@@ -10,12 +10,13 @@
 // Единственный источник правды для пути — CliConfig.data_dir в вызывающем коде.
 
 use std::path::Path;
+use schemars::JsonSchema;
 use axiom_runtime::AxiomEngine;
 use crate::error::PersistError;
 use crate::writer::{save, WriteOptions};
 
 /// Конфигурация автосохранения.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, JsonSchema)]
 pub struct PersistenceConfig {
     /// Автосохранение включено
     pub enabled: bool,

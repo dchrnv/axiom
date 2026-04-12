@@ -10,7 +10,7 @@ use axiom_ucl::{UclCommand, OpCode};
 use std::path::PathBuf;
 
 fn temp_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("axiom-exchange-test-{}.json", name))
+    std::env::temp_dir().join(format!("axiom-exchange-test-{}.bin", name))
 }
 
 fn inject_and_tick(engine: &mut AxiomEngine, rounds: u32) {
@@ -103,9 +103,7 @@ fn test_import_traces_weight_reduced() {
 
 #[test]
 fn test_guardian_rejects_zero_sutra_id() {
-    use axiom_persist::exchange::{TracePackage, StoredSkill};
-    use axiom_persist::format::StoredTrace;
-    use axiom_persist::exchange::ExchangeHeader;
+    use axiom_persist::exchange::{TracePackage, ExchangeHeader};
     use axiom_core::Token;
 
     let path = temp_path("guardian_reject");
@@ -132,8 +130,8 @@ fn test_guardian_rejects_zero_sutra_id() {
         }],
     };
 
-    let json = serde_json::to_string(&pkg).unwrap();
-    std::fs::write(&path, json.as_bytes()).unwrap();
+    let bytes = bincode::serde::encode_to_vec(&pkg, bincode::config::standard()).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
 
     let mut engine = AxiomEngine::new();
     let report = import_traces(&mut engine, &path).expect("import");

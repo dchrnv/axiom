@@ -17,7 +17,6 @@ loader:
   format: yaml
   validation: strict
   cache_enabled: false
-  hot_reload: false
 "#;
 
 const AXIOM_YAML_MODIFIED: &str = r#"
@@ -34,7 +33,6 @@ loader:
   format: yaml
   validation: relaxed
   cache_enabled: true
-  hot_reload: true
 "#;
 
 fn temp_dir(suffix: &str) -> std::path::PathBuf {
@@ -117,14 +115,13 @@ fn test_watcher_reload_reflects_new_values() {
     std::thread::sleep(Duration::from_millis(50));
     let _ = watcher.poll();
 
-    // Записываем изменённый файл с hot_reload: true
+    // Записываем изменённый файл
     std::fs::write(&path, AXIOM_YAML_MODIFIED).unwrap();
     std::thread::sleep(Duration::from_millis(150));
 
     let cfg = watcher.poll().expect("expected new config");
-    assert!(cfg.root.loader.hot_reload, "hot_reload должен стать true");
-    assert!(cfg.root.loader.cache_enabled);
-    assert_eq!(cfg.root.loader.validation, "relaxed");
+    assert!(cfg.root.loader.cache_enabled, "cache_enabled должен стать true");
+    assert_eq!(cfg.root.loader.validation, "relaxed", "validation должен обновиться");
 
     std::fs::remove_dir_all(dir).ok();
 }
