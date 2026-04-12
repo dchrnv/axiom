@@ -18,6 +18,11 @@ use std::fmt;
 /// Arbiter генерирует Goal-импульсы для незавершённых целей.
 pub const TOKEN_FLAG_GOAL: u16 = 0x0001;
 
+/// Токен является внутренним импульсом (Cognitive Depth).
+/// Установлен для tension и goal импульсов перед повторной маршрутизацией.
+/// Предотвращает петлю: impulse → tension → impulse → ...
+pub const TOKEN_FLAG_IMPULSE: u16 = 0x0002;
+
 /// Флаги состояния токена
 pub const STATE_ACTIVE: u8 = 1;
 /// Токен находится в спящем режиме
@@ -32,7 +37,7 @@ pub const STATE_LOCKED: u8 = 3;
 ///
 /// Layout (64 байта):
 /// - ИДЕНТИФИКАЦИЯ (8 байт): sutra_id, domain_id, type_flags
-/// - ЛОКАЛЬНАЯ ФИЗИКА (16 байт): position, velocity, target, reserved_phys
+/// - ЛОКАЛЬНАЯ ФИЗИКА (16 байт): position, velocity, target, origin
 /// - ТЕРМОДИНАМИКА (4 байта): valence, mass, temperature, state
 /// - ФРАКТАЛЬНАЯ НАВИГАЦИЯ (36 байт): lineage_hash, momentum, resonance, last_event_id
 #[repr(C, align(64))]
@@ -59,8 +64,10 @@ pub struct Token {
     /// Целевая позиция [tx, ty, tz]
     pub target: [i16; 3],
 
-    /// Резерв для выравнивания
-    pub reserved_phys: u16,
+    /// Происхождение токена (откуда пришёл).
+    /// 0x0000 = создан здесь, 0x01..=0xFF = пришёл с уровня N FractalChain,
+    /// 0xFE00 = восстановлен из persistence, 0xFF00..=0xFFFF = внешний источник.
+    pub origin: u16,
 
     // --- ТЕРМОДИНАМИКА (4 Байта) ---
     /// Валентность — способность формировать связи
@@ -92,6 +99,19 @@ pub struct Token {
 // Проверка размера на этапе компиляции
 const _: () = assert!(std::mem::size_of::<Token>() == 64);
 
+// === Token origin ===
+/// Токен рождён в текущем уровне (создан в SUTRA)
+pub const TOKEN_ORIGIN_LOCAL: u16 = 0x0000;
+// 0x0001..=0x00FF — пришёл с уровня N FractalChain
+// Пример: origin = 3 означает "пришёл с уровня 3 через MAYA[3] → SUTRA[4]"
+
+/// Восстановлен из persistence (загружен с диска)
+pub const TOKEN_ORIGIN_PERSISTED: u16 = 0xFE00;
+
+/// База для внешних источников (future multi-instance)
+/// Конкретный source_id кодируется в младших 8 битах: 0xFF00 | source_id
+pub const TOKEN_ORIGIN_EXTERNAL_BASE: u16 = 0xFF00;
+
 impl Token {
     /// Создает новый токен с минимальными параметрами
     ///
@@ -111,7 +131,7 @@ impl Token {
             position,
             velocity: [0, 0, 0],
             target: position,
-            reserved_phys: 0,
+            origin: TOKEN_ORIGIN_LOCAL,
             valence: 0,
             mass: 100,
             temperature: 100,
@@ -204,6 +224,37 @@ impl Token {
 
         // Итоговый резонанс (взвешенное среднее)
         (temp_factor * 2 + valence_factor + dist_factor) / 4
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_size_unchanged() {
+        assert_eq!(std::mem::size_of::<Token>(), 64);
+    }
+
+    #[test]
+    fn token_origin_default_is_local() {
+        let t = Token::new(1, 1, [0, 0, 0], 1);
+        assert_eq!(t.origin, TOKEN_ORIGIN_LOCAL);
+        assert_eq!(t.origin, 0);
+    }
+
+    #[test]
+    fn token_origin_fractalchain_level() {
+        let mut t = Token::new(1, 1, [0, 0, 0], 1);
+        t.origin = 3; // пришёл с уровня 3
+        assert_eq!(t.origin, 3);
+    }
+
+    #[test]
+    fn token_origin_persisted() {
+        let mut t = Token::new(1, 1, [0, 0, 0], 1);
+        t.origin = TOKEN_ORIGIN_PERSISTED;
+        assert_eq!(t.origin, 0xFE00);
     }
 }
 

@@ -1,4 +1,4 @@
-# Axiom Quick Start
+# AXIOM Quick Start
 
 ---
 
@@ -8,7 +8,6 @@
 - **Rust:** 1.75+
 
 ```bash
-# Установить Rust (если не установлен)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
@@ -20,18 +19,64 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-# Собрать и прогнать все тесты
-cargo test --workspace
-
-# Release build
-cargo build --release
+cargo test --workspace   # все тесты
+cargo build --release    # production build
 ```
 
 ---
 
-## Basic Usage
+## Запуск CLI
 
-### Minimal example
+```bash
+cargo run --bin axiom-cli --release
+```
+
+При старте система загружает состояние из `./axiom-data` (если существует).
+
+```bash
+# Полезные флаги
+cargo run --bin axiom-cli --release -- --verbose    # показывать состояние после каждого ввода
+cargo run --bin axiom-cli --release -- --adaptive   # адаптивная частота тиков
+cargo run --bin axiom-cli --release -- --no-load    # чистый старт без загрузки
+```
+
+---
+
+## Работа в CLI
+
+**Текстовый ввод** — любая строка без `:` в начале:
+```
+axiom> hello world
+
+  path:     slow-path       # slow-path → reflex после повторных паттернов
+  domain:   101 (EXECUTION)
+  coherence:0.75            # < 0.6 → создаётся tension trace
+  traces:   47 matched
+  position: (3113, 6636, 10985)
+```
+
+**Служебные команды** (начинаются с `:`):
+```
+:status          — tick_count и tension
+:memory          — полная статистика памяти
+:domains         — список доменов с токенами
+:verbose [on|off]— подробный вывод
+:save [path]     — сохранить состояние
+:load [path]     — загрузить состояние
+:autosave on N   — автосохранение каждые N тиков
+:export traces   — экспорт знаний в JSON
+:import traces   — импорт знаний из JSON
+:tick [N]        — прокрутить N тиков вручную
+:help            — полный список команд
+:quit            — выход
+```
+
+Подробное описание всех команд, параметров и конфигурации:
+**[docs/guides/CLI_Reference.md](docs/guides/CLI_Reference.md)**
+
+---
+
+## Rust API
 
 ```rust
 use axiom_runtime::AxiomEngine;
@@ -43,35 +88,7 @@ engine.process_command(&cmd);
 let events = engine.drain_events();
 ```
 
-### Через Gateway (рекомендуется для внешних систем)
-
-```rust
-use axiom_runtime::{Gateway, Channel};
-use axiom_ucl::{UclCommand, OpCode};
-
-let mut gw = Gateway::with_default_engine();
-let mut ch = Channel::new();
-
-ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
-let result = gw.process_channel(&mut ch);
-assert!(result.all_ok());
-```
-
-### Инъекция токена
-
-```rust
-use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
-
-let mut engine = AxiomEngine::new();
-
-// LOGIC domain = level_id(1)*100 + role(6) = 106
-let mut cmd = UclCommand::new(OpCode::InjectToken, 106, 100, 0);
-cmd.payload[0] = 106u8;  // domain_id lo
-cmd.payload[1] = 0u8;    // domain_id hi
-cmd.payload[4..8].copy_from_slice(&100.0f32.to_le_bytes()); // mass
-engine.process_command(&cmd);
-```
+Подробнее: [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
 
 ---
 
@@ -85,28 +102,20 @@ cargo bench -p axiom-bench
 
 ---
 
-## Documentation
-
-- [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство
-- [STATUS.md](STATUS.md) — текущее состояние
-- [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) — правила разработки
-
----
-
 ## Common Issues
 
-**Rust not found**
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
-```
-
-**Build failures**
+**Build failure:**
 ```bash
 cargo clean && cargo build --release
 ```
 
-**Запустить конкретный тест**
+**Сброс состояния:**
+```bash
+rm -rf axiom-data/
+cargo run --bin axiom-cli --release -- --no-load
+```
+
+**Запустить конкретный тест:**
 ```bash
 cargo test -p axiom-runtime test_gateway_process
 ```

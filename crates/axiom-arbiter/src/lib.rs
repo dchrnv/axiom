@@ -39,6 +39,7 @@ pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
 
 // Re-export из axiom-core — единственный источник истины для этого флага.
 pub use axiom_core::TOKEN_FLAG_GOAL;
+pub use axiom_core::TOKEN_FLAG_IMPULSE;
 
 /// Порог веса следа при котором цель считается достигнутой.
 /// Выше этого значения goal-импульсы не генерируются.
@@ -141,10 +142,10 @@ pub struct PendingComparison {
 /// Реестр доменов по их ролям
 #[derive(Debug, Clone)]
 pub struct DomainRegistry {
-    sutra: Option<u32>,
-    experience: Option<u32>,
-    ashti: [Option<u32>; 8],  // Indexed by role 1-8
-    maya: Option<u32>,
+    sutra: Option<u16>,
+    experience: Option<u16>,
+    ashti: [Option<u16>; 8],  // Indexed by role 1-8
+    maya: Option<u16>,
 }
 
 impl DomainRegistry {
@@ -174,7 +175,7 @@ pub struct Arbiter {
     /// Ожидающие сравнения (публично для тестов)
     pub pending_comparisons: HashMap<u64, PendingComparison>,
     /// Ссылка на домены (для обработки)
-    domains: HashMap<u32, DomainConfig>,
+    domains: HashMap<u16, DomainConfig>,
     /// COM для событий
     com: COM,
     /// REFLECTOR: статистика рефлексов + профили доменов
@@ -185,7 +186,7 @@ pub struct Arbiter {
 
 impl Arbiter {
     /// Создать новый Arbiter
-    pub fn new(domains: HashMap<u32, DomainConfig>, com: COM) -> Self {
+    pub fn new(domains: HashMap<u16, DomainConfig>, com: COM) -> Self {
         Self {
             experience: Experience::new(),
             registry: DomainRegistry::new(),
@@ -198,7 +199,7 @@ impl Arbiter {
     }
 
     /// Зарегистрировать домен по structural_role
-    pub fn register_domain(&mut self, role: u8, domain_id: u32) -> Result<(), String> {
+    pub fn register_domain(&mut self, role: u8, domain_id: u16) -> Result<(), String> {
         match role {
             0 => {
                 self.registry.sutra = Some(domain_id);
@@ -334,14 +335,43 @@ impl Arbiter {
 
         let ashti_results = self.route_to_ashti(token, hint);
 
-        // 4. Консолидация через MAYA (с confidence)
-        let (consolidated, confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+        // 4. Консолидация через MAYA с confidence + multi-pass (Cognitive Depth 13A)
+        let (max_passes, min_coherence_f) = self.maya_multipass_params();
+        let (mut consolidated, mut confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+        let mut final_ashti = ashti_results;
+        let mut passes = 1u8;
+
+        if max_passes > 1 && confidence < min_coherence_f {
+            let mut cur_pat = token;
+            for pass in 1..max_passes {
+                if let Some(ref cons) = consolidated {
+                    cur_pat.temperature = cur_pat.temperature.saturating_add(cons.temperature / 2);
+                }
+                let extra_ashti = self.route_to_ashti(cur_pat, None);
+                let (extra_cons, extra_conf) = self.route_to_maya_with_confidence(extra_ashti.clone());
+                if extra_conf > confidence {
+                    confidence  = extra_conf;
+                    final_ashti = extra_ashti;
+                    consolidated = extra_cons;
+                }
+                passes = pass + 1;
+                if confidence >= min_coherence_f { break; }
+            }
+        }
+
+        // Создать tension trace если итоговый confidence ниже порога.
+        // Impulse-токены (TOKEN_FLAG_IMPULSE) не создают новый tension — иначе петля.
+        let is_impulse = token.type_flags & axiom_core::TOKEN_FLAG_IMPULSE != 0;
+        if !is_impulse && max_passes > 0 && confidence < min_coherence_f {
+            let tension_temp = ((1.0 - confidence) * 255.0) as u8;
+            self.experience.add_tension_trace(token, tension_temp, event_id);
+        }
 
         // 5. Сохранить для сравнения
         self.pending_comparisons.insert(event_id, PendingComparison {
             input_pattern: token,
             reflex_prediction: reflex,
-            ashti_results: ashti_results.clone(),
+            ashti_results: final_ashti.clone(),
             consolidated_result: consolidated,
             created_at: event_id,
             trace_index: None,
@@ -350,11 +380,11 @@ impl Arbiter {
         RoutingResult {
             event_id,
             reflex,
-            slow_path: ashti_results,
+            slow_path: final_ashti,
             consolidated,
             routed_events: vec![event_id],
             confidence,
-            passes: 1,
+            passes,
         }
     }
 
@@ -550,16 +580,16 @@ impl Arbiter {
             self.reflector.record_reflex(input_hash, match_result);
 
             let weight = if match_result { 0.7 } else { 0.3 };
-            self.experience.add_trace(consolidated, weight, event_id);
+            self.experience.strengthen_or_add(consolidated, weight, event_id);
 
             // Усиливаем след если рефлекс был успешен
             if match_result {
                 self.experience.strengthen_by_hash(input_hash, 0.05);
             }
         } else {
-            // Если не было рефлекса, просто добавляем trace
+            // Если не было рефлекса — усиляем существующий паттерн или добавляем новый
             if let Some(consolidated) = comparison.consolidated_result {
-                self.experience.add_trace(consolidated, 0.5, event_id);
+                self.experience.strengthen_or_add(consolidated, 0.5, event_id);
             }
         }
 
@@ -577,7 +607,7 @@ impl Arbiter {
     /// Сравнение двух токенов на схожесть (публично для тестов)
     pub fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
         // Берём пороги из конфига домена-источника рефлекса, fallback → модульные константы
-        let cfg = self.domains.get(&(reflex.domain_id as u32));
+        let cfg = self.domains.get(&reflex.domain_id);
         let temp_tol    = cfg.map(|c| c.token_compare_temp_tolerance)   .unwrap_or(TOKEN_COMPARE_TEMP_TOLERANCE);
         let mass_tol    = cfg.map(|c| c.token_compare_mass_tolerance)   .unwrap_or(TOKEN_COMPARE_MASS_TOLERANCE);
         let valence_tol = cfg.map(|c| c.token_compare_valence_tolerance).unwrap_or(TOKEN_COMPARE_VALENCE_TOLERANCE);
@@ -626,12 +656,12 @@ impl Arbiter {
     }
 
     /// Добавить или обновить конфигурацию домена (для динамического добавления доменов из Engine)
-    pub fn add_domain_config(&mut self, domain_id: u32, config: DomainConfig) {
+    pub fn add_domain_config(&mut self, domain_id: u16, config: DomainConfig) {
         self.domains.insert(domain_id, config);
     }
 
     /// Mutable доступ к HashMap конфигураций доменов (для адаптации порогов)
-    pub fn domain_configs_mut(&mut self) -> &mut HashMap<u32, DomainConfig> {
+    pub fn domain_configs_mut(&mut self) -> &mut HashMap<u16, DomainConfig> {
         &mut self.domains
     }
 

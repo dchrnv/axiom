@@ -76,7 +76,7 @@ impl Experience {
     pub fn new() -> Self {
         Self {
             traces: Vec::new(),
-            reflex_threshold: 128,
+            reflex_threshold: 127, // 127/255 ≈ 0.498 — чуть ниже 0.5 чтобы trace weight=0.5 давал Reflex
             association_threshold: 64,
             max_traces: 1000,
             index: AssociativeIndex::new(4), // shift=4: ячейки 16 квантов
@@ -301,6 +301,25 @@ impl Experience {
 
         // Добавляем в GridHash-индекс
         self.index.insert(key, created_at);
+    }
+
+    /// Усилить существующий похожий след (hash distance ≤ 8) или добавить новый.
+    ///
+    /// Используется в `finalize_comparison` для накопления веса при повторных паттернах.
+    /// В отличие от `add_trace`, не создаёт дубликаты для уже известных паттернов.
+    /// Возвращает true если нашёл и усилил существующий след.
+    pub fn strengthen_or_add(&mut self, pattern: Token, weight: f32, created_at: u64) -> bool {
+        let ph = pattern_hash(&pattern);
+        if let Some(trace) = self.traces.iter_mut()
+            .filter(|t| (t.pattern_hash ^ ph).count_ones() <= 8)
+            .max_by(|a, b| a.weight.total_cmp(&b.weight))
+        {
+            trace.weight = (trace.weight + weight * 0.1).min(1.0);
+            trace.last_used = created_at;
+            return true;
+        }
+        self.add_trace(pattern, weight, created_at);
+        false
     }
 
     /// Усилить след по индексу

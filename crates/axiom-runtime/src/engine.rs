@@ -176,7 +176,7 @@ impl AxiomEngine {
     }
 
     /// Число токенов в домене по domain_id
-    pub fn token_count(&self, domain_id: u32) -> usize {
+    pub fn token_count(&self, domain_id: u16) -> usize {
         self.ashti.token_count(domain_id)
     }
 
@@ -193,7 +193,7 @@ impl AxiomEngine {
                     .into_iter()
                     .find(|(cid, _)| *cid == id)
                     .map(|(_, c)| c)
-                    .unwrap_or_else(|| DomainConfig::factory_void(id as u16, 0));
+                    .unwrap_or_else(|| DomainConfig::factory_void(id, 0));
                 DomainSnapshot {
                     domain_id: id,
                     config,
@@ -315,12 +315,21 @@ impl AxiomEngine {
             let event_id = self.next_event_id();
             let token = build_token_from_inject(&p, p.target_domain_id, event_id);
 
+            // Захватываем состояние до маршрутизации
+            let tension_before   = self.ashti.experience().tension_count();
+            let total_traces     = self.ashti.experience().trace_count() as u32;
+            let input_position   = token.position;
+            let input_shell: [u8; 8] = [0, 0, 0, token.valence.unsigned_abs(), token.temperature, token.mass, 0, 0];
+            let input_hash       = fnv1a_token_hash(&token);
+            let (max_passes, min_coherence) = self.maya_multipass_params();
+
             let ucl_result = make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
             let routing = orchestrator::route_token(self, token);
 
-            let reflex_hit = routing.reflex.is_some();
-            let confidence  = routing.confidence;
-            let passes      = routing.passes;
+            let tension_created  = self.ashti.experience().tension_count() > tension_before;
+            let reflex_hit       = routing.reflex.is_some();
+            let confidence       = routing.confidence;
+            let passes           = routing.passes;
 
             let path = if passes > 1 {
                 ProcessingPath::MultiPass(passes)
@@ -359,12 +368,32 @@ impl AxiomEngine {
                 output_position,
                 reflex_hit,
                 traces_matched,
+                passes,
+                max_passes,
+                min_coherence,
+                total_traces,
+                event_id: routing.event_id,
+                input_position,
+                input_shell,
+                input_hash,
+                tension_created,
             };
         }
 
         // Все остальные команды — стандартная обработка без диагностики маршрутизации
         let ucl_result = self.process_command(cmd);
         ProcessingResult::from_ucl(ucl_result)
+    }
+
+    /// Получить параметры multi-pass из конфига MAYA (domain 110 для level 1).
+    pub fn maya_multipass_params(&self) -> (u8, f32) {
+        // MAYA = level_id * 100 + 10; для level 1 → 110
+        let maya_id = self.ashti.level_id() * 100 + 10;
+        if let Some(cfg) = self.ashti.config_of(maya_id) {
+            (cfg.max_passes, cfg.min_coherence as f32 / 255.0)
+        } else {
+            (0, 0.6)
+        }
     }
 
     // --- Обработчики команд ---
@@ -384,7 +413,7 @@ impl AxiomEngine {
 
     fn handle_inject_token(&mut self, cmd: &UclCommand) -> UclResult {
         let p = parse_inject_token_payload(&cmd.payload);
-        let domain_id = p.target_domain_id as u32;
+        let domain_id = p.target_domain_id;
 
         // Проверяем что домен существует в AshtiCore
         if self.ashti.index_of(domain_id).is_none() {
@@ -411,19 +440,24 @@ impl AxiomEngine {
         self.pending_events.extend(events);
 
         // Warm path: tension traces (Cognitive Depth)
+        // Impulse-токены проходят через когнитивный pipeline (SUTRA→EXPERIENCE→ASHTI→MAYA).
+        // TOKEN_FLAG_IMPULSE предотвращает петлю: impulse → tension → impulse → ...
         if s.tension_check_interval > 0 && t % s.tension_check_interval as u64 == 0 {
             let impulses = self.ashti.arbiter_heartbeat_pulse(t, true);
-            for token in impulses {
-                let _ = self.ashti.inject_token(token.domain_id as u32, token);
+            for mut token in impulses {
+                token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
+                let _ = orchestrator::route_token(self, token);
             }
         }
 
         // Warm path: goal impulses (Cognitive Depth)
+        // Аналогично: goal-импульсы маршрутизируются когнитивно, не физически.
         if s.goal_check_interval > 0 && t % s.goal_check_interval as u64 == 0 {
             let goals = self.ashti.generate_goal_impulses(t, s.goal_check_interval as u64);
             for impulse in goals {
-                let token = impulse.pattern;
-                let _ = self.ashti.inject_token(token.domain_id as u32, token);
+                let mut token = impulse.pattern;
+                token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
+                let _ = orchestrator::route_token(self, token);
             }
         }
 
@@ -498,7 +532,7 @@ impl AxiomEngine {
     /// После обновления конфигов применяет новые пороги к Experience модулю.
     ///
     /// Возвращает список domain_id, чьи конфиги изменились.
-    pub fn run_adaptation(&mut self) -> Vec<u32> {
+    pub fn run_adaptation(&mut self) -> Vec<u16> {
         // Собираем статистику (иммутабельный заём завершается до мутабельного)
         let role_stats: Vec<RoleStats> = (1u8..=8).filter_map(|role| {
             let profile = self.ashti.reflector().domain_profile(role)?;
@@ -704,6 +738,19 @@ fn parse_inject_token_payload(payload: &[u8; 48]) -> InjectTokenPayload {
         temperature: read_f32_le(payload, 36),
         reserved: [0; 6],
     }
+}
+
+/// FNV-1a хэш ключевых полей токена — для диагностического вывода.
+/// Тот же алгоритм что и pattern_hash в experience.rs.
+fn fnv1a_token_hash(token: &Token) -> u64 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    h ^= token.temperature as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.mass         as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.valence as u8 as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[0]  as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[1]  as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[2]  as u64; h = h.wrapping_mul(0x100000001b3);
+    h
 }
 
 /// Построить Token из InjectTokenPayload

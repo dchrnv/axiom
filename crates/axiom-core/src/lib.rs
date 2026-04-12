@@ -28,7 +28,7 @@ pub mod connection;
 pub mod event;
 
 // Реэкспорт основных типов
-pub use token::{Token, TOKEN_FLAG_GOAL, STATE_ACTIVE, STATE_SLEEPING, STATE_LOCKED};
+pub use token::{Token, TOKEN_FLAG_GOAL, TOKEN_FLAG_IMPULSE, STATE_ACTIVE, STATE_SLEEPING, STATE_LOCKED};
 pub use connection::{Connection, FLAG_ACTIVE, FLAG_INHIBITED, FLAG_TEMPORARY, FLAG_CRITICAL};
 pub use event::{
     Event, EventType, EventPriority, Snapshot,

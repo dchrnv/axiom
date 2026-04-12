@@ -43,6 +43,27 @@ pub struct ProcessingResult {
     pub reflex_hit: bool,
     /// Число следов, прошедших хэш-фильтр при последнем поиске
     pub traces_matched: u32,
+
+    // --- Расширенная диагностика (Фаза 1) ---
+
+    /// Число выполненных проходов (1 = обычный, >1 = multi-pass)
+    pub passes: u8,
+    /// Максимальное число проходов из конфига MAYA
+    pub max_passes: u8,
+    /// Минимальный порог coherence из конфига MAYA
+    pub min_coherence: f32,
+    /// Общее число experience traces (до маршрутизации)
+    pub total_traces: u32,
+    /// COM event_id созданного события
+    pub event_id: u64,
+    /// Позиция входного токена (до обработки)
+    pub input_position: [i16; 3],
+    /// Shell входного токена [0,0,0,valence,temp,mass,0,0]
+    pub input_shell: [u8; 8],
+    /// FNV-хэш входного токена (для диагностики)
+    pub input_hash: u64,
+    /// Был ли создан tension trace в ходе этой маршрутизации
+    pub tension_created: bool,
 }
 
 impl ProcessingResult {
@@ -58,6 +79,15 @@ impl ProcessingResult {
             output_position: [0i16; 3],
             reflex_hit: false,
             traces_matched: 0,
+            passes: 0,
+            max_passes: 0,
+            min_coherence: 0.6,
+            total_traces: 0,
+            event_id: 0,
+            input_position: [0i16; 3],
+            input_shell: [0u8; 8],
+            input_hash: 0,
+            tension_created: false,
         }
     }
 }

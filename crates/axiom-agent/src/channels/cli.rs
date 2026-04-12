@@ -154,9 +154,72 @@ use axiom_persist::{
 };
 use axiom_runtime::{AxiomEngine, TickSchedule, AdaptiveTickRate, TickRateReason, ProcessingPath};
 use crate::perceptors::text::TextPerceptor;
-use crate::effectors::message::MessageEffector;
+use crate::effectors::message::{MessageEffector, DetailLevel, domain_name};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+
+// ─── PerfTracker — счётчик производительности тиков ──────────────────────────
+
+/// Трекер производительности: замеряет время каждого тика и хранит скользящее окно.
+struct PerfTracker {
+    start:        std::time::Instant,
+    tick_times:   VecDeque<u64>,   // последние N времён тиков в наносекундах
+    peak_ns:      u64,
+    window:       usize,
+    total_ticks:  u64,
+    peak_tick_id: u64,
+}
+
+impl PerfTracker {
+    fn new(window: usize) -> Self {
+        Self {
+            start:        std::time::Instant::now(),
+            tick_times:   VecDeque::with_capacity(window),
+            peak_ns:      0,
+            window,
+            total_ticks:  0,
+            peak_tick_id: 0,
+        }
+    }
+
+    fn record(&mut self, ns: u64, tick_id: u64) {
+        if self.tick_times.len() >= self.window {
+            self.tick_times.pop_front();
+        }
+        self.tick_times.push_back(ns);
+        self.total_ticks += 1;
+        if ns > self.peak_ns {
+            self.peak_ns      = ns;
+            self.peak_tick_id = tick_id;
+        }
+    }
+
+    fn avg_ns(&self) -> f64 {
+        if self.tick_times.is_empty() { return 0.0; }
+        self.tick_times.iter().sum::<u64>() as f64 / self.tick_times.len() as f64
+    }
+
+    fn actual_hz(&self) -> f64 {
+        let elapsed = self.start.elapsed().as_secs_f64();
+        if elapsed < 0.001 { return 0.0; }
+        self.total_ticks as f64 / elapsed
+    }
+
+    fn uptime_secs(&self) -> f64 {
+        self.start.elapsed().as_secs_f64()
+    }
+}
+
+fn fmt_ns(ns: u64) -> String {
+    if ns < 1_000 {
+        format!("{} ns", ns)
+    } else if ns < 1_000_000 {
+        format!("{:.1} µs", ns as f64 / 1_000.0)
+    } else {
+        format!("{:.2} ms", ns as f64 / 1_000_000.0)
+    }
+}
 
 // ─── TickSchedule YAML-зеркало ────────────────────────────────────────────────
 
@@ -232,6 +295,9 @@ pub struct CliConfigFile {
     /// Включить адаптивную частоту тиков (Axiom Sentinel V1.0, Фаза 3)
     #[serde(default)]
     pub adaptive_tick_rate: Option<bool>,
+    /// Уровень детализации вывода: off / min / mid / max (default: min)
+    #[serde(default)]
+    pub detail_level: Option<String>,
 }
 
 impl CliConfigFile {
@@ -277,7 +343,7 @@ impl CliConfigFile {
 pub struct CliConfig {
     /// Частота тиков ядра в Гц (default: 100)
     pub tick_hz: u32,
-    /// Подробный вывод tension traces после каждого тика (default: false)
+    /// Подробный вывод состояния ядра после каждого тика (default: false)
     pub verbose: bool,
     /// Строка приглашения (default: "axiom> ")
     pub prompt: String,
@@ -287,6 +353,8 @@ pub struct CliConfig {
     pub data_dir: String,
     /// Включить адаптивную частоту тиков (Axiom Sentinel V1.0, Фаза 3)
     pub adaptive_tick_rate: bool,
+    /// Уровень детализации вывода при текстовом вводе (default: Min)
+    pub detail_level: DetailLevel,
 }
 
 impl Default for CliConfig {
@@ -298,6 +366,7 @@ impl Default for CliConfig {
             tick_schedule: TickSchedule::default(),
             data_dir: "axiom-data".to_string(),
             adaptive_tick_rate: false,
+            detail_level: DetailLevel::Min,
         }
     }
 }
@@ -323,6 +392,11 @@ impl CliConfig {
             if let Some(v) = file.verbose           { config.verbose           = v; }
             if let Some(v) = file.prompt            { config.prompt            = v; }
             if let Some(v) = file.adaptive_tick_rate { config.adaptive_tick_rate = v; }
+            if let Some(ref s) = file.detail_level {
+                if let Some(d) = DetailLevel::from_str(s) {
+                    config.detail_level = d;
+                }
+            }
             if let Some(s) = file.tick_schedule {
                 s.apply_to(&mut config.tick_schedule);
             }
@@ -340,6 +414,14 @@ impl CliConfig {
                 }
                 "--verbose" | "-v" => config.verbose = true,
                 "--adaptive"       => config.adaptive_tick_rate = true,
+                "--detail" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        if let Some(d) = DetailLevel::from_str(val) {
+                            config.detail_level = d;
+                        }
+                    }
+                }
                 "--config"         => { i += 1; } // уже обработано выше
                 "--data-dir" => {
                     i += 1;
@@ -365,8 +447,9 @@ Usage: axiom-cli [OPTIONS]
 
 Options:
   --tick-hz N       Tick frequency in Hz (default: 100)
-  --verbose, -v     Show tension traces after each tick
+  --verbose, -v     Show internal state (traces, tension) after each input
   --adaptive        Enable adaptive tick rate (Sentinel V1.0 Phase 3)
+  --detail <level>  Output detail: off|min|mid|max (default: min)
   --config <path>   Path to axiom-cli.yaml (default: ./axiom-cli.yaml)
   --data-dir <path> Data directory for save/load (default: ./axiom-data)
   --no-load         Skip loading from data directory on startup
@@ -389,6 +472,7 @@ pub struct CliChannel {
     effector:   MessageEffector,
     config:     CliConfig,
     auto_saver: AutoSaver,
+    perf:       PerfTracker,
 }
 
 impl CliChannel {
@@ -403,6 +487,7 @@ impl CliChannel {
             perceptor:  TextPerceptor::new(),
             effector:   MessageEffector::new(),
             auto_saver: AutoSaver::new(auto_cfg),
+            perf:       PerfTracker::new(200),
             config,
         }
     }
@@ -467,7 +552,11 @@ impl CliChannel {
                         if matches!(result.path, ProcessingPath::MultiPass(_)) {
                             had_multipass = true;
                         }
-                        let out = self.effector.format_result(&result);
+                        let out = self.effector.format_result(
+                            &result,
+                            self.config.detail_level,
+                            Some(&line),
+                        );
                         print!("{}", out);
                     }
 
@@ -476,8 +565,10 @@ impl CliChannel {
                 }
             }
 
-            // Ядро тикает каждый интервал
+            // Ядро тикает каждый интервал — замеряем время
+            let t0 = std::time::Instant::now();
             self.engine.process_command(&tick_cmd);
+            self.perf.record(t0.elapsed().as_nanos() as u64, self.engine.tick_count);
 
             // Автосохранение по интервалу
             let data_dir = std::path::Path::new(&self.config.data_dir);
@@ -490,12 +581,15 @@ impl CliChannel {
                 self.auto_saver.last_error = None; // показываем ошибку один раз
             }
 
-            // Verbose: показать tension traces
-            if self.config.verbose {
-                let tension = self.engine.ashti.experience().tension_count();
-                if tension > 0 {
-                    println!("  [tension: {} active]", tension);
-                }
+            // Verbose: статус ядра — только после пользовательского ввода,
+            // чтобы не перекрывать набираемый текст (курсор в одной строке)
+            if had_input && self.config.verbose {
+                let exp     = self.engine.ashti.experience();
+                let traces  = exp.traces().len();
+                let matched = exp.last_traces_matched.get();
+                let tension = exp.tension_count();
+                println!("  [tick={} traces={} matched={} tension={}]",
+                    self.engine.tick_count, traces, matched, tension);
             }
 
             // Адаптивная частота тиков (Axiom Sentinel V1.0, Фаза 3)
@@ -544,21 +638,41 @@ impl CliChannel {
                 println!("{}", HELP_TEXT);
             }
             ":status" => {
-                println!("  tick_count: {}", self.engine.tick_count);
-                let tension = self.engine.ashti.experience().tension_count();
-                println!("  tension:    {}", tension);
+                let exp    = self.engine.ashti.experience();
+                let traces = exp.traces().len();
+                let tension = exp.tension_count();
+                let snap   = self.engine.snapshot();
+                let tokens: usize = snap.domains.iter().map(|d| d.tokens.len()).sum();
+                let conns:  usize = snap.domains.iter().map(|d| d.connections.len()).sum();
+                let skills = self.engine.ashti.export_skills().len();
+                let (max_passes, min_coh) = self.engine.maya_multipass_params();
+                println!("  ══ Engine Status ══════════════════════");
+                println!("  tick_count:    {}", self.engine.tick_count);
+                println!("  com_next_id:   {}", self.engine.com_next_id);
+                println!("  uptime:        {:.1}s", self.perf.uptime_secs());
+                println!("  tick_rate:     {} Hz (actual: {:.1} Hz)",
+                    self.config.tick_hz, self.perf.actual_hz());
+                println!("  ── memory ─────────────────────────────");
+                println!("  tokens:        {}", tokens);
+                println!("  connections:   {}", conns);
+                println!("  traces:        {}", traces);
+                println!("  skills:        {}", skills);
+                println!("  tension:       {}", tension);
+                println!("  ── cognitive ──────────────────────────");
+                println!("  max_passes:    {}", max_passes);
+                println!("  min_coherence: {:.2}", min_coh);
             }
             ":domains" => {
                 for offset in 0..=10u16 {
                     let id = 100 + offset;
-                    let count = self.engine.token_count(id as u32);
+                    let count = self.engine.token_count(id);
                     println!("  {} ({}) — {} tokens", id,
                         crate::effectors::message::domain_name(id), count);
                 }
             }
             ":tokens" => {
                 if let Some(id_str) = parts.get(1) {
-                    if let Ok(id) = id_str.parse::<u32>() {
+                    if let Ok(id) = id_str.parse::<u16>() {
                         let count = self.engine.token_count(id);
                         println!("  domain {}: {} tokens", id, count);
                     } else {
@@ -664,12 +778,152 @@ impl CliChannel {
                 println!("  reconcile:     {}", s.reconcile_interval);
             }
             ":traces" => {
-                let tension = self.engine.ashti.experience().tension_count();
-                println!("  tension traces: {}", tension);
+                let exp    = self.engine.ashti.experience();
+                let traces = exp.traces();
+                let tick   = self.engine.tick_count;
+                if traces.is_empty() {
+                    println!("  no experience traces");
+                } else {
+                    let avg_w = traces.iter().map(|t| t.weight).sum::<f32>() / traces.len() as f32;
+                    let max_w = traces.iter().map(|t| t.weight).fold(0f32, f32::max);
+                    println!("  ══ Experience Traces ══════════════════");
+                    println!("  Total: {}  |  Avg weight: {:.2}  |  Max weight: {:.2}",
+                        traces.len(), avg_w, max_w);
+                    println!("  {:>3}  {:>6}  {:>3}/{:>3}/{:>3}  {:>6}  {:>8}",
+                        "#", "Weight", "tmp", "mss", "val", "Age", "Hash");
+                    // Сортируем по weight desc, показываем top-20
+                    let mut sorted: Vec<_> = traces.iter().enumerate().collect();
+                    sorted.sort_by(|a, b| b.1.weight.total_cmp(&a.1.weight));
+                    for (i, (_, t)) in sorted.iter().take(20).enumerate() {
+                        let age = tick.saturating_sub(t.created_at);
+                        let [x, y, z] = t.pattern.position;
+                        println!("  {:>3}  {:.4}  {:>3}/{:>3}/{:>3}  ({},{},{})  {:>6}  {:>8}  {:#010x}",
+                            i + 1, t.weight,
+                            t.pattern.temperature, t.pattern.mass, t.pattern.valence,
+                            x, y, z,
+                            age, t.success_count,
+                            t.pattern_hash & 0xFFFFFFFF,
+                        );
+                    }
+                    if traces.len() > 20 {
+                        println!("  ... и ещё {} traces", traces.len() - 20);
+                    }
+                }
             }
             ":tension" => {
-                let tension = self.engine.ashti.experience().tension_count();
-                println!("  active tension: {}", tension);
+                let exp    = self.engine.ashti.experience();
+                let tt     = exp.tension_traces();
+                let tick   = self.engine.tick_count;
+                if tt.is_empty() {
+                    println!("  no active tension traces");
+                } else {
+                    println!("  ══ Tension Traces ═════════════════════");
+                    println!("  Active: {}", tt.len());
+                    println!("  {:>3}  {:>4}  {:>10}  {:>12}",
+                        "#", "Temp", "Hash", "Age (ticks)");
+                    for (i, t) in tt.iter().enumerate() {
+                        let age = tick.saturating_sub(t.created_at);
+                        // Compute hash of pattern for display
+                        let ph = t.pattern.temperature as u64 ^ t.pattern.mass as u64;
+                        println!("  {:>3}  {:>4}  {:#010x}   {:>12}",
+                            i + 1, t.temperature, ph, age);
+                    }
+                }
+            }
+            ":detail" => {
+                match parts.get(1).copied() {
+                    Some(level) => {
+                        if let Some(d) = DetailLevel::from_str(level) {
+                            self.config.detail_level = d;
+                            println!("  detail: {}", d.as_str());
+                        } else {
+                            println!("  Unknown level. Use: off | min | mid | max");
+                        }
+                    }
+                    None => {
+                        println!("  detail: {}  (off|min|mid|max)", self.config.detail_level.as_str());
+                    }
+                }
+            }
+            ":depth" => {
+                let (max_passes, min_coh) = self.engine.maya_multipass_params();
+                // MAYA = level_id * 100 + 10
+                let maya_id = self.engine.ashti.level_id() * 100 + 10;
+                let dom_factor = self.engine.ashti.config_of(maya_id)
+                    .map(|c| c.internal_dominance_factor as f32 / 128.0)
+                    .unwrap_or(0.0);
+                let exp = self.engine.ashti.experience();
+                println!("  ══ Cognitive Depth ════════════════════");
+                println!("  max_passes:          {}", max_passes);
+                println!("  min_coherence:       {:.2}", min_coh);
+                println!("  internal_dominance:  {:.2}", dom_factor);
+                println!("  tension_threshold:   128  (drain at 50% heat)");
+                println!("  ── current state ──────────────────────");
+                println!("  traces:              {}", exp.traces().len());
+                println!("  tension_active:      {}", exp.tension_count());
+            }
+            ":arbiter" => {
+                println!("  ══ Arbiter — Domain Thresholds ════════");
+                println!("  {:>5}  {:>10}  {:>8}  {:>7}  {:>8}  {:>8}",
+                    "ID", "Name", "Reflex-T", "Assoc-T", "Cooldown", "MaxPass");
+                let mut configs = self.engine.ashti.all_configs();
+                configs.sort_by_key(|(id, _)| *id);
+                for (id, cfg) in &configs {
+                    if cfg.structural_role == 0 { continue; } // SUTRA — нет рефлекса
+                    println!("  {:>5}  {:>10}  {:>8}  {:>7}  {:>8}  {:>8}",
+                        id,
+                        domain_name(*id),
+                        cfg.reflex_threshold,
+                        cfg.association_threshold,
+                        cfg.reflex_cooldown,
+                        cfg.max_passes,
+                    );
+                }
+                let reflector = self.engine.ashti.reflector();
+                println!("  ── reflector ──────────────────────────");
+                println!("  patterns tracked:  {}", reflector.tracked_patterns());
+                println!("  reflex success:    {}  fail: {}",
+                    reflector.total_success(), reflector.total_fail());
+            }
+            ":perf" => {
+                let avg = self.perf.avg_ns();
+                let hz  = self.perf.actual_hz();
+                println!("  ══ Performance ════════════════════════");
+                println!("  uptime:       {:.1}s", self.perf.uptime_secs());
+                println!("  total ticks:  {}", self.perf.total_ticks);
+                println!("  actual rate:  {:.1} Hz (target: {} Hz)",
+                    hz, self.config.tick_hz);
+                println!("  ── tick breakdown ─────────────────────");
+                println!("  avg tick:     {}", fmt_ns(avg as u64));
+                if self.perf.peak_ns > 0 {
+                    println!("  peak tick:    {}  (tick #{})",
+                        fmt_ns(self.perf.peak_ns), self.perf.peak_tick_id);
+                }
+                let budget_ns = 1_000_000u64 / self.config.tick_hz.max(1) as u64 * 1000;
+                if budget_ns > 0 {
+                    println!("  budget used:  {:.2}%",
+                        avg / budget_ns as f64 * 100.0);
+                }
+                // Periodic tasks call counts
+                let s = self.engine.tick_schedule;
+                let t = self.perf.total_ticks;
+                println!("  ── periodic tasks (calls) ─────────────");
+                if s.adaptation_interval > 0 {
+                    println!("  adaptation:   {} calls (every {} ticks)",
+                        t / s.adaptation_interval as u64, s.adaptation_interval);
+                }
+                if s.horizon_gc_interval > 0 {
+                    println!("  horizon_gc:   {} calls (every {} ticks)",
+                        t / s.horizon_gc_interval as u64, s.horizon_gc_interval);
+                }
+                if s.dream_interval > 0 {
+                    println!("  dream:        {} calls (every {} ticks)",
+                        t / s.dream_interval as u64, s.dream_interval);
+                }
+                if s.tension_check_interval > 0 {
+                    println!("  tension_chk:  {} calls (every {} ticks)",
+                        t / s.tension_check_interval as u64, s.tension_check_interval);
+                }
             }
             ":tickrate" => {
                 let a = &self.engine.tick_schedule.adaptive_tick;
@@ -733,22 +987,39 @@ impl CliChannel {
 }
 
 const HELP_TEXT: &str = "\
-  :quit / :q          — завершить
-  :status             — tick_count, tension
+  ── состояние ──────────────────────────────────────────────
+  :status             — расширенный статус ядра
+  :memory             — токены, связи, traces, tension
   :domains            — список доменов с числом токенов
   :tokens <domain_id> — токены в домене
-  :traces             — tension traces
-  :tension            — активные tension traces
-  :verbose [on/off]   — переключить подробный вывод
-  :tick [N]           — прокрутить N тиков
-  :snapshot           — показать info снапшота
   :schedule           — текущий TickSchedule
-  :tickrate           — текущая частота тиков и причина (Sentinel Phase 3)
-  :save [path]              — сохранить состояние (default: axiom-data)
-  :load [path]              — загрузить состояние (default: axiom-data)
-  :memory                   — показать статистику памяти
-  :autosave [on N|off]      — вкл/выкл автосохранение (N = интервал тиков)
-  :export traces|skills [p] — экспортировать знания в JSON-файл
-  :import traces|skills [p] — импортировать с GUARDIAN-валидацией (weight×0.7)
+  :snapshot           — info снапшота
+  :tickrate           — адаптивная частота (Sentinel Phase 3)
+
+  ── experience / когнитивный слой ──────────────────────────
+  :traces             — experience traces (top-20 по weight)
+  :tension            — активные tension traces
+  :depth              — Cognitive Depth: параметры и состояние
+  :arbiter            — пороги Arbiter по доменам + Reflector
+
+  ── производительность ─────────────────────────────────────
+  :perf               — ns/тик, пик, actual Hz, периодические задачи
+
+  ── управление выводом ─────────────────────────────────────
+  :detail [off|min|mid|max]  — уровень детализации вывода
+  :verbose [on|off]          — verbose после каждого ввода
+
+  ── управление тиками ──────────────────────────────────────
+  :tick [N]           — прокрутить N тиков вручную
+
+  ── persistence ────────────────────────────────────────────
+  :save [path]              — сохранить состояние
+  :load [path]              — загрузить состояние
+  :autosave [on N|off]      — автосохранение каждые N тиков
+  :export traces|skills [p] — экспорт знаний в JSON
+  :import traces|skills [p] — импорт с GUARDIAN-валидацией (weight×0.7)
+
+  ── прочее ─────────────────────────────────────────────────
   :help               — этот список
+  :quit / :q          — выход (с автосохранением)
   Любой другой ввод   → InjectToken в SUTRA(100) → результат";

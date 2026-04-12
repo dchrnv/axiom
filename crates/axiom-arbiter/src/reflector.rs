@@ -159,6 +159,16 @@ impl Reflector {
         self.reflex_stats.len()
     }
 
+    /// Суммарное число успешных рефлексов по всем паттернам
+    pub fn total_success(&self) -> u32 {
+        self.reflex_stats.values().map(|s| s.success_count).sum()
+    }
+
+    /// Суммарное число провалов рефлексов по всем паттернам
+    pub fn total_fail(&self) -> u32 {
+        self.reflex_stats.values().map(|s| s.fail_count).sum()
+    }
+
     /// Общая доля успехов по всем паттернам [0.0 .. 1.0]
     pub fn global_success_rate(&self) -> f32 {
         let total: u32 = self.reflex_stats.values().map(|s| s.total()).sum();
