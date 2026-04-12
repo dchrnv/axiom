@@ -7,6 +7,7 @@
 // строка/курсор в тестах). CliEffector пишет результаты в любой `Write`.
 
 use std::io::{BufRead, BufReader, Read, Write};
+use std::collections::HashSet;
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult, OpCode};
 use axiom_runtime::{Perceptor, Effector};
@@ -458,6 +459,9 @@ Options:
 /// Минимальное число активных tension traces для повышения hz тика.
 const ADAPTIVE_TENSION_THRESHOLD: usize = 3;
 
+/// Максимальный размер лога событий
+const EVENT_LOG_CAPACITY: usize = 256;
+
 /// Асинхронный CLI интерфейс к ядру AXIOM.
 ///
 /// Два независимых потока выполнения:
@@ -467,12 +471,22 @@ const ADAPTIVE_TENSION_THRESHOLD: usize = 3;
 /// Ядро живёт в tick loop (одном потоке). Все обращения к Engine — через
 /// tick loop. tokio не попадает в ядро.
 pub struct CliChannel {
-    engine:     AxiomEngine,
-    perceptor:  TextPerceptor,
-    effector:   MessageEffector,
-    config:     CliConfig,
-    auto_saver: AutoSaver,
-    perf:       PerfTracker,
+    engine:       AxiomEngine,
+    perceptor:    TextPerceptor,
+    effector:     MessageEffector,
+    config:       CliConfig,
+    auto_saver:   AutoSaver,
+    perf:         PerfTracker,
+    /// Кольцевой буфер последних событий COM
+    event_log:    VecDeque<Event>,
+    /// Активные watch-поля: traces | tension | tps
+    watch_fields: HashSet<String>,
+    /// Последнее число traces (для :watch traces)
+    last_traces:  usize,
+    /// Последнее число tension (для :watch tension)
+    last_tension: usize,
+    /// Тик последнего вывода tps (для :watch tps)
+    last_tps_tick: u64,
 }
 
 impl CliChannel {
@@ -484,10 +498,15 @@ impl CliChannel {
         let auto_cfg = PersistenceConfig::new(persist_interval);
         Self {
             engine,
-            perceptor:  TextPerceptor::new(),
-            effector:   MessageEffector::new(),
-            auto_saver: AutoSaver::new(auto_cfg),
-            perf:       PerfTracker::new(200),
+            perceptor:    TextPerceptor::new(),
+            effector:     MessageEffector::new(),
+            auto_saver:   AutoSaver::new(auto_cfg),
+            perf:         PerfTracker::new(200),
+            event_log:    VecDeque::with_capacity(EVENT_LOG_CAPACITY),
+            watch_fields: HashSet::new(),
+            last_traces:  0,
+            last_tension: 0,
+            last_tps_tick: 0,
             config,
         }
     }
@@ -569,6 +588,39 @@ impl CliChannel {
             let t0 = std::time::Instant::now();
             self.engine.process_command(&tick_cmd);
             self.perf.record(t0.elapsed().as_nanos() as u64, self.engine.tick_count);
+
+            // Собираем события в кольцевой буфер
+            let new_events = self.engine.drain_events();
+            for ev in new_events {
+                if self.event_log.len() >= EVENT_LOG_CAPACITY {
+                    self.event_log.pop_front();
+                }
+                self.event_log.push_back(ev);
+            }
+
+            // :watch — следить за изменениями
+            if !self.watch_fields.is_empty() {
+                let exp     = self.engine.ashti.experience();
+                let traces  = exp.traces().len();
+                let tension = exp.tension_count();
+                if self.watch_fields.contains("traces") && traces != self.last_traces {
+                    println!("  [watch] traces: {} → {}", self.last_traces, traces);
+                    self.last_traces = traces;
+                }
+                if self.watch_fields.contains("tension") && tension != self.last_tension {
+                    println!("  [watch] tension: {} → {}", self.last_tension, tension);
+                    self.last_tension = tension;
+                }
+                if self.watch_fields.contains("tps") {
+                    let tick = self.engine.tick_count;
+                    if tick.saturating_sub(self.last_tps_tick) >= (self.config.tick_hz as u64 * 10) {
+                        let hz = self.perf.actual_hz();
+                        println!("  [watch] tps: {:.1} Hz  traces={}  tension={}",
+                            hz, traces, tension);
+                        self.last_tps_tick = tick;
+                    }
+                }
+            }
 
             // Автосохранение по интервалу
             let data_dir = std::path::Path::new(&self.config.data_dir);
@@ -978,6 +1030,140 @@ impl CliChannel {
                     _ => println!("  Usage: :import traces|skills [path]"),
                 }
             }
+            ":domain" => {
+                match parts.get(1).and_then(|s| s.parse::<u16>().ok()) {
+                    None => println!("  Usage: :domain <domain_id>"),
+                    Some(id) => match self.engine.ashti.config_of(id) {
+                        None => println!("  Domain {} not found", id),
+                        Some(cfg) => {
+                            let state = self.engine.ashti.all_states()
+                                .into_iter()
+                                .find(|(did, _)| *did == id);
+                            let (tokens, conns) = state
+                                .map(|(_, s)| (s.tokens.len(), s.connections.len()))
+                                .unwrap_or((0, 0));
+                            println!("  ══ Domain {} ({}) ════════════════════", id, domain_name(id));
+                            println!("  structural_role:  {}", cfg.structural_role);
+                            println!("  token_capacity:   {} (used: {})", cfg.token_capacity, tokens);
+                            println!("  connection_cap:   {} (used: {})", cfg.connection_capacity, conns);
+                            println!("  temperature:      {:.1}", cfg.temperature);
+                            println!("  gravity_strength: {:.2}", cfg.gravity_strength);
+                            println!("  ── arbiter ────────────────────────────");
+                            println!("  reflex_threshold: {}", cfg.reflex_threshold);
+                            println!("  assoc_threshold:  {}", cfg.association_threshold);
+                            println!("  reflex_cooldown:  {}", cfg.reflex_cooldown);
+                            println!("  max_passes:       {}", cfg.max_passes);
+                            println!("  min_coherence:    {:.2}", cfg.min_coherence as f32 / 255.0);
+                            println!("  ── membrane ───────────────────────────");
+                            println!("  permeability:     {:.2}", cfg.permeability as f32 / 255.0);
+                            println!("  threshold_mass:   {}", cfg.threshold_mass);
+                            println!("  threshold_temp:   {}", cfg.threshold_temp);
+                        }
+                    },
+                }
+            }
+            ":events" => {
+                let n: usize = parts.get(1)
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(10)
+                    .min(self.event_log.len().max(1));
+                if self.event_log.is_empty() {
+                    println!("  no events captured yet");
+                } else {
+                    let take = n.min(self.event_log.len());
+                    println!("  ══ Last {} COM Events ══════════════════", take);
+                    println!("  {:>10}  {:>6}  {:>6}  {:>6}",
+                        "ID", "Type", "Domain", "Target");
+                    for ev in self.event_log.iter().rev().take(take) {
+                        println!("  {:>10}  {:#06x}  {:>6}  {:>6}",
+                            ev.event_id, ev.event_type, ev.domain_id, ev.target_id);
+                    }
+                }
+            }
+            ":frontier" => {
+                let stats = self.engine.ashti.frontier_stats();
+                let total_size: usize = stats.iter().map(|(_, sz, _)| sz).sum();
+                println!("  ══ Causal Frontier ════════════════════");
+                println!("  {:>5}  {:>10}  {:>8}  {:>8}",
+                    "ID", "Name", "Size", "Mem%");
+                for (id, size, mem) in &stats {
+                    println!("  {:>5}  {:>10}  {:>8}  {:>7.1}%",
+                        id, domain_name(*id), size, mem * 100.0);
+                }
+                println!("  ── total frontier size: {}", total_size);
+            }
+            ":guardian" => {
+                let s = self.engine.guardian.stats();
+                println!("  ══ GUARDIAN ════════════════════════════");
+                println!("  reflexes approved:    {}", s.reflex_allowed);
+                println!("  reflexes vetoed:      {}", s.reflex_vetoed);
+                println!("  access denied:        {}", s.access_denied);
+                println!("  protocol denied:      {}", s.protocol_denied);
+                println!("  domains scanned:      {}", s.domains_scanned);
+                println!("  thresholds adapted:   {}", s.thresholds_adapted);
+                println!("  dream proposals:      {}", s.dream_proposals);
+            }
+            ":watch" => {
+                match parts.get(1).copied() {
+                    None => {
+                        if self.watch_fields.is_empty() {
+                            println!("  watching: nothing");
+                        } else {
+                            let fields: Vec<_> = self.watch_fields.iter().collect();
+                            println!("  watching: {}", fields.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "));
+                        }
+                    }
+                    Some(field) => {
+                        let field = field.to_string();
+                        match field.as_str() {
+                            "traces" | "tension" | "tps" => {
+                                // Синхронизируем начальные значения
+                                let exp = self.engine.ashti.experience();
+                                self.last_traces  = exp.traces().len();
+                                self.last_tension = exp.tension_count();
+                                self.last_tps_tick = self.engine.tick_count;
+                                self.watch_fields.insert(field.clone());
+                                println!("  watching: {} (prints on change)", field);
+                            }
+                            _ => println!("  unknown field '{}'. supported: traces | tension | tps", field),
+                        }
+                    }
+                }
+            }
+            ":unwatch" => {
+                match parts.get(1).copied() {
+                    None => println!("  Usage: :unwatch <field>"),
+                    Some(field) => {
+                        if self.watch_fields.remove(field) {
+                            println!("  unwatched: {}", field);
+                        } else {
+                            println!("  '{}' was not watched", field);
+                        }
+                    }
+                }
+            }
+            ":config" => {
+                let s = &self.engine.tick_schedule;
+                println!("  ══ Configuration ══════════════════════");
+                println!("  tick_hz:          {}", self.config.tick_hz);
+                println!("  detail_level:     {}", self.config.detail_level.as_str());
+                println!("  verbose:          {}", self.config.verbose);
+                println!("  adaptive:         {}", self.config.adaptive_tick_rate);
+                println!("  data_dir:         {}", self.config.data_dir);
+                println!("  ── tick schedule ──────────────────────");
+                println!("  tension_check:    {}", s.tension_check_interval);
+                println!("  adaptation:       {}", s.adaptation_interval);
+                println!("  dream:            {}", s.dream_interval);
+                println!("  horizon_gc:       {}", s.horizon_gc_interval);
+                println!("  reconcile:        {}", s.reconcile_interval);
+                println!("  persist_check:    {}", s.persist_check_interval);
+                println!("  ── adaptive tick ──────────────────────");
+                println!("  min_hz:           {}", s.adaptive_tick.min_hz);
+                println!("  max_hz:           {}", s.adaptive_tick.max_hz);
+                println!("  step_up:          {}", s.adaptive_tick.step_up);
+                println!("  step_down:        {}", s.adaptive_tick.step_down);
+                println!("  cooldown:         {}", s.adaptive_tick.cooldown);
+            }
             _ => {
                 println!("  Unknown command. Type :help for list.");
             }
@@ -988,29 +1174,36 @@ impl CliChannel {
 
 const HELP_TEXT: &str = "\
   ── состояние ──────────────────────────────────────────────
-  :status             — расширенный статус ядра
-  :memory             — токены, связи, traces, tension
-  :domains            — список доменов с числом токенов
-  :tokens <domain_id> — токены в домене
-  :schedule           — текущий TickSchedule
-  :snapshot           — info снапшота
-  :tickrate           — адаптивная частота (Sentinel Phase 3)
+  :status               — расширенный статус ядра
+  :memory               — токены, связи, traces, tension
+  :domains              — список доменов с числом токенов
+  :domain <id>          — детали одного домена
+  :tokens <domain_id>   — токены в домене
+  :schedule             — текущий TickSchedule
+  :snapshot             — info снапшота
+  :tickrate             — адаптивная частота (Sentinel Phase 3)
+  :config               — текущая конфигурация CLI
 
   ── experience / когнитивный слой ──────────────────────────
-  :traces             — experience traces (top-20 по weight)
-  :tension            — активные tension traces
-  :depth              — Cognitive Depth: параметры и состояние
-  :arbiter            — пороги Arbiter по доменам + Reflector
+  :traces               — experience traces (top-20 по weight)
+  :tension              — активные tension traces
+  :depth                — Cognitive Depth: параметры и состояние
+  :arbiter              — пороги Arbiter по доменам + Reflector
+  :guardian             — статистика GUARDIAN: approved/vetoed
+  :frontier             — состояние Causal Frontier по доменам
 
   ── производительность ─────────────────────────────────────
-  :perf               — ns/тик, пик, actual Hz, периодические задачи
+  :perf                 — ns/тик, пик, actual Hz, периодические задачи
+  :events [N]           — последние N COM-событий (default: 10)
 
   ── управление выводом ─────────────────────────────────────
-  :detail [off|min|mid|max]  — уровень детализации вывода
-  :verbose [on|off]          — verbose после каждого ввода
+  :detail [off|min|mid|max]       — уровень детализации вывода
+  :verbose [on|off]               — verbose после каждого ввода
+  :watch <traces|tension|tps>     — следить за полем
+  :unwatch <traces|tension|tps>   — перестать следить
 
   ── управление тиками ──────────────────────────────────────
-  :tick [N]           — прокрутить N тиков вручную
+  :tick [N]             — прокрутить N тиков вручную
 
   ── persistence ────────────────────────────────────────────
   :save [path]              — сохранить состояние
@@ -1020,6 +1213,6 @@ const HELP_TEXT: &str = "\
   :import traces|skills [p] — импорт с GUARDIAN-валидацией (weight×0.7)
 
   ── прочее ─────────────────────────────────────────────────
-  :help               — этот список
-  :quit / :q          — выход (с автосохранением)
-  Любой другой ввод   → InjectToken в SUTRA(100) → результат";
+  :help                 — этот список
+  :quit / :q            — выход (с автосохранением)
+  Любой другой ввод     → InjectToken в SUTRA(100) → результат";

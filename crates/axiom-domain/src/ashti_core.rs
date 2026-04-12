@@ -67,20 +67,20 @@ impl AshtiCore {
             (10, DomainConfig::factory_maya     (base as u16 + 10, sutra_id)),
         ];
 
-        let mut domain_map: HashMap<u32, DomainConfig> = HashMap::with_capacity(11);
+        let mut domain_map: HashMap<u16, DomainConfig> = HashMap::with_capacity(11);
         let mut domains: Vec<Domain>      = Vec::with_capacity(11);
         let mut states:  Vec<DomainState> = Vec::with_capacity(11);
 
         for (_, config) in &role_configs {
             states.push(DomainState::new(config));
-            domain_map.insert(config.domain_id as u32, *config);
+            domain_map.insert(config.domain_id, *config);
             domains.push(Domain::new(*config));
         }
 
         let mut arbiter = Arbiter::new(domain_map, COM::new());
 
         for (role, config) in &role_configs {
-            let _ = arbiter.register_domain(*role, config.domain_id as u32);
+            let _ = arbiter.register_domain(*role, config.domain_id);
         }
 
         Self { domains, states, arbiter, level_id, pulse: 0 }
@@ -165,20 +165,21 @@ impl AshtiCore {
     /// domain_id домена по его позиции (0–10).
     ///
     /// Формула: `level_id * 100 + index`.
-    pub fn domain_id_at(&self, index: usize) -> Option<u32> {
+    pub fn domain_id_at(&self, index: usize) -> Option<u16> {
         if index > 10 { return None; }
-        Some(self.level_id as u32 * 100 + index as u32)
+        Some((self.level_id as u32 * 100 + index as u32) as u16)
     }
 
     /// Найти позицию домена по domain_id.
-    pub fn index_of(&self, domain_id: u32) -> Option<usize> {
+    pub fn index_of(&self, domain_id: u16) -> Option<usize> {
         let base = self.level_id as u32 * 100;
-        if domain_id < base || domain_id > base + 10 { return None; }
-        Some((domain_id - base) as usize)
+        let id = domain_id as u32;
+        if id < base || id > base + 10 { return None; }
+        Some((id - base) as usize)
     }
 
     /// Число токенов в домене с заданным domain_id.
-    pub fn token_count(&self, domain_id: u32) -> usize {
+    pub fn token_count(&self, domain_id: u16) -> usize {
         self.index_of(domain_id)
             .and_then(|i| self.states.get(i))
             .map_or(0, |s| s.token_count())
@@ -188,7 +189,7 @@ impl AshtiCore {
     ///
     /// Добавляет токен в DomainState и синхронизирует счётчик active_tokens домена,
     /// чтобы следующий тик heartbeat учитывал реальное число токенов.
-    pub fn inject_token(&mut self, domain_id: u32, token: axiom_core::Token) -> Result<usize, crate::CapacityExceeded> {
+    pub fn inject_token(&mut self, domain_id: u16, token: axiom_core::Token) -> Result<usize, crate::CapacityExceeded> {
         let idx = self.index_of(domain_id).ok_or(crate::CapacityExceeded)?;
         let result = self.states[idx].add_token(token)?;
         self.domains[idx].active_tokens = self.states[idx].token_count();
@@ -203,7 +204,7 @@ impl AshtiCore {
     /// Mutable доступ к HashMap конфигураций доменов в Arbiter.
     ///
     /// Используется Guardian для адаптации порогов без раскрытия всего Arbiter.
-    pub fn arbiter_domain_configs_mut(&mut self) -> &mut std::collections::HashMap<u32, axiom_config::DomainConfig> {
+    pub fn arbiter_domain_configs_mut(&mut self) -> &mut std::collections::HashMap<u16, axiom_config::DomainConfig> {
         self.arbiter.domain_configs_mut()
     }
 
@@ -257,12 +258,12 @@ impl AshtiCore {
 
     /// Конфигурации всех доменов (domain_id, DomainConfig) — для snapshot.
     /// Получить конфиг домена по domain_id.
-    pub fn config_of(&self, domain_id: u32) -> Option<axiom_config::DomainConfig> {
+    pub fn config_of(&self, domain_id: u16) -> Option<axiom_config::DomainConfig> {
         let idx = self.index_of(domain_id)?;
         Some(self.domains[idx].config)
     }
 
-    pub fn all_configs(&self) -> Vec<(u32, axiom_config::DomainConfig)> {
+    pub fn all_configs(&self) -> Vec<(u16, axiom_config::DomainConfig)> {
         (0..11).filter_map(|i| {
             let id = self.domain_id_at(i)?;
             Some((id, self.domains[i].config))
@@ -270,10 +271,22 @@ impl AshtiCore {
     }
 
     /// Состояния всех доменов (domain_id, tokens, connections) — для snapshot.
-    pub fn all_states(&self) -> Vec<(u32, &DomainState)> {
+    pub fn all_states(&self) -> Vec<(u16, &DomainState)> {
         (0..11).filter_map(|i| {
             let id = self.domain_id_at(i)?;
             Some((id, &self.states[i]))
+        }).collect()
+    }
+
+    /// Статистика Causal Frontier по всем доменам.
+    ///
+    /// Возвращает `(domain_id, frontier_size, memory_usage_pct)`.
+    pub fn frontier_stats(&self) -> Vec<(u16, usize, f32)> {
+        (0..11).filter_map(|i| {
+            let id = self.domain_id_at(i)?;
+            let size = self.domains[i].frontier.size();
+            let mem  = self.domains[i].frontier_memory_usage();
+            Some((id, size, mem))
         }).collect()
     }
 
@@ -296,7 +309,7 @@ impl AshtiCore {
     ///
     /// Эквивалентно `inject_token(level_id * 100, token)`.
     pub fn set_sutra_input(&mut self, token: Token) -> Result<usize, crate::CapacityExceeded> {
-        let sutra_id = self.level_id as u32 * 100;
+        let sutra_id = (self.level_id as u32 * 100) as u16;
         self.inject_token(sutra_id, token)
     }
 

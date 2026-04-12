@@ -212,6 +212,135 @@ Experience traces, отсортированные по weight (top-20). Пока
   reflex success:    42  fail: 3
 ```
 
+### Guardian
+
+```
+:guardian
+```
+Статистика GUARDIAN:
+```
+  ══ GUARDIAN ════════════════════════════
+  reflexes approved:    42
+  reflexes vetoed:      0
+  access denied:        0
+  protocol denied:      0
+  domains scanned:      154200
+  thresholds adapted:   0
+  dream proposals:      0
+```
+
+### Frontier
+
+```
+:frontier
+```
+Состояние Causal Frontier по всем доменам:
+```
+  ══ Causal Frontier ════════════════════
+     ID        Name      Size     Mem%
+    100       SUTRA         0      0.0%
+    101   EXECUTION         3      0.3%
+    102      SHADOW         0      0.0%
+  ...
+  ── total frontier size: 3
+```
+
+### Domain
+
+```
+:domain <id>
+```
+Детальная информация об одном домене:
+```
+  ══ Domain 101 (EXECUTION) ════════════════════
+  structural_role:  1
+  token_capacity:   1000 (used: 3)
+  connection_cap:   5000 (used: 12)
+  temperature:      200.0
+  gravity_strength: -0.30
+  ── arbiter ────────────────────────────
+  reflex_threshold: 127
+  assoc_threshold:  64
+  reflex_cooldown:  0
+  max_passes:       3
+  min_coherence:    0.60
+  ── membrane ───────────────────────────
+  permeability:     1.00
+  threshold_mass:   0
+  threshold_temp:   0
+```
+
+### Events
+
+```
+:events [N]
+```
+Последние N COM-событий (default: 10). События буферизуются с момента запуска:
+```
+  ══ Last 5 COM Events ══════════════════
+          ID    Type  Domain  Target
+       12345  0x0001     100      42
+       12344  0x0002     101      42
+  ...
+```
+
+### Config
+
+```
+:config
+```
+Текущая конфигурация CLI:
+```
+  ══ Configuration ══════════════════════
+  tick_hz:          100
+  detail_level:     min
+  verbose:          false
+  adaptive:         false
+  data_dir:         axiom-data
+  ── tick schedule ──────────────────────
+  tension_check:    10
+  adaptation:       50
+  dream:            100
+  horizon_gc:       500
+  reconcile:        200
+  persist_check:    1000
+  ── adaptive tick ──────────────────────
+  min_hz:           60
+  max_hz:           1000
+  step_up:          200
+  step_down:        20
+  cooldown:         50
+```
+
+### Watch / Unwatch
+
+```
+:watch <field>
+:unwatch <field>
+```
+Следить за изменением поля в реальном времени. Поддерживаемые поля:
+
+| Поле | Когда печатает |
+|------|---------------|
+| `traces` | При изменении числа experience traces |
+| `tension` | При изменении числа tension traces |
+| `tps` | Каждые 10 секунд: tps + traces + tension |
+
+```
+axiom> :watch tension
+  watching: tension (prints on change)
+
+  [watch] tension: 0 → 1     ← появляется при изменении
+
+axiom> :watch tps
+  watching: tps (prints every 10s)
+
+  [watch] tps: 99.8 Hz  traces=47  tension=1
+
+axiom> :unwatch tension
+  unwatched: tension
+```
+
 ### Производительность
 
 ```

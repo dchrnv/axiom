@@ -1,13 +1,13 @@
 # Axiom Roadmap
 
-**Версия:** 27.0
+**Версия:** 28.0
 **Дата:** 2026-04-12
 
 ---
 
 ## Текущее состояние
 
-Axiom Sentinel V1.0 завершён. CLI Extended V1.0 (Фаза 1) завершена.
+Axiom Sentinel V1.0 завершён. CLI Extended V1.0 (Фазы 1 и 2) завершены.
 Технический долг D-01/D-02/D-03/D-05 закрыт. Все тесты зелёные.
 
 ```
@@ -22,24 +22,6 @@ axiom-ucl → axiom-upo                          axiom-agent
 ---
 
 ## Следующие задачи
-
-### CLI Extended V1.0 — Фаза 2
-
-**Что:** Расширенные команды диагностики второго уровня.
-
-| Команда | Описание |
-|---------|----------|
-| `:domain <id>` | Детальная информация об одном домене |
-| `:events [N]` | Последние N COM-событий |
-| `:frontier` | Состояние Causal Frontier |
-| `:guardian` | Статистика GUARDIAN: approved/vetoed |
-| `:watch <field>` | Следить за полем (traces/tension/tps) |
-| `:unwatch <field>` | Перестать следить |
-| `:config` | Текущая конфигурация (tick_hz, thresholds) |
-
-**Спек:** [CLI_Extended_Commands_V1.md](CLI_Extended_Commands_V1.md) — Фаза 2
-
----
 
 ### CLI Extended V1.0 — Фаза 3
 
