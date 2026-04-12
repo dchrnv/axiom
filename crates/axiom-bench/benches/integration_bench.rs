@@ -19,13 +19,13 @@ use axiom_arbiter::{Arbiter, COM};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-const LOGIC_ID: u32 = 106;
-const SUTRA_ID: u32 = 100;
+const LOGIC_ID: u16 = 106;
+const SUTRA_ID: u16 = 100;
 
 // ─── builders ────────────────────────────────────────────────────────────────
 
-fn inject_cmd(domain_id: u32, mass: f32, temp: f32) -> UclCommand {
-    let mut cmd = UclCommand::new(OpCode::InjectToken, domain_id, 100, 0);
+fn inject_cmd(domain_id: u16, mass: f32, temp: f32) -> UclCommand {
+    let mut cmd = UclCommand::new(OpCode::InjectToken, domain_id as u32, 100, 0);
     cmd.payload[0] = (domain_id & 0xff) as u8;
     cmd.payload[1] = (domain_id >> 8) as u8;
     cmd.payload[4..8].copy_from_slice(&mass.to_le_bytes());
@@ -67,6 +67,8 @@ fn schedule_hot_only() -> TickSchedule {
         tension_check_interval: 0,
         goal_check_interval:    0,
         reconcile_interval:     0,
+        persist_check_interval: 0,
+        adaptive_tick:          axiom_runtime::AdaptiveTickRate::default(),
     }
 }
 
@@ -80,6 +82,8 @@ fn schedule_max_load() -> TickSchedule {
         tension_check_interval: 1,
         goal_check_interval:    1,
         reconcile_interval:     1,
+        persist_check_interval: 0,
+        adaptive_tick:          axiom_runtime::AdaptiveTickRate::default(),
     }
 }
 
@@ -358,7 +362,7 @@ fn bench_compare_tokens(c: &mut Criterion) {
         cfg.token_compare_mass_tolerance    = 8;
         cfg.token_compare_valence_tolerance = 3;
         let mut domains = HashMap::new();
-        domains.insert(LOGIC_ID, cfg);
+        domains.insert(LOGIC_ID as u16, cfg);
         Arbiter::new(domains, COM::new())
     };
 

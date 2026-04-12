@@ -288,8 +288,8 @@ impl Guardian {
     pub fn adapt_thresholds(
         &mut self,
         stats: &[RoleStats],
-        configs: &mut HashMap<u32, DomainConfig>,
-    ) -> Vec<u32> {
+        configs: &mut HashMap<u16, DomainConfig>,
+    ) -> Vec<u16> {
         let mut updated = Vec::new();
 
         for (domain_id, config) in configs.iter_mut() {
@@ -328,8 +328,8 @@ impl Guardian {
     pub fn adapt_domain_physics(
         &mut self,
         stats: &[RoleStats],
-        configs: &mut HashMap<u32, DomainConfig>,
-    ) -> Vec<u32> {
+        configs: &mut HashMap<u16, DomainConfig>,
+    ) -> Vec<u16> {
         let mut updated = Vec::new();
 
         for (domain_id, config) in configs.iter_mut() {

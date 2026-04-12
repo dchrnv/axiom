@@ -9,12 +9,12 @@ fn make_token(x: i16, y: i16) -> Token {
     Token::new(1, 0, [x, y, 0], 1)
 }
 
-fn make_configs_for_roles(roles: &[u8]) -> HashMap<u32, DomainConfig> {
+fn make_configs_for_roles(roles: &[u8]) -> HashMap<u16, DomainConfig> {
     let mut map = HashMap::new();
     for &role in roles {
         let mut cfg = DomainConfig::factory_execution(role as u16 + 100, 100);
         cfg.structural_role = role;
-        map.insert(role as u32, cfg);
+        map.insert(role as u16, cfg);
     }
     map
 }

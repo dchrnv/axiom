@@ -6,10 +6,10 @@
 use axiom_runtime::{AxiomEngine, EngineSnapshot};
 use axiom_ucl::{UclCommand, OpCode};
 
-const LOGIC_ID: u32 = 106; // level_id(1) * 100 + role(6) = 106
+const LOGIC_ID: u16 = 106; // level_id(1) * 100 + role(6) = 106
 
-fn inject_into(engine: &mut AxiomEngine, domain_id: u32) {
-    let mut cmd = UclCommand::new(OpCode::InjectToken, domain_id, 100, 0);
+fn inject_into(engine: &mut AxiomEngine, domain_id: u16) {
+    let mut cmd = UclCommand::new(OpCode::InjectToken, domain_id as u32, 100, 0);
     cmd.payload[0] = (domain_id & 0xff) as u8;
     cmd.payload[1] = (domain_id >> 8) as u8;
     cmd.payload[4..8].copy_from_slice(&50.0f32.to_le_bytes());

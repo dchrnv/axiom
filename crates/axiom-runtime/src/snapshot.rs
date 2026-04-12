@@ -11,7 +11,7 @@ use axiom_config::DomainConfig;
 #[derive(Debug, Clone)]
 pub struct DomainSnapshot {
     /// ID домена
-    pub domain_id: u32,
+    pub domain_id: u16,
     /// Конфигурация домена
     pub config: DomainConfig,
     /// Токены домена
@@ -65,12 +65,12 @@ impl EngineSnapshot {
     }
 
     /// Найти snapshot домена по ID
-    pub fn find_domain(&self, domain_id: u32) -> Option<&DomainSnapshot> {
+    pub fn find_domain(&self, domain_id: u16) -> Option<&DomainSnapshot> {
         self.domains.iter().find(|d| d.domain_id == domain_id)
     }
 
     /// Получить конфигурации доменов для восстановления
-    pub fn domain_configs(&self) -> HashMap<u32, DomainConfig> {
+    pub fn domain_configs(&self) -> HashMap<u16, DomainConfig> {
         self.domains.iter()
             .map(|d| (d.domain_id, d.config))
             .collect()

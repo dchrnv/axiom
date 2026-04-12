@@ -229,8 +229,10 @@ pub struct Event {
     /// По умолчанию = domain_id. Отличается когда PROBE(5) инициирует событие в EXECUTION(1).
     pub source_domain: u16,
 
-    /// Явное выравнивание перед u32
-    pub _pad: u16,
+    /// Второй уровень классификации события.
+    /// Уточняет причину внутри одного event_type.
+    /// По умолчанию = 0 (SUBTYPE_NONE). Не влияет на сигнатуру конструкторов.
+    pub event_subtype: u16,
 
     /// ID снапшота на момент создания события.
     /// Causal Horizon: события с snapshot_event_id < текущего снапшота безопасны для архивации.
@@ -247,6 +249,50 @@ pub struct Event {
 
 // Проверка размера на этапе компиляции
 const _: () = assert!(std::mem::size_of::<Event>() == 64);
+
+// === Event subtypes ===
+// Не указан (обратная совместимость — все существующие события)
+pub const SUBTYPE_NONE: u16 = 0;
+
+// Подтипы для TokenMove (0x0004) и TokenMoved (0x0010)
+/// Движение от гравитации
+pub const SUBTYPE_GRAVITY: u16 = 1;
+/// Ручное перемещение (ApplyForce / пользователь)
+pub const SUBTYPE_MANUAL: u16 = 2;
+/// Отскок от столкновения
+pub const SUBTYPE_COLLISION: u16 = 3;
+/// Внутренний импульс (Cognitive Depth)
+pub const SUBTYPE_IMPULSE: u16 = 4;
+/// Инерционное движение
+pub const SUBTYPE_INERTIA: u16 = 5;
+/// Движение к target (аттрактор)
+pub const SUBTYPE_ATTRACTOR: u16 = 6;
+
+// Подтипы для InternalImpulse (0x4001, будущий тип)
+/// Tension trace
+pub const SUBTYPE_TENSION: u16 = 1;
+/// DREAM curiosity
+pub const SUBTYPE_CURIOSITY: u16 = 2;
+/// Goal persistence
+pub const SUBTYPE_GOAL: u16 = 3;
+/// Incompletion trace
+pub const SUBTYPE_INCOMPLETION: u16 = 4;
+
+// Подтипы для ConnectionCreate (0x1001)
+/// Связь создана резонансом
+pub const SUBTYPE_RESONANCE: u16 = 1;
+/// Связь создана столкновением
+pub const SUBTYPE_COLLISION_LINK: u16 = 2;
+/// Связь импортирована (persistence / exchange)
+pub const SUBTYPE_IMPORTED: u16 = 3;
+
+// Подтипы для SystemCheckpoint (0xF001)
+/// Ручное сохранение (:save)
+pub const SUBTYPE_MANUAL_SAVE: u16 = 1;
+/// Автосохранение (кристаллизация)
+pub const SUBTYPE_AUTO_SAVE: u16 = 2;
+/// Сохранение при :quit
+pub const SUBTYPE_SHUTDOWN_SAVE: u16 = 3;
 
 impl Event {
     /// Создает новое событие
@@ -287,7 +333,7 @@ impl Event {
             flags: 0,
             pulse_id: 0,
             source_domain: domain_id,
-            _pad: 0,
+            event_subtype: SUBTYPE_NONE,
             snapshot_event_id: 0,
             payload: [0; 8],
         }
@@ -326,7 +372,7 @@ impl Event {
             flags: 0,
             pulse_id,
             source_domain: domain_id,
-            _pad: 0,
+            event_subtype: SUBTYPE_NONE,
             snapshot_event_id: 0,
             payload: [0; 8],
         }
@@ -466,5 +512,31 @@ mod tests {
         assert_eq!(EventType::from(0xE001), EventType::ShellExec);
         assert_eq!(EventType::from(0xF001), EventType::SystemCheckpoint);
         assert_eq!(EventType::from(0xFFFF), EventType::Unknown);
+    }
+
+    #[test]
+    fn event_size_unchanged() {
+        assert_eq!(std::mem::size_of::<Event>(), 64);
+    }
+
+    #[test]
+    fn event_subtype_default_is_zero() {
+        let e = Event::new(1, 1, EventType::TokenMove, EventPriority::Normal, 1, 0, 0, 0);
+        assert_eq!(e.event_subtype, SUBTYPE_NONE);
+        assert_eq!(e.event_subtype, 0);
+    }
+
+    #[test]
+    fn event_subtype_roundtrip() {
+        let mut e = Event::new(1, 1, EventType::TokenMove, EventPriority::Normal, 1, 0, 0, 0);
+        e.event_subtype = SUBTYPE_GRAVITY;
+        assert_eq!(e.event_subtype, SUBTYPE_GRAVITY);
+        assert_eq!(e.event_subtype, 1);
+    }
+
+    #[test]
+    fn event_with_pulse_subtype_default_is_zero() {
+        let e = Event::with_pulse(1, 1, EventType::Heartbeat, EventPriority::Normal, 1, 0, 0, 0, 42);
+        assert_eq!(e.event_subtype, SUBTYPE_NONE);
     }
 }

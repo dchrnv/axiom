@@ -32,7 +32,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     if let Some(ref reflex_token) = result.reflex {
         // Проверяем arbiter_flags домена-источника (SUTRA = 100)
         let check_required = engine.ashti
-            .config_of(token.sutra_id)
+            .config_of(token.sutra_id as u16)
             .map(|cfg| cfg.arbiter_flags & GUARDIAN_CHECK_REQUIRED != 0)
             .unwrap_or(false);
 

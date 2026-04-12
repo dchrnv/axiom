@@ -15,7 +15,7 @@ fn make_cmd(opcode: OpCode, target_id: u32) -> UclCommand {
 }
 
 // domain_id доменов AshtiCore уровня 1: 100 (SUTRA) .. 110 (MAYA)
-const LOGIC_ID: u32 = 106;
+const LOGIC_ID: u16 = 106;
 
 // ============================================================
 // Создание Engine
@@ -89,7 +89,7 @@ fn test_spawn_domain_returns_success() {
 #[test]
 fn test_collapse_domain_returns_success() {
     let mut engine = AxiomEngine::new();
-    let cmd = make_cmd(OpCode::CollapseDomain, LOGIC_ID);
+    let cmd = make_cmd(OpCode::CollapseDomain, LOGIC_ID as u32);
     let result = engine.process_command(&cmd);
     assert!(result.is_success());
 }
@@ -102,7 +102,7 @@ fn test_collapse_domain_returns_success() {
 fn test_inject_token_into_valid_domain() {
     let mut engine = AxiomEngine::new();
 
-    let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 100, 0);
+    let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID as u32, 100, 0);
     // target_domain_id = 106 (little-endian u16)
     cmd.payload[0] = (LOGIC_ID & 0xff) as u8;
     cmd.payload[1] = (LOGIC_ID >> 8) as u8;
@@ -154,7 +154,7 @@ fn test_drain_events_populated_after_heartbeat() {
     // который сгенерирует события для инжектированного токена.
     let mut engine = AxiomEngine::new();
 
-    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 1, 0);
+    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID as u32, 1, 0);
     inject.payload[0] = (LOGIC_ID & 0xff) as u8;
     inject.payload[1] = (LOGIC_ID >> 8) as u8;
     engine.process_command(&inject);
@@ -175,7 +175,7 @@ fn test_drain_events_populated_after_heartbeat() {
 fn test_drain_events_clears_buffer() {
     let mut engine = AxiomEngine::new();
 
-    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 1, 0);
+    let mut inject = UclCommand::new(OpCode::InjectToken, LOGIC_ID as u32, 1, 0);
     inject.payload[0] = (LOGIC_ID & 0xff) as u8;
     inject.payload[1] = (LOGIC_ID >> 8) as u8;
     engine.process_command(&inject);
@@ -195,7 +195,7 @@ fn test_drain_events_clears_buffer() {
 fn test_core_reset_reinitialises_engine() {
     let mut engine = AxiomEngine::new();
     // inject token
-    let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 100, 0);
+    let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID as u32, 100, 0);
     cmd.payload[0] = (LOGIC_ID & 0xff) as u8;
     cmd.payload[1] = (LOGIC_ID >> 8) as u8;
     cmd.payload[4..8].copy_from_slice(&50.0f32.to_le_bytes());

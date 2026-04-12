@@ -36,7 +36,7 @@ pub fn save(engine: &AxiomEngine, dir: &Path, opts: &WriteOptions) -> Result<Mem
 
     // Домены (сохраняем DomainConfig для полного восстановления)
     let domains: Vec<StoredDomain> = snapshot.domains.iter().map(|ds| StoredDomain {
-        domain_id:   ds.domain_id,
+        domain_id:   ds.domain_id as u32,
         tokens:      ds.tokens.clone(),
         connections: ds.connections.clone(),
         config:      Some(ds.config),

@@ -30,7 +30,7 @@ fn test_domain_registration() {
 
     // Регистрируем ASHTI 1-8
     for role in 1..=8 {
-        assert!(arbiter.register_domain(role, 1000 + role as u32).is_ok());
+        assert!(arbiter.register_domain(role, 1000 + role as u16).is_ok());
     }
 
     assert!(arbiter.is_ready());
@@ -178,7 +178,7 @@ fn test_compare_tokens_strict_tolerance_from_config() {
     cfg.token_compare_valence_tolerance = 0;
 
     let mut domains = HashMap::new();
-    domains.insert(1u32, cfg);
+    domains.insert(1u16, cfg);
     let arbiter = Arbiter::new(domains, COM::new());
 
     let t1 = create_test_token(1, 100);
@@ -199,7 +199,7 @@ fn test_compare_tokens_wide_tolerance_from_config() {
     cfg.token_compare_valence_tolerance = 100;
 
     let mut domains = HashMap::new();
-    domains.insert(1u32, cfg);
+    domains.insert(1u16, cfg);
     let arbiter = Arbiter::new(domains, COM::new());
 
     let t1 = create_test_token(1, 50);

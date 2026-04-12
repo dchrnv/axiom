@@ -47,11 +47,11 @@ fn make_full_arbiter(max_passes: u8, min_coherence: u8) -> Arbiter {
 
     let mut domain_map = HashMap::new();
     for c in &configs {
-        domain_map.insert(c.domain_id as u32, *c);
+        domain_map.insert(c.domain_id, *c);
     }
     let mut arbiter = Arbiter::new(domain_map, COM::new());
     for (role, c) in configs.iter().enumerate() {
-        let _ = arbiter.register_domain(role as u8, c.domain_id as u32);
+        let _ = arbiter.register_domain(role as u8, c.domain_id);
     }
     arbiter
 }

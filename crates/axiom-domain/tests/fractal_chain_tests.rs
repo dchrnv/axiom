@@ -21,7 +21,7 @@ fn test_take_maya_output_empty() {
 #[test]
 fn test_inject_and_take_maya() {
     let mut core = AshtiCore::new(0);
-    let maya_id = 0u32 * 100 + 10; // = 10
+    let maya_id = 0u16 * 100 + 10; // = 10
     let token = make_token(1);
     core.inject_token(maya_id, token).unwrap();
     let out = core.take_maya_output();
@@ -32,7 +32,7 @@ fn test_inject_and_take_maya() {
 #[test]
 fn test_set_sutra_input() {
     let mut core = AshtiCore::new(1);
-    let sutra_id = 1u32 * 100; // = 100
+    let sutra_id = 1u16 * 100; // = 100
     let token = make_token(1);
     core.set_sutra_input(token).unwrap();
     assert_eq!(core.token_count(sutra_id), 1);
@@ -41,7 +41,7 @@ fn test_set_sutra_input() {
 #[test]
 fn test_set_sutra_input_level2() {
     let mut core = AshtiCore::new(2);
-    let sutra_id = 2u32 * 100; // = 200
+    let sutra_id = 2u16 * 100; // = 200
     core.set_sutra_input(make_token(5)).unwrap();
     assert_eq!(core.token_count(sutra_id), 1);
 }

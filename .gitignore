@@ -84,3 +84,6 @@ docs/legal/
 
 # Internal development files
 reference-map.md
+
+# Axiom runtime save data
+axiom-data/

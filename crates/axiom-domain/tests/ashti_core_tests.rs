@@ -135,10 +135,10 @@ fn test_state_accessible_for_all_11_domains() {
 
 // --- reconcile_all ---
 
-const LOGIC_DOMAIN: u32 = 106; // level_id(1) * 100 + role(6)
+const LOGIC_DOMAIN: u16 = 106; // level_id(1) * 100 + role(6)
 
-fn inject(core: &mut AshtiCore, domain_id: u32, sutra_id: u32) {
-    let token = Token::new(sutra_id, domain_id as u16, [0, 0, 0], sutra_id as u64);
+fn inject(core: &mut AshtiCore, domain_id: u16, sutra_id: u32) {
+    let token = Token::new(sutra_id, domain_id, [0, 0, 0], sutra_id as u64);
     let _ = core.inject_token(domain_id, token);
 }
 
