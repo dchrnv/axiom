@@ -153,7 +153,7 @@ use axiom_persist::{
     save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig,
     export_traces, export_skills, import_traces, import_skills,
 };
-use axiom_runtime::{AxiomEngine, TickSchedule, AdaptiveTickRate, TickRateReason, ProcessingPath};
+use axiom_runtime::{AxiomEngine, TickSchedule, TickRateReason, ProcessingPath};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::{MessageEffector, DetailLevel, domain_name};
 use tokio::sync::mpsc;
@@ -226,6 +226,7 @@ fn fmt_ns(ns: u64) -> String {
 
 /// YAML-зеркало TickSchedule для десериализации конфига.
 /// Все поля опциональны — отсутствующие берутся из `TickSchedule::default()`.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TickScheduleConfig {
     #[serde(default)] pub adaptation_interval:    Option<u32>,

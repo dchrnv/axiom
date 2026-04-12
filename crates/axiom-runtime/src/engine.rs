@@ -287,6 +287,7 @@ impl AxiomEngine {
             | OpCode::ChangeTemperature
             | OpCode::ApplyGravity
             | OpCode::PhaseTransition => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            #[allow(unreachable_patterns)]
             _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
         }
     }

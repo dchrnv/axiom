@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use axiom_arbiter::{ExperienceTrace, Skill};
+use axiom_arbiter::Skill;
 use axiom_runtime::{AxiomEngine, guardian::ReflexDecision};
 use crate::error::PersistError;
 use crate::format::StoredTrace;

@@ -26,6 +26,7 @@ pub enum DetailLevel {
 }
 
 impl DetailLevel {
+    /// Разобрать уровень детализации из строки ("off" / "min" / "mid" / "max").
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "off"  => Some(Self::Off),
@@ -36,6 +37,7 @@ impl DetailLevel {
         }
     }
 
+    /// Вернуть строковое представление уровня.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Off => "off",
@@ -50,6 +52,7 @@ impl DetailLevel {
 pub struct MessageEffector;
 
 impl MessageEffector {
+    /// Создать новый `MessageEffector`.
     pub fn new() -> Self { Self }
 
     /// Форматировать ProcessingResult в строку для stdout.

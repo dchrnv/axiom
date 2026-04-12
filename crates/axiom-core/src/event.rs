@@ -251,7 +251,7 @@ pub struct Event {
 const _: () = assert!(std::mem::size_of::<Event>() == 64);
 
 // === Event subtypes ===
-// Не указан (обратная совместимость — все существующие события)
+/// Подтип не указан (обратная совместимость — все существующие события).
 pub const SUBTYPE_NONE: u16 = 0;
 
 // Подтипы для TokenMove (0x0004) и TokenMoved (0x0010)
