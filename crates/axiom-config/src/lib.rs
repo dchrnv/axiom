@@ -25,6 +25,8 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+/// Якорные токены — калибровка семантического пространства
+pub mod anchor;
 pub mod domain_config;
 pub mod heartbeat_config;
 pub mod loader;
@@ -47,5 +49,6 @@ pub use loader::{
     AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, LoadedAxiomConfig,
     PresetsConfig, RuntimeConfig, SchemaConfig,
 };
+pub use anchor::{Anchor, AnchorSet, AnchorMatch, MatchType};
 pub use preset::{TokenPreset, ConnectionPreset};
 pub use watcher::ConfigWatcher;

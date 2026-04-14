@@ -149,7 +149,7 @@ fn format_event_type(et: u16) -> String {
 
 // ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
 
-use axiom_config::{self, ConfigWatcher};
+use axiom_config::{self, ConfigWatcher, AnchorSet};
 use axiom_persist::{
     save as persist_save, load as persist_load, WriteOptions, AutoSaver, PersistenceConfig,
     export_traces, export_skills, import_traces, import_skills,
@@ -158,6 +158,7 @@ use axiom_runtime::{AxiomEngine, TickSchedule, TickRateReason, ProcessingPath};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::{MessageEffector, DetailLevel, domain_name};
 use tokio::sync::mpsc;
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use std::collections::VecDeque;
@@ -505,6 +506,8 @@ pub struct CliChannel {
     last_multipass_n: u8,
     /// Горячая перезагрузка config/axiom.yaml (None если hot_reload выключен)
     config_watcher: Option<ConfigWatcher>,
+    /// Набор якорных токенов (None если файлы не найдены)
+    anchor_set: Option<Arc<AnchorSet>>,
 }
 
 impl CliChannel {
@@ -530,9 +533,30 @@ impl CliChannel {
             None
         };
 
+        // Загружаем якоря из config/anchors/
+        let anchor_set = {
+            let set = AnchorSet::load_or_empty(std::path::Path::new("config"));
+            if set.is_empty() {
+                None
+            } else {
+                eprintln!("[anchors] loaded {} anchors (axes={}, layers={}, domains={})",
+                    set.total_count(),
+                    set.axes.len(),
+                    set.layers.iter().map(|l| l.len()).sum::<usize>(),
+                    set.domains.iter().map(|d| d.len()).sum::<usize>(),
+                );
+                Some(Arc::new(set))
+            }
+        };
+
+        let perceptor = match &anchor_set {
+            Some(a) => TextPerceptor::with_anchors(Arc::clone(a)),
+            None    => TextPerceptor::new(),
+        };
+
         Self {
             engine,
-            perceptor:    TextPerceptor::new(),
+            perceptor,
             effector:     MessageEffector::new(),
             auto_saver:   AutoSaver::new(auto_cfg),
             perf:         PerfTracker::new(200),
@@ -544,6 +568,7 @@ impl CliChannel {
             multipass_count: 0,
             last_multipass_n: 0,
             config_watcher,
+            anchor_set,
             config,
         }
     }
@@ -1431,6 +1456,143 @@ impl CliChannel {
                     }
                 }
             }
+            ":anchors" => {
+                match self.anchor_set.as_deref() {
+                    None => println!("  no anchors loaded (config/anchors/ not found or empty)"),
+                    Some(set) => {
+                        let sub = parts.get(1).copied();
+                        match sub {
+                            None => {
+                                println!("  ══ Anchor Set ═════════════════════════");
+                                println!("  total:   {}", set.total_count());
+                                println!("  axes:    {}", set.axes.len());
+                                println!("  layers:  {} total ({})",
+                                    set.layers.iter().map(|l| l.len()).sum::<usize>(),
+                                    (1..=8).filter(|&i| !set.layers[i-1].is_empty())
+                                        .map(|i| format!("L{}", i))
+                                        .collect::<Vec<_>>().join(", "));
+                                println!("  domains: {} total ({})",
+                                    set.domains.iter().map(|d| d.len()).sum::<usize>(),
+                                    (1..=8).filter(|&i| !set.domains[i-1].is_empty())
+                                        .map(|i| format!("D{}", i))
+                                        .collect::<Vec<_>>().join(", "));
+                            }
+                            Some("axes") => {
+                                println!("  ══ Axes ({}) ════════════════════════════", set.axes.len());
+                                for a in &set.axes {
+                                    let [x, y, z] = a.position;
+                                    println!("  {:20}  pos=({:7},{:7},{:7})  aliases={}",
+                                        a.word, x, y, z, a.aliases.len());
+                                }
+                            }
+                            Some("layer") => {
+                                let layer_arg = parts.get(2).copied().unwrap_or("");
+                                let idx = layer_arg.trim_start_matches('L')
+                                    .parse::<usize>().unwrap_or(0);
+                                if idx == 0 || idx > 8 {
+                                    println!("  Usage: :anchors layer L<1..8>");
+                                } else {
+                                    let anchors = &set.layers[idx - 1];
+                                    println!("  ══ Layer L{} ({} anchors) ════════════════", idx, anchors.len());
+                                    for a in anchors {
+                                        let [x, y, z] = a.position;
+                                        println!("  {:20}  pos=({:7},{:7},{:7})", a.word, x, y, z);
+                                    }
+                                }
+                            }
+                            Some("domain") => {
+                                let dom_arg = parts.get(2).copied().unwrap_or("");
+                                let idx = dom_arg.trim_start_matches('D')
+                                    .parse::<usize>().unwrap_or(0);
+                                if idx == 0 || idx > 8 {
+                                    println!("  Usage: :anchors domain D<1..8>");
+                                } else {
+                                    let anchors = &set.domains[idx - 1];
+                                    println!("  ══ Domain D{} ({} anchors) ══════════════", idx, anchors.len());
+                                    for a in anchors {
+                                        let [x, y, z] = a.position;
+                                        println!("  {:20}  pos=({:7},{:7},{:7})", a.word, x, y, z);
+                                    }
+                                }
+                            }
+                            Some(word) => {
+                                // :anchors <word> — найти якорь по слову
+                                let word_lower = word.to_lowercase();
+                                let mut found = false;
+                                for a in set.axes.iter()
+                                    .chain(set.layers.iter().flatten())
+                                    .chain(set.domains.iter().flatten())
+                                {
+                                    if a.word.to_lowercase() == word_lower
+                                        || a.aliases.iter().any(|al| al.to_lowercase() == word_lower)
+                                    {
+                                        let [x, y, z] = a.position;
+                                        println!("  ══ Anchor: {} ════════════════════════", a.word);
+                                        println!("  id:          {}", a.id);
+                                        println!("  aliases:     {}", a.aliases.join(", "));
+                                        println!("  tags:        {}", a.tags.join(", "));
+                                        println!("  position:    ({}, {}, {})", x, y, z);
+                                        println!("  shell:       {:?}", a.shell);
+                                        if !a.description.is_empty() {
+                                            println!("  description: {}", a.description);
+                                        }
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if !found {
+                                    println!("  anchor '{}' not found", word);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            ":match" => {
+                let text = parts.get(1).map(|s| s.trim()).unwrap_or("");
+                if text.is_empty() {
+                    println!("  Usage: :match \"<text>\"");
+                } else {
+                    // Убрать кавычки если есть
+                    let text = text.trim_matches('"');
+                    match self.anchor_set.as_deref() {
+                        None => {
+                            println!("  no anchors loaded — would use FNV-1a hash fallback");
+                        }
+                        Some(set) => {
+                            let matches = set.match_text(text);
+                            if matches.is_empty() {
+                                println!("  no anchor matches — FNV-1a hash fallback");
+                                let hash = {
+                                    let bytes = text.as_bytes();
+                                    let mut h: u64 = 0xcbf29ce484222325;
+                                    for &b in bytes { h ^= b as u64; h = h.wrapping_mul(0x100000001b3); }
+                                    h
+                                };
+                                let x = ((hash >>  0) & 0x7FFF) as f32;
+                                let y = ((hash >> 16) & 0x7FFF) as f32;
+                                let z = ((hash >> 32) & 0x7FFF) as f32;
+                                println!("  hash position: ({:.0}, {:.0}, {:.0})", x, y, z);
+                            } else {
+                                let pos = set.compute_position(&matches);
+                                let sw  = set.compute_semantic_weight(&matches);
+                                let shell = set.compute_shell(&matches);
+                                println!("  ══ Anchor Match: \"{}\" ═══════════════════", text);
+                                println!("  matches:         {}", matches.len());
+                                println!("  position:        ({:.0}, {:.0}, {:.0})", pos[0], pos[1], pos[2]);
+                                println!("  semantic_weight: {:.3}", sw);
+                                println!("  shell:           {:?}", shell);
+                                println!("  ── matched anchors ────────────────────");
+                                for m in &matches {
+                                    println!("  {:20}  score={:.2}  type={}  matched='{}'",
+                                        m.anchor.word, m.score,
+                                        m.match_type.as_str(), m.matched_word);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             _ => {
                 println!("  Unknown command. Type :help for list.");
             }
@@ -1517,6 +1679,14 @@ const HELP_TEXT: &str = "\
   :autosave [on N|off]      — автосохранение каждые N тиков
   :export traces|skills [p] — экспорт знаний в bincode
   :import traces|skills [p] — импорт с GUARDIAN-валидацией (weight×0.7)
+
+  ── якорные токены ─────────────────────────────────────────
+  :anchors              — статистика якорей (axes/layers/domains)
+  :anchors axes         — 6 осевых якорей (X/Y/Z полюса)
+  :anchors layer L<N>   — якоря слоя L1..L8
+  :anchors domain D<N>  — якоря домена D1..D8
+  :anchors <word>       — найти якорь по слову
+  :match <text>         — диагностика маппинга текста на якоря
 
   ── схемы ──────────────────────────────────────────────────
   :schema [axiom|domain|heartbeat|cli]  — JSON-схема конфига (для редакторов)

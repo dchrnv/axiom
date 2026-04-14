@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-12
+**Обновлено:** 2026-04-13
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**919 тестов, 0 failures, 0 warnings**
+**929 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -23,22 +23,23 @@ ConfigWatcher — горячая перезагрузка конфигов (inot
 EventBus — pub/sub: типизированные и broadcast подписки
 
 axiom-agent:
-  ├── TextPerceptor — текст → UclCommand(InjectToken) через FNV-1a hash → 3D position
+  ├── TextPerceptor — текст → UclCommand(InjectToken): якорное позиционирование → FNV-1a fallback
   ├── MessageEffector — ProcessingResult → диагностический вывод
   ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
   └── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
       CLI Extended V1.0: :domain/:events/:frontier/:guardian/:watch/:config/:trace/:connections
-      :dream/:multipass/:reflector/:impulses/:schema/:help — горячая перезагрузка (--hot-reload)
+      :dream/:multipass/:reflector/:impulses/:schema/:anchors/:match/:help — горячая перезагрузка
 
 axiom-runtime:
   ├── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
   ├── Orchestrator — параллельная маршрутизация + Guardian check + apply_feedback
   └── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
 
-axiom-config (Config V1.0 + D-07):
+axiom-config (Config V1.0 + D-07 + Anchor V1.0):
   ├── PresetsConfig.heartbeat_file → LoadedAxiomConfig.heartbeat (Option<HeartbeatConfig>)
   ├── ConfigWatcher подключён к CliChannel (hot_reload в axiom-cli.yaml / --hot-reload)
-  └── schema — JsonSchema на всех конфигах, validate_yaml<T>(), :schema CLI-команда
+  ├── schema — JsonSchema на всех конфигах, validate_yaml<T>(), :schema CLI-команда
+  └── AnchorSet — якорные токены: axes/layers/domains, YAML-загрузка, match_text(), compute_position/shell/weight
 
 axiom-persist (D-04):
   ├── save/load: Token+Connection+ExperienceTrace → bincode (атомарный rename)
@@ -61,7 +62,7 @@ axiom-space:
 | axiom-core | 34 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 84 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, JsonSchema |
+| axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, JsonSchema, AnchorSet |
 | axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
@@ -70,10 +71,10 @@ axiom-space:
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
 | axiom-runtime | 162 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator |
-| axiom-agent | 95 | TextPerceptor, MessageEffector, CliChannel + CLI Extended V1.0, MLEngine |
+| axiom-agent | 97 | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **919** | |
+| **Итого** | **929** | |
 
 ---
 
@@ -105,3 +106,4 @@ axiom-space:
 | Config | Config V1.0 — HeartbeatConfig load, ConfigWatcher→CliChannel, hot_reload | ✅ |
 | D-04 | axiom-persist: bincode вместо serde_json (3-5× меньше, 2-4× быстрее) | ✅ |
 | D-07 | JSON-schema валидация конфигов — schemars + jsonschema, :schema CLI-команда | ✅ |
+| Anchor | Anchor Tokens V1.0 (Phase 1-2) — AnchorSet, YAML-загрузка, TextPerceptor якорное позиционирование, :anchors/:match | ✅ |

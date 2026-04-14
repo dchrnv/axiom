@@ -3,14 +3,8 @@
 //
 // TextPerceptor — кодирование текста в UclCommand(InjectToken).
 //
-// Это MVP без ML. Использует детерминированные эвристики:
-//   - FNV-1a hash → 3D позиция в семантическом пространстве
-//   - Длина и пунктуация → temperature/mass
-//   - Маркеры времени, эмоций, абстракции → Shell L4/L7/L8
-//
-// Единственный источник истины для payload layout —
-// parse_inject_token_payload() в axiom-runtime/src/engine.rs.
-// Сборка payload здесь — зеркало того парсера.
+// Если задан AnchorSet — позиция вычисляется через якорное совпадение.
+// Если якорей нет или совпадений нет — fallback на FNV-1a hash.
 //
 // Payload layout (сверено с parse_inject_token_payload):
 //   [0..2]   target_domain_id  u16 LE
@@ -26,7 +20,9 @@
 //   [32..36] semantic_weight   f32 LE
 //   [36..40] temperature       f32 LE
 
+use std::sync::Arc;
 use axiom_ucl::{UclCommand, OpCode};
+use axiom_config::AnchorSet;
 
 /// SUTRA domain_id на уровне 1: level_id * 100 + 0 = 100
 const SUTRA_DOMAIN_ID: u16 = 100;
@@ -34,25 +30,26 @@ const SUTRA_DOMAIN_ID: u16 = 100;
 /// Преобразует строку UTF-8 в `UclCommand(InjectToken)` с осмысленным токеном.
 ///
 /// Детерминирован: одинаковый текст → одинаковая команда.
-pub struct TextPerceptor;
+/// Если задан AnchorSet — использует якорное позиционирование.
+pub struct TextPerceptor {
+    anchor_set: Option<Arc<AnchorSet>>,
+}
 
 impl TextPerceptor {
-    /// Создать новый TextPerceptor.
+    /// Создать TextPerceptor без якорей (FNV-1a fallback).
     pub fn new() -> Self {
-        Self
+        Self { anchor_set: None }
+    }
+
+    /// Создать TextPerceptor с набором якорей для семантического позиционирования.
+    pub fn with_anchors(anchors: Arc<AnchorSet>) -> Self {
+        Self { anchor_set: Some(anchors) }
     }
 
     /// Преобразовать текст в UclCommand(InjectToken) для SUTRA(100).
     pub fn perceive(&self, text: &str) -> UclCommand {
         let bytes = text.as_bytes();
         let len   = bytes.len();
-
-        let hash = fnv1a_hash(bytes);
-
-        // Position: хэш → 3D координаты в i16 диапазоне
-        let x = ((hash >>  0) & 0x7FFF) as f32;
-        let y = ((hash >> 16) & 0x7FFF) as f32;
-        let z = ((hash >> 32) & 0x7FFF) as f32;
 
         // Mass: зависит от длины текста (50..=250)
         let mass: f32 = (50.0 + (len.min(200) as f32)).min(250.0);
@@ -65,7 +62,27 @@ impl TextPerceptor {
             (base + excl * 15.0 + ques * 10.0).min(255.0)
         };
 
-        // semantic_weight: L5 cognitive высокий (текст всегда когнитивный)
+        // Попытка якорного позиционирования
+        if let Some(ref anchors) = self.anchor_set {
+            let matches = anchors.match_text(text);
+            if !matches.is_empty() {
+                let pos = anchors.compute_position(&matches);
+                let semantic_weight = anchors.compute_semantic_weight(&matches);
+                return build_inject_token_command(
+                    SUTRA_DOMAIN_ID,
+                    pos[0], pos[1], pos[2],
+                    mass,
+                    temperature,
+                    semantic_weight,
+                );
+            }
+        }
+
+        // Fallback: FNV-1a hash → 3D координаты
+        let hash = fnv1a_hash(bytes);
+        let x = ((hash >>  0) & 0x7FFF) as f32;
+        let y = ((hash >> 16) & 0x7FFF) as f32;
+        let z = ((hash >> 32) & 0x7FFF) as f32;
         let semantic_weight: f32 = 0.8;
 
         build_inject_token_command(
@@ -186,5 +203,36 @@ mod tests {
         let mut engine = AxiomEngine::new();
         let result = engine.process_and_observe(&cmd);
         assert_eq!(result.ucl_result.status, 0); // Success
+    }
+
+    #[test]
+    fn test_with_anchors_exact_match_x_pos() {
+        use axiom_config::{Anchor, AnchorSet};
+        let mut set = AnchorSet::empty();
+        set.axes.push(Anchor {
+            id: "ax".to_string(),
+            word: "порядок".to_string(),
+            aliases: vec!["структура".to_string()],
+            tags: vec![],
+            position: [30000, 0, 0],
+            shell: [0; 8],
+            description: String::new(),
+        });
+        let p = TextPerceptor::with_anchors(Arc::new(set));
+        let cmd = p.perceive("порядок");
+        // Position X должна быть близка к 30000
+        let x = f32::from_le_bytes(cmd.payload[8..12].try_into().unwrap());
+        assert!((x - 30000.0).abs() < 1.0, "x={x}");
+    }
+
+    #[test]
+    fn test_without_anchors_fallback_to_hash() {
+        let p = TextPerceptor::new();
+        let cmd = p.perceive("порядок");
+        let domain_id = u16::from_le_bytes([cmd.payload[0], cmd.payload[1]]);
+        assert_eq!(domain_id, 100); // SUTRA
+        // С fallback позиции из хэша ≠ 30000
+        let x = f32::from_le_bytes(cmd.payload[8..12].try_into().unwrap());
+        assert!(x < 32768.0); // в диапазоне хэша
     }
 }

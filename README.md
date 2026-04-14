@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-919%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-929%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)](#licensing)
@@ -15,13 +15,13 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 919 tests passing.**
+**Axiom is in active development — core architecture complete, 929 tests passing.**
 
 ---
 
 ### 🤖 Как это сделано
 
-> Весь код в этом репозитории — за исключением этих слов — написан ИИ.
+> Весь код в этом репозитории — за исключением этих слов — написан ИИ (и они тоже).
 >
 > Я занимался концепцией, архитектурой, техническими решениями и обратной связью. ИИ занимался реализацией. Это новый способ строить вещи, и я не вижу смысла делать вид, что всё иначе.
 >
@@ -29,9 +29,9 @@
 >
 > **«Идеи мои. Архитектура моя. Баги — честно пополам.»**
 
-**🛠 Окружение:** Написано на **Arch Linux** — потому что жизнь слишком коротка для систем, которые принимают решения за тебя. Совместимость с Windows и Mac не тестировалась и не была целью. Если вдруг заработало — считайте это счастливым случаем, я разберусь с этим позже.
+**🛠 Окружение:** Написано на **Arch Linux** — потому что жизнь слишком коротка для систем, которые принимают решения за тебя. Совместимость с Windows и Mac не тестировалась и не была целью. Если вдруг заработало — считайте это счастливым случаем.
 
-**🐱 Предупреждение:** Не для продакшена без понимания что внутри. Если сожжёт CPU — это физика. Если вызовет вопросы о природе мышления — это и был план. Если обидит кошку — напишите мне, это уже серьёзно.
+**🐱 Предупреждение:** Не для продакшена без понимания что внутри. Если сожжёт CPU — это физика. Если вызовет вопросы о природе мышления — это и был план. Если обидит кошку —  это уже серьёзно.
 
 ---
 
@@ -163,11 +163,13 @@ let result = gw.process_channel(&mut ch);
 **Axiom follows a strict Dual License model.**
 
 #### 1. Free for Humanity (AGPL-3.0 + CC BY-NC-SA)
+
 - **Code:** [AGPLv3](LICENSE). Open for research, hacking, and open-source contributions.
 - **Weights:** [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). Open for academic study and non-commercial experiments.
 - **Condition:** If you share, you must share alike. No closed doors.
 
 #### 2. Paid for Business (Commercial License)
+
 - **Target:** Proprietary software, Enterprise integration, Closed-source SaaS.
 - **Benefit:** Removes copyleft and non-commercial restrictions.
 - **Includes:** Legal warranty & Priority support.
