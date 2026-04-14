@@ -626,6 +626,49 @@ impl AxiomEngine {
 
     // --- Внутренние хелперы ---
 
+    /// Инжектировать набор якорных токенов в движок.
+    ///
+    /// Якоря — конфигурационные объекты: mass=255, temperature=0, state=Locked.
+    /// Проходят напрямую, минуя GUARDIAN и UCL-pipeline.
+    ///
+    /// Возвращает число успешно инжектированных якорей.
+    pub fn inject_anchor_tokens(&mut self, anchor_set: &axiom_config::AnchorSet) -> usize {
+        let mut injected = 0usize;
+
+        // 1. Оси + слоевые якоря → SUTRA(100)
+        let sutra_id: u16 = self.ashti.level_id() * 100;
+        let axis_iter = anchor_set.axes.iter();
+        let layer_iter = anchor_set.layers.iter().flatten();
+        for anchor in axis_iter.chain(layer_iter) {
+            let event_id = self.next_event_id();
+            let mut token = Token::new(event_id as u32, sutra_id, anchor.position, event_id);
+            token.mass        = 255;
+            token.temperature = 0;
+            token.state       = axiom_core::STATE_LOCKED;
+            if self.ashti.inject_token(sutra_id, token).is_ok() {
+                injected += 1;
+            }
+        }
+
+        // 2. Доменные якоря → ASHTI(1-8): domain_id = level*100 + 1..=8
+        let level = self.ashti.level_id();
+        for (i, domain_anchors) in anchor_set.domains.iter().enumerate() {
+            let domain_id: u16 = level * 100 + 1 + i as u16; // 101..=108
+            for anchor in domain_anchors {
+                let event_id = self.next_event_id();
+                let mut token = Token::new(event_id as u32, domain_id, anchor.position, event_id);
+                token.mass        = 255;
+                token.temperature = 0;
+                token.state       = axiom_core::STATE_LOCKED;
+                if self.ashti.inject_token(domain_id, token).is_ok() {
+                    injected += 1;
+                }
+            }
+        }
+
+        injected
+    }
+
     /// Найти токен по sutra_id по всем доменам AshtiCore
     fn find_token_by_sutra_id(&self, sutra_id: u32) -> Option<Token> {
         for (_, state) in self.ashti.all_states() {

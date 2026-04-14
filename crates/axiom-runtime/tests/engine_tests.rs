@@ -276,3 +276,56 @@ fn test_unknown_opcode_returns_error() {
     let result = engine.process_command(&cmd);
     assert!(!result.is_success());
 }
+
+// ============================================================
+// inject_anchor_tokens
+// ============================================================
+
+#[test]
+fn test_inject_anchor_tokens_empty_set() {
+    let mut engine = AxiomEngine::new();
+    let set = axiom_config::AnchorSet::empty();
+    let n = engine.inject_anchor_tokens(&set);
+    assert_eq!(n, 0);
+}
+
+#[test]
+fn test_inject_anchor_tokens_axes() {
+    use axiom_config::{Anchor, AnchorSet};
+    let mut set = AnchorSet::empty();
+    set.axes.push(Anchor {
+        id: "ax_x".to_string(),
+        word: "порядок".to_string(),
+        aliases: vec![],
+        tags: vec![],
+        position: [30000, 0, 0],
+        shell: [0; 8],
+        description: String::new(),
+    });
+    let mut engine = AxiomEngine::new();
+    let before = engine.token_count(100); // SUTRA
+    let n = engine.inject_anchor_tokens(&set);
+    assert_eq!(n, 1);
+    assert_eq!(engine.token_count(100), before + 1);
+}
+
+#[test]
+fn test_inject_anchor_tokens_domain() {
+    use axiom_config::{Anchor, AnchorSet};
+    let mut set = AnchorSet::empty();
+    // D1 = index 0 → domain_id=101 (EXECUTION)
+    set.domains[0].push(Anchor {
+        id: "exec".to_string(),
+        word: "действие".to_string(),
+        aliases: vec![],
+        tags: vec![],
+        position: [0, 0, 20000],
+        shell: [0; 8],
+        description: String::new(),
+    });
+    let mut engine = AxiomEngine::new();
+    let before = engine.token_count(101); // EXECUTION
+    let n = engine.inject_anchor_tokens(&set);
+    assert_eq!(n, 1);
+    assert_eq!(engine.token_count(101), before + 1);
+}

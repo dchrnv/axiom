@@ -533,17 +533,19 @@ impl CliChannel {
             None
         };
 
-        // Загружаем якоря из config/anchors/
+        // Загружаем якоря из config/anchors/ и инжектируем в движок
         let anchor_set = {
             let set = AnchorSet::load_or_empty(std::path::Path::new("config"));
             if set.is_empty() {
                 None
             } else {
-                eprintln!("[anchors] loaded {} anchors (axes={}, layers={}, domains={})",
+                let injected = engine.inject_anchor_tokens(&set);
+                eprintln!("[anchors] loaded {} anchors (axes={}, layers={}, domains={}) — injected {} tokens",
                     set.total_count(),
                     set.axes.len(),
                     set.layers.iter().map(|l| l.len()).sum::<usize>(),
                     set.domains.iter().map(|d| d.len()).sum::<usize>(),
+                    injected,
                 );
                 Some(Arc::new(set))
             }

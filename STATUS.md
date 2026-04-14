@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**929 тестов, 0 failures, 0 warnings**
+**932 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -70,11 +70,11 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 162 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator |
+| axiom-runtime | 165 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens |
 | axiom-agent | 97 | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **929** | |
+| **Итого** | **932** | |
 
 ---
 
@@ -106,4 +106,4 @@ axiom-space:
 | Config | Config V1.0 — HeartbeatConfig load, ConfigWatcher→CliChannel, hot_reload | ✅ |
 | D-04 | axiom-persist: bincode вместо serde_json (3-5× меньше, 2-4× быстрее) | ✅ |
 | D-07 | JSON-schema валидация конфигов — schemars + jsonschema, :schema CLI-команда | ✅ |
-| Anchor | Anchor Tokens V1.0 (Phase 1-2) — AnchorSet, YAML-загрузка, TextPerceptor якорное позиционирование, :anchors/:match | ✅ |
+| Anchor | Anchor Tokens V1.0 (Phase 1-3) — AnchorSet, YAML, TextPerceptor, inject_anchor_tokens в SUTRA+домены, :anchors/:match | ✅ |
