@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 32.0
-**Дата:** 2026-04-12
+**Версия:** 33.0
+**Дата:** 2026-04-14
 
 ---
 
@@ -18,7 +18,7 @@ axiom-ucl → axiom-upo                          axiom-agent
                                                 (axiom-cli)
 ```
 
-**919 тестов, 0 failures, 0 warnings**
+**932 теста, 0 failures, 0 warnings**
 
 ---
 

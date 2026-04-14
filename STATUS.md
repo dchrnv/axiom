@@ -1,6 +1,6 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-13
+**Обновлено:** 2026-04-14
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
