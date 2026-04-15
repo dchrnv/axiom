@@ -12,28 +12,29 @@
 **Где:** `config/anchors/`
 
 Сейчас загружены только:
+
 - `axes.yaml` — 6 осевых якорей (X/Y/Z полюса)
 - `layers/L5_cognitive.yaml` — 10 якорей когнитивного слоя
 - `domains/D1_execution.yaml` — 6 якорей домена EXECUTION
 
 Для полного семантического покрытия нужно заполнить:
 
-| Файл | Слой / Домен | Рекомендуемых якорей |
-|------|-------------|----------------------|
-| `layers/L1_physical.yaml` | L1 Physical | 7+ |
-| `layers/L2_sensory.yaml` | L2 Sensory | 10+ |
-| `layers/L3_motor.yaml` | L3 Motor | 7+ |
-| `layers/L4_emotional.yaml` | L4 Emotional | 7+ |
-| `layers/L6_social.yaml` | L6 Social | 7+ |
-| `layers/L7_temporal.yaml` | L7 Temporal | 7+ |
-| `layers/L8_abstract.yaml` | L8 Abstract | 7+ |
-| `domains/D2_shadow.yaml` | SHADOW | 5+ |
-| `domains/D3_codex.yaml` | CODEX | 5+ |
-| `domains/D4_map.yaml` | MAP | 5+ |
-| `domains/D5_probe.yaml` | PROBE | 5+ |
-| `domains/D6_logic.yaml` | LOGIC | 5+ |
-| `domains/D7_dream.yaml` | DREAM | 6 (пример в спеке) |
-| `domains/D8_ethics.yaml` | ETHICS | 5+ |
+| Файл                     | Слой / Домен | Рекомендуемых якорей |
+| ---------------------------- | --------------------- | --------------------------------------- |
+| `layers/L1_physical.yaml`  | L1 Physical           | 7+                                      |
+| `layers/L2_sensory.yaml`   | L2 Sensory            | 10+                                     |
+| `layers/L3_motor.yaml`     | L3 Motor              | 7+                                      |
+| `layers/L4_emotional.yaml` | L4 Emotional          | 7+                                      |
+| `layers/L6_social.yaml`    | L6 Social             | 7+                                      |
+| `layers/L7_temporal.yaml`  | L7 Temporal           | 7+                                      |
+| `layers/L8_abstract.yaml`  | L8 Abstract           | 7+                                      |
+| `domains/D2_shadow.yaml`   | SHADOW                | 5+                                      |
+| `domains/D3_codex.yaml`    | CODEX                 | 5+                                      |
+| `domains/D4_map.yaml`      | MAP                   | 5+                                      |
+| `domains/D5_probe.yaml`    | PROBE                 | 5+                                      |
+| `domains/D6_logic.yaml`    | LOGIC                 | 5+                                      |
+| `domains/D7_dream.yaml`    | DREAM                 | 6 (пример в спеке)          |
+| `domains/D8_ethics.yaml`   | ETHICS                | 5+                                      |
 
 Формат: [docs/spec/Anchor_Tokens_V1_0.md](docs/spec/Anchor_Tokens_V1_0.md), раздел 7.
 Диагностика через CLI: `:match "текст"` — показывает совпадения и вычисленную позицию.
@@ -54,13 +55,19 @@
 
 ## Внешние адаптеры
 
-**Точка расширения:** `RuntimeAdapter` trait в `axiom-runtime/src/adapters.rs`.
+**Спецификация:** [docs/spec/External_Adapters_V3_0.md](docs/spec/External_Adapters_V3_0.md)  
+**План реализации:** [docs/spec/External_Adapters_Plan_V1_0.md](docs/spec/External_Adapters_Plan_V1_0.md)  
+**Гайд:** [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md)
 
-| Адаптер | Требует | Статус |
-|---|---|---|
-| WebSocket | axum / actix-web | не начат |
-| REST API | axum / actix-web | не начат |
-| gRPC | tonic + protobuf | не начат |
-| Python bindings | pyo3 | не начат |
+| Адаптер         | Requires          | Фаза   | Статус    |
+|-----------------|-------------------|--------|-----------|
+| Рефактор CLI    | —                 | 0A/0B/0C | не начат |
+| WebSocket       | axum              | 1      | не начат  |
+| REST API        | axum              | 2      | не начат  |
+| egui Dashboard  | eframe            | 3      | не начат  |
+| Telegram        | teloxide (feature)| 4      | не начат  |
+| OpenSearch      | reqwest (feature) | 5      | не начат  |
+| gRPC            | tonic + protobuf  | —      | не сейчас |
+| Python bindings | pyo3              | —      | не сейчас |
 
-**Когда:** При конкретной задаче внешней интеграции.
+**Когда:** Начать с Phase 0A — convenience-методы на AxiomEngine. Полное описание в плане.
