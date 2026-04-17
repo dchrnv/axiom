@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 20.0
-**Обновлён:** 2026-04-14
+**Версия:** 21.0
+**Обновлён:** 2026-04-17
 
 ---
 
@@ -61,7 +61,7 @@
 
 | Адаптер         | Requires          | Фаза   | Статус    |
 |-----------------|-------------------|--------|-----------|
-| Рефактор CLI    | —                 | 0A/0B/0C | не начат |
+| Рефактор CLI    | —                 | 0A/0B/0C | 0A ✅    |
 | WebSocket       | axum              | 1      | не начат  |
 | REST API        | axum              | 2      | не начат  |
 | egui Dashboard  | eframe            | 3      | не начат  |
@@ -70,4 +70,16 @@
 | gRPC            | tonic + protobuf  | —      | не сейчас |
 | Python bindings | pyo3              | —      | не сейчас |
 
-**Когда:** Начать с Phase 0A — convenience-методы на AxiomEngine. Полное описание в плане.
+### Техдолг Phase 0A
+
+**EA-TD-01 — Дублирование `domain_name()`**  
+`domain_name()` существует в `axiom-agent/src/effectors/message.rs` (pub fn) и продублирована в
+`axiom-runtime/src/engine.rs` под `#[cfg(feature = "adapters")]`.  
+**Когда:** При рефакторе axiom-runtime в Phase 0B/0C — вынести в `axiom-runtime` как публичную  
+не-feature-gated `pub fn domain_name(id: u16) -> &'static str`, удалить дубли.
+
+**EA-TD-02 — `shell` в `TokenSnapshot` — диагностическое приближение**  
+`Shell [u8; 8]` не хранится в `Token` (вычисляется `axiom-shell::Shell`).  
+`TokenSnapshot::shell` использует приближение: `[0,0,0,|valence|,temperature,mass,0,0]`.  
+**Когда:** Если понадобится точный shell в broadcast — добавить `computed_shell: [u8;8]` в  
+`DomainState` или пересчитывать через `Shell::from_token` при построении snapshot.

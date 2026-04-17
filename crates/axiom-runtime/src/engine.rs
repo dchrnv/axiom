@@ -19,6 +19,25 @@ use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
 
+/// Имя домена по domain_id (используется в диагностике и broadcast-типах).
+#[cfg(feature = "adapters")]
+fn domain_name(id: u16) -> &'static str {
+    match id % 100 {
+        0  => "SUTRA",
+        1  => "EXECUTION",
+        2  => "SHADOW",
+        3  => "CODEX",
+        4  => "MAP",
+        5  => "PROBE",
+        6  => "LOGIC",
+        7  => "DREAM",
+        8  => "ETHICS",
+        9  => "EXPERIENCE",
+        10 => "MAYA",
+        _  => "UNKNOWN",
+    }
+}
+
 /// Ошибки инициализации AxiomEngine.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AxiomError {
@@ -178,6 +197,68 @@ impl AxiomEngine {
     /// Число токенов в домене по domain_id
     pub fn token_count(&self, domain_id: u16) -> usize {
         self.ashti.token_count(domain_id)
+    }
+
+    // ── Convenience accessors (используются адаптерами и диагностикой) ──────
+
+    /// Общее число следов опыта.
+    pub fn trace_count(&self) -> usize {
+        self.ashti.experience().trace_count()
+    }
+
+    /// Число активных tension traces.
+    pub fn tension_count(&self) -> usize {
+        self.ashti.experience().tension_count()
+    }
+
+    /// Число трейсов совпавших при последней маршрутизации (last-seen).
+    ///
+    /// Значение перезаписывается при каждом `route_token`. Если с момента
+    /// последнего broadcast не было inject — возвращает то же значение что раньше.
+    pub fn last_matched(&self) -> u32 {
+        self.ashti.experience().last_traces_matched.get()
+    }
+
+    /// Лёгкий snapshot для broadcast (только числа, без клонирования токенов).
+    #[cfg(feature = "adapters")]
+    pub fn snapshot_for_broadcast(&self) -> crate::broadcast::BroadcastSnapshot {
+        crate::broadcast::BroadcastSnapshot {
+            tick_count:       self.tick_count,
+            com_next_id:      self.com_next_id,
+            trace_count:      self.trace_count(),
+            tension_count:    self.tension_count(),
+            domain_summaries: self.domain_summaries(),
+        }
+    }
+
+    /// Детальный snapshot одного домена — по явному запросу (dashboard, REST GET /domain/:id).
+    #[cfg(feature = "adapters")]
+    pub fn domain_detail_snapshot(&self, domain_id: u16) -> Option<crate::broadcast::DomainDetailSnapshot> {
+        let idx = self.ashti.index_of(domain_id)?;
+        let state = self.ashti.state(idx)?;
+        Some(crate::broadcast::DomainDetailSnapshot {
+            domain_id,
+            tokens:      state.tokens.iter().map(crate::broadcast::TokenSnapshot::from).collect(),
+            connections: state.connections.iter().map(crate::broadcast::ConnectionSnapshot::from).collect(),
+        })
+    }
+
+    /// Краткая сводка по всем 11 доменам для BroadcastSnapshot.
+    #[cfg(feature = "adapters")]
+    fn domain_summaries(&self) -> Vec<crate::broadcast::DomainSummary> {
+        use crate::broadcast::DomainSummary;
+        (0u16..=10).map(|offset| {
+            let id = 100 + offset;
+            let conn_count = self.ashti.index_of(id)
+                .and_then(|i| self.ashti.state(i))
+                .map_or(0, |s| s.connections.len());
+            DomainSummary {
+                domain_id:        id,
+                name:             domain_name(id).to_string(),
+                token_count:      self.ashti.token_count(id),
+                connection_count: conn_count,
+            }
+        }).collect()
     }
 
     /// Взять накопленные события (очищает буфер)

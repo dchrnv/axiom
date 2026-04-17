@@ -19,6 +19,11 @@ axiom-ucl = { path = "../axiom-ucl" }
 axiom-genome = { path = "../axiom-genome" }
 
 rayon = { workspace = true }
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = []
+adapters = ["serde"]
 
 [dev-dependencies]
 axiom-genome = { path = "../axiom-genome" }

@@ -28,8 +28,14 @@ mod orchestrator;
 pub mod result;
 /// AdaptiveTickRate — Variable Tick Rate (Axiom Sentinel V1.0, Фаза 3)
 pub mod adaptive;
+/// Broadcast-типы для внешних адаптеров (WebSocket, REST, egui).
+/// Доступны только при feature "adapters".
+#[cfg(feature = "adapters")]
+pub mod broadcast;
 
 pub use engine::{AxiomEngine, AxiomError, TickSchedule};
+#[cfg(feature = "adapters")]
+pub use broadcast::{BroadcastSnapshot, DomainSummary, DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot};
 pub use result::{ProcessingResult, ProcessingPath};
 pub use guardian::{
     Guardian, ReflexDecision, VetoReason,
