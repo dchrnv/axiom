@@ -327,17 +327,10 @@ async fn tick_loop(
             );
 
             match response {
-                CommandResponse::Output { id, output } => {
-                    let _ = broadcast_tx.send(ServerMessage::CommandResult {
-                        command_id: id,
-                        output,
-                    });
-                }
-                CommandResponse::Result { id, result } => {
-                    let _ = broadcast_tx.send(ServerMessage::Result {
-                        command_id: id,
-                        // ... поля из ProcessingResult
-                    });
+                // process_adapter_command сам строит нужный ServerMessage —
+                // tick loop не знает деталей преобразования ProcessingResult → поля протокола.
+                CommandResponse::Message(msg) => {
+                    let _ = broadcast_tx.send(msg);
                 }
                 CommandResponse::Quit => {
                     // Автосохранение перед выходом
@@ -359,10 +352,10 @@ async fn tick_loop(
         // 3. Broadcast тиков (каждые tick_broadcast_interval тиков)
         if t % config.websocket.tick_broadcast_interval as u64 == 0 {
             let _ = broadcast_tx.send(ServerMessage::Tick {
-                tick_count:  t,
-                traces:      engine.trace_count() as u32,
-                tension:     engine.tension_count() as u32,
-                matched:     engine.last_matched(),
+                tick_count:   t,
+                traces:       engine.trace_count() as u32,
+                tension:      engine.tension_count() as u32,
+                last_matched: engine.last_matched(), // last-seen, не sum за интервал
             });
         }
 
@@ -385,6 +378,17 @@ async fn tick_loop(
     }
 }
 
+/// CommandResponse — результат обработки одной AdapterCommand в tick loop.
+///
+/// Вариант Message(ServerMessage) несёт готовое сообщение для broadcast.
+/// process_adapter_command сам отвечает за сборку ServerMessage из ProcessingResult —
+/// tick loop об этом ничего не знает (разделение ответственности).
+pub enum CommandResponse {
+    Message(ServerMessage),  // готово к отправке в broadcast_tx
+    Quit,                    // :quit — завершить tick loop после автосохранения
+    None,                    // Subscribe/Unsubscribe — обработано на уровне адаптера
+}
+
 fn process_adapter_command(
     id: String,
     payload: AdapterPayload,
@@ -397,34 +401,53 @@ fn process_adapter_command(
     match payload {
         AdapterPayload::Inject { text } => {
             let ucl_cmd = perceptor.perceive(&text);
-            let result = engine.process_and_observe(&ucl_cmd);
-            CommandResponse::Result { id, result }
+            let r = engine.process_and_observe(&ucl_cmd);
+            // Конвертация ProcessingResult → ServerMessage::Result здесь,
+            // а не в tick loop. Tick loop получает готовый ServerMessage.
+            CommandResponse::Message(ServerMessage::Result {
+                command_id:     id,
+                path:           format!("{:?}", r.path),
+                domain_id:      r.dominant_domain_id,
+                domain_name:    domain_name(r.dominant_domain_id).to_string(),
+                coherence:      r.coherence_score.unwrap_or(0.0),
+                reflex_hit:     r.reflex_hit,
+                traces_matched: r.traces_matched,
+                position:       r.output_position,
+                shell:          r.output_shell,
+                event_id:       r.event_id,
+            })
         }
         AdapterPayload::MetaRead { cmd } => {
             let output = handle_meta_read(&cmd, engine, anchor_set.as_deref(), perceptor, &config.cli);
-            CommandResponse::Output { id, output }
+            CommandResponse::Message(ServerMessage::CommandResult { command_id: id, output })
         }
         AdapterPayload::MetaMutate { cmd } => {
             let result = handle_meta_mutate(&cmd, engine, auto_saver, &config.cli);
             match result.action {
                 MetaAction::Quit => CommandResponse::Quit,
                 MetaAction::EngineReplaced => {
-                    // После :load — перепривязать perceptor к новому engine
                     *perceptor = make_perceptor(anchor_set);
-                    CommandResponse::Output { id, output: result.output }
+                    CommandResponse::Message(ServerMessage::CommandResult {
+                        command_id: id,
+                        output: result.output,
+                    })
                 }
-                _ => CommandResponse::Output { id, output: result.output },
+                _ => CommandResponse::Message(ServerMessage::CommandResult {
+                    command_id: id,
+                    output: result.output,
+                }),
             }
         }
         AdapterPayload::DomainSnapshot { domain_id } => {
-            let output = match engine.domain_detail_snapshot(domain_id) {
-                Some(snap) => serde_json::to_string(&snap).unwrap_or_default(),
-                None => format!("domain {} not found", domain_id),
-            };
-            CommandResponse::Output { id, output }
+            match engine.domain_detail_snapshot(domain_id) {
+                Some(snap) => CommandResponse::Message(ServerMessage::DomainDetail(snap)),
+                None => CommandResponse::Message(ServerMessage::Error {
+                    command_id: Some(id),
+                    message: format!("domain {} not found", domain_id),
+                }),
+            }
         }
         AdapterPayload::Subscribe { .. } | AdapterPayload::Unsubscribe { .. } => {
-            // Обрабатывается на уровне адаптера, не в tick loop
             CommandResponse::None
         }
     }
@@ -499,9 +522,14 @@ pub enum ServerMessage {
     #[serde(rename = "tick")]
     Tick {
         tick_count: u64,
-        traces: u32,
-        tension: u32,
-        matched: u32,
+        traces:     u32,
+        tension:    u32,
+        /// Число трейсов совпавших при *последнем* inject до момента этого broadcast.
+        /// Семантика: last-seen, не сумма и не среднее за интервал.
+        /// Источник: ExperienceModule::last_traces_matched (Cell<u32>) — перезаписывается
+        /// при каждом route_token. Если между двумя broadcast не было inject — значение
+        /// то же что в предыдущем Tick.
+        last_matched: u32,
     },
 
     /// Полный snapshot состояния (каждые state_broadcast_interval тиков)
@@ -1062,6 +1090,7 @@ loop {
 
 ## 13. История изменений
 
+- **V3.1**: `CommandResponse` упрощён до `Message(ServerMessage) | Quit | None` — process_adapter_command строит ServerMessage сам, tick loop не знает деталей протокола. `matched` → `last_matched` с явной документацией семантики (last-seen, не sum).
 - **V3.0**: Верификация всех путей по реальному коду. Убран несуществующий `drain_pending_impulses`. Исправлен порядок clone/write в snapshot. Рефактор handle_meta_command детализирован с сигнатурами и MetaAction. Добавлен раздел подводных камней (11). Добавлен graceful shutdown. tick_hz в AdaptersConfig. REST request-response паттерн (Section 9).
 - **V2.0**: Engine access через snapshot + command channel. handle_meta_command → String. Convenience-методы. OpenSearch flush fix. Telegram pending table. egui = отдельный crate.
 - **V1.2**: egui вместо browser, OpenSearch добавлен.
