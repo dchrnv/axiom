@@ -1,9 +1,9 @@
-# External Adapters — План реализации V1.1
+# External Adapters — План реализации V1.2
 
-**Версия:** 1.1  
-**Дата:** 2026-04-17  
+**Версия:** 1.2  
+**Дата:** 2026-04-18  
 **Спецификация:** [External_Adapters_V3_0.md](External_Adapters_V3_0.md) (актуальная версия V3.1)  
-**Статус:** Phase 0A завершена
+**Статус:** Phase 0A/0B/0C завершены
 
 ---
 
@@ -12,8 +12,8 @@
 | Фаза | Название | Crates | Тесты | Статус |
 |------|----------|--------|-------|--------|
 | 0A | Convenience-методы + Snapshot-типы | axiom-runtime | +18 | ✅ завершена |
-| 0B | Рефактор handle_meta_command | axiom-agent | +7 | не начата |
-| 0C | AdapterCommand + tick_loop | axiom-agent | +10 | не начата |
+| 0B | Рефактор handle_meta_command | axiom-agent | +7 | ✅ завершена |
+| 0C | AdapterCommand + tick_loop | axiom-agent | +6 | ✅ завершена |
 | 1 | WebSocket | axiom-agent | +12 | не начата |
 | 2 | REST | axiom-agent | +8 | не начата |
 | 3 | egui Dashboard | axiom-dashboard (новый) | +5 | не начата |
@@ -72,7 +72,7 @@ adapters = ["serde"]
 
 ---
 
-## Phase 0B — Рефактор handle_meta_command
+## Phase 0B — Рефактор handle_meta_command ✅
 
 **Цель:** разделить 700-строчный `&mut self` метод `CliChannel::handle_meta_command`
 на две standalone-функции. Поведение CLI не меняется — только внутренняя организация.
@@ -228,7 +228,7 @@ test_handle_meta_mutate_load_replaces_engine     // :load → MetaAction::Engine
 
 ---
 
-## Phase 0C — AdapterCommand + tick_loop
+## Phase 0C — AdapterCommand + tick_loop ✅
 
 **Цель:** выделить tick loop из `CliChannel::run()` в standalone async-функцию.
 `CliChannel` становится тонкой обёрткой: инициализация + stdin reader.
@@ -817,9 +817,11 @@ crates/axiom-runtime/src/
     engine.rs                    ✅ Phase 0A (методы)
 
 crates/axiom-agent/src/
-    meta_commands.rs             ← Phase 0B
-    adapter_command.rs           ← Phase 0C
-    tick_loop.rs                 ← Phase 0C
+    meta_commands.rs             ✅ Phase 0B
+    adapter_command.rs           ✅ Phase 0C
+    adapters_config.rs           ✅ Phase 0C
+    protocol.rs                  ✅ Phase 0C
+    tick_loop.rs                 ✅ Phase 0C
     ws/
         mod.rs, protocol.rs      ← Phase 1
         handler.rs, server.rs    ← Phase 1
@@ -827,7 +829,7 @@ crates/axiom-agent/src/
         mod.rs, handlers.rs      ← Phase 2
     telegram/mod.rs              ← Phase 4 (feature)
     opensearch/mod.rs            ← Phase 5 (feature)
-    channels/cli.rs              ← Phase 0B/0C (рефактор)
+    channels/cli.rs              ✅ Phase 0B/0C (рефактор)
 
 tools/axiom-dashboard/src/       ← Phase 3 (новый crate)
 ```
@@ -836,6 +838,9 @@ tools/axiom-dashboard/src/       ← Phase 3 (новый crate)
 
 ## История изменений плана
 
+- **V1.2** (2026-04-18): Phase 0B/0C отмечены завершёнными. Добавлены
+  `adapters_config.rs` и `protocol.rs` в итоговую структуру файлов.
+  Счётчик тестов 0C исправлен: +6 (не +10).
 - **V1.1** (2026-04-17): Phase 0A отмечена завершённой (+18 тестов, 950 total с feature).
   `CommandResponse` уточнён: `Message(ServerMessage) | Quit | None` (по V3.1 спека).
   `matched` → `last_matched` везде. Технический долг из Phase 0A задокументирован.
