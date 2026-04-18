@@ -151,7 +151,7 @@ fn format_event_type(et: u16) -> String {
 
 use axiom_config::{self, ConfigWatcher, AnchorSet};
 use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, TickSchedule, TickRateReason, ProcessingPath};
+use axiom_runtime::{AxiomEngine, TickSchedule};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::{MessageEffector, DetailLevel};
 use tokio::sync::mpsc;
@@ -177,7 +177,8 @@ pub struct PerfTracker {
 }
 
 impl PerfTracker {
-    fn new(window: usize) -> Self {
+    /// Создать трекер с указанным скользящим окном.
+    pub fn new(window: usize) -> Self {
         Self {
             start:        std::time::Instant::now(),
             tick_times:   VecDeque::with_capacity(window),
@@ -188,7 +189,8 @@ impl PerfTracker {
         }
     }
 
-    fn record(&mut self, ns: u64, tick_id: u64) {
+    /// Записать время одного тика.
+    pub fn record(&mut self, ns: u64, tick_id: u64) {
         if self.tick_times.len() >= self.window {
             self.tick_times.pop_front();
         }
@@ -473,9 +475,6 @@ Options:
   --hot-reload      Watch config/axiom.yaml and reload tick_schedule on change
   --help, -h        Show this message";
 
-/// Минимальное число активных tension traces для повышения hz тика.
-const ADAPTIVE_TENSION_THRESHOLD: usize = 3;
-
 /// Максимальный размер лога событий
 const EVENT_LOG_CAPACITY: usize = 256;
 
@@ -580,186 +579,111 @@ impl CliChannel {
     }
 
     /// Запустить интерактивный цикл (блокирует до :quit или EOF).
+    ///
+    /// Phase 0C: thin wrapper над tick_loop. stdin → AdapterCommand → tick_loop.
+    /// broadcast_rx → stdout для CLI-вывода.
+    ///
+    /// EA-TD-03: watch_fields, event_log, verbose, hot_reload, adaptive_tick_rate
+    /// временно не перенесены в tick_loop — см. DEFERRED.md.
     pub async fn run(&mut self) {
-        let (tx, mut rx) = mpsc::channel::<String>(64);
+        use tokio::sync::broadcast;
+        use crate::adapter_command::{AdapterCommand, AdapterSource, AdapterPayload};
+        use crate::adapters_config::AdaptersConfig;
+        use crate::tick_loop::tick_loop;
+        use crate::protocol::ServerMessage;
+        use axiom_persist::PersistenceConfig;
 
-        // stdin reader task
+        let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(256);
+        let (broadcast_tx, mut broadcast_rx) = broadcast::channel::<ServerMessage>(1024);
+        let snapshot = Arc::new(tokio::sync::RwLock::new(
+            axiom_runtime::BroadcastSnapshot::default()
+        ));
+
+        // stdin reader → parse → AdapterCommand
+        let tx = command_tx.clone();
         tokio::spawn(async move {
             use tokio::io::{AsyncBufReadExt, BufReader};
             let stdin = tokio::io::stdin();
             let mut reader = BufReader::new(stdin);
             let mut line = String::new();
+            let mut seq: u64 = 0;
             loop {
                 line.clear();
                 match reader.read_line(&mut line).await {
-                    Ok(0) | Err(_) => break, // EOF или ошибка
+                    Ok(0) | Err(_) => break,
                     Ok(_) => {
                         let trimmed = line.trim().to_string();
-                        if tx.send(trimmed).await.is_err() {
-                            break;
-                        }
+                        if trimmed.is_empty() { continue; }
+                        seq += 1;
+                        let id = seq.to_string();
+                        let payload = if trimmed.starts_with(':') {
+                            let cmd = trimmed.splitn(2, ' ').next().unwrap_or("");
+                            let is_mutating = matches!(cmd,
+                                ":save"|":load"|":autosave"|":tick"|
+                                ":export"|":import"|":quit"|":q"
+                            );
+                            if is_mutating {
+                                AdapterPayload::MetaMutate { cmd: trimmed }
+                            } else {
+                                AdapterPayload::MetaRead { cmd: trimmed }
+                            }
+                        } else {
+                            AdapterPayload::Inject { text: trimmed }
+                        };
+                        let cmd = AdapterCommand { id, source: AdapterSource::Cli, payload };
+                        if tx.send(cmd).await.is_err() { break; }
                     }
                 }
             }
         });
 
-        // При адаптивном режиме начальный hz берётся из adaptive_tick.current_hz,
-        // иначе — из tick_hz конфига.
-        let tick_ms = 1000u64 / self.config.tick_hz.max(1) as u64;
-        let mut current_interval_ms = tick_ms;
-        let mut interval = tokio::time::interval(
-            tokio::time::Duration::from_millis(tick_ms)
-        );
-        let tick_cmd = axiom_ucl::UclCommand::new(axiom_ucl::OpCode::TickForward, 0, 100, 0);
-
-        loop {
-            interval.tick().await;
-
-            // Флаги состояния итерации для адаптивного тика
-            let mut had_input    = false;
-            let mut had_multipass = false;
-
-            // Обработать все сообщения из stdin (non-blocking)
+        // broadcast_rx → stdout (CLI-подписчик)
+        let detail = self.config.detail_level;
+        tokio::spawn(async move {
             loop {
-                match rx.try_recv() {
-                    Ok(line) if line.is_empty() => {}
-
-                    Ok(line) if line.starts_with(':') => {
-                        had_input = true;
-                        if !self.handle_meta_command(&line) {
-                            return; // :quit
-                        }
+                match broadcast_rx.recv().await {
+                    Ok(ServerMessage::CommandResult { output, .. }) => {
+                        print!("{}", output);
                     }
-
-                    Ok(line) => {
-                        // Пользовательский ввод → TextPerceptor → process_and_observe
-                        had_input = true;
-                        let cmd = self.perceptor.perceive(&line);
-                        let result = self.engine.process_and_observe(&cmd);
-                        if let ProcessingPath::MultiPass(n) = result.path {
-                            had_multipass = true;
-                            self.multipass_count += 1;
-                            self.last_multipass_n = n;
-                        }
-                        let out = self.effector.format_result(
-                            &result,
-                            self.config.detail_level,
-                            Some(&line),
-                        );
-                        print!("{}", out);
+                    Ok(ServerMessage::Result {
+                        domain_name, coherence, traces_matched, position, path, reflex_hit, ..
+                    }) => {
+                        let [x, y, z] = position;
+                        let reflex = if reflex_hit { " ⚡reflex" } else { "" };
+                        println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
+                            path, reflex, domain_name, coherence, traces_matched, x, y, z);
+                        let _ = detail; // используется для будущего полного форматирования
                     }
-
-                    Err(mpsc::error::TryRecvError::Empty) => break,
-                    Err(mpsc::error::TryRecvError::Disconnected) => return,
-                }
-            }
-
-            // Ядро тикает каждый интервал — замеряем время
-            let t0 = std::time::Instant::now();
-            self.engine.process_command(&tick_cmd);
-            self.perf.record(t0.elapsed().as_nanos() as u64, self.engine.tick_count);
-
-            // Собираем события в кольцевой буфер
-            let new_events = self.engine.drain_events();
-            for ev in new_events {
-                if self.event_log.len() >= EVENT_LOG_CAPACITY {
-                    self.event_log.pop_front();
-                }
-                self.event_log.push_back(ev);
-            }
-
-            // :watch — следить за изменениями
-            if !self.watch_fields.is_empty() {
-                let exp     = self.engine.ashti.experience();
-                let traces  = exp.traces().len();
-                let tension = exp.tension_count();
-                if self.watch_fields.contains("traces") && traces != self.last_traces {
-                    println!("  [watch] traces: {} → {}", self.last_traces, traces);
-                    self.last_traces = traces;
-                }
-                if self.watch_fields.contains("tension") && tension != self.last_tension {
-                    println!("  [watch] tension: {} → {}", self.last_tension, tension);
-                    self.last_tension = tension;
-                }
-                if self.watch_fields.contains("tps") {
-                    let tick = self.engine.tick_count;
-                    if tick.saturating_sub(self.last_tps_tick) >= (self.config.tick_hz as u64 * 10) {
-                        let hz = self.perf.actual_hz();
-                        println!("  [watch] tps: {:.1} Hz  traces={}  tension={}",
-                            hz, traces, tension);
-                        self.last_tps_tick = tick;
+                    Ok(ServerMessage::Error { message, .. }) => {
+                        eprintln!("  error: {}", message);
                     }
-                }
-            }
-
-            // Автосохранение по интервалу
-            let data_dir = std::path::Path::new(&self.config.data_dir);
-            if self.auto_saver.tick(&self.engine, data_dir) {
-                if self.config.verbose {
-                    println!("  [autosave: tick={}]", self.engine.tick_count);
-                }
-            } else if let Some(e) = &self.auto_saver.last_error {
-                eprintln!("[autosave] error: {e}");
-                self.auto_saver.last_error = None; // показываем ошибку один раз
-            }
-
-            // Горячая перезагрузка config/axiom.yaml
-            if let Some(ref watcher) = self.config_watcher {
-                if let Some(new_cfg) = watcher.poll() {
-                    // Применяем только tick_schedule — остальные параметры
-                    // (tick_hz, verbose, detail_level) требуют перезапуска
-                    let mut new_schedule = self.config.tick_schedule;
-                    // Читаем CliConfigFile поверх нового axiom.yaml для tick_schedule
-                    if let Some(cli_file) = CliConfigFile::find_and_load(None) {
-                        if let Some(s) = cli_file.tick_schedule {
-                            s.apply_to(&mut new_schedule);
-                        }
+                    Ok(_) => {}  // Tick, State — не нужны в CLI stdout
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        eprintln!("[broadcast] lagged by {} messages", n);
                     }
-                    self.engine.tick_schedule = new_schedule;
-                    self.config.tick_schedule = new_schedule;
-                    let _ = new_cfg; // axiom.yaml загружен для триггера, schedule из cli файла
-                    eprintln!("[config] reloaded tick_schedule (tick={})", self.engine.tick_count);
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
+        });
 
-            // Verbose: статус ядра — только после пользовательского ввода,
-            // чтобы не перекрывать набираемый текст (курсор в одной строке)
-            if had_input && self.config.verbose {
-                let exp     = self.engine.ashti.experience();
-                let traces  = exp.traces().len();
-                let matched = exp.last_traces_matched.get();
-                let tension = exp.tension_count();
-                println!("  [tick={} traces={} matched={} tension={}]",
-                    self.engine.tick_count, traces, matched, tension);
-            }
+        // Переносим владение engine и auto_saver в tick_loop
+        let auto_saver = std::mem::replace(
+            &mut self.auto_saver,
+            AutoSaver::new(PersistenceConfig::disabled()),
+        );
+        let engine = std::mem::replace(&mut self.engine, AxiomEngine::new());
+        let adapters_config = AdaptersConfig::from_cli_config(&self.config);
 
-            // Адаптивная частота тиков (Axiom Sentinel V1.0, Фаза 3)
-            if self.config.adaptive_tick_rate {
-                let tension = self.engine.ashti.experience().tension_count();
-                let adaptive = &mut self.engine.tick_schedule.adaptive_tick;
-                if had_input {
-                    adaptive.trigger(TickRateReason::ExternalInput);
-                } else if had_multipass {
-                    adaptive.trigger(TickRateReason::MultiPass);
-                } else if tension >= ADAPTIVE_TENSION_THRESHOLD {
-                    adaptive.trigger(TickRateReason::TensionHigh);
-                } else {
-                    adaptive.on_idle_tick();
-                }
-
-                let new_ms = adaptive.interval_ms();
-                if new_ms != current_interval_ms {
-                    current_interval_ms = new_ms;
-                    interval = tokio::time::interval(
-                        tokio::time::Duration::from_millis(new_ms)
-                    );
-                }
-            }
-        }
+        tick_loop(
+            engine, command_rx, broadcast_tx, snapshot,
+            auto_saver, self.anchor_set.clone(), adapters_config,
+        ).await;
     }
 
-    /// Обработать служебную команду (:status, :quit, ...).
-    /// Возвращает false если нужно завершить.
+    // ── удалён старый run() (монолитный tick loop) — Phase 0C ────────────────
+    // handle_meta_command оставлен для возможного использования в тестах и
+    // будущих CLI-только режимах (non-tick_loop path).
+    #[allow(dead_code)]
     fn handle_meta_command(&mut self, line: &str) -> bool {
         use crate::meta_commands::{handle_meta_read, handle_meta_mutate, MetaAction};
         let cmd = line.splitn(2, ' ').next().unwrap_or("");

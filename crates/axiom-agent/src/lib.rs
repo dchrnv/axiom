@@ -20,3 +20,11 @@ pub mod perceptors;
 pub mod effectors;
 /// Standalone-функции мета-команд CLI (Phase 0B)
 pub mod meta_commands;
+/// Протокол обмена tick_loop ↔ адаптеры (Phase 0C)
+pub mod protocol;
+/// Команды адаптеров в tick_loop (Phase 0C)
+pub mod adapter_command;
+/// Конфигурация tick_loop и адаптеров (Phase 0C)
+pub mod adapters_config;
+/// Главный цикл — единственный writer AxiomEngine (Phase 0C)
+pub mod tick_loop;

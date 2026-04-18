@@ -70,6 +70,31 @@
 | gRPC            | tonic + protobuf  | —      | не сейчас |
 | Python bindings | pyo3              | —      | не сейчас |
 
+### Техдолг Phase 0C
+
+**EA-TD-03 — CLI-фичи не перенесены в tick_loop**  
+`watch_fields`, `event_log`, `PerfTracker`, `verbose`, `multipass_count/last_multipass_n`
+удалены из tick loop в Phase 0C. Команды `:events`, `:perf`, `:watch` и verbose-вывод
+работают с нулевыми/пустыми значениями вне CLI-контекста.  
+**Когда:** Phase 1 — выделить `CliTickExtension` или передавать эти данные через
+отдельный side-channel, либо оставить как CLI-only фичи с `Arc<Mutex<...>>`.
+
+**EA-TD-04 — Adaptive tick rate не перенесён в tick_loop**  
+`config.adaptive_tick_rate` и связанная логика (`TickRateReason`) остались в старом run().
+В Phase 0C tick_loop работает с фиксированным интервалом.  
+**Когда:** Phase 1 — добавить адаптивность в tick_loop как опциональный параметр.
+
+**EA-TD-05 — hot_reload (ConfigWatcher) не перенесён в tick_loop**  
+`config_watcher` остался в CliChannel но больше не вызывается из run().  
+**Когда:** Phase 1 — передать ConfigWatcher в tick_loop через mpsc или Arc.
+
+**EA-TD-06 — Inject output CLI: упрощённый формат**  
+`process_adapter_command` для Inject возвращает `ServerMessage::Result` со структурными данными.
+CLI-подписчик форматирует упрощённо (без `MessageEffector::format_result`).
+В Phase 0B CLI использовал полный `MessageEffector` с DetailLevel.  
+**Когда:** Phase 1 — добавить `CliAdapter` который знает про MessageEffector и DetailLevel,
+либо добавить `ServerMessage::CommandResult` для уже-форматированного CLI-вывода из Inject.
+
 ### Техдолг Phase 0A
 
 **EA-TD-01 — Дублирование `domain_name()`**  

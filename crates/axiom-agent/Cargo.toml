@@ -17,7 +17,7 @@ path = "bin/axiom-cli.rs"
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
 axiom-ucl = { path = "../axiom-ucl" }
-axiom-runtime = { path = "../axiom-runtime" }
+axiom-runtime = { path = "../axiom-runtime", features = ["adapters"] }
 axiom-genome = { path = "../axiom-genome" }
 axiom-persist = { path = "../axiom-persist" }
 schemars.workspace = true
