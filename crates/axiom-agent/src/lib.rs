@@ -28,3 +28,5 @@ pub mod adapter_command;
 pub mod adapters_config;
 /// Главный цикл — единственный writer AxiomEngine (Phase 0C)
 pub mod tick_loop;
+/// WebSocket-адаптер (Phase 1)
+pub mod ws;

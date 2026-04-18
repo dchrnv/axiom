@@ -371,6 +371,10 @@ pub struct CliConfig {
     pub detail_level: DetailLevel,
     /// Горячая перезагрузка config/axiom.yaml во время работы (default: false)
     pub hot_reload: bool,
+    /// Запустить WebSocket-сервер (Phase 1, default: false)
+    pub ws_enabled: bool,
+    /// Порт WebSocket-сервера (default: 8765)
+    pub ws_port: u16,
 }
 
 impl Default for CliConfig {
@@ -384,6 +388,8 @@ impl Default for CliConfig {
             adaptive_tick_rate: false,
             detail_level: DetailLevel::Min,
             hot_reload: false,
+            ws_enabled: false,
+            ws_port: 8765,
         }
     }
 }
@@ -449,6 +455,13 @@ impl CliConfig {
                     }
                 }
                 "--no-load" => {} // обрабатывается в bin/axiom-cli.rs
+                "--server" => config.ws_enabled = true,
+                "--port" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.ws_port = val.parse().unwrap_or(config.ws_port);
+                    }
+                }
                 "--help" | "-h" => {
                     eprintln!("{}", USAGE);
                     std::process::exit(0);
@@ -473,6 +486,8 @@ Options:
   --data-dir <path> Data directory for save/load (default: ./axiom-data)
   --no-load         Skip loading from data directory on startup
   --hot-reload      Watch config/axiom.yaml and reload tick_schedule on change
+  --server          Enable WebSocket server (ws://localhost:8765/ws)
+  --port N          WebSocket port (default: 8765)
   --help, -h        Show this message";
 
 /// Максимальный размер лога событий
@@ -598,6 +613,24 @@ impl CliChannel {
         let snapshot = Arc::new(tokio::sync::RwLock::new(
             axiom_runtime::BroadcastSnapshot::default()
         ));
+        let adapters_config = AdaptersConfig::from_cli_config(&self.config);
+
+        // Phase 1: WebSocket-сервер (если включён)
+        if adapters_config.websocket.enabled {
+            use crate::ws::{AppState, bind, serve_ws};
+            use std::sync::Arc;
+            use std::sync::atomic::AtomicU64;
+            let ws_state = AppState {
+                command_tx:   command_tx.clone(),
+                broadcast_tx: broadcast_tx.clone(),
+                snapshot:     Arc::clone(&snapshot),
+                next_conn_id: Arc::new(AtomicU64::new(0)),
+            };
+            let listener = bind(adapters_config.websocket.port).await;
+            let addr = listener.local_addr().unwrap();
+            println!("[ws] WebSocket server on ws://{addr}/ws");
+            tokio::spawn(serve_ws(listener, ws_state));
+        }
 
         // stdin reader → parse → AdapterCommand
         let tx = command_tx.clone();
@@ -672,7 +705,6 @@ impl CliChannel {
             AutoSaver::new(PersistenceConfig::disabled()),
         );
         let engine = std::mem::replace(&mut self.engine, AxiomEngine::new());
-        let adapters_config = AdaptersConfig::from_cli_config(&self.config);
 
         tick_loop(
             engine, command_rx, broadcast_tx, snapshot,

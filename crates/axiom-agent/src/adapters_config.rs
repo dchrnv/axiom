@@ -52,7 +52,11 @@ impl AdaptersConfig {
             tick_hz:       c.tick_hz,
             data_dir:      c.data_dir.clone(),
             tick_schedule: c.tick_schedule,
-            websocket:     WebSocketConfig::default(),
+            websocket: WebSocketConfig {
+                enabled: c.ws_enabled,
+                port:    c.ws_port,
+                ..WebSocketConfig::default()
+            },
         }
     }
 }
