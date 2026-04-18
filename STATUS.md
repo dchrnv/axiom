@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-14
+**Обновлено:** 2026-04-18
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**932 тестов, 0 failures, 0 warnings**
+**975 тестов, 0 failures, 0 warnings**
 
 ```
 AxiomEngine
@@ -26,14 +26,25 @@ axiom-agent:
   ├── TextPerceptor — текст → UclCommand(InjectToken): якорное позиционирование → FNV-1a fallback
   ├── MessageEffector — ProcessingResult → диагностический вывод
   ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
-  └── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
-      CLI Extended V1.0: :domain/:events/:frontier/:guardian/:watch/:config/:trace/:connections
-      :dream/:multipass/:reflector/:impulses/:schema/:anchors/:match/:help — горячая перезагрузка
+  ├── CLI Channel: stdin/stdout loop, axiom-cli.yaml, :save/:load/:autosave/:export/:import
+  │   CLI Extended V1.0: :domain/:events/:frontier/:guardian/:watch/:config/:trace/:connections
+  │   :dream/:multipass/:reflector/:impulses/:schema/:anchors/:match/:help — горячая перезагрузка
+  └── External Adapters (Phase 0A–1):
+      ├── tick_loop — единственный writer AxiomEngine; mpsc::Receiver<AdapterCommand> in,
+      │              broadcast::Sender<ServerMessage> out, Arc<RwLock<BroadcastSnapshot>>
+      ├── AdapterCommand / AdapterPayload — Inject, MetaRead, MetaMutate, DomainSnapshot,
+      │              Subscribe, Unsubscribe; AdapterSource: Cli, WebSocket, Rest, Telegram
+      ├── ServerMessage — Result, Tick, State, CommandResult, DomainDetail, Error (serde JSON)
+      └── WebSocket (Phase 1) — axum 0.8/ws, /ws endpoint, подписки ticks/state,
+                     --server / --port флаги; AppState shared через Arc
 
 axiom-runtime:
   ├── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
   ├── Orchestrator — параллельная маршрутизация + Guardian check + apply_feedback
-  └── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
+  ├── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
+  └── Broadcast types (--features adapters): BroadcastSnapshot, DomainSummary,
+      DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot; snapshot_for_broadcast(),
+      domain_detail_snapshot(), trace_count(), tension_count(), last_matched()
 
 axiom-config (Config V1.0 + D-07 + Anchor V1.0):
   ├── PresetsConfig.heartbeat_file → LoadedAxiomConfig.heartbeat (Option<HeartbeatConfig>)
@@ -70,11 +81,11 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 165 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens |
-| axiom-agent | 97 | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine |
+| axiom-runtime | 183 | AxiomEngine, Guardian, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens; BroadcastSnapshot (feature "adapters") |
+| axiom-agent | 122 | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop, AdapterCommand, ServerMessage, WebSocket (Phase 1) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| **Итого** | **932** | |
+| **Итого** | **975** | |
 
 ---
 
@@ -107,3 +118,7 @@ axiom-space:
 | D-04 | axiom-persist: bincode вместо serde_json (3-5× меньше, 2-4× быстрее) | ✅ |
 | D-07 | JSON-schema валидация конфигов — schemars + jsonschema, :schema CLI-команда | ✅ |
 | Anchor | Anchor Tokens V1.0 (Phase 1-3) — AnchorSet, YAML, TextPerceptor, inject_anchor_tokens в SUTRA+домены, :anchors/:match | ✅ |
+| Adapters 0A | BroadcastSnapshot + convenience methods (axiom-runtime --features adapters) | ✅ |
+| Adapters 0B | Рефактор handle_meta_command → handle_meta_read / handle_meta_mutate | ✅ |
+| Adapters 0C | tick_loop, AdapterCommand, ServerMessage, AdaptersConfig; CLI → тонкая обёртка | ✅ |
+| Adapters 1 | WebSocket адаптер — axum 0.8, /ws, подписки, --server / --port | ✅ |
