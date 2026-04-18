@@ -18,3 +18,5 @@ pub mod ml;
 pub mod perceptors;
 /// Effectors — форматирование результатов ядра для вывода
 pub mod effectors;
+/// Standalone-функции мета-команд CLI (Phase 0B)
+pub mod meta_commands;
