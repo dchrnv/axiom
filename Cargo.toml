@@ -4,6 +4,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "tools/axiom-dashboard",
     "crates/axiom-core",
     "crates/axiom-persist",
     "crates/axiom-genome",
