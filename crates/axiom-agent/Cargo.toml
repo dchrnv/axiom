@@ -39,4 +39,6 @@ tokio-tungstenite = "0.24"
 
 [features]
 default = []
-onnx = ["tract-onnx"]
+onnx       = ["tract-onnx"]
+telegram   = []  # uses reqwest (already unconditional dep)
+opensearch = []  # uses reqwest (already unconditional dep)

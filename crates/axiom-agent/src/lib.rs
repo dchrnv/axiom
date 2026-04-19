@@ -32,3 +32,9 @@ pub mod tick_loop;
 pub mod ws;
 /// REST-адаптер (Phase 2)
 pub mod rest;
+/// Telegram-адаптер (Phase 4, feature = "telegram")
+#[cfg(feature = "telegram")]
+pub mod telegram;
+/// OpenSearch-адаптер (Phase 5, feature = "opensearch")
+#[cfg(feature = "opensearch")]
+pub mod opensearch;

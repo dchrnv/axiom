@@ -33,7 +33,7 @@ pub mod adaptive;
 #[cfg(feature = "adapters")]
 pub mod broadcast;
 
-pub use engine::{AxiomEngine, AxiomError, TickSchedule};
+pub use engine::{AxiomEngine, AxiomError, TickSchedule, domain_name};
 #[cfg(feature = "adapters")]
 pub use broadcast::{BroadcastSnapshot, DomainSummary, DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot};
 pub use result::{ProcessingResult, ProcessingPath};

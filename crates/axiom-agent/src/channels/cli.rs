@@ -375,6 +375,16 @@ pub struct CliConfig {
     pub ws_enabled: bool,
     /// Порт WebSocket-сервера (default: 8765)
     pub ws_port: u16,
+    /// Telegram Bot API токен (Phase 4, requires feature "telegram")
+    pub telegram_token: Option<String>,
+    /// Разрешённые Telegram user_id (пустой = все)
+    pub telegram_allowed: Vec<i64>,
+    /// OpenSearch URL (Phase 5, requires feature "opensearch")
+    pub opensearch_url: Option<String>,
+    /// Имя индекса OpenSearch (default: "axiom-events")
+    pub opensearch_index: String,
+    /// Индексировать Tick каждые N тиков (0 = не индексировать)
+    pub opensearch_tick_interval: u64,
 }
 
 impl Default for CliConfig {
@@ -390,6 +400,11 @@ impl Default for CliConfig {
             hot_reload: false,
             ws_enabled: false,
             ws_port: 8765,
+            telegram_token:   None,
+            telegram_allowed: Vec::new(),
+            opensearch_url:   None,
+            opensearch_index: "axiom-events".to_string(),
+            opensearch_tick_interval: 0,
         }
     }
 }
@@ -462,6 +477,38 @@ impl CliConfig {
                         config.ws_port = val.parse().unwrap_or(config.ws_port);
                     }
                 }
+                "--telegram-token" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.telegram_token = Some(val.clone());
+                    }
+                }
+                "--telegram-allow" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        if let Ok(uid) = val.parse::<i64>() {
+                            config.telegram_allowed.push(uid);
+                        }
+                    }
+                }
+                "--opensearch-url" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.opensearch_url = Some(val.clone());
+                    }
+                }
+                "--opensearch-index" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.opensearch_index = val.clone();
+                    }
+                }
+                "--opensearch-tick" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.opensearch_tick_interval = val.parse().unwrap_or(0);
+                    }
+                }
                 "--help" | "-h" => {
                     eprintln!("{}", USAGE);
                     std::process::exit(0);
@@ -488,6 +535,11 @@ Options:
   --hot-reload      Watch config/axiom.yaml and reload tick_schedule on change
   --server          Enable WebSocket server (ws://localhost:8765/ws)
   --port N          WebSocket port (default: 8765)
+  --telegram-token T  Enable Telegram adapter (requires --features telegram)
+  --telegram-allow N  Allow Telegram user_id N (repeatable; default: all)
+  --opensearch-url U  Enable OpenSearch adapter (requires --features opensearch)
+  --opensearch-index S  Index name (default: axiom-events)
+  --opensearch-tick N   Index tick events every N ticks (default: 0=off)
   --help, -h        Show this message";
 
 /// Максимальный размер лога событий
@@ -595,11 +647,8 @@ impl CliChannel {
 
     /// Запустить интерактивный цикл (блокирует до :quit или EOF).
     ///
-    /// Phase 0C: thin wrapper над tick_loop. stdin → AdapterCommand → tick_loop.
+    /// Thin wrapper над tick_loop. stdin → AdapterCommand → tick_loop.
     /// broadcast_rx → stdout для CLI-вывода.
-    ///
-    /// EA-TD-03: watch_fields, event_log, verbose, hot_reload, adaptive_tick_rate
-    /// временно не перенесены в tick_loop — см. DEFERRED.md.
     pub async fn run(&mut self) {
         use tokio::sync::broadcast;
         use crate::adapter_command::{AdapterCommand, AdapterSource, AdapterPayload};
@@ -630,6 +679,33 @@ impl CliChannel {
             let addr = listener.local_addr().unwrap();
             println!("[ws] WebSocket server on ws://{addr}/ws");
             tokio::spawn(serve_ws(listener, ws_state));
+        }
+
+        // Phase 4: Telegram-адаптер (feature = "telegram")
+        #[cfg(feature = "telegram")]
+        if let Some(token) = adapters_config.telegram_token.clone() {
+            use crate::telegram::{TelegramAdapter, TelegramConfig};
+            let tg = TelegramAdapter::new(TelegramConfig {
+                token,
+                allowed_users: adapters_config.telegram_allowed.clone(),
+            });
+            println!("[telegram] Telegram adapter started");
+            tg.run(command_tx.clone(), broadcast_tx.clone());
+        }
+
+        // Phase 5: OpenSearch-адаптер (feature = "opensearch")
+        #[cfg(feature = "opensearch")]
+        if let Some(url) = adapters_config.opensearch_url.clone() {
+            use crate::opensearch::{OpenSearchAdapter, OpenSearchConfig};
+            let os = OpenSearchAdapter::new(OpenSearchConfig {
+                url,
+                index:         adapters_config.opensearch_index.clone(),
+                tick_interval: adapters_config.opensearch_tick_interval,
+            });
+            println!("[opensearch] OpenSearch adapter started → {}/{}",
+                adapters_config.opensearch_url.as_deref().unwrap_or(""),
+                adapters_config.opensearch_index);
+            os.run(broadcast_tx.clone());
         }
 
         // stdin reader → parse → AdapterCommand
@@ -670,7 +746,7 @@ impl CliChannel {
             }
         });
 
-        // broadcast_rx → stdout (CLI-подписчик)
+        // EA-TD-06: broadcast_rx → stdout (CLI-подписчик) с DetailLevel
         let detail = self.config.detail_level;
         tokio::spawn(async move {
             loop {
@@ -679,13 +755,33 @@ impl CliChannel {
                         print!("{}", output);
                     }
                     Ok(ServerMessage::Result {
-                        domain_name, coherence, traces_matched, position, path, reflex_hit, ..
+                        domain_name, coherence, traces_matched, position, path, reflex_hit, shell, ..
                     }) => {
+                        use crate::effectors::message::DetailLevel;
                         let [x, y, z] = position;
                         let reflex = if reflex_hit { " ⚡reflex" } else { "" };
-                        println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
-                            path, reflex, domain_name, coherence, traces_matched, x, y, z);
-                        let _ = detail; // используется для будущего полного форматирования
+                        match detail {
+                            DetailLevel::Off => {
+                                println!("  [{}{}] → {}", path, reflex, domain_name);
+                            }
+                            DetailLevel::Min => {
+                                println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
+                                    path, reflex, domain_name, coherence, traces_matched, x, y, z);
+                            }
+                            DetailLevel::Mid => {
+                                println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
+                                    path, reflex, domain_name, coherence, traces_matched, x, y, z);
+                                println!("  shell: {:?}", shell);
+                            }
+                            DetailLevel::Max => {
+                                println!("  ── result ─────────────────────────────");
+                                println!("  path:    {}{}", path, reflex);
+                                println!("  domain:  {} ({})", domain_name, coherence);
+                                println!("  matched: {} traces", traces_matched);
+                                println!("  pos:     ({}, {}, {})", x, y, z);
+                                println!("  shell:   {:?}", shell);
+                            }
+                        }
                     }
                     Ok(ServerMessage::Error { message, .. }) => {
                         eprintln!("  error: {}", message);
@@ -699,16 +795,17 @@ impl CliChannel {
             }
         });
 
-        // Переносим владение engine и auto_saver в tick_loop
+        // Переносим владение engine, auto_saver и config_watcher в tick_loop (EA-TD-05)
         let auto_saver = std::mem::replace(
             &mut self.auto_saver,
             AutoSaver::new(PersistenceConfig::disabled()),
         );
-        let engine = std::mem::replace(&mut self.engine, AxiomEngine::new());
+        let engine         = std::mem::replace(&mut self.engine, AxiomEngine::new());
+        let config_watcher = self.config_watcher.take();
 
         tick_loop(
             engine, command_rx, broadcast_tx, snapshot,
-            auto_saver, self.anchor_set.clone(), adapters_config,
+            auto_saver, self.anchor_set.clone(), adapters_config, config_watcher,
         ).await;
     }
 

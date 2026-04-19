@@ -20,8 +20,7 @@ use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
 
 /// Имя домена по domain_id (используется в диагностике и broadcast-типах).
-#[cfg(feature = "adapters")]
-fn domain_name(id: u16) -> &'static str {
+pub fn domain_name(id: u16) -> &'static str {
     match id % 100 {
         0  => "SUTRA",
         1  => "EXECUTION",

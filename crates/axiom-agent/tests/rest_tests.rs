@@ -43,7 +43,7 @@ async fn spawn_server() -> String {
 
     tokio::spawn(tick_loop(
         make_engine(), command_rx, broadcast_tx, snapshot,
-        make_saver(), None, cfg,
+        make_saver(), None, cfg, None,
     ));
 
     format!("http://127.0.0.1:{port}")

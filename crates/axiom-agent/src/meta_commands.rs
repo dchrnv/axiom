@@ -22,7 +22,7 @@ use axiom_runtime::AxiomEngine;
 use axiom_ucl::{UclCommand, OpCode};
 
 use crate::channels::cli::{CliConfig, CliConfigFile, PerfTracker, fmt_ns};
-use crate::effectors::message::domain_name;
+use axiom_runtime::domain_name;
 
 /// Результат мутирующей мета-команды.
 /// Результат мутирующей мета-команды.

@@ -66,7 +66,7 @@ async fn spawn_full(tick_broadcast: u32, state_broadcast: u32) -> u16 {
 
     tokio::spawn(tick_loop(
         make_engine(), command_rx, broadcast_tx, snapshot,
-        make_saver(), None, cfg,
+        make_saver(), None, cfg, None,
     ));
 
     port

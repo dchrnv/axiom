@@ -69,7 +69,7 @@ async fn test_tick_loop_terminates_on_quit_command() {
 
     tokio::time::timeout(
         std::time::Duration::from_secs(2),
-        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, make_config()),
+        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, make_config(), None),
     ).await.expect("tick_loop should terminate after :quit within 2s");
 }
 
@@ -91,7 +91,7 @@ async fn test_tick_loop_processes_inject_command() {
 
     tokio::time::timeout(
         std::time::Duration::from_secs(2),
-        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, make_config()),
+        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, make_config(), None),
     ).await.expect("tick_loop should terminate");
 
     // Хотя бы одно сообщение должно быть в broadcast
@@ -120,7 +120,7 @@ async fn test_tick_loop_updates_snapshot_after_interval() {
 
     tokio::time::timeout(
         std::time::Duration::from_secs(2),
-        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, config),
+        tick_loop(make_engine(), rx, btx, snap, make_saver(), None, config, None),
     ).await.expect("tick_loop should terminate");
 
     // После хотя бы одного тика snapshot должен быть обновлён (tick_count > 0 или default)

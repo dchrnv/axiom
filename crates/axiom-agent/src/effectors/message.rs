@@ -10,6 +10,7 @@
 //   max — полный вывод: input / routing / output
 
 use axiom_runtime::result::{ProcessingResult, ProcessingPath};
+pub use axiom_runtime::domain_name;
 
 /// Уровень детализации вывода при обработке текстового ввода.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -215,24 +216,6 @@ impl Default for MessageEffector {
     fn default() -> Self { Self::new() }
 }
 
-/// Маппинг domain_id → имя домена.
-/// domain_id = level_id * 100 + offset; offset 0..=10.
-pub fn domain_name(id: u16) -> &'static str {
-    match id % 100 {
-        0  => "SUTRA",
-        1  => "EXECUTION",
-        2  => "SHADOW",
-        3  => "CODEX",
-        4  => "MAP",
-        5  => "PROBE",
-        6  => "LOGIC",
-        7  => "DREAM",
-        8  => "ETHICS",
-        9  => "EXPERIENCE",
-        10 => "MAYA",
-        _  => "UNKNOWN",
-    }
-}
 
 #[cfg(test)]
 mod tests {
