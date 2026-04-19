@@ -29,11 +29,12 @@ pub async fn bind(port: u16) -> TcpListener {
         .expect("failed to bind WebSocket port")
 }
 
-/// Запустить WebSocket-сервер на уже привязанном listener.
+/// Запустить сервер (WebSocket + REST) на уже привязанном listener.
 /// Блокирует задачу — вызывать через tokio::spawn.
 pub async fn serve_ws(listener: TcpListener, state: AppState) {
     let app = Router::new()
         .route("/ws", get(ws_upgrade))
+        .merge(crate::rest::rest_routes())
         .layer(CorsLayer::permissive())
         .with_state(state);
 

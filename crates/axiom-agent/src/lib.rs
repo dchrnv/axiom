@@ -30,3 +30,5 @@ pub mod adapters_config;
 pub mod tick_loop;
 /// WebSocket-адаптер (Phase 1)
 pub mod ws;
+/// REST-адаптер (Phase 2)
+pub mod rest;
