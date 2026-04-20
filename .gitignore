@@ -84,6 +84,7 @@ docs/legal/
 
 # Internal development files
 reference-map.md
+docs/BLUEPRINT.md
 
 # Axiom runtime save data
 axiom-data/

@@ -13,7 +13,7 @@ axiom-space = { path = "../axiom-space" }
 axiom-shell = { path = "../axiom-shell" }
 axiom-domain = { path = "../axiom-domain" }
 axiom-arbiter = { path = "../axiom-arbiter" }
-axiom-runtime = { path = "../axiom-runtime" }
+axiom-runtime = { path = "../axiom-runtime", features = ["adapters"] }
 axiom-ucl = { path = "../axiom-ucl" }
 axiom-frontier = { path = "../axiom-frontier" }
 

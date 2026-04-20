@@ -270,6 +270,43 @@ fn bench_gateway_process_channel(c: &mut Criterion) {
     group.finish();
 }
 
+// ─── domain_detail_snapshot (EA-TD-02: точный compute_shell) ─────────────────
+
+fn engine_with_tokens_and_connections(tokens: usize, conns_per_token: usize) -> AxiomEngine {
+    use axiom_core::Connection;
+    let mut engine = engine_with_tokens(tokens);
+    let idx = engine.ashti.index_of(106).unwrap();
+    let state = engine.ashti.state_mut(idx).unwrap();
+    for i in 0..tokens {
+        for j in 0..conns_per_token {
+            let src = (i + 1) as u32;
+            let tgt = ((i + j + 1) % tokens + 1) as u32;
+            let mut conn = Connection::default();
+            conn.source_id = src;
+            conn.target_id = tgt;
+            conn.strength = 0.5 + (j as f32) * 0.1;
+            let _ = state.add_connection(conn);
+        }
+    }
+    engine
+}
+
+fn bench_domain_detail_snapshot(c: &mut Criterion) {
+    let mut group = c.benchmark_group("AxiomEngine: domain_detail_snapshot");
+    group.measurement_time(Duration::from_secs(5));
+    group.sample_size(50);
+
+    // (tokens, connections_per_token) → общее число связей
+    for (tokens, conns) in [(10, 0), (10, 5), (50, 5), (50, 20), (200, 10)] {
+        let engine = engine_with_tokens_and_connections(tokens, conns);
+        let label = format!("t{}_c{}", tokens, tokens * conns);
+        group.bench_function(&label, |b| {
+            b.iter(|| black_box(engine.domain_detail_snapshot(black_box(106))))
+        });
+    }
+    group.finish();
+}
+
 // ─── groups ──────────────────────────────────────────────────────────────────
 
 criterion_group!(
@@ -300,6 +337,10 @@ criterion_group!(
     bench_gateway_process,
     bench_gateway_process_channel,
 );
+criterion_group!(
+    benches_adapters,
+    bench_domain_detail_snapshot,
+);
 
 criterion_main!(
     benches_core,
@@ -307,4 +348,5 @@ criterion_main!(
     benches_etap6,
     benches_etap7,
     benches_etap8,
+    benches_adapters,
 );

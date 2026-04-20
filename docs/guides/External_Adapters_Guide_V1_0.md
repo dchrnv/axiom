@@ -1,7 +1,7 @@
 # External Adapters Guide V1.0
 
-**Версия:** 1.0 (pre-implementation)  
-**Дата:** 2026-04-15  
+**Версия:** 1.1  
+**Дата:** 2026-04-20  
 **Спецификация:** [docs/spec/External_Adapters_V3_0.md](../spec/External_Adapters_V3_0.md)  
 **План:** [docs/spec/External_Adapters_Plan_V1_0.md](../spec/External_Adapters_Plan_V1_0.md)
 
@@ -271,6 +271,11 @@ curl http://localhost:8080/api/domain/106
 
 Возвращает `DomainDetailSnapshot` с полным списком токенов и связей.
 Таймаут 5 секунд — если tick loop не успевает ответить, возвращает 408.
+
+`DomainDetailSnapshot` содержит `tokens: Vec<TokenSnapshot>`. Поле `shell: [u8; 8]` —
+точный семантический профиль, вычисленный через `axiom_shell::compute_shell` из связей
+домена и его `SemanticContributionTable`. Каждый байт — вес одного из 8 семантических
+слоёв (L1–L8), нормализованный к `[0, 255]`. Пустой shell (`[0;8]`) означает токен без связей.
 
 ### GET /api/domains
 

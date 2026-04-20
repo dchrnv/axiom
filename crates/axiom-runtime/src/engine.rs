@@ -235,9 +235,17 @@ impl AxiomEngine {
     pub fn domain_detail_snapshot(&self, domain_id: u16) -> Option<crate::broadcast::DomainDetailSnapshot> {
         let idx = self.ashti.index_of(domain_id)?;
         let state = self.ashti.state(idx)?;
+        let table = self.ashti.domain(idx).map(|d| &d.semantic_table);
+        let tokens = state.tokens.iter().map(|t| {
+            if let Some(tbl) = table {
+                crate::broadcast::TokenSnapshot::from_token_with_connections(t, &state.connections, tbl)
+            } else {
+                crate::broadcast::TokenSnapshot::from(t)
+            }
+        }).collect();
         Some(crate::broadcast::DomainDetailSnapshot {
             domain_id,
-            tokens:      state.tokens.iter().map(crate::broadcast::TokenSnapshot::from).collect(),
+            tokens,
             connections: state.connections.iter().map(crate::broadcast::ConnectionSnapshot::from).collect(),
         })
     }

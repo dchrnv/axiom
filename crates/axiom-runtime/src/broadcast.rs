@@ -85,18 +85,22 @@ pub struct TokenSnapshot {
 
 impl From<&axiom_core::Token> for TokenSnapshot {
     fn from(t: &axiom_core::Token) -> Self {
-        // shell ([u8; 8]) — это семантический профиль из axiom-shell::Shell,
-        // он не хранится напрямую в Token. При хранении токенов в DomainState
-        // shell не доступен без Shell структуры. Для визуализации используем
-        // диагностическое приближение как в process_and_observe:
-        // L4=|valence|, L5=temperature, L6=mass, остальные=0.
-        let shell: [u8; 8] = [
-            0, 0, 0,
-            t.valence.unsigned_abs(),
-            t.temperature,
-            t.mass,
-            0, 0,
-        ];
+        Self::from_token_with_shell(t, axiom_shell::EMPTY_SHELL)
+    }
+}
+
+impl TokenSnapshot {
+    /// Точный shell через compute_shell (connections + semantic table).
+    pub fn from_token_with_connections(
+        t: &axiom_core::Token,
+        connections: &[axiom_core::Connection],
+        table: &axiom_shell::SemanticContributionTable,
+    ) -> Self {
+        let shell = axiom_shell::compute_shell(t.sutra_id, connections, table);
+        Self::from_token_with_shell(t, shell)
+    }
+
+    fn from_token_with_shell(t: &axiom_core::Token, shell: axiom_shell::ShellProfile) -> Self {
         Self {
             sutra_id:    t.sutra_id,
             position:    t.position,

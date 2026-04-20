@@ -5,13 +5,6 @@
 //
 // Единственный writer AxiomEngine. Все адаптеры взаимодействуют
 // через command_rx (входящие команды) и broadcast_tx (исходящие события).
-//
-// EA-TD-03 ЗАКРЫТ: PerfTracker, event_log, watch_fields, multipass-счётчики
-//   живут в CliState внутри tick_loop. :perf / :events / :watch работают корректно.
-// EA-TD-04 ЗАКРЫТ: Адаптивная частота тиков — tokio::time::sleep с интервалом
-//   из engine.tick_schedule.adaptive_tick.interval_ms().
-// EA-TD-05 ЗАКРЫТ: ConfigWatcher передаётся в tick_loop и поллится каждый тик.
-// EA-TD-06 ЗАКРЫТ: CLI-вывод для Inject использует DetailLevel через format_result.
 
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
@@ -36,7 +29,7 @@ use crate::protocol::ServerMessage;
 
 const EVENT_LOG_CAPACITY: usize = 256;
 
-/// CLI-специфичное состояние tick_loop — заполняет EA-TD-03.
+/// CLI-специфичное состояние tick_loop: производительность, лог событий, watch-поля.
 struct CliState {
     perf:             PerfTracker,
     event_log:        VecDeque<Event>,
@@ -62,7 +55,7 @@ impl CliState {
 /// Принимает engine по значению (владеет им).
 /// Завершается когда command_rx закрывается или получает :quit.
 ///
-/// `config_watcher` — опциональный наблюдатель за config/axiom.yaml (EA-TD-05).
+/// `config_watcher` — опциональный наблюдатель за config/axiom.yaml.
 pub async fn tick_loop(
     mut engine:          AxiomEngine,
     mut command_rx:      mpsc::Receiver<AdapterCommand>,
@@ -83,7 +76,6 @@ pub async fn tick_loop(
     engine.tick_schedule = config.tick_schedule;
 
     loop {
-        // EA-TD-04: адаптивный интервал или фиксированный
         let sleep_ms = if config.adaptive_tick_rate {
             engine.tick_schedule.adaptive_tick.interval_ms()
         } else {
@@ -91,12 +83,11 @@ pub async fn tick_loop(
         };
         tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
 
-        // EA-TD-05: горячая перезагрузка конфигурации (axiom.yaml)
-        // Обнаруживаем изменение и логируем; применение domain-пресетов к running engine
-        // требует engine.apply_domain_config() — будет добавлено отдельно.
+        // Горячая перезагрузка axiom.yaml. Domain-пресеты не применяются к running engine —
+        // AxiomEngine не имеет apply_domain_config(). Перезапустите CLI для полного эффекта.
         if let Some(ref watcher) = config_watcher {
             if let Some(_new_cfg) = watcher.poll() {
-                eprintln!("[config] hot-reload: axiom.yaml changed (domain config reload not yet applied to running engine)");
+                eprintln!("[config] axiom.yaml changed — restart to apply domain config");
             }
         }
 
@@ -129,14 +120,13 @@ pub async fn tick_loop(
             }
         }
 
-        // 2. Tick ядра (с замером времени для EA-TD-03 PerfTracker)
+        // 2. Tick ядра
         let tick_start = Instant::now();
         engine.process_command(&tick_cmd);
         let tick_ns = tick_start.elapsed().as_nanos() as u64;
         let t = engine.tick_count;
         cli_state.perf.record(tick_ns, t);
 
-        // Drain COM-событий в event_log (EA-TD-03)
         for ev in engine.drain_events() {
             if cli_state.event_log.len() >= EVENT_LOG_CAPACITY {
                 cli_state.event_log.pop_front();
@@ -144,7 +134,6 @@ pub async fn tick_loop(
             cli_state.event_log.push_back(ev);
         }
 
-        // EA-TD-04: адаптивная логика idle-тика
         if config.adaptive_tick_rate {
             if had_commands || engine.tension_count() > 0 {
                 let reason = if had_commands {
@@ -203,7 +192,6 @@ pub(crate) fn process_adapter_command(
             let ucl = perceptor.perceive(&text);
             let r   = engine.process_and_observe(&ucl);
 
-            // EA-TD-03: обновить multipass-счётчики
             use axiom_runtime::ProcessingPath;
             if matches!(r.path, ProcessingPath::MultiPass(_)) {
                 cli_state.multipass_count += 1;

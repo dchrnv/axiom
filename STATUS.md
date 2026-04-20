@@ -140,3 +140,4 @@ axiom-space:
 | Adapters 4 | Telegram адаптер — long-poll, route_message, pending корреляция | ✅ |
 | Adapters 5 | OpenSearch адаптер — Result+Tick indexing, fire-and-forget POST | ✅ |
 | Tech Debt | EA-TD-01..06: domain_name, CliState, adaptive tick, ConfigWatcher, DetailLevel | ✅ |
+| EA-TD-02 | TokenSnapshot::shell — точный compute_shell через SemanticContributionTable | ✅ |

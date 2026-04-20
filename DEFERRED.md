@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 23.0
-**Обновлён:** 2026-04-19
+**Версия:** 24.0
+**Обновлён:** 2026-04-20
 
 ---
 
@@ -50,18 +50,6 @@
 Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
 
 **Когда:** При первой реальной ONNX-модели.
-
----
-
-### EA-TD-02 — `shell` в `TokenSnapshot` — диагностическое приближение
-
-**Где:** `axiom-runtime/src/broadcast.rs`, `TokenSnapshot::shell`
-
-`Shell [u8; 8]` не хранится в `Token` (вычисляется из `axiom-shell::Shell`).
-`TokenSnapshot::shell` использует приближение: `[0,0,0,|valence|,temperature,mass,0,0]`.
-
-**Когда:** Если понадобится точный shell в broadcast — добавить `computed_shell: [u8;8]` в
-`DomainState` или пересчитывать через `Shell::from_token` при построении snapshot.
 
 ---
 

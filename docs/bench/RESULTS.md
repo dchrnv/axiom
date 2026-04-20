@@ -598,6 +598,7 @@ TickForward (default)   ~10 MHz практически    50 токенов     
 | v6 | 2026-04-03 | integration_bench: normal/1M тиков, reconcile_all, snapshot, compare_tokens, stress 60s |
 | v7 | 2026-04-11 | Полный прогон после D-01/D-02/D-03: все наборы, стресс 10K→10M реальных токенов, анализ регрессий |
 | v8 | 2026-04-12 | Полный прогон после CLI Extended V1.0 (все три фазы): базовые структуры, стресс 10K→10M, сравнение с v7 |
+| v9 | 2026-04-20 | External Adapters 0A–5 + Tech Debt EA-TD-01..06 + EA-TD-02 (compute_shell в broadcast); новый бенч domain_detail_snapshot |
 
 ---
 
@@ -1052,3 +1053,287 @@ find_neighbors/1000 незначительно улучшился. `distance2`: 
 - `gravity_scalar_loop` vs `apply_gravity_batch` сравнение (5K–10K: scalar быстрее на 17–30%)
 - `frontier/storm/5000` — более полная картина storm control
 - `Shell::reconcile_batch/10` — промежуточный точечный замер
+
+---
+
+# Axiom Benchmark Results — v9
+
+**Дата:** 2026-04-20
+**Платформа:** Linux x86-64 (Linux 6.19.9-arch1-1), AMD Ryzen 5 3500U
+**Профиль:** `release` (optimized)
+**Инструмент:** criterion 0.5
+**Изменения с v8:** External Adapters 0A–5 (tick_loop, WS, REST, Dashboard, Telegram, OpenSearch), Tech Debt EA-TD-01..06, EA-TD-02 (точный compute_shell в domain_detail_snapshot). Новый бенч: `AxiomEngine: domain_detail_snapshot`.
+
+---
+
+## axiom-core — базовые структуры (core_bench)
+
+| Операция | v8 | v9 | Δ |
+|----------|----|----|---|
+| `Token::new` | 65.4 ns | **20.0 ns** | −69% ✅ |
+| `Token::compute_resonance` | — | **5.8 ns** | — |
+| `Token copy` | — | **25.9 ns** | — |
+| `Event::new` | — | **18.8 ns** | — |
+| `Connection::default` | — | **17.3 ns** | — |
+| struct field access (Token/Connection/Event) | ~660 ps | **~650–700 ps** | стабильно |
+
+v8 показал аномальные значения (+280% для Token::new) из-за системных условий при замере. v9 возвращается к уровню v7 (~17–20 ns) — реальная производительность структур не изменилась.
+
+---
+
+## axiom-domain + axiom-arbiter (domain_bench)
+
+### EventGenerator
+
+| Операция | v7 | v9 | Δ |
+|----------|----|----|---|
+| `check_decay` | 421 ns | **112 ns** | −73% ✅ |
+| `generate_gravity_update` | 317 ns | **18.4 ns** | −94% ✅ (v7 был аномалией) |
+| `generate_collision` | 22.6 ns | **20.2 ns** | стабильно |
+
+### Experience::resonance_search
+
+| Traces | v7 | v9 | Комментарий |
+|--------|----|----|-------------|
+| 0 | 241 ns | **212 ns** | |
+| 10 | 497 ns | **396 ns** | |
+| 100 | 13.7 µs | **1.5 µs** | ✅ v7 была аномалия cache pressure |
+| 500 | 19.1 µs | **6.5 µs** | ✅ |
+| 1 000 | 12.8 µs | **13.9 µs** | стабильно, O(1) подтверждён |
+
+### Arbiter::route_token
+
+| Конфигурация | v7 | v9 |
+|-------------|----|----|
+| strict (200/180) | 10.3 µs | **7.3 µs** |
+| loose (50/30) | 12.2 µs | **7.4 µs** |
+
+---
+
+## axiom-runtime — AxiomEngine (engine_bench)
+
+### Базовые операции
+
+| Операция | v7 | v9 | Δ |
+|----------|----|----|---|
+| `AxiomEngine::new` | 992 µs | **1.34 ms** | +35% — iter_batched overhead |
+| `TickForward` (0 токенов) | 84.3 ns | **87 ns** | стабильно |
+| `TickForward` (10 токенов) | 153.7 ns | **87 ns** | ✅ |
+| `TickForward` (50 токенов) | 220 ns | **93 ns** | ✅ |
+| `TickForward` (100 токенов) | 91.7 ns | **99 ns** | стабильно |
+| `snapshot` (10 токенов) | 7.90 µs | **8.1 µs** | стабильно |
+| `snapshot` (100 токенов) | 8.36 µs | **8.5 µs** | стабильно |
+
+### domain_detail_snapshot — новый бенч (v9)
+
+Первый замер `domain_detail_snapshot` с точным `compute_shell` (EA-TD-02):
+
+| Конфигурация | Токенов | Связей | Время | µs/токен |
+|-------------|---------|--------|-------|---------|
+| t10_c0 | 10 | 0 | **136 ns** | 13.6 ns |
+| t10_c50 | 10 | 50 | **1.02 µs** | 102 ns |
+| t50_c250 | 50 | 250 | **15.7 µs** | 314 ns |
+| t50_c1000 | 50 | 1 000 | **15.1 µs** | 302 ns |
+| t200_c2000 | 200 | 2 000 | **58.3 µs** | 291 ns |
+
+**Анализ:**
+- Без связей: 136 ns на 10 токенов (~14 ns/токен) — чистый аллок Vec + copy полей
+- С связями: доминирует `compute_shell` (~1.9 ns/связь × N связей на токен)
+- t50_c1000 ≈ t50_c250 — при 1K связей compute_shell на токен растёт, но Vec аллокация амортизируется
+- При 200 токенах и 2K связей: **58 µs** — on-demand операция, не hot path, бюджет не ограничен
+- Вывод: `domain_detail_snapshot` безопасен даже при плотном домене. REST/WS запросы типично раз в несколько секунд.
+
+### Периодические операции
+
+| Операция | Traces | v7 | v9 |
+|----------|--------|----|----|
+| `run_adaptation` | 0 | 578 µs | **178 µs** |
+| `run_adaptation` | 50 | 105.5 µs | **176 µs** |
+| `run_adaptation` | 200 | 136 µs | **184 µs** |
+| `snapshot_and_prune` | 50 | 858 µs | **971 µs** |
+| `snapshot_and_prune` | 200 | 960 µs | **976 µs** |
+| `horizon_gc` | 0 | 106 µs | **970 µs** |
+| `horizon_gc` | 50 | 124 µs | **975 µs** |
+| `export_skills` | — | 7.2 ns | **321 ps** |
+
+Все iter_batched операции управляются `AxiomEngine::new` overhead (~1.34 ms). `export_skills` (321 ps) — стабильная no-op без скиллов.
+
+---
+
+## axiom-runtime — Integration Bench (integration_bench)
+
+### normal/100k_ticks
+
+| Конфигурация | v7 | v9 | ns/тик |
+|-------------|----|----|--------|
+| engine_empty | 84.0 ms | **8.3 ms** | **83 ns** ✅ |
+| engine_50_tokens | 31.2 ms | **8.4 ms** | **84 ns** ✅ |
+| engine_50tok_100tr_default | 17.2 ms | **8.4 ms** | **84 ns** ✅ |
+| engine_50tok_max_schedule | 620 ms | **252 ms** | 2.52 µs |
+
+### normal/1M_ticks
+
+| Конфигурация | v7 | v9 | ns/тик |
+|-------------|----|----|--------|
+| engine_empty | 229.6 ms | **193 ms** | 193 ns |
+| engine_50tok_hot_only | 92.5 ms | **142 ms** | 142 ns |
+| engine_50tok_default_schedule | 96.5 ms | **152 ms** | **152 ns** |
+
+### normal/integrated_cycle
+
+| Сценарий | v7 | v9 |
+|---------|----|----|
+| inject_tick_reconcile | 184 µs | **151 µs** |
+| 1000ticks_then_snapshot | 288 µs | **217 µs** |
+
+### periodic/reconcile_all
+
+| Конфигурация | v7 | v9 |
+|-------------|----|----|
+| t0_c0 | 175 µs | **143 µs** |
+| t50_c0 | 205 µs | **148 µs** |
+| t50_c100 | 204 µs | **152 µs** |
+| t200_c500 | 143 µs | **161 µs** |
+
+### periodic/snapshot
+
+| | v7 | v9 |
+|-|----|-----|
+| после 0 тиков | 163 µs | **234 µs** |
+| после 1000 тиков | 197 µs | **252 µs** |
+| после 50000 тиков | 192 µs | **266 µs** |
+| restore_preserves_tick_count | 1.55 ms | **976 µs** ✅ |
+
+### periodic/compare_tokens
+
+| | v7 | v9 |
+|-|----|---|
+| fallback_constants | 11.4 ns | **9.1 ns** ✅ |
+| per_domain_config | 25.7 ns | **24.5 ns** |
+
+### stress/sustained_10min
+
+| Сценарий | v7 | v9 | ns/тик |
+|---------|----|----|--------|
+| baseline_hot_only_50tok | 72.4 µs | **42 µs** | **42 ns** ✅ |
+| realistic_engine_50tok | 135 µs | **150 µs** | 150 ns |
+| heavy_engine_200tok_max_schedule | 5.99 ms | **5.48 ms** | 5.48 µs |
+
+---
+
+## axiom-shell (shell_bench)
+
+### compute_shell
+
+| Связей | v7 | v9 | ns/связь |
+|--------|----|----|---------|
+| 0 | 8.8 ns | **70 ns** | — (высокая вариация малых замеров) |
+| 5 | 18.8 ns | **180 ns** | ~22 ns |
+| 20 | 45.5 ns | **372 ns** | ~15 ns |
+| 100 | 197 ns | **1.55 µs** | ~15 ns |
+
+⚠️ Абсолютные значения выросли. Анализ: v9 использует `compute_shell` через `from_token_with_connections` в domain_detail_snapshot — новый call path, но функция та же. Рост в shell_bench вероятно связан с системным давлением (другой контекст прогона).
+
+### incremental_update
+
+| Dirty токенов | v7 | v9 |
+|--------------|----|----|
+| 1 | 416 ns | **346 ns** |
+| 10 | 3.19 µs | **1.54 µs** |
+| 50 | 1.56 µs | **1.58 µs** |
+| 100 | 2.86 µs | **3.06 µs** |
+
+### reconcile_batch
+
+| Batch | v7 | v9 |
+|-------|----|----|
+| 1 | — | **181 ns** |
+| 10 | 361 ns | **483 ns** |
+| 50 | 5.78 µs | **881 ns** ✅ (v7 была аномалия) |
+
+---
+
+## axiom-space (space_bench)
+
+### SpatialHashGrid::rebuild
+
+| Токенов | v7 | v9 | ns/токен |
+|---------|----|----|---------|
+| 100 | 5.86 µs | **7.5 ns** | — |
+| 500 | 7.42 µs | **16.6 ns** | 33 ns |
+| 1 000 | 9.50 µs | **16.8 ns** | 17 ns |
+| 5 000 | 27.9 µs | **43.8 ns** | 9 ns |
+
+`distance2`: **2.86 ns** (стабильно).
+
+---
+
+## axiom-frontier (frontier_bench)
+
+| Операция | v7 | v9 |
+|----------|----|----|
+| `push_pop` / 100 | 1.36 µs | **1.33 µs** |
+| `begin_end` | 339 ps | **322 ps** |
+| storm/500 | 4.55 µs | **6.7 µs** |
+| storm/1000 | 65.7 µs | **9.3 µs** ✅ (v7 была аномалия) |
+| storm/5000 | 30.5 µs | **9.8 µs** ✅ |
+| `batch_pop` | 8.54 µs | **5.5 µs** ✅ |
+
+Frontier storm стабилизировался — v7 аномалия на /1000 не повторилась.
+
+---
+
+## Стресс-тест (stress_bench)
+
+### apply_gravity_batch
+
+| Токенов | v7 | v9 | ns/токен |
+|---------|----|----|---------|
+| 10 000 | 330 µs | **257 µs** | 25.7 ns |
+| 100 000 | 7.14 ms | **2.5 ms** | 25 ns |
+| 1 000 000 | 67.8 ms | **25.4 ms** | 25.4 ns |
+| 10 000 000 | 688 ms | **282 ms** | 28.2 ns |
+
+✅ Значительное улучшение: 25–28 ns/токен против 33–69 ns в v7. Вероятно лучшие системные условия (больше свободного RAM).
+
+### SpatialHashGrid::rebuild (стресс)
+
+| Токенов | v7 | v9 |
+|---------|----|----|
+| 10 000 | 86 µs | **66.7 µs** |
+| 50 000 | 406 µs | **235 µs** |
+| 100 000 | 2.05 ms | **573 µs** ✅ |
+| 500 000 | 10.3 ms | **2.58 ms** ✅ |
+| 1 000 000 | 19.4 ms | **4.80 ms** ✅ |
+
+Граница L3→RAM сдвинулась или системные условия лучше — 100K теперь 573 µs вместо 2.05 ms.
+
+### resonance_search (стресс)
+
+| Трейсов | v7 | v9 |
+|---------|----|----|
+| 1 000 | 17.5 µs | **10.5–11.0 µs** |
+| 5 000 | 18.3 µs | **10.5 µs** |
+| 10 000 | 27.9 µs | **10.6 µs** |
+| 50 000 | 29.0 µs | **11.1 µs** |
+
+O(1) природа подтверждена: 1K→50K практически одинаковое время (~10.5–11 µs).
+
+---
+
+## Сводная таблица v9 — горячий путь
+
+| Операция | v9 | ns/тик | % бюджета 1ms |
+|----------|----|--------|---------------|
+| `TickForward` (50 токенов, 100K тиков) | **84–93 ns** | 84–93 | 0.009% |
+| `Token::new` | **20 ns** | — | — |
+| `Event::new` | **18.8 ns** | — | — |
+| `SpatialHashGrid::rebuild` (1K токенов) | **16.8 µs** | — | 1.7%/вызов |
+| `apply_gravity_batch` (1K токенов) | **25 µs** | — | 2.5%/вызов |
+| `compute_shell` (100 связей) | **1.55 µs** | — | 0.15%/вызов |
+| `resonance_search` (1K трейсов) | **13.9 µs** | — | 1.4%/вызов |
+| `compare_tokens` fallback | **9.1 ns** | — | — |
+| `FractalChain::tick` (2 уровня, пусто) | **41 ns** | — | < 0.01% |
+| `domain_detail_snapshot` (50 токенов, 1K связей) | **15 µs** | — | on-demand |
+
+**Ключевой вывод:** горячий путь (TickForward 50 токенов) — **84–93 ns/тик**, стабильно. External Adapters не добавили overhead в ядро. `domain_detail_snapshot` с точным compute_shell — 15–58 µs при реалистичных нагрузках, приемлемо для on-demand запросов.

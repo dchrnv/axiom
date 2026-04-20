@@ -152,6 +152,11 @@ impl AshtiCore {
         self.arbiter.experience_mut()
     }
 
+    /// Доступ к Domain (физика поля) по его позиции (0–10).
+    pub fn domain(&self, index: usize) -> Option<&Domain> {
+        self.domains.get(index)
+    }
+
     /// Доступ к состоянию домена по его позиции (0–10).
     pub fn state(&self, index: usize) -> Option<&DomainState> {
         self.states.get(index)
