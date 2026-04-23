@@ -73,7 +73,7 @@ pub async fn tick_loop(
     let mut config_watcher = config_watcher;
 
     // Применяем TickSchedule из конфига
-    engine.tick_schedule = config.tick_schedule;
+    engine.tick_schedule = config.tick_schedule.clone();
 
     loop {
         let sleep_ms = if config.adaptive_tick_rate {

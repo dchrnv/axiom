@@ -28,6 +28,8 @@ mod orchestrator;
 pub mod result;
 /// AdaptiveTickRate — Variable Tick Rate (Axiom Sentinel V1.0, Фаза 3)
 pub mod adaptive;
+/// Over-Domain Layer: Guardians + Weavers (Over_Domain_Layer_V1_1.md)
+pub mod over_domain;
 /// Broadcast-типы для внешних адаптеров (WebSocket, REST, egui).
 /// Доступны только при feature "adapters".
 #[cfg(feature = "adapters")]
@@ -38,7 +40,7 @@ pub use engine::{AxiomEngine, AxiomError, TickSchedule, domain_name};
 pub use broadcast::{BroadcastSnapshot, DomainSummary, DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot};
 pub use result::{ProcessingResult, ProcessingPath};
 pub use guardian::{
-    Guardian, ReflexDecision, VetoReason,
+    Guardian, GuardianConfig, ReflexDecision, VetoReason,
     InhibitAction, InhibitReason,
     CodexAction, GuardianError, GuardianStats,
     RoleStats,
@@ -48,3 +50,4 @@ pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter, EventBus, Perce
 pub use gateway::Gateway;
 pub use channel::{Channel, ChannelBatchResult};
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
+pub use over_domain::{WeaverId, OverDomainError, OverDomainComponent, Weaver, CrystallizationProposal, PromotionProposal};

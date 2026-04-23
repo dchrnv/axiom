@@ -163,7 +163,7 @@ pub fn handle_meta_read(
         }
 
         ":schedule" => {
-            let s = engine.tick_schedule;
+            let s = engine.tick_schedule.clone();
             writeln!(out, "  adaptation:    {}", s.adaptation_interval).unwrap();
             writeln!(out, "  horizon_gc:    {}", s.horizon_gc_interval).unwrap();
             writeln!(out, "  snapshot:      {}", s.snapshot_interval).unwrap();
@@ -279,7 +279,7 @@ pub fn handle_meta_read(
             if budget_ns > 0 {
                 writeln!(out, "  budget used:  {:.2}%", avg / budget_ns as f64 * 100.0).unwrap();
             }
-            let s = engine.tick_schedule;
+            let s = engine.tick_schedule.clone();
             let t = perf.total_ticks;
             writeln!(out, "  ── periodic tasks (calls) ─────────────").unwrap();
             if s.adaptation_interval > 0 {

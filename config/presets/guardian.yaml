@@ -1,0 +1,39 @@
+# Guardian Configuration — параметры адаптации (скорость обучения модели)
+#
+# Управляет поведением adapt_thresholds и adapt_domain_physics в Guardian.
+# Подключается через секцию `guardian:` в axiom-cli.yaml.
+#
+# Все значения ниже — defaults. Закомментируйте или измените нужные.
+
+# ─── Пороги успешности ────────────────────────────────────────────────────────
+
+# success_rate выше которого reflex_threshold снижается (пороги ужесточаются)
+high_success_threshold: 0.8
+
+# success_rate ниже которого reflex_threshold повышается (пороги ослабляются)
+low_success_threshold: 0.3
+
+# success_rate выше которого temperature снижается (домен охлаждается)
+physics_high_threshold: 0.7
+
+# ─── Шаги изменения ──────────────────────────────────────────────────────────
+
+# Δ reflex_threshold за цикл адаптации (u8, шаг дискретный)
+threshold_step: 5
+
+# Δ temperature за цикл адаптации (Кельвин)
+temp_step: 5.0
+
+# Нижний предел temperature после адаптации
+temp_min: 0.1
+
+# Верхний предел temperature после адаптации
+temp_max: 500.0
+
+# Δ resonance_freq за цикл адаптации (Hz)
+resonance_step: 10
+
+# ─── ML-валидация ─────────────────────────────────────────────────────────────
+
+# Верхняя граница валидного ML-confidence (защита от adversarial inputs)
+confidence_ceiling: 0.99

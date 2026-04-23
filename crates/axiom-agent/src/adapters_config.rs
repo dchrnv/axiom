@@ -52,12 +52,8 @@ pub struct AdaptersConfig {
     /// Индексировать Tick каждые N тиков (0 = не индексировать)
     pub opensearch_tick_interval: u64,
 
-    // EA-TD-03/04/05/06 — CLI-специфичные параметры для tick_loop
-    /// Подробный вывод состояния ядра (EA-TD-03)
     pub verbose:           bool,
-    /// Уровень детализации CLI-вывода (EA-TD-06)
     pub detail_level:      DetailLevel,
-    /// Включена ли адаптивная частота тиков (EA-TD-04)
     pub adaptive_tick_rate: bool,
 }
 
@@ -67,7 +63,7 @@ impl AdaptersConfig {
         Self {
             tick_hz:           c.tick_hz,
             data_dir:          c.data_dir.clone(),
-            tick_schedule:     c.tick_schedule,
+            tick_schedule:     c.tick_schedule.clone(),
             websocket: WebSocketConfig {
                 enabled: c.ws_enabled,
                 port:    c.ws_port,

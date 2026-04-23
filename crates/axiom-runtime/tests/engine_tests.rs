@@ -240,12 +240,12 @@ fn test_guardian_check_required_constant() {
 #[test]
 fn test_unimplemented_opcodes_return_success() {
     let mut engine = AxiomEngine::new();
+    // BondTokens и ReinforceFrame — реализованы (не no-op), поэтому не входят сюда
     let unimplemented = [
         OpCode::LockMembrane,
         OpCode::ReshapeDomain,
         OpCode::ApplyForce,
         OpCode::AnnihilateToken,
-        OpCode::BondTokens,
         OpCode::SplitToken,
         OpCode::ChangeTemperature,
         OpCode::ApplyGravity,

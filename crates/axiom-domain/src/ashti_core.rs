@@ -201,6 +201,41 @@ impl AshtiCore {
         Ok(result)
     }
 
+    /// Добавить Connection в указанный домен.
+    ///
+    /// Используется Over-Domain компонентами (FrameWeaver) для кристаллизации
+    /// реляционных структур. Аналог inject_token для связей.
+    pub fn inject_connection(&mut self, domain_id: u16, conn: axiom_core::Connection) -> Result<usize, crate::CapacityExceeded> {
+        let idx = self.index_of(domain_id).ok_or(crate::CapacityExceeded)?;
+        let result = self.states[idx].add_connection(conn)?;
+        self.domains[idx].active_connections = self.states[idx].connection_count();
+        Ok(result)
+    }
+
+    /// Найти токен по sutra_id в указанном домене. Возвращает копию токена если найден.
+    pub fn find_token_by_sutra_id(&self, domain_id: u16, sutra_id: u32) -> Option<Token> {
+        let idx = self.index_of(domain_id)?;
+        self.states[idx].tokens.iter().find(|t| t.sutra_id == sutra_id).copied()
+    }
+
+    /// Обновить mass и temperature токена по sutra_id в указанном домене.
+    ///
+    /// Используется ReinforceFrame: повышает активность существующего Frame-анкера.
+    pub fn reinforce_token(&mut self, domain_id: u16, sutra_id: u32, delta_mass: u8, delta_temperature: u8) -> bool {
+        let idx = match self.index_of(domain_id) {
+            Some(i) => i,
+            None => return false,
+        };
+        for token in &mut self.states[idx].tokens {
+            if token.sutra_id == sutra_id {
+                token.mass = token.mass.saturating_add(delta_mass);
+                token.temperature = token.temperature.saturating_add(delta_temperature);
+                return true;
+            }
+        }
+        false
+    }
+
     /// Доступ к REFLECTOR — статистика рефлексов для адаптации порогов.
     pub fn reflector(&self) -> &axiom_arbiter::Reflector {
         &self.arbiter.reflector

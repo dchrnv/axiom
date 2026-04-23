@@ -43,6 +43,8 @@ pub enum OpCode {
     // --- Dual-Path Processing (4000+) ---
     ProcessTokenDualPath = 4000, // Обработка токена через Arbiter (reflex + ASHTI)
     FinalizeComparison = 4001,   // Финализация сравнения и обучение
+    UnfoldFrame = 4002,          // Развернуть Frame из EXPERIENCE в целевой домен
+    ReinforceFrame = 4003,       // Усилить существующий Frame-анкер по lineage_hash
 
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000,     // Остановка реактора
@@ -53,11 +55,12 @@ pub enum OpCode {
 
 /// Флаги команд
 pub mod flags {
-    pub const SYNC: u8 = 0x01;           // Синхронное выполнение
-    pub const FORCE: u8 = 0x02;           // Принудительное выполнение
+    pub const SYNC: u8 = 0x01;             // Синхронное выполнение
+    pub const FORCE: u8 = 0x02;            // Принудительное выполнение
     pub const BYPASS_MEMBRANE: u8 = 0x04;  // Обойти мембрану
-    pub const NO_EVENTS: u8 = 0x08;       // Не генерировать события
-    pub const CRITICAL: u8 = 0x10;        // Критический приоритет
+    pub const NO_EVENTS: u8 = 0x08;        // Не генерировать события
+    pub const CRITICAL: u8 = 0x10;         // Критический приоритет
+    pub const FRAME_ANCHOR: u8 = 0x20;     // InjectToken использует InjectFrameAnchorPayload
 }
 
 /// Основная структура команды - 64 байта
@@ -155,6 +158,77 @@ pub struct ProcessTokenPayload {
 pub struct FinalizeComparisonPayload {
     pub event_id: u64,          // 8b | ID события для финализации
     pub reserved: [u8; 40],     // 40b | Резерв
+}
+
+/// Payload для UnfoldFrame (4002)
+///
+/// Разворачивает Frame из EXPERIENCE (или SUTRA для промотированных) в целевой домен.
+/// GUARDIAN проверяет права запрашивающего домена на чтение EXPERIENCE.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct UnfoldFramePayload {
+    pub frame_anchor_id: u32,   // 4b | sutra_id анкер-токена Frame в EXPERIENCE
+    pub target_domain_id: u16,  // 2b | домен назначения для развёртывания
+    pub unfold_depth: u8,       // 1b | глубина развёртывания (0 = default из конфига)
+    pub reserved: [u8; 41],     // 41b | Резерв
+}
+
+/// Payload для InjectToken с флагом FRAME_ANCHOR (flags::FRAME_ANCHOR = 0x20).
+///
+/// Инжектирует Frame-анкер с полными метаданными (type_flags, state, lineage_hash).
+/// Используется FrameWeaver при кристаллизации Frame в EXPERIENCE или при промоции в SUTRA.
+///
+/// Layout (repr(C), без паддинга, поля упорядочены по убыванию выравнивания):
+/// lineage_hash[0..8] + proposed_sutra_id[8..12] + target_domain_id[12..14] +
+/// type_flags[14..16] + position[16..22] + state[22] + mass[23] +
+/// temperature[24] + valence[25] + reserved[26..48] = 48 байт.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct InjectFrameAnchorPayload {
+    pub lineage_hash: u64,       // 8b | FNV-1a хэш sutra_id участников (для дедупликации)
+    pub proposed_sutra_id: u32,  // 4b | предлагаемый sutra_id (0 = движок назначит сам)
+    pub target_domain_id: u16,   // 2b | 109=EXPERIENCE, 100=SUTRA
+    pub type_flags: u16,         // 2b | TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_*
+    pub position: [i16; 3],      // 6b | центр масс позиций участников
+    pub state: u8,               // 1b | STATE_ACTIVE (EXPERIENCE) или STATE_LOCKED (SUTRA)
+    pub mass: u8,                // 1b | начальная масса
+    pub temperature: u8,         // 1b | начальная температура
+    pub valence: i8,             // 1b | валентность (обычно 0)
+    pub reserved: [u8; 22],      // 22b | резерв
+}
+
+/// Payload для BondTokens (2003) — создать Connection между двумя токенами.
+///
+/// Применяется FrameWeaver для связывания Frame-анкера с участниками.
+/// origin_domain и role_id кодируются в reserved_gate[0..4] Connection.
+///
+/// Layout: 4+4+2+2+4+4+2+2+24 = 48 байт.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct BondTokensPayload {
+    pub source_id: u32,         // 4b | sutra_id источника (Frame-анкер)
+    pub target_id: u32,         // 4b | sutra_id цели (участник)
+    pub domain_id: u16,         // 2b | домен связи (109=EXPERIENCE)
+    pub link_type: u16,         // 2b | синтаксическая роль (0x08XX)
+    pub strength: f32,          // 4b | сила связи (обычно 1.0)
+    pub conn_flags: u32,        // 4b | FLAG_ACTIVE=1, ...
+    pub origin_domain: u16,     // 2b | исходный домен участника (→ reserved_gate[0..2])
+    pub role_id: u16,           // 2b | роль участника (→ reserved_gate[2..4])
+    pub reserved: [u8; 24],     // 24b | резерв
+}
+
+/// Payload для ReinforceFrame (4003)
+///
+/// Усиливает существующий Frame-анкер: увеличивает mass и temperature.
+/// Используется FrameWeaver когда lineage_hash совпадает с существующим Frame.
+/// GUARDIAN проверяет TOKEN_FLAG_FRAME_ANCHOR у целевого токена.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ReinforceFramePayload {
+    pub anchor_id: u32,         // 4b | sutra_id Frame-анкера в EXPERIENCE
+    pub delta_mass: u8,         // 1b | приращение mass
+    pub delta_temperature: u8,  // 1b | приращение temperature
+    pub reserved: [u8; 42],     // 42b | Резерв
 }
 
 impl UclCommand {

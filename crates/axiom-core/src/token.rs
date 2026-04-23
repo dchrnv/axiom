@@ -23,6 +23,20 @@ pub const TOKEN_FLAG_GOAL: u16 = 0x0001;
 /// Предотвращает петлю: impulse → tension → impulse → ...
 pub const TOKEN_FLAG_IMPULSE: u16 = 0x0002;
 
+/// Токен является анкером Frame в EXPERIENCE (domain_id=109, state=STATE_ACTIVE).
+/// Устанавливается FrameWeaver при кристаллизации узора.
+pub const TOKEN_FLAG_FRAME_ANCHOR: u16 = 0x0010;
+
+/// Frame-анкер был промотирован из EXPERIENCE в SUTRA через CODEX-санкцию.
+/// В SUTRA: domain_id=100, state=STATE_LOCKED, оригинал в EXPERIENCE сохраняется.
+pub const TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE: u16 = 0x0020;
+
+/// Маска для выделения категории Frame из type_flags (старший байт).
+pub const FRAME_CATEGORY_MASK: u16 = 0xFF00;
+
+/// Синтаксический Frame: подлежащее–сказуемое–дополнение и реляционные роли (V1.1).
+pub const FRAME_CATEGORY_SYNTAX: u16 = 0x0100;
+
 /// Флаги состояния токена
 pub const STATE_ACTIVE: u8 = 1;
 /// Токен находится в спящем режиме

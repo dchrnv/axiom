@@ -215,8 +215,10 @@ fn test_semantic_contribution_table_default_ashti_core() {
     // 0x07: Motor [10, 0, 25, 0, 5, 0, 0, 0]
     assert_eq!(table.get(0x0700), &[10, 0, 25, 0, 5, 0, 0, 0]);
 
+    // 0x08: Syntactic [0, 0, 0, 0, 10, 5, 0, 15] — FrameWeaver V1.1
+    assert_eq!(table.get(0x0800), &[0, 0, 0, 0, 10, 5, 0, 15]);
+
     // Неопределённые категории остаются нулевыми
-    assert_eq!(table.get(0x0800), &[0; 8]);
     assert_eq!(table.get(0xFF00), &[0; 8]);
 }
 

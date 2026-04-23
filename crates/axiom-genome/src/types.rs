@@ -22,10 +22,11 @@ pub enum ModuleId {
     Guardian   = 12,
     Heartbeat  = 13,
     Shell      = 14,
-    Adapters   = 15,
+    Adapters     = 15,
+    FrameWeaver  = 16,
 }
 
-pub const MAX_MODULES: usize = 16;
+pub const MAX_MODULES: usize = 17;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

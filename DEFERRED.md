@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 24.0
-**Обновлён:** 2026-04-20
+**Версия:** 25.0
+**Обновлён:** 2026-04-23
 
 ---
 
@@ -50,6 +50,47 @@
 Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
 
 **Когда:** При первой реальной ONNX-модели.
+
+---
+
+### FW-TD-01 — FrameWeaver: pending_commands не подключены к tick-loop
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs`, `crates/axiom-runtime/src/engine.rs`
+
+`FrameWeaver::on_tick` накапливает UCL-команды в `pending_commands`, но `handle_tick_forward` их не сливает и не исполняет. Метод `drain_commands()` создан, но не вызывается.
+
+**Что нужно (Фаза 4):**
+1. Хранить `FrameWeaver` по значению в `AxiomEngine` (рядом с `guardian`)
+2. После цикла `over_domain_components` вызвать `frame_weaver.drain_commands()` и пропустить каждую команду через `self.process_command()`
+3. Зарегистрировать `FrameWeaver` также в `over_domain_components` через Box (для on_tick)
+
+**Когда:** Фаза 4 FrameWeaver — следующий активный этап.
+
+---
+
+### FW-TD-02 — FrameWeaver: min_participant_anchors не проверяется
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs`, метод `qualifies_for_promotion`
+
+Поле `PromotionRule::min_participant_anchors` (минимум участников, которые сами являются анкерами SUTRA) не проверяется — требует cross-domain lookup: найти sutra_ids участников Frame в SUTRA-домене. В текущей сигнатуре `check_promotion` нет доступа к AshtiCore.
+
+**Что нужно:**
+- Расширить сигнатуру `Weaver::check_promotion` (добавить `ashti: &AshtiCore`) или
+- Передавать предвычисленный список SUTRA-анкеров снаружи
+
+**Когда:** При реализации полного пути промоции.
+
+---
+
+### FW-TD-03 — Weaver::check_promotion без доступа к current_tick
+
+**Где:** `crates/axiom-runtime/src/over_domain/traits.rs`, сигнатура `check_promotion`
+
+Сигнатура `fn check_promotion(&self, experience_state: &DomainState, anchors: &[&Token]) -> Vec<PromotionProposal>` не передаёт текущий tick, поэтому `qualifies_for_promotion` использует `tick_proxy = 0` для проверки `min_age_ticks`.
+
+**Что нужно:** Добавить `tick: u64` параметр в сигнатуру трейта (breaking change).
+
+**Когда:** При первой реальной промоции EXPERIENCE → SUTRA.
 
 ---
 

@@ -151,7 +151,7 @@ fn format_event_type(et: u16) -> String {
 
 use axiom_config::{self, ConfigWatcher, AnchorSet};
 use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, TickSchedule};
+use axiom_runtime::{AxiomEngine, TickSchedule, GuardianConfig};
 use crate::perceptors::text::TextPerceptor;
 use crate::effectors::message::{MessageEffector, DetailLevel};
 use tokio::sync::mpsc;
@@ -278,6 +278,38 @@ impl TickScheduleConfig {
     }
 }
 
+// ─── GuardianConfig YAML-зеркало ─────────────────────────────────────────────
+
+/// YAML-зеркало GuardianConfig. Все поля опциональны — отсутствующие берутся из `GuardianConfig::default()`.
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+pub struct GuardianConfigYaml {
+    #[serde(default)] pub high_success_threshold: Option<f32>,
+    #[serde(default)] pub low_success_threshold:  Option<f32>,
+    #[serde(default)] pub physics_high_threshold: Option<f32>,
+    #[serde(default)] pub threshold_step:         Option<u8>,
+    #[serde(default)] pub temp_step:              Option<f32>,
+    #[serde(default)] pub temp_min:               Option<f32>,
+    #[serde(default)] pub temp_max:               Option<f32>,
+    #[serde(default)] pub resonance_step:         Option<u16>,
+    #[serde(default)] pub confidence_ceiling:     Option<f32>,
+}
+
+impl GuardianConfigYaml {
+    /// Применить значения из YAML поверх дефолтного GuardianConfig.
+    pub fn apply_to(&self, g: &mut GuardianConfig) {
+        if let Some(v) = self.high_success_threshold { g.high_success_threshold = v; }
+        if let Some(v) = self.low_success_threshold  { g.low_success_threshold  = v; }
+        if let Some(v) = self.physics_high_threshold { g.physics_high_threshold = v; }
+        if let Some(v) = self.threshold_step         { g.threshold_step         = v; }
+        if let Some(v) = self.temp_step              { g.temp_step              = v; }
+        if let Some(v) = self.temp_min               { g.temp_min               = v; }
+        if let Some(v) = self.temp_max               { g.temp_max               = v; }
+        if let Some(v) = self.resonance_step         { g.resonance_step         = v; }
+        if let Some(v) = self.confidence_ceiling     { g.confidence_ceiling     = v; }
+    }
+}
+
 // ─── CliConfigFile — YAML-структура ──────────────────────────────────────────
 
 /// Файл конфигурации CLI Channel (axiom-cli.yaml).
@@ -312,6 +344,9 @@ pub struct CliConfigFile {
     /// Горячая перезагрузка config/axiom.yaml во время работы (default: false)
     #[serde(default)]
     pub hot_reload: Option<bool>,
+    /// Параметры адаптации Guardian (скорость обучения)
+    #[serde(default)]
+    pub guardian: Option<GuardianConfigYaml>,
 }
 
 impl CliConfigFile {
@@ -371,6 +406,8 @@ pub struct CliConfig {
     pub detail_level: DetailLevel,
     /// Горячая перезагрузка config/axiom.yaml во время работы (default: false)
     pub hot_reload: bool,
+    /// Параметры адаптации Guardian (скорость обучения модели)
+    pub guardian_config: GuardianConfig,
     /// Запустить WebSocket-сервер (Phase 1, default: false)
     pub ws_enabled: bool,
     /// Порт WebSocket-сервера (default: 8765)
@@ -398,6 +435,7 @@ impl Default for CliConfig {
             adaptive_tick_rate: false,
             detail_level: DetailLevel::Min,
             hot_reload: false,
+            guardian_config: GuardianConfig::default(),
             ws_enabled: false,
             ws_port: 8765,
             telegram_token:   None,
@@ -438,6 +476,9 @@ impl CliConfig {
             }
             if let Some(s) = file.tick_schedule {
                 s.apply_to(&mut config.tick_schedule);
+            }
+            if let Some(g) = file.guardian {
+                g.apply_to(&mut config.guardian_config);
             }
         }
 
@@ -584,7 +625,8 @@ impl CliChannel {
     /// Создать новый CliChannel.
     /// TickSchedule из конфига применяется к Engine при создании.
     pub fn new(mut engine: AxiomEngine, config: CliConfig) -> Self {
-        engine.tick_schedule = config.tick_schedule;
+        engine.tick_schedule  = config.tick_schedule.clone();
+        engine.guardian_config = config.guardian_config.clone();
         let persist_interval = engine.tick_schedule.persist_check_interval;
         let auto_cfg = PersistenceConfig::new(persist_interval);
 
@@ -746,7 +788,7 @@ impl CliChannel {
             }
         });
 
-        // EA-TD-06: broadcast_rx → stdout (CLI-подписчик) с DetailLevel
+        // broadcast_rx → stdout (CLI-подписчик) с DetailLevel
         let detail = self.config.detail_level;
         tokio::spawn(async move {
             loop {
@@ -795,7 +837,7 @@ impl CliChannel {
             }
         });
 
-        // Переносим владение engine, auto_saver и config_watcher в tick_loop (EA-TD-05)
+        // Переносим владение engine, auto_saver и config_watcher в tick_loop
         let auto_saver = std::mem::replace(
             &mut self.auto_saver,
             AutoSaver::new(PersistenceConfig::disabled()),
@@ -828,7 +870,7 @@ impl CliChannel {
             match result.action {
                 MetaAction::Quit => return false,
                 MetaAction::EngineReplaced => {
-                    self.engine.tick_schedule = self.config.tick_schedule;
+                    self.engine.tick_schedule = self.config.tick_schedule.clone();
                     self.perceptor = match &self.anchor_set {
                         Some(a) => TextPerceptor::with_anchors(std::sync::Arc::clone(a)),
                         None    => TextPerceptor::new(),

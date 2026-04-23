@@ -9,12 +9,14 @@
 //     └── Guardian  (CODEX-валидация рефлексов)
 
 use std::sync::Arc;
-use axiom_core::{Token, Event};
+use axiom_core::{Token, Connection, Event, FLAG_ACTIVE};
 use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
-use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, ucl_preset_to_structural_role};
-use crate::guardian::{Guardian, RoleStats};
+use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
+use std::collections::HashMap;
+use crate::guardian::{Guardian, GuardianConfig, RoleStats};
+use crate::over_domain::{WeaverId, OverDomainComponent};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -74,7 +76,7 @@ pub mod error_codes {
 ///
 /// Каждое поле — интервал в тиках (0 = задача отключена).
 /// Задача выполняется когда `tick_count % interval == 0`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TickSchedule {
     /// Адаптация порогов Guardian (default: 50)
     pub adaptation_interval:    u32,
@@ -96,20 +98,28 @@ pub struct TickSchedule {
     /// Адаптивная частота тиков (Axiom Sentinel V1.0, Фаза 3).
     /// Управляет частотой главного цикла CliChannel при включённом adaptive mode.
     pub adaptive_tick: AdaptiveTickRate,
+    /// Интервалы сканирования Weavers (WeaverId → тики между сканами).
+    /// Пустой HashMap = все Weavers используют внутренний default.
+    pub weaver_scan_intervals: HashMap<WeaverId, u32>,
+    /// Интервалы проверки промоции Weavers (WeaverId → тики между проверками).
+    /// Promotion check реже, чем scan (тяжёлая операция с вовлечением CODEX).
+    pub weaver_promotion_intervals: HashMap<WeaverId, u32>,
 }
 
 impl Default for TickSchedule {
     fn default() -> Self {
         Self {
-            adaptation_interval:    50,
-            horizon_gc_interval:    500,
-            snapshot_interval:      5000,
-            dream_interval:         100,
-            tension_check_interval: 10,
-            goal_check_interval:    10,
-            reconcile_interval:     200,
-            persist_check_interval: 0,
-            adaptive_tick:          AdaptiveTickRate::default(),
+            adaptation_interval:        50,
+            horizon_gc_interval:        500,
+            snapshot_interval:          5000,
+            dream_interval:             100,
+            tension_check_interval:     10,
+            goal_check_interval:        10,
+            reconcile_interval:         200,
+            persist_check_interval:     0,
+            adaptive_tick:              AdaptiveTickRate::default(),
+            weaver_scan_intervals:      HashMap::new(),
+            weaver_promotion_intervals: HashMap::new(),
         }
     }
 }
@@ -137,12 +147,18 @@ pub struct AxiomEngine {
     pub tick_count: u64,
     /// Расписание периодических задач
     pub tick_schedule: TickSchedule,
+    /// Параметры адаптации Guardian (скорость обучения модели)
+    pub guardian_config: GuardianConfig,
     /// Число аппаратных потоков, определённых при boot (available_parallelism).
     /// Минимум 1.
     pub worker_count: usize,
     /// Rayon ThreadPool для параллельных операций (фазы 2, 3 Sentinel).
     /// Размер пула = max(1, worker_count - 1).
     pub thread_pool: rayon::ThreadPool,
+    /// Over-Domain компоненты (Guardians + Weavers).
+    /// Создаются при boot после GUARDIAN, хранятся как trait objects.
+    /// Конкретные Weavers (FrameWeaver) также хранятся по значению для weaver-specific API.
+    pub over_domain_components: Vec<Box<dyn OverDomainComponent>>,
 }
 
 impl AxiomEngine {
@@ -164,8 +180,10 @@ impl AxiomEngine {
             com_next_id: 1,
             tick_count: 0,
             tick_schedule: TickSchedule::default(),
+            guardian_config: GuardianConfig::default(),
             worker_count,
             thread_pool: build_thread_pool(worker_count),
+            over_domain_components: Vec::new(),
         })
     }
 
@@ -365,16 +383,18 @@ impl AxiomEngine {
             OpCode::RestoreState   => self.handle_restore(cmd),
             OpCode::CoreReset      => self.handle_reset(cmd),
             OpCode::CoreShutdown   => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            OpCode::BondTokens        => self.handle_bond_tokens(cmd),
+            OpCode::ReinforceFrame    => self.handle_reinforce_frame(cmd),
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
             OpCode::LockMembrane
             | OpCode::ReshapeDomain
             | OpCode::ApplyForce
             | OpCode::AnnihilateToken
-            | OpCode::BondTokens
             | OpCode::SplitToken
             | OpCode::ChangeTemperature
             | OpCode::ApplyGravity
-            | OpCode::PhaseTransition => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            | OpCode::PhaseTransition
+            | OpCode::UnfoldFrame     => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             #[allow(unreachable_patterns)]
             _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
         }
@@ -501,10 +521,14 @@ impl AxiomEngine {
     }
 
     fn handle_inject_token(&mut self, cmd: &UclCommand) -> UclResult {
+        // flags::FRAME_ANCHOR → специальный payload для Frame-анкеров
+        if cmd.flags & ucl_flags::FRAME_ANCHOR != 0 {
+            return self.handle_inject_frame_anchor(cmd);
+        }
+
         let p = parse_inject_token_payload(&cmd.payload);
         let domain_id = p.target_domain_id;
 
-        // Проверяем что домен существует в AshtiCore
         if self.ashti.index_of(domain_id).is_none() {
             return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
         }
@@ -518,10 +542,70 @@ impl AxiomEngine {
         }
     }
 
+    fn handle_inject_frame_anchor(&mut self, cmd: &UclCommand) -> UclResult {
+        let p = read_frame_anchor_payload(&cmd.payload);
+        let domain_id = p.target_domain_id;
+
+        if self.ashti.index_of(domain_id).is_none() {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+        }
+
+        let event_id = self.next_event_id();
+        let sutra_id = if p.proposed_sutra_id != 0 { p.proposed_sutra_id } else { event_id as u32 };
+
+        let mut token = Token::new(sutra_id, domain_id, p.position, event_id);
+        token.type_flags    = p.type_flags;
+        token.state         = p.state;
+        token.mass          = p.mass;
+        token.temperature   = p.temperature;
+        token.valence       = p.valence;
+        token.lineage_hash  = p.lineage_hash;
+
+        match self.ashti.inject_token(domain_id, token) {
+            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+        }
+    }
+
+    fn handle_bond_tokens(&mut self, cmd: &UclCommand) -> UclResult {
+        let p = read_bond_tokens_payload(&cmd.payload);
+
+        if self.ashti.index_of(p.domain_id).is_none() {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+        }
+
+        let event_id = self.next_event_id();
+        let mut conn = Connection::new(p.source_id, p.target_id, p.domain_id, event_id);
+        conn.link_type = p.link_type;
+        conn.strength  = p.strength.max(0.001);
+        conn.flags     = p.conn_flags | FLAG_ACTIVE;
+        // Кодируем origin_domain и role_id участника в reserved_gate[0..4]
+        conn.reserved_gate[0] = (p.origin_domain >> 8) as u8;
+        conn.reserved_gate[1] = (p.origin_domain & 0xFF) as u8;
+        conn.reserved_gate[2] = (p.role_id >> 8) as u8;
+        conn.reserved_gate[3] = (p.role_id & 0xFF) as u8;
+
+        match self.ashti.inject_connection(p.domain_id, conn) {
+            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+        }
+    }
+
+    fn handle_reinforce_frame(&mut self, cmd: &UclCommand) -> UclResult {
+        let p = read_reinforce_frame_payload(&cmd.payload);
+        // Усиливаем Frame-анкер в EXPERIENCE (domain_id=109 для level_id=1)
+        let experience_domain = self.ashti.level_id() * 100 + 9;
+        if self.ashti.reinforce_token(experience_domain, p.anchor_id, p.delta_mass, p.delta_temperature) {
+            make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+        } else {
+            make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0)
+        }
+    }
+
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
         self.tick_count += 1;
         let t = self.tick_count;
-        let s = self.tick_schedule;
+        let s = self.tick_schedule.clone();
 
         // Hot path: физика всех 11 доменов каждый тик
         let events = self.ashti.tick();
@@ -574,6 +658,17 @@ impl AxiomEngine {
         if s.snapshot_interval > 0 && t % s.snapshot_interval as u64 == 0 {
             let _ = self.snapshot_and_prune();
         }
+
+        // Over-Domain: tick all registered components per their interval
+        // Use mem::take to satisfy borrow checker (components need &self.ashti read-only)
+        let mut components = std::mem::take(&mut self.over_domain_components);
+        for component in &mut components {
+            let interval = component.on_tick_interval();
+            if interval > 0 && t % interval as u64 == 0 {
+                let _ = component.on_tick(t, &self.ashti);
+            }
+        }
+        self.over_domain_components = components;
 
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
     }
@@ -640,8 +735,9 @@ impl AxiomEngine {
 
         // Адаптируем пороги и физику
         let configs = self.ashti.arbiter_domain_configs_mut();
-        let mut updated = self.guardian.adapt_thresholds(&role_stats, configs);
-        let phys_updated = self.guardian.adapt_domain_physics(&role_stats, configs);
+        let gcfg = &self.guardian_config.clone();
+        let mut updated = self.guardian.adapt_thresholds(&role_stats, configs, gcfg);
+        let phys_updated = self.guardian.adapt_domain_physics(&role_stats, configs, gcfg);
         for id in phys_updated {
             if !updated.contains(&id) {
                 updated.push(id);
@@ -816,6 +912,8 @@ fn opcode_from_u16(raw: u16) -> Option<OpCode> {
         3003 => Some(OpCode::PhaseTransition),
         4000 => Some(OpCode::ProcessTokenDualPath),
         4001 => Some(OpCode::FinalizeComparison),
+        4002 => Some(OpCode::UnfoldFrame),
+        4003 => Some(OpCode::ReinforceFrame),
         9000 => Some(OpCode::CoreShutdown),
         9001 => Some(OpCode::CoreReset),
         9002 => Some(OpCode::BackupState),
@@ -869,6 +967,63 @@ fn parse_inject_token_payload(payload: &[u8; 48]) -> InjectTokenPayload {
         semantic_weight: read_f32_le(payload, 32),
         temperature: read_f32_le(payload, 36),
         reserved: [0; 6],
+    }
+}
+
+/// InjectFrameAnchorPayload из raw payload bytes
+///
+/// Layout: lineage_hash[0..8], proposed_sutra_id[8..12], target_domain_id[12..14],
+/// type_flags[14..16], position[16..22], state[22], mass[23], temperature[24], valence[25].
+fn read_frame_anchor_payload(payload: &[u8; 48]) -> InjectFrameAnchorPayload {
+    let position = [
+        i16::from_le_bytes([payload[16], payload[17]]),
+        i16::from_le_bytes([payload[18], payload[19]]),
+        i16::from_le_bytes([payload[20], payload[21]]),
+    ];
+    InjectFrameAnchorPayload {
+        lineage_hash:      u64::from_le_bytes([
+            payload[0], payload[1], payload[2], payload[3],
+            payload[4], payload[5], payload[6], payload[7],
+        ]),
+        proposed_sutra_id: u32::from_le_bytes([payload[8], payload[9], payload[10], payload[11]]),
+        target_domain_id:  read_u16_le(payload, 12),
+        type_flags:        read_u16_le(payload, 14),
+        position,
+        state:             payload[22],
+        mass:              payload[23],
+        temperature:       payload[24],
+        valence:           payload[25] as i8,
+        reserved:          [0; 22],
+    }
+}
+
+/// BondTokensPayload из raw payload bytes
+///
+/// Layout: source_id[0..4], target_id[4..8], domain_id[8..10], link_type[10..12],
+/// strength[12..16], conn_flags[16..20], origin_domain[20..22], role_id[22..24].
+fn read_bond_tokens_payload(payload: &[u8; 48]) -> BondTokensPayload {
+    BondTokensPayload {
+        source_id:    u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        target_id:    u32::from_le_bytes([payload[4], payload[5], payload[6], payload[7]]),
+        domain_id:    read_u16_le(payload, 8),
+        link_type:    read_u16_le(payload, 10),
+        strength:     read_f32_le(payload, 12),
+        conn_flags:   u32::from_le_bytes([payload[16], payload[17], payload[18], payload[19]]),
+        origin_domain: read_u16_le(payload, 20),
+        role_id:       read_u16_le(payload, 22),
+        reserved:      [0; 24],
+    }
+}
+
+/// ReinforceFramePayload из raw payload bytes
+///
+/// Layout: anchor_id[0..4], delta_mass[4], delta_temperature[5].
+fn read_reinforce_frame_payload(payload: &[u8; 48]) -> ReinforceFramePayload {
+    ReinforceFramePayload {
+        anchor_id:         u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        delta_mass:        payload[4],
+        delta_temperature: payload[5],
+        reserved:          [0; 42],
     }
 }
 
