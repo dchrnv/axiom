@@ -1,5 +1,5 @@
 // Этап 6: Адаптивные пороги — тесты Guardian::adapt_thresholds, adapt_domain_physics, dream_propose
-use axiom_runtime::{AxiomEngine, Guardian, RoleStats, CodexAction};
+use axiom_runtime::{AxiomEngine, Guardian, GuardianConfig, RoleStats, CodexAction};
 use axiom_arbiter::Reflector;
 use axiom_config::DomainConfig;
 use axiom_core::Token;
@@ -28,7 +28,7 @@ fn test_adapt_thresholds_high_success_rate_decreases_threshold() {
     let initial = configs[&1].reflex_threshold;
 
     let stats = vec![RoleStats { role: 1, success_rate: 0.9, total_calls: 20 }];
-    let updated = guardian.adapt_thresholds(&stats, &mut configs);
+    let updated = guardian.adapt_thresholds(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.contains(&1));
     assert!(configs[&1].reflex_threshold < initial, "high rate → lower threshold");
@@ -41,7 +41,7 @@ fn test_adapt_thresholds_low_success_rate_increases_threshold() {
     let initial = configs[&2].reflex_threshold;
 
     let stats = vec![RoleStats { role: 2, success_rate: 0.1, total_calls: 20 }];
-    let updated = guardian.adapt_thresholds(&stats, &mut configs);
+    let updated = guardian.adapt_thresholds(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.contains(&2));
     assert!(configs[&2].reflex_threshold > initial, "low rate → higher threshold");
@@ -54,7 +54,7 @@ fn test_adapt_thresholds_mid_rate_no_change() {
     let initial = configs[&3].reflex_threshold;
 
     let stats = vec![RoleStats { role: 3, success_rate: 0.5, total_calls: 20 }];
-    let updated = guardian.adapt_thresholds(&stats, &mut configs);
+    let updated = guardian.adapt_thresholds(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.is_empty(), "mid rate → no change");
     assert_eq!(configs[&3].reflex_threshold, initial);
@@ -68,7 +68,7 @@ fn test_adapt_thresholds_skips_insufficient_data() {
 
     // total_calls < 10 → пропускаем
     let stats = vec![RoleStats { role: 4, success_rate: 0.95, total_calls: 5 }];
-    let updated = guardian.adapt_thresholds(&stats, &mut configs);
+    let updated = guardian.adapt_thresholds(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.is_empty());
     assert_eq!(configs[&4].reflex_threshold, initial);
@@ -83,7 +83,7 @@ fn test_adapt_thresholds_updates_guardian_stats() {
         RoleStats { role: 1, success_rate: 0.9, total_calls: 20 },
         RoleStats { role: 2, success_rate: 0.1, total_calls: 20 },
     ];
-    guardian.adapt_thresholds(&stats, &mut configs);
+    guardian.adapt_thresholds(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(guardian.stats().thresholds_adapted >= 2);
 }
@@ -98,7 +98,7 @@ fn test_adapt_physics_high_success_cools_and_increases_freq() {
     let initial_freq = configs[&5].resonance_freq;
 
     let stats = vec![RoleStats { role: 5, success_rate: 0.8, total_calls: 20 }];
-    let updated = guardian.adapt_domain_physics(&stats, &mut configs);
+    let updated = guardian.adapt_domain_physics(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.contains(&5));
     assert!(configs[&5].temperature < initial_temp, "high rate → cooler");
@@ -115,7 +115,7 @@ fn test_adapt_physics_low_success_heats_and_decreases_freq() {
     let initial_freq = configs[&6].resonance_freq;
 
     let stats = vec![RoleStats { role: 6, success_rate: 0.2, total_calls: 20 }];
-    let updated = guardian.adapt_domain_physics(&stats, &mut configs);
+    let updated = guardian.adapt_domain_physics(&stats, &mut configs, &GuardianConfig::default());
 
     assert!(updated.contains(&6));
     assert!(configs[&6].temperature > initial_temp, "low rate → hotter");

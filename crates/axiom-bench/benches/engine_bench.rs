@@ -14,6 +14,7 @@ use axiom_runtime::{AxiomEngine, Gateway, Channel};
 use axiom_core::Token;
 use axiom_ucl::{UclCommand, OpCode};
 use std::time::Duration;
+use axiom_domain;
 
 const LOGIC_ID: u32 = 106;
 
@@ -48,9 +49,21 @@ fn engine_with_experience(trace_count: usize) -> AxiomEngine {
 // ─── Этап 1-3: базовые операции Engine ───────────────────────────────────────
 
 fn bench_engine_creation(c: &mut Criterion) {
-    c.bench_function("AxiomEngine::new", |b| {
+    let mut group = c.benchmark_group("AxiomEngine::new breakdown");
+    group.measurement_time(Duration::from_secs(5));
+    group.sample_size(50);
+
+    // Полная стоимость
+    group.bench_function("full", |b| {
         b.iter(|| black_box(AxiomEngine::new()))
     });
+
+    // AshtiCore без rayon — изолируем стоимость thread pool
+    group.bench_function("AshtiCore::new only", |b| {
+        b.iter(|| black_box(axiom_domain::AshtiCore::new(1)))
+    });
+
+    group.finish();
 }
 
 fn bench_inject_token(c: &mut Criterion) {
@@ -209,6 +222,23 @@ fn bench_run_horizon_gc(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_run_horizon_gc_isolated(c: &mut Criterion) {
+    let mut group = c.benchmark_group("AxiomEngine: run_horizon_gc (isolated)");
+    group.measurement_time(Duration::from_secs(5));
+    group.sample_size(50);
+
+    // Engine создаётся один раз снаружи — исключает iter_batched overhead
+    for trace_count in [0, 50, 200] {
+        let mut engine = engine_with_experience(trace_count);
+        group.bench_with_input(
+            BenchmarkId::new("traces", trace_count),
+            &trace_count,
+            |b, _| b.iter(|| black_box(engine.run_horizon_gc())),
+        );
+    }
+    group.finish();
+}
+
 fn bench_causal_horizon(c: &mut Criterion) {
     c.bench_function("AxiomEngine: causal_horizon", |b| {
         let engine = AxiomEngine::new();
@@ -329,6 +359,7 @@ criterion_group!(
     benches_etap7,
     bench_snapshot_and_prune,
     bench_run_horizon_gc,
+    bench_run_horizon_gc_isolated,
     bench_causal_horizon,
     bench_export_skills,
 );

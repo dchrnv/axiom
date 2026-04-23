@@ -118,6 +118,55 @@ pub struct GuardianStats {
 }
 
 // ============================================================================
+// GuardianConfig
+// ============================================================================
+
+/// Параметры агрессивности адаптации Guardian.
+///
+/// Управляет скоростью обучения модели: насколько быстро пороги Arbiter и
+/// физика домена меняются в ответ на feedback успеха/неудачи.
+///
+/// Загружается из `axiom-cli.yaml` (секция `guardian`). При отсутствии —
+/// используются значения Default.
+#[derive(Debug, Clone)]
+pub struct GuardianConfig {
+    /// success_rate выше которого reflex_threshold снижается (default: 0.8)
+    pub high_success_threshold: f32,
+    /// success_rate ниже которого reflex_threshold повышается (default: 0.3)
+    pub low_success_threshold: f32,
+    /// success_rate выше которого temperature снижается (default: 0.7)
+    pub physics_high_threshold: f32,
+    /// Δ reflex_threshold за цикл адаптации (default: 5)
+    pub threshold_step: u8,
+    /// Δ temperature за цикл адаптации, Кельвин (default: 5.0)
+    pub temp_step: f32,
+    /// Нижний предел temperature после адаптации (default: 0.1)
+    pub temp_min: f32,
+    /// Верхний предел temperature после адаптации (default: 500.0)
+    pub temp_max: f32,
+    /// Δ resonance_freq за цикл адаптации (default: 10)
+    pub resonance_step: u16,
+    /// Верхняя граница валидного ML-confidence (default: 0.99)
+    pub confidence_ceiling: f32,
+}
+
+impl Default for GuardianConfig {
+    fn default() -> Self {
+        Self {
+            high_success_threshold: 0.8,
+            low_success_threshold:  0.3,
+            physics_high_threshold: 0.7,
+            threshold_step:         5,
+            temp_step:              5.0,
+            temp_min:               0.1,
+            temp_max:               500.0,
+            resonance_step:         10,
+            confidence_ceiling:     0.99,
+        }
+    }
+}
+
+// ============================================================================
 // Guardian
 // ============================================================================
 
@@ -280,15 +329,16 @@ impl Guardian {
 
     /// Адаптировать reflex_threshold доменов на основе статистики REFLECTOR.
     ///
-    /// Алгоритм:
-    /// - success_rate > 0.8 && calls ≥ 10 → снизить порог на 5 (до минимума 10)
-    /// - success_rate < 0.3 && calls ≥ 10 → повысить порог на 5 (до максимума 250)
+    /// Пороги управляются `GuardianConfig`:
+    /// - success_rate > high_threshold && calls ≥ 10 → снизить на threshold_step
+    /// - success_rate < low_threshold  && calls ≥ 10 → повысить на threshold_step
     ///
     /// Возвращает список domain_id у которых изменился порог.
     pub fn adapt_thresholds(
         &mut self,
         stats: &[RoleStats],
         configs: &mut HashMap<u16, DomainConfig>,
+        cfg: &GuardianConfig,
     ) -> Vec<u16> {
         let mut updated = Vec::new();
 
@@ -300,11 +350,15 @@ impl Guardian {
                 continue;
             }
 
-            let changed = if role_stat.success_rate > 0.8 && config.reflex_threshold > 10 {
-                config.reflex_threshold = config.reflex_threshold.saturating_sub(5);
+            let changed = if role_stat.success_rate > cfg.high_success_threshold
+                && config.reflex_threshold > cfg.threshold_step
+            {
+                config.reflex_threshold = config.reflex_threshold.saturating_sub(cfg.threshold_step);
                 true
-            } else if role_stat.success_rate < 0.3 && config.reflex_threshold < 250 {
-                config.reflex_threshold = config.reflex_threshold.saturating_add(5);
+            } else if role_stat.success_rate < cfg.low_success_threshold
+                && config.reflex_threshold < 255 - cfg.threshold_step
+            {
+                config.reflex_threshold = config.reflex_threshold.saturating_add(cfg.threshold_step);
                 true
             } else {
                 false
@@ -321,14 +375,16 @@ impl Guardian {
 
     /// Адаптировать физические параметры доменов (temperature, resonance_freq).
     ///
-    /// - success_rate > 0.7 → охладить (−5) и ускорить резонанс (+10 Hz)
-    /// - success_rate < 0.3 → нагреть (+5) и замедлить резонанс (−10 Hz)
+    /// Параметры управляются `GuardianConfig`:
+    /// - success_rate > physics_high_threshold → охладить и ускорить резонанс
+    /// - success_rate < low_success_threshold  → нагреть и замедлить резонанс
     ///
     /// Возвращает список domain_id у которых изменились параметры.
     pub fn adapt_domain_physics(
         &mut self,
         stats: &[RoleStats],
         configs: &mut HashMap<u16, DomainConfig>,
+        cfg: &GuardianConfig,
     ) -> Vec<u16> {
         let mut updated = Vec::new();
 
@@ -340,13 +396,13 @@ impl Guardian {
                 continue;
             }
 
-            let changed = if role_stat.success_rate > 0.7 {
-                config.temperature = (config.temperature - 5.0_f32).max(0.1);
-                config.resonance_freq = config.resonance_freq.saturating_add(10);
+            let changed = if role_stat.success_rate > cfg.physics_high_threshold {
+                config.temperature = (config.temperature - cfg.temp_step).max(cfg.temp_min);
+                config.resonance_freq = config.resonance_freq.saturating_add(cfg.resonance_step);
                 true
-            } else if role_stat.success_rate < 0.3 {
-                config.temperature = (config.temperature + 5.0_f32).min(500.0);
-                config.resonance_freq = config.resonance_freq.saturating_sub(10);
+            } else if role_stat.success_rate < cfg.low_success_threshold {
+                config.temperature = (config.temperature + cfg.temp_step).min(cfg.temp_max);
+                config.resonance_freq = config.resonance_freq.saturating_sub(cfg.resonance_step);
                 true
             } else {
                 false
@@ -399,13 +455,16 @@ impl Guardian {
         &self.genome
     }
 
-    /// Валидировать уверенность ML-модели.
+    /// Валидировать уверенность ML-модели с явным ceiling из GuardianConfig.
     ///
-    /// Возвращает `false` (отклонить) если:
+    /// Возвращает `false` если:
     /// - `confidence < threshold` — слишком низкая уверенность
-    /// - `confidence > 0.99` — аномально высокая (adversarial defense)
-    ///
-    /// Диапазон валидных значений: `[threshold, 0.99]`.
+    /// - `confidence > cfg.confidence_ceiling` — аномально высокая (adversarial defense)
+    pub fn validate_ml_confidence_cfg(confidence: f32, threshold: f32, cfg: &GuardianConfig) -> bool {
+        confidence >= threshold && confidence <= cfg.confidence_ceiling
+    }
+
+    /// Валидировать уверенность ML-модели (legacy, ceiling = 0.99).
     pub fn validate_ml_confidence(confidence: f32, threshold: f32) -> bool {
         confidence >= threshold && confidence <= 0.99
     }

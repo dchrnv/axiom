@@ -66,7 +66,7 @@ async fn get_domain(
                 Ok(msg @ ServerMessage::DomainDetail(_)) => {
                     // DomainDetail не несёт command_id — берём первый ответ после нашего запроса.
                     // В однопользовательском сценарии это корректно; в multi-client
-                    // следует добавить command_id в DomainDetail (EA-TD будущего).
+                    // следует добавить command_id в DomainDetail.
                     return Some(msg);
                 }
                 Ok(ServerMessage::Error { command_id: Some(ref cid), .. }) if *cid == req_id => {

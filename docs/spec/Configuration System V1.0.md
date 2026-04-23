@@ -1,101 +1,96 @@
-# AXIOM Configuration System Specification V1.0
+# AXIOM — Спецификация системы конфигурации V1.0
 
-**Version:** 1.1
-**Status:** Active
-**Scope:** Runtime configuration and semantic schema definition for Axiom.
-
----
-
-# 1. Purpose
-
-The configuration system defines how Axiom loads, validates, and applies configuration and schema data.
-
-The system has two responsibilities:
-
-1. Configure how the system runs.
-2. Define the semantic structure of the Axiom environment.
-
-To support these responsibilities, configuration is divided into two independent layers:
-
-- **Runtime Configuration**
-- **Schema Configuration**
-
-This separation ensures that infrastructure settings remain stable while the semantic model of the system can evolve.
+**Версия:** 1.1  
+**Статус:** Актуальная  
+**Охват:** Конфигурация runtime и определение семантической схемы Axiom.
 
 ---
 
-# 2. Design Principles
+# 1. Назначение
 
-The configuration system follows several core principles.
+Система конфигурации определяет как Axiom загружает, валидирует и применяет конфигурацию и схемные данные.
 
-**1. Strong Typing**
+Система решает две задачи:
 
-All configuration is represented as strongly typed structures in code.
-Configuration files are only serialized representations of these structures.
+1. Настроить как система работает.
+2. Определить семантическую структуру среды Axiom.
 
----
+Для этого конфигурация разделена на два независимых слоя:
 
-**2. Declarative Configuration**
+- **Runtime Configuration** — параметры исполнения
+- **Schema Configuration** — семантическая схема
 
-Configuration files describe system state but do not contain executable logic.
-
-Allowed:
-
-- structural definitions
-- parameters
-- constraints
-
-Forbidden:
-
-- conditional logic
-- algorithms
-- procedural behavior
+Разделение обеспечивает стабильность инфраструктурных настроек при эволюции семантической модели.
 
 ---
 
-**3. Separation of Concerns**
+# 2. Принципы проектирования
 
-Runtime configuration and semantic schema must remain separate.
+## 1. Строгая типизация
 
-Runtime config describes **how the system operates**.
-Schema config describes **the structure of the semantic environment**.
-
----
-
-**4. Minimal Infrastructure**
-
-Configuration loading must remain simple and predictable.
-
-The configuration system must not evolve into a secondary runtime.
+Вся конфигурация представлена в виде строго типизированных структур в коде.
+Конфигурационные файлы — только сериализованное представление этих структур.
 
 ---
 
-**5. Deterministic Initialization**
+## 2. Декларативность
 
-All configuration must be loaded and validated before runtime initialization begins.
+Конфигурационные файлы описывают состояние системы, но не содержат исполняемой логики.
 
-Runtime behavior must never depend on partially loaded configuration.
+Разрешено:
+- структурные определения
+- параметры
+- ограничения
+
+Запрещено:
+- условная логика
+- алгоритмы
+- процедурное поведение
 
 ---
 
-# 3. Configuration Layers
+## 3. Разделение ответственности
+
+Runtime-конфигурация и семантическая схема должны оставаться раздельными.
+
+Runtime описывает **как система работает**.  
+Schema описывает **структуру семантической среды**.
+
+---
+
+## 4. Минимальная инфраструктура
+
+Загрузка конфигурации должна оставаться простой и предсказуемой.
+
+Система конфигурации не должна превращаться во вторичный runtime.
+
+---
+
+## 5. Детерминированная инициализация
+
+Вся конфигурация должна быть загружена и провалидирована до начала инициализации runtime.
+
+Поведение runtime не должно зависеть от частично загруженной конфигурации.
+
+---
+
+# 3. Слои конфигурации
 
 ## 3.1 Runtime Configuration
 
-Runtime configuration defines operational parameters of the system.
+Runtime-конфигурация определяет операционные параметры системы.
 
-Typical responsibilities include:
+Типичные области:
+- среда исполнения
+- логирование
+- лимиты ресурсов
+- хранилище
+- сетевая конфигурация
+- параметры производительности
 
-- runtime environment
-- logging
-- resource limits
-- storage
-- network configuration
-- performance parameters
+Runtime-конфигурация меняется редко и предполагается стабильной.
 
-Runtime configuration changes rarely and is expected to remain stable.
-
-Example:
+Пример:
 
 ```yaml
 runtime:
@@ -108,20 +103,19 @@ runtime:
 
 ## 3.2 Schema Configuration
 
-Schema configuration defines the semantic structure of the Axiom system.
+Schema-конфигурация определяет семантическую структуру системы Axiom.
 
-This includes:
+Включает:
+- домены
+- типы токенов
+- правила связей
+- структуру сетки
+- определения слоёв
+- параметры полей
 
-- domains
-- token types
-- connection rules
-- grid structure
-- layer definitions
-- field parameters
+Schema-конфигурация может эволюционировать по мере изменения семантической модели.
 
-Schema configuration may evolve over time as the semantic model changes.
-
-Example:
+Пример:
 
 ```yaml
 token_types:
@@ -134,27 +128,26 @@ connection_rules:
   symmetry: true
 ```
 
-Schema files describe **semantic physics of the system**, not runtime behavior.
+Schema-файлы описывают **семантическую физику системы**, а не runtime-поведение.
 
 ---
 
-# 4. Configuration File Format
+# 4. Формат конфигурационных файлов
 
-Configuration files use **YAML** as the primary format.
+Основной формат — **YAML**.
 
-Reasons:
+Причины:
+- читаемость человеком
+- поддержка комментариев
+- широкая экосистема
 
-- human readability
-- support for comments
-- widespread ecosystem support
-
-JSON is implicitly supported because YAML is a superset of JSON.
+JSON поддерживается неявно, поскольку YAML является надмножеством JSON.
 
 ---
 
-# 5. Directory Structure
+# 5. Структура директорий
 
-The configuration system follows a strict directory structure.
+Система конфигурации следует строгой структуре директорий.
 
 ```
 config/
@@ -169,15 +162,15 @@ schema/
         connection.yaml
 ```
 
-Runtime and schema configuration must never be mixed within the same file.
+Runtime и schema конфигурация не должны смешиваться в одном файле.
 
 ---
 
-# 6. Root Configuration File
+# 6. Корневой конфигурационный файл
 
-Axiom uses a root configuration file that references module configuration files.
+Axiom использует корневой конфигурационный файл, который ссылается на файлы модулей.
 
-Example:
+Пример:
 
 ```yaml
 version: 1
@@ -193,81 +186,78 @@ schema:
   connection: config/schema/connection.yaml
 ```
 
-The root configuration acts as the entry point for the configuration loader.
+Корневой файл — точка входа для загрузчика конфигурации.
 
 ---
 
-# 7. Configuration Loader
+# 7. Загрузчик конфигурации
 
-Axiom uses a single configuration loader responsible for:
+Axiom использует единственный загрузчик, ответственный за:
 
-1. reading the root configuration
-2. resolving referenced files
-3. parsing YAML
-4. constructing typed structures
-5. validating all configuration
-6. returning a fully initialized configuration object
+1. чтение корневой конфигурации
+2. разрешение путей к файлам
+3. разбор YAML
+4. построение типизированных структур
+5. валидацию всей конфигурации
+6. возврат полностью инициализированного объекта конфигурации
 
-The loader performs no runtime logic beyond initialization.
+Загрузчик не выполняет никакой runtime-логики за пределами инициализации.
 
-Loader workflow:
+Схема работы:
 
 ```
-read root config
-resolve file paths
-parse yaml
-build structs
-validate
-return configuration
+читаем корневой конфиг
+разрешаем пути файлов
+разбираем yaml
+строим структуры
+валидируем
+возвращаем конфигурацию
 ```
 
 ---
 
-# 8. Validation
+# 8. Валидация
 
-All configuration structures must implement validation.
+Все конфигурационные структуры должны реализовывать валидацию.
 
-Validation is defined through a lightweight validation interface.
+Валидация определяется через лёгкий интерфейс:
 
-Example concept:
-
-```
+```rust
 trait Validate {
     fn validate(&self) -> Result<()>;
 }
 ```
 
-Validation ensures:
+Валидация обеспечивает:
+- корректность типов
+- наличие обязательных полей
+- допустимость диапазонов значений
+- структурную согласованность
+- совместимость со схемой
 
-- type correctness
-- required fields
-- valid ranges
-- structural consistency
-- schema compatibility
-
-Validation must run before the system enters runtime execution.
+Валидация должна выполняться до входа системы в runtime-исполнение.
 
 ---
 
-# 9. Versioning
+# 9. Версионирование
 
-The root configuration file must contain a version field.
+Корневой конфигурационный файл должен содержать поле версии.
 
-Example:
+Пример:
 
 ```yaml
 version: 1
 ```
 
-This allows future schema migrations and compatibility checks.
+Это обеспечивает возможность будущих миграций схемы и проверок совместимости.
 
 ---
 
-# 10. Ownership Rules
+# 10. Правила владения
 
-Each system module owns its configuration.
+Каждый модуль системы владеет своей конфигурацией.
 
-Example:
+Пример:
 
 ```
 core/domain/config.rs
@@ -275,102 +265,157 @@ core/token/config.rs
 core/connection/config.rs
 ```
 
-Each module defines:
+Каждый модуль определяет:
+- конфигурационную структуру
+- значения по умолчанию
+- правила валидации
 
-- configuration struct
-- default values
-- validation rules
-
-Modules must not modify configuration belonging to other modules.
-
----
-
-# 11. Runtime Interaction
-
-Configuration is read-only after initialization.
-
-Runtime components may read configuration but must never mutate it.
-
-Dynamic runtime behavior must be implemented in runtime systems, not in configuration.
+Модули не должны изменять конфигурацию, принадлежащую другим модулям.
 
 ---
 
-# 12. Hot Reload
+# 11. Взаимодействие с runtime
 
-The configuration system supports live reload of configuration without process restart.
+Конфигурация доступна только для чтения после инициализации.
 
-## 12.1 Mechanism
+Runtime-компоненты могут читать конфигурацию, но не должны её мутировать.
 
-A `ConfigWatcher` subscribes to filesystem events on the configuration directory via the platform notification API (inotify on Linux, FSEvents on macOS, ReadDirectoryChanges on Windows).
-
-When the root configuration file changes, `ConfigWatcher::poll()` returns a freshly loaded `LoadedAxiomConfig`.
-
-The poll operation is non-blocking. Multiple file change events between poll calls are collapsed into a single reload.
-
-## 12.2 Scope
-
-Hot reload applies only to configuration that can be safely mutated at runtime.
-
-**Reloadable:**
-- `TickSchedule` — periodic task intervals applied to a running Engine instance
-
-**Not reloadable (requires restart):**
-- tick frequency (`tick_hz`)
-- output verbosity
-- data directory path
-- any parameter that affects initialization state
-
-## 12.3 Invariants
-
-- The watcher never blocks the runtime loop.
-- A failed reload is silently ignored — the previous configuration remains active.
-- GENOME configuration is explicitly excluded from hot reload scope and must never be reloaded at runtime.
+Динамическое runtime-поведение реализуется в runtime-системах, а не в конфигурации.
 
 ---
 
-# 13. Component Configuration Loading
+# 12. Горячая перезагрузка
+
+Система конфигурации поддерживает перезагрузку конфигурации без перезапуска процесса.
+
+## 12.1 Механизм
+
+`ConfigWatcher` подписывается на события файловой системы в директории конфигурации через платформенный API уведомлений (inotify на Linux, FSEvents на macOS, ReadDirectoryChanges на Windows).
+
+При изменении корневого конфигурационного файла `ConfigWatcher::poll()` возвращает свежезагруженный `LoadedAxiomConfig`.
+
+Операция poll неблокирующая. Несколько событий изменения файла между вызовами poll сворачиваются в одну перезагрузку.
+
+## 12.2 Область применения
+
+Горячая перезагрузка применяется только к конфигурации, которую можно безопасно изменить в runtime.
+
+**Перезагружается:**
+- `TickSchedule` — интервалы периодических задач, применяются к живому экземпляру Engine
+- поля `AdaptiveTickRate` внутри `TickSchedule` (min_hz, max_hz, step_up, step_down, cooldown)
+
+**Не перезагружается (требует перезапуска):**
+- частота тиков (`tick_hz`)
+- вербозность вывода
+- путь к директории данных
+- любой параметр, влияющий на состояние инициализации
+
+## 12.3 Инварианты
+
+- Watcher никогда не блокирует runtime-цикл.
+- Неудачная перезагрузка молча игнорируется — предыдущая конфигурация остаётся активной.
+- Конфигурация GENOME явно исключена из области горячей перезагрузки и не должна перезагружаться в runtime ни при каких условиях.
+
+---
+
+# 13. Загрузка конфигурации компонентов
 
 ## 13.1 HeartbeatConfig
 
-`HeartbeatConfig` defines periodic activation parameters for background processes (Heartbeat V2.0).
+`HeartbeatConfig` определяет параметры периодической активации фоновых процессов (Heartbeat V2.0).
 
-It is loaded as part of `load_all` when `presets.heartbeat_file` is specified in the root configuration.
+Загружается в рамках `load_all` когда в корневой конфигурации указан `presets.heartbeat_file`.
 
-```
+```yaml
 presets:
   heartbeat_file: "presets/heartbeat.yaml"
 ```
 
-If the path is absent or the file does not exist, `LoadedAxiomConfig.heartbeat` is `None`. This is not an error — the runtime uses its own default.
+Если путь отсутствует или файл не существует, `LoadedAxiomConfig.heartbeat` равен `None`. Это не ошибка — runtime использует собственный default.
 
-`HeartbeatConfig` fields:
+Поля `HeartbeatConfig`:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `interval` | `u32` | Events between pulses (must be > 0) |
-| `batch_size` | `usize` | Tokens added to frontier per pulse |
-| `connection_batch_size` | `usize` | Connections added to frontier per pulse |
-| `enable_decay` | `bool` | Token decay activation |
-| `enable_gravity` | `bool` | Gravitational update activation |
-| `enable_spatial_collision` | `bool` | Spatial collision checks |
-| `enable_connection_maintenance` | `bool` | Connection maintenance |
-| `enable_thermodynamics` | `bool` | Thermodynamic processes |
-| `attach_pulse_id` | `bool` | Attach pulse_id to generated events |
-| `enable_shell_reconciliation` | `bool` | Shell V3.0 reconciliation |
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `interval` | `u32` | Событий между пульсами (должно быть > 0) |
+| `batch_size` | `usize` | Токенов добавляется на frontier за пульс |
+| `connection_batch_size` | `usize` | Связей добавляется на frontier за пульс |
+| `enable_decay` | `bool` | Включение затухания токенов |
+| `enable_gravity` | `bool` | Включение гравитационных обновлений |
+| `enable_spatial_collision` | `bool` | Проверка пространственных столкновений |
+| `enable_connection_maintenance` | `bool` | Обслуживание связей |
+| `enable_thermodynamics` | `bool` | Термодинамические процессы |
+| `attach_pulse_id` | `bool` | Прикрепление pulse_id к генерируемым событиям |
+| `enable_shell_reconciliation` | `bool` | Reconcile Shell V3.0 |
 
-Built-in presets available in code: `weak()`, `medium()`, `powerful()`, `disabled()`.
+Встроенные пресеты в коде: `weak()`, `medium()`, `powerful()`, `disabled()`.
 
-## 13.2 Presets Directory Layout
+## 13.2 AdaptiveTickRate
+
+`AdaptiveTickRate` — вложенная структура внутри `TickSchedule`. Управляет переменной частотой тиков CLI-канала (Axiom Sentinel V1.0, Фаза 3).
+
+Структура определена в коде с defaults. Выставляется через секцию `tick_schedule.adaptive_tick` в `axiom-cli.yaml`.
+
+Поля `AdaptiveTickRate`:
+
+| Поле | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `min_hz` | `u32` | 60 | Минимальная частота тиков в режиме ожидания |
+| `max_hz` | `u32` | 1000 | Максимальная частота тиков под нагрузкой |
+| `step_up` | `u32` | 200 | Прирост Гц при триггере (tension/ввод/multipass) |
+| `step_down` | `u32` | 20 | Снижение Гц за каждый cooldown-цикл |
+| `cooldown` | `u32` | 50 | Idle-тиков до снижения частоты |
+
+Триггеры повышения частоты: обнаружены tension traces, получен внешний ввод, обработка завершилась через multipass.
+
+## 13.3 GuardianConfig
+
+`GuardianConfig` открывает параметры агрессивности адаптации подсистемы Guardian. Это **ручки скорости обучения** модели — они управляют тем, насколько быстро пороги Arbiter и физика домена меняются в ответ на feedback успеха/неудачи.
+
+**Статус:** структура не реализована. Параметры захардкожены в `guardian.rs`. Это наивысший приоритет среди пробелов конфигурации.
+
+Планируемые поля:
+
+| Поле | Тип | Текущее значение | Описание |
+|------|-----|------------------|----------|
+| `high_success_threshold` | `f32` | 0.8 | success_rate выше которого пороги ужесточаются |
+| `low_success_threshold` | `f32` | 0.3 | success_rate ниже которого пороги ослабляются |
+| `physics_high_threshold` | `f32` | 0.7 | success_rate выше которого temperature снижается |
+| `threshold_step` | `u8` | 5 | Δ reflex_threshold за цикл адаптации |
+| `temp_step` | `f32` | 5.0 | Δ temperature за цикл адаптации (Кельвин) |
+| `temp_min` | `f32` | 0.1 | Нижний предел temperature после адаптации |
+| `temp_max` | `f32` | 500.0 | Верхний предел temperature после адаптации |
+| `resonance_step` | `u16` | 10 | Δ resonance_freq за цикл адаптации |
+| `confidence_ceiling` | `f32` | 0.99 | Верхняя граница валидного ML-confidence |
+
+После реализации `GuardianConfig` загружается аналогично `HeartbeatConfig` — опциональный путь в `axiom-cli.yaml`, при отсутствии файла используются defaults из кода.
+
+## 13.4 PhysicsDefaults
+
+Три физических константы захардкожены в `axiom-domain/src/physics.rs`. Предназначены для переноса в конфигурацию (отмечено в DEFERRED.md).
+
+| Константа | Значение | Описание |
+|-----------|----------|----------|
+| `DEFAULT_DECAY_RATE` | 0.001 | Скорость затухания valence токена на порог причинного возраста |
+| `DEFAULT_STRESS_THRESHOLD` | 0.8 | Доля стресса связи при которой генерируется ConnectionWeakened |
+| `DEFAULT_COLLISION_RADIUS` | 100 | Радиус обнаружения столкновений (единицы Space V6.0) |
+
+После реализации эти параметры войдут в секцию `physics` в `runtime.yaml` или отдельный `physics.yaml`.
+
+## 13.5 Структура директории конфигурации
 
 ```
 config/
-  axiom.yaml
+  axiom.yaml          ← корневая конфигурация
+  axiom-cli.yaml      ← CLI-канал: tick_hz, tick_schedule, adaptive_tick
   presets/
-    domains/        ← DomainConfig YAML files (one per domain)
-    tokens/         ← TokenPreset YAML files
-    connection/     ← ConnectionPreset YAML files
-    spatial/        ← SpatialConfig YAML files
-    heartbeat.yaml  ← HeartbeatConfig (optional, path in axiom.yaml)
+    domains/          ← DomainConfig YAML (один файл на домен, 128 байт каждый)
+    tokens/           ← TokenPreset YAML
+    connection/       ← ConnectionPreset YAML
+    spatial/          ← SpatialConfig YAML
+    heartbeat.yaml    ← HeartbeatConfig (опционально, путь в axiom.yaml)
+    guardian.yaml     ← GuardianConfig (планируется, опционально)
+    physics.yaml      ← PhysicsDefaults (планируется, опционально)
   schema/
     semantic_contributions.yaml
     domain.yaml / token.yaml / connection.yaml / grid.yaml / upo.yaml
@@ -380,45 +425,42 @@ config/
 
 ---
 
-# 14. Future Extensions
+# 14. Будущие расширения
 
-The configuration system is designed to support future capabilities without architectural changes.
+Система конфигурации спроектирована для поддержки будущих возможностей без архитектурных изменений.
 
-Possible future features include:
+Возможные будущие функции:
+- миграция версий схемы
+- CLI валидации конфигурации (`axiom-cli --dump-schema`, D-07)
+- JSON Schema валидация через `schemars` + `jsonschema` (D-07, требует интернет)
+- профили окружения
+- diff и инспекция конфигурации
 
-- schema version migration
-- configuration validation CLI (`axiom-cli --dump-schema`, D-07)
-- JSON Schema validation via `schemars` + `jsonschema` (D-07, requires internet)
-- environment profiles
-- configuration diff and inspection
-
-These features must operate on the existing configuration structures without changing the core architecture.
-
----
-
-# 15. Non-Goals
-
-The configuration system explicitly does not support:
-
-- runtime scripting
-- configuration plugins
-- executable configuration logic
-- dynamic configuration mutation
-
-These capabilities introduce instability and are intentionally excluded.
+Эти функции должны работать на существующих конфигурационных структурах без изменения базовой архитектуры.
 
 ---
 
-# 16. Summary
+# 15. Ограничения области применения
 
-The Axiom configuration system provides a stable foundation based on several key ideas:
+Система конфигурации явно не поддерживает:
+- runtime-скриптинг
+- плагины конфигурации
+- исполняемую логику конфигурации
+- динамическую мутацию конфигурации
 
-- strong typing
-- strict separation between runtime and schema
-- declarative configuration
-- minimal infrastructure
-- deterministic initialization
+Эти возможности вносят нестабильность и намеренно исключены.
 
-This architecture allows Axiom to evolve its semantic model while maintaining a stable runtime foundation.
+---
 
-The configuration system is intentionally simple so that the complexity of the system remains within the semantic model and runtime architecture rather than the configuration infrastructure.
+# 16. Итог
+
+Система конфигурации Axiom обеспечивает стабильную основу на базе нескольких ключевых идей:
+- строгая типизация
+- строгое разделение runtime и schema
+- декларативность
+- минимальная инфраструктура
+- детерминированная инициализация
+
+Эта архитектура позволяет Axiom эволюционировать семантическую модель при сохранении стабильной runtime-основы.
+
+Система конфигурации намеренно проста, чтобы сложность системы оставалась в семантической модели и runtime-архитектуре, а не в конфигурационной инфраструктуре.

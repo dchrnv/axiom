@@ -2,24 +2,25 @@
 
 **Версия:** 2.0  
 **Последнее обновление:** 2026-04-12  
-**Статус:** Config V1.0 завершён — heartbeat загрузка + hot reload подключён к CLI
+**Статус:** Config V1.1 — AdaptiveTickRate задокументирован. GuardianConfig — запланирован (hardcoded в guardian.rs).
 
 ---
 
-## 📋 Содержание
+## Содержание
 
 1. [Обзор Configuration System](#обзор-configuration-system)
 2. [Структура конфигурационных файлов](#структура-конфигурационных-файлов)
-3. [Использование ConfigLoader](#исользование-configloader)
-4. [Интеграция с модулями](#интеграция-с-модулями)
-5. [Пресеты и валидация](#пресеты-и-валидация)
-6. [Примеры использования](#примеры-использования)
-7. [Тестирование конфигураций](#тестирование-конфигураций)
-8. [Troubleshooting](#troubleshooting)
+3. [Использование ConfigLoader](#использование-configloader)
+4. [AdaptiveTickRate](#adaptiveticktrate)
+5. [GuardianConfig (планируется)](#guardianconfig-планируется)
+6. [Интеграция с модулями](#интеграция-с-модулями)
+7. [Пресеты и валидация](#пресеты-и-валидация)
+8. [Горячая перезагрузка (ConfigWatcher)](#горячая-перезагрузка-configwatcher)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🏗️ Обзор Configuration System
+## Обзор Configuration System
 
 ### Что такое Configuration System?
 
@@ -48,7 +49,7 @@ config/
 
 ---
 
-## 📁 Структура конфигурационных файлов
+## Структура конфигурационных файлов
 
 ### Корневая конфигурация (`config/axiom.yaml`)
 
@@ -273,7 +274,7 @@ domain_template:
 
 ---
 
-## ⚙️ Использование ConfigLoader
+## Использование ConfigLoader
 
 ### Базовая инициализация
 
@@ -357,7 +358,74 @@ loader.validate(&config_value, &schema_value)?;
 
 ---
 
-## 🔗 Интеграция с модулями
+---
+
+## AdaptiveTickRate
+
+`AdaptiveTickRate` управляет переменной частотой тиков CLI-канала. Структура определена в коде, параметры выставляются через секцию `tick_schedule.adaptive_tick` в `axiom-cli.yaml`.
+
+**Триггеры повышения частоты:** tension traces, внешний ввод, multipass-обработка.  
+**Снижение:** после `cooldown` idle-тиков частота уменьшается на `step_down`.
+
+```yaml
+tick_schedule:
+  # ... другие интервалы ...
+
+  adaptive_tick:
+    min_hz: 60       # минимум в режиме ожидания
+    max_hz: 1000     # максимум под нагрузкой
+    step_up: 200     # прирост частоты при триггере
+    step_down: 20    # снижение после cooldown idle-тиков
+    cooldown: 50     # сколько idle-тиков до снижения
+```
+
+Адаптивный режим активируется при `adaptive_tick_rate: true` в `axiom-cli.yaml`. Без этого флага `tick_schedule.adaptive_tick` загружается но не применяется — `tick_hz` используется как фиксированная частота.
+
+---
+
+## GuardianConfig (планируется)
+
+**Статус:** не реализован. Параметры захардкожены в `axiom-runtime/src/guardian.rs`.
+
+`GuardianConfig` — это **ручки скорости обучения** модели. Guardian использует их в `adapt_thresholds` и `adapt_domain_physics` чтобы решать насколько агрессивно менять пороги Arbiter и физику домена в ответ на feedback.
+
+Планируемые поля (текущие захардкоженные значения):
+
+| Поле | Значение | Назначение |
+|------|----------|------------|
+| `high_success_threshold` | 0.8 | success_rate выше → пороги ужесточаются |
+| `low_success_threshold` | 0.3 | success_rate ниже → пороги ослабляются |
+| `physics_high_threshold` | 0.7 | success_rate выше → temperature снижается |
+| `threshold_step` | 5 | шаг изменения reflex_threshold за цикл |
+| `temp_step` | 5.0 | шаг изменения temperature (Кельвин) |
+| `temp_min` | 0.1 | нижний предел temperature после адаптации |
+| `temp_max` | 500.0 | верхний предел temperature после адаптации |
+| `resonance_step` | 10 | шаг изменения resonance_freq |
+| `confidence_ceiling` | 0.99 | верхняя граница валидного ML confidence |
+
+Когда будет реализован — загружается аналогично `HeartbeatConfig`: опциональный путь в `axiom-cli.yaml`, при отсутствии файла — используются defaults из кода.
+
+```yaml
+# axiom-cli.yaml (планируется)
+guardian_config_file: "presets/guardian.yaml"
+```
+
+```yaml
+# presets/guardian.yaml (планируется)
+high_success_threshold: 0.8
+low_success_threshold: 0.3
+physics_high_threshold: 0.7
+threshold_step: 5
+temp_step: 5.0
+temp_min: 0.1
+temp_max: 500.0
+resonance_step: 10
+confidence_ceiling: 0.99
+```
+
+---
+
+## Интеграция с модулями
 
 ### Token.rs интеграция
 
@@ -403,7 +471,7 @@ assert_eq!(domain.structural_role, StructuralRole::Ashti1);
 
 ---
 
-## 🎯 Пресеты и валидация
+## Пресеты и валидация
 
 ### Доступные пресеты
 
@@ -437,7 +505,7 @@ assert!(connection.validate_with_config().is_ok());   // С constraints
 
 ---
 
-## 💡 Примеры использования
+## Примеры использования
 
 ### Пример 1: Создание системы из конфигурации
 
@@ -508,7 +576,7 @@ match initialize() {
 
 ---
 
-## 🧪 Тестирование конфигураций
+## Тестирование конфигураций
 
 ### Запуск тестов
 
@@ -553,7 +621,7 @@ mod tests {
 
 ---
 
-## 🔄 Горячая перезагрузка (ConfigWatcher)
+## Горячая перезагрузка (ConfigWatcher)
 
 `ConfigWatcher` следит за `axiom.yaml` через inotify (Linux) / FSEvents (macOS) и перезагружает конфигурацию при изменении файла.
 
@@ -625,7 +693,7 @@ enable_shell_reconciliation: true
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Частые проблемы
 
@@ -714,6 +782,6 @@ println!("Token schema: {}", config.schema.token);
 
 ---
 
-**Последнее обновление:** 2026-04-12  
-**Версия Configuration System:** V1.0 (Config V1.0)  
-**Статус:** ✅ Heartbeat загрузка реализована. ConfigWatcher подключён к CLI-каналу.
+**Последнее обновление:** 2026-04-21  
+**Версия Configuration System:** V1.1  
+**Статус:** ✅ Heartbeat, ConfigWatcher, AdaptiveTickRate задокументированы. GuardianConfig — запланирован.

@@ -65,3 +65,18 @@ tick_schedule:
   # Auto-snapshot + prune Experience (0 = отключено по умолчанию в этом файле)
   # Включить если нужно периодически сохранять снапшоты в памяти
   snapshot_interval: 5000
+
+# ─── Guardian — скорость обучения модели ─────────────────────────────────────
+#
+# Управляет агрессивностью адаптации порогов Arbiter и физики домена.
+# Все поля опциональны — отсутствующее поле = значение по умолчанию.
+#
+# high_success_threshold: 0.8   # success_rate выше → пороги ужесточаются
+# low_success_threshold: 0.3    # success_rate ниже → пороги ослабляются
+# physics_high_threshold: 0.7   # success_rate выше → temperature снижается
+# threshold_step: 5             # Δ reflex_threshold за цикл (шт)
+# temp_step: 5.0                # Δ temperature за цикл (Кельвин)
+# temp_min: 0.1                 # нижний предел temperature
+# temp_max: 500.0               # верхний предел temperature
+# resonance_step: 10            # Δ resonance_freq за цикл (Hz)
+# confidence_ceiling: 0.99      # верхняя граница ML-confidence
