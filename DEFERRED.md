@@ -79,6 +79,63 @@
 
 ---
 
+### FW-TD-04 — on_boot не проверяет GENOME-права для FrameWeaver
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:624`, метод `on_boot`
+
+`_genome` игнорируется — не проверяется наличие `ModuleId::FrameWeaver` в GENOME access_rules и что выданные права соответствуют ожидаемым (EXPERIENCE/ReadWrite, MAYA/Read, SUTRA/Control). TODO-комментарий оставлен в коде.
+
+**Что нужно:** Вызвать `genome.index().check_access(ModuleId::FrameWeaver, ...)` для каждого нужного ресурса; вернуть `Err(OverDomainError::GenomeDenied)` при отсутствии прав.
+
+**Когда:** При добавлении runtime GENOME-enforcement (GenomeIndex уже реализован).
+
+---
+
+### FW-TD-05 — propose_to_dream возвращает пустые команды (DREAM не реализован)
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:767`, метод `propose_to_dream`
+
+`CrystallizationProposal.commands = Vec::new()` — команды предполагается заполнять DREAM-движком при принятии предложения. DREAM-фаза не существует; `Engine` не вызывает `propose_to_dream` нигде — метод используется только в тестах и будущей интеграции.
+
+**Что нужно:**
+1. Создать DREAM-компонент (Over-Domain или отдельный домен 107)
+2. Engine подавать стабильные кандидаты через `propose_to_dream`, DREAM принимает/отклоняет и заполняет commands
+3. Или упростить: убрать DREAM как посредника, вызывать `propose_to_dream` → `process_command` напрямую
+
+**Когда:** При проектировании DREAM-фазы (когнитивный сон/рефлексия).
+
+---
+
+### FW-TD-06 — промоция EXPERIENCE→SUTRA без участников (dummy_candidate)
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:727-734`, `on_tick` фаза 5
+
+При срабатывании промоции из `on_tick` создаётся `dummy_candidate` с `participants: Vec::new()`. В результате `build_promotion_commands` генерирует только токен-анкер в SUTRA, но **не** генерирует `BondTokens` к участникам Frame. SUTRA-анкер изолирован — без связей к участникам паттерна.
+
+**Что нужно:** Восстанавливать участников из EXPERIENCE — хранить `participants` в Connection-метаданных EXPERIENCE-анкера или в отдельном side-store (lineage_hash → Vec<sutra_id>).
+
+**Когда:** При полной реализации пути EXPERIENCE → SUTRA.
+
+---
+
+### FW-TD-07 — три нереализованных RuleTrigger ветки (DreamCycle, HighConfidence, RepeatedAssembly)
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:511-513`, `trigger_matches`
+
+Три ветки `RuleTrigger` всегда возвращают `false`:
+- `DreamCycle` — ждёт сигнала от DREAM-фазы (не существует)
+- `HighConfidence(f32)` — нет confidence scoring у кандидатов
+- `RepeatedAssembly { window_ticks }` — нет счётчика повторных сборок в скользящем окне
+
+**Что нужно:**
+- `DreamCycle`: сигнал от DREAM (флаг или канал)
+- `HighConfidence`: добавить `confidence: f32` в `FrameCandidate`, вычислять из силы связей
+- `RepeatedAssembly`: хранить `assembly_counts: HashMap<u64, (u64, u32)>` (hash → (last_tick, count))
+
+**Когда:** По мере расширения модели кристаллизации.
+
+---
+
 ### EA-TD-07 — Применение domain config при hot-reload к running engine
 
 **Где:** `crates/axiom-agent/src/tick_loop.rs`, ветка `if let Some(_new_cfg) = watcher.poll()`
