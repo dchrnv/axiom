@@ -814,3 +814,334 @@ impl Weaver for FrameWeaver {
         109 // EXPERIENCE
     }
 }
+
+// ============================================================================
+// Тесты
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axiom_config::DomainConfig;
+    use axiom_domain::{AshtiCore, DomainState};
+    use axiom_ucl::OpCode;
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    fn make_syn_conn(source: u32, target: u32, layer: u8) -> Connection {
+        let mut c = Connection::new(source, target, 110, 1);
+        c.link_type = 0x0800 | ((layer as u16) << 4);
+        c
+    }
+
+    fn empty_state() -> DomainState {
+        DomainState::new(&DomainConfig::default())
+    }
+
+    fn state_with_conns(conns: Vec<Connection>) -> DomainState {
+        let mut s = empty_state();
+        s.connections = conns;
+        s
+    }
+
+    // ── fnv1a_lineage_hash ───────────────────────────────────────────────────
+
+    #[test]
+    fn fnv1a_deterministic() {
+        let h1 = FrameWeaver::fnv1a_lineage_hash(&[1, 2, 3]);
+        let h2 = FrameWeaver::fnv1a_lineage_hash(&[1, 2, 3]);
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn fnv1a_order_independent() {
+        let h1 = FrameWeaver::fnv1a_lineage_hash(&[1, 2, 3]);
+        let h2 = FrameWeaver::fnv1a_lineage_hash(&[3, 1, 2]);
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn fnv1a_different_ids_differ() {
+        let h1 = FrameWeaver::fnv1a_lineage_hash(&[1, 2, 3]);
+        let h2 = FrameWeaver::fnv1a_lineage_hash(&[1, 2, 4]);
+        assert_ne!(h1, h2);
+    }
+
+    // ── proposed_id_from_hash ───────────────────────────────────────────────
+
+    #[test]
+    fn proposed_id_nonzero_when_low_bits_are_zero() {
+        let id = FrameWeaver::proposed_id_from_hash(0xDEAD_BEEF_0000_0000);
+        assert_eq!(id, 1);
+    }
+
+    #[test]
+    fn proposed_id_uses_low_32_bits() {
+        let id = FrameWeaver::proposed_id_from_hash(0x0000_0000_0000_ABCD);
+        assert_eq!(id, 0xABCD);
+    }
+
+    // ── scan_state ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn scan_empty_state_returns_no_candidates() {
+        let fw = FrameWeaver::with_default_config();
+        assert!(fw.scan_state(&empty_state(), 110).is_empty());
+    }
+
+    #[test]
+    fn scan_single_layer_not_detected() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![
+            make_syn_conn(10, 20, 1),
+            make_syn_conn(10, 30, 1),
+        ]);
+        assert!(fw.scan_state(&state, 110).is_empty());
+    }
+
+    #[test]
+    fn scan_two_layer_pattern_detected() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![
+            make_syn_conn(10, 20, 1),
+            make_syn_conn(10, 30, 2),
+        ]);
+        let result = fw.scan_state(&state, 110);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].participants.len(), 3); // head + 2 targets
+    }
+
+    #[test]
+    fn scan_inactive_connections_ignored() {
+        let fw = FrameWeaver::with_default_config();
+        let mut c1 = make_syn_conn(10, 20, 1);
+        let mut c2 = make_syn_conn(10, 30, 2);
+        c1.flags = 0;
+        c2.flags = 0;
+        assert!(fw.scan_state(&state_with_conns(vec![c1, c2]), 110).is_empty());
+    }
+
+    #[test]
+    fn scan_non_syntactic_connections_ignored() {
+        let fw = FrameWeaver::with_default_config();
+        let mut c = Connection::new(10, 20, 110, 1);
+        c.link_type = 0x0110; // category 0x01, not 0x08
+        assert!(fw.scan_state(&state_with_conns(vec![c]), 110).is_empty());
+    }
+
+    #[test]
+    fn scan_lineage_hash_order_independent() {
+        let fw = FrameWeaver::with_default_config();
+        let s1 = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let s2 = state_with_conns(vec![make_syn_conn(10, 30, 2), make_syn_conn(10, 20, 1)]);
+        let r1 = fw.scan_state(&s1, 110);
+        let r2 = fw.scan_state(&s2, 110);
+        assert_eq!(r1[0].lineage_hash, r2[0].lineage_hash);
+    }
+
+    #[test]
+    fn scan_category_is_syntax() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let result = fw.scan_state(&state, 110);
+        assert_eq!(result[0].category, FRAME_CATEGORY_SYNTAX);
+    }
+
+    // ── build_crystallization_commands ──────────────────────────────────────
+
+    #[test]
+    fn crystallization_commands_count() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let candidates = fw.scan_state(&state, 110);
+        let cmds = fw.build_crystallization_commands(&candidates[0], 109);
+        assert_eq!(cmds.len(), 4); // 1 anchor + 3 bonds (head + 2 targets)
+    }
+
+    #[test]
+    fn crystallization_first_cmd_is_inject_token() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let candidates = fw.scan_state(&state, 110);
+        let cmds = fw.build_crystallization_commands(&candidates[0], 109);
+        assert_eq!(cmds[0].opcode, OpCode::InjectToken as u16);
+    }
+
+    #[test]
+    fn crystallization_remaining_cmds_are_bond_tokens() {
+        let fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let candidates = fw.scan_state(&state, 110);
+        let cmds = fw.build_crystallization_commands(&candidates[0], 109);
+        for cmd in &cmds[1..] {
+            assert_eq!(cmd.opcode, OpCode::BondTokens as u16);
+        }
+    }
+
+    // ── update_candidates ───────────────────────────────────────────────────
+
+    #[test]
+    fn update_candidates_adds_new_with_stability_one() {
+        let mut fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let scan = fw.scan_state(&state, 110);
+        let hash = scan[0].lineage_hash;
+        fw.update_candidates(scan, 1);
+        assert_eq!(fw.candidates[&hash].stability_count, 1);
+    }
+
+    #[test]
+    fn update_candidates_increments_stability_on_repeat() {
+        let mut fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let hash = fw.scan_state(&state, 110)[0].lineage_hash;
+        fw.update_candidates(fw.scan_state(&state, 110), 1);
+        fw.update_candidates(fw.scan_state(&state, 110), 2);
+        assert_eq!(fw.candidates[&hash].stability_count, 2);
+    }
+
+    #[test]
+    fn update_candidates_removes_disappeared() {
+        let mut fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let hash = fw.scan_state(&state, 110)[0].lineage_hash;
+        fw.update_candidates(fw.scan_state(&state, 110), 1);
+        fw.update_candidates(Vec::new(), 2);
+        assert!(!fw.candidates.contains_key(&hash));
+    }
+
+    // ── on_tick — кристаллизация ─────────────────────────────────────────────
+
+    #[test]
+    fn on_tick_crystallizes_at_stability_threshold() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 2,
+            ..Default::default()
+        });
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        fw.on_tick(1, &ashti).unwrap();
+        assert!(fw.drain_commands().is_empty(), "tick 1: stability=1, not yet stable");
+
+        fw.on_tick(2, &ashti).unwrap();
+        let cmds = fw.drain_commands();
+        assert!(!cmds.is_empty(), "tick 2: stability=2 >= threshold, should crystallize");
+        assert_eq!(cmds[0].opcode, OpCode::InjectToken as u16);
+    }
+
+    #[test]
+    fn on_tick_no_crystallization_below_threshold() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 5,
+            ..Default::default()
+        });
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        for tick in 1..5 {
+            fw.on_tick(tick, &ashti).unwrap();
+            assert!(fw.drain_commands().is_empty(), "tick {tick}: still below threshold");
+        }
+    }
+
+    // ── on_tick — реактивация ────────────────────────────────────────────────
+
+    #[test]
+    fn on_tick_reactivates_existing_anchor() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 2,
+            ..Default::default()
+        });
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        // Вычислить hash и proposed_id, пока borrow на ashti ещё не активен
+        let hash = {
+            let maya = ashti.state(ashti.index_of(110).unwrap()).unwrap();
+            fw.scan_state(maya, 110)[0].lineage_hash
+        };
+        let proposed_id = FrameWeaver::proposed_id_from_hash(hash);
+
+        // Посадить анкер в EXPERIENCE заранее
+        let mut anchor = Token::new(proposed_id, 109, [0; 3], 1);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+        anchor.lineage_hash = hash;
+        ashti.inject_token(109, anchor).unwrap();
+
+        fw.on_tick(1, &ashti).unwrap();
+        fw.drain_commands(); // tick 1: stability=1, skip
+
+        fw.on_tick(2, &ashti).unwrap();
+        let cmds = fw.drain_commands();
+        assert!(!cmds.is_empty());
+        assert_eq!(cmds[0].opcode, OpCode::ReinforceFrame as u16);
+    }
+
+    // ── drain_commands ───────────────────────────────────────────────────────
+
+    #[test]
+    fn drain_commands_empties_pending() {
+        let mut fw = FrameWeaver::with_default_config();
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        let candidates = fw.scan_state(&state, 110);
+        fw.pending_commands.extend(fw.build_crystallization_commands(&candidates[0], 109));
+
+        assert!(!fw.drain_commands().is_empty());
+        assert!(fw.pending_commands.is_empty());
+    }
+
+    // ── check_promotion ──────────────────────────────────────────────────────
+
+    #[test]
+    fn check_promotion_fails_without_reactivations() {
+        let fw = FrameWeaver::with_default_config();
+        let mut anchor = Token::new(42, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+        anchor.temperature = 255;
+        anchor.mass = 255;
+        // min_reactivations=10, но reactivation_counts пустой
+        let proposals = fw.check_promotion(&empty_state(), &[&anchor]);
+        assert!(proposals.is_empty());
+    }
+
+    #[test]
+    fn check_promotion_skips_non_anchors() {
+        let fw = FrameWeaver::with_default_config();
+        let token = Token::new(42, 109, [0; 3], 0);
+        // type_flags=0, не TOKEN_FLAG_FRAME_ANCHOR
+        let proposals = fw.check_promotion(&empty_state(), &[&token]);
+        assert!(proposals.is_empty());
+    }
+
+    // ── stats ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn stats_scans_increments_on_tick() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() });
+        let ashti = AshtiCore::new(1);
+        fw.on_tick(1, &ashti).unwrap();
+        fw.on_tick(2, &ashti).unwrap();
+        assert_eq!(fw.stats.scans_performed, 2);
+    }
+
+    #[test]
+    fn stats_candidates_detected_increments() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() });
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        fw.on_tick(1, &ashti).unwrap();
+        assert_eq!(fw.stats.candidates_detected, 1);
+        // Второй тик: тот же кандидат уже существует в map → не детектируется снова
+        fw.on_tick(2, &ashti).unwrap();
+        assert_eq!(fw.stats.candidates_detected, 1);
+    }
+}
