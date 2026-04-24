@@ -1,294 +1,203 @@
 # Axiom Development Guide
 
-**Version:** v2.0
-**Date:** 2026-03-19
+**Версия:** 3.0  
+**Дата:** 2026-04-24
 
 ---
 
-## 📁 Структура
+## Структура репозитория
 
 ```
 Axiom/
-├── docs/spec/           # Спецификации (канон)
-│   ├── time/            # Time Model, COM, Frontier, Heartbeat
-│   ├── Token V5.2.md
-│   ├── Connection V5.0.md
-│   ├── Domain V2.0.md
-│   └── COM V1.0.md
-├── runtime/src/         # Rust реализация
-│   ├── token.rs
-│   ├── connection.rs
-│   ├── com.rs           # NEW: COM implementation
-│   ├── event.rs
-│   ├── domain.rs
-│   ├── physics_processor.rs
-│   └── config/
-├── ROADMAP.md           # Только планы
-├── STATUS.md            # Только факты
-├── DEFERRED.md          # Технический долг
-└── DEVELOPMENT_GUIDE.md # Этот файл
+├── crates/
+│   ├── axiom-core/        # Token, Connection, Event — базовые структуры
+│   ├── axiom-config/      # DomainConfig, ConfigLoader, AnchorSet, JsonSchema
+│   ├── axiom-genome/      # Genome, GenomeInvariants, ModuleId, types
+│   ├── axiom-space/       # Семантическое пространство, физика, SpatialHashGrid
+│   ├── axiom-shell/       # ShellProfile, SemanticContributionTable, link_types
+│   ├── axiom-frontier/    # CausalFrontier V2.0, Storm Control
+│   ├── axiom-heartbeat/   # Heartbeat V2.0
+│   ├── axiom-ucl/         # UCL V2.0 — бинарный протокол команд (64B)
+│   ├── axiom-upo/         # UPO v2.3 — динамические следы опыта
+│   ├── axiom-arbiter/     # Arbiter, Experience, Reflector, SkillSet, AshtiCore
+│   ├── axiom-domain/      # Domain, DomainState, FractalChain
+│   ├── axiom-runtime/     # AxiomEngine, Guardian, Over-Domain Layer, Gateway
+│   │   └── src/over_domain/
+│   │       ├── traits.rs          # OverDomainComponent, Weaver
+│   │       └── weavers/
+│   │           └── frame.rs       # FrameWeaver V1.1
+│   ├── axiom-persist/     # Персистентность: bincode, AutoSaver, exchange
+│   ├── axiom-agent/       # CLI, tick_loop, External Adapters, MLEngine
+│   └── axiom-bench/       # Criterion бенчмарки
+├── tools/
+│   └── axiom-dashboard/   # egui/eframe GUI
+├── config/
+│   ├── genome.yaml        # Конституция системы (должна совпадать с Genome::default_ashti_core())
+│   ├── axiom.yaml         # Основная конфигурация
+│   ├── anchors/           # Семантические якоря (axes/, layers/, domains/)
+│   └── presets/           # Пресеты DomainConfig
+├── docs/
+│   ├── spec/              # Спецификации (канон)
+│   │   └── Weaver/        # Over-Domain Layer, FrameWeaver
+│   ├── guides/            # Руководства для разработчиков
+│   ├── arch/              # Архитектурные решения
+│   └── bench/             # Результаты бенчмарков
+├── Core Invariants.md     # Фундаментальные инварианты системы
+├── STATUS.md              # Текущее состояние: тесты, архитектура
+├── ROADMAP.md             # Активные задачи (удалять завершённое)
+├── DEFERRED.md            # Технический долг и отложенные задачи
+└── DEVELOPMENT_GUIDE.md   # Этот файл
 ```
 
 ---
 
-## 🏛️ Архитектурные принципы
+## Архитектурные принципы
 
-### Асимметрия Token и Connection (КРИТИЧНО)
+### Асимметрия Token и Connection
 
 **Источник:** `docs/spec/Симетрия.md`
 
-Token и Connection принадлежат разным слоям бытия:
+| Сущность | Слой | Вопрос | Ответственность |
+|----------|------|--------|-----------------|
+| **Token** | Бытие | "Что это?" | Состояние, идентичность |
+| **Connection** | Действие | "Что это делает?" | Динамика, взаимодействие |
 
-| Сущность | Слой | Основной вопрос | Ответственность |
-|----------|------|-----------------|-----------------|
-| **Token** | **Бытие** | "Что это?" | Состояние, идентичность |
-| **Connection** | **Действие** | "Что это делает?" | Динамика, взаимодействие |
-
-**Правило проверки при добавлении поля:**
+**Правило при добавлении поля:**
 > "Кто несёт ответственность, если атрибут нарушен?"
-> - Если ответственность на **сущности** → Token
-> - Если ответственность на **взаимодействии** → Connection
+> - Нарушена **сущность** → Token
+> - Нарушено **взаимодействие** → Connection
 
-**Token содержит:**
-- Идентификаторы (id, type, semantic_vector)
-- Метаданные происхождения (source, creation_tick)
-- Флаги состояния (is_active, is_frozen, is_archived)
-- Флаги допуска (allow_connection, domain_affinity)
+Запрещено: зеркальные поля в обеих структурах, смешивание статики и динамики.
 
-**Connection содержит:**
-- Динамические параметры (strength, decay_rate, impulse)
-- Флаги поведения (is_inhibitory, is_amplifying)
-- Флаги процессов (is_active, is_temporary)
-- Контекст взаимодействия (origin_domain, target_domain)
-
-**ЗАПРЕЩЕНО:**
-- ❌ Зеркальные/дублирующиеся поля в обеих структурах
-- ❌ Нарушение принципа ответственности
-- ❌ Смешивание статики (Token) и динамики (Connection)
-
-### Модель времени (КРИТИЧНО)
+### Модель времени
 
 **Источник:** `docs/spec/time/Time_Model_V1_0.md`
 
-Время в AXIOM делится на три изолированных слоя:
+| Слой | Механизм | Где живёт |
+|------|----------|-----------|
+| Причинный порядок | `event_id` (u64) | Ядро |
+| Причинный возраст | `current_event_id - last_event_id` | Ядро |
+| Реальное время | wall-clock | Только адаптеры |
 
-| Слой | Механизм | Где живёт | Назначение |
-|------|----------|-----------|------------|
-| **Причинный порядок** | `event_id` (u64) | Ядро | Единственная "ось времени" |
-| **Причинный возраст** | `current_event_id - last_event_id` | Ядро | Decay, gravity, cooling |
-| **Реальное время** | Wall-clock timestamp | Адаптеры | Связь с внешним миром |
+Запрещено в ядре: `std::time`, `SystemTime`, `Instant`, `sleep()`, `timestamp_ms`.
 
-**Четыре правила:**
-1. **Ядро не знает что такое секунды** - никакого wall-clock времени
-2. **Возраст = разница event_id** - вся "длительность" через причинный возраст
-3. **Heartbeat - легитимная причинность** - "прошло N событий" → событие
-4. **Реальное время только за границей** - в адаптерах, не в ядре
+### Over-Domain Layer
 
-**ЗАПРЕЩЕНО в ядре:**
-- ❌ `std::time`, `SystemTime`, `Instant`
-- ❌ `timestamp_ms`, `created_at_unix`, `duration_seconds` в core-структурах
-- ❌ Decay/gravity на основе реального времени
-- ❌ `sleep()`, `delay()`, таймеры
+**Источник:** `docs/spec/Weaver/Over_Domain_Layer_V1_1.md`  
+**Гайд:** `docs/guides/FrameWeaver_Guide_V1_1.md`
 
-**РАЗРЕШЕНО:**
-- ✅ `event_id` как мера порядка и возраста
-- ✅ `current_event_id - last_event_id` для процессов
-- ✅ Heartbeat по счётчику событий
-- ✅ `Option<u64>` для timestamp в метаданных (ядро не использует)
+Компоненты над AshtiCore. Три правила:
+1. Читают состояние только через `&AshtiCore` (иммутабельно)
+2. Пишут только через UCL-команды, исполняемые Engine
+3. Не хранят собственных доменных данных
+
+**При добавлении нового Weaver:**
+- Новый `ModuleId` в `axiom-genome/src/types.rs`
+- Access rules в `Genome::default_ashti_core()` **и** в `config/genome.yaml` (должны совпадать)
+- Тест `test_from_yaml_matches_default` подтвердит синхронность
 
 ---
 
-## 🔄 Workflow
+## Workflow
 
-### 1. Спецификация → Runtime → Тесты → Фиксация
+### Стандартный цикл
 
 ```
-1. Читаем spec (docs/spec/)
-2. Реализуем в runtime/src/
-3. Пишем тесты (100% coverage)
-4. Обновляем STATUS.md
-5. Коммит + пуш
+1. Читаем спецификацию (docs/spec/)
+2. Реализуем в нужном crate
+3. Пишем тесты
+4. Обновляем STATUS.md, ROADMAP.md, DEFERRED.md
+5. Обновляем Core Invariants.md при изменении инвариантов
+6. Коммит + пуш
 ```
 
-### 2. Правила
+### Правила
 
-- **НИКОГДА не менять канонические спецификации** (`docs/spec/`)
-- **НИКОГДА не менять README.md** (неизменяем)
-- **ВСЕГДА обновлять Core Invariants** при изменении поведения
-- **ВСЕГДА проверять Token/Connection по принципу асимметрии**
-- **ВСЕГДА проверять модель времени** - нет wall-clock в ядре
-- **100% тест coverage** для критических модулей
-- **Качество > Скорость**
+- **НИКОГДА не менять спецификации** (`docs/spec/`) без явного запроса — канон
+- **README.md — только по явному запросу** пользователя, даже если данные устарели
+- **ВСЕГДА обновлять Core Invariants.md** при изменении поведения базовых структур
+- **ВСЕГДА проверять синхронность** `Genome::default_ashti_core()` ↔ `config/genome.yaml`
+- **Нет wall-clock в ядре** — проверять при любом изменении core/domain/runtime
+- **Нет unsafe** — `#![deny(unsafe_code)]` во всех crates ядра
+
+### Критерии готовности задачи
+
+- [ ] Код реализован согласно спецификации
+- [ ] Тесты написаны и проходят
+- [ ] STATUS.md обновлён (тесты, архитектура)
+- [ ] ROADMAP.md обновлён (выполненное удалено)
+- [ ] DEFERRED.md пополнен (если остались заглушки)
+- [ ] Core Invariants.md обновлён (если изменились инварианты)
+- [ ] Коммит создан и запушен
 
 ---
 
-## 📝 Документация
+## Документация
 
 ### STATUS.md
-- **Одна страница** — текущее состояние, не история
-- **Только факты:** число тестов, список crates, архитектура
-- **Удалять всё устаревшее немедленно** — детали фаз, чеклисты, комментарии
-- **Формат:** состояние + таблица crates с тестами
+- Одна страница — текущее состояние, не история
+- Только факты: число тестов, список crates, архитектурное дерево
+- Удалять всё устаревшее немедленно
 
 ### ROADMAP.md
-- **Только планы** - текущая и будущие задачи
-- **Удалять завершенное** сразу после выполнения
-- **Минимализм** - задачи, спеки, чеклисты
-- **Принципы документации** в конце файла
+- Только активные задачи — удалять завершённое сразу
+- Принципы документации в конце файла
 
 ### DEFERRED.md
-- **Технический долг** и отложенные задачи
-- **Приоритеты** - критические, средние, низкие
-- **Причины** - почему отложено
-- **Когда планируется** - версия или "неопределенно"
+- Технический долг с ID (FW-TD-01, EA-TD-07, ...)
+- Для каждого: где в коде, что нужно, когда делать
+
+### Core Invariants.md
+- Обновлять при любом изменении базовых структур, новых флагах, новых правилах
+- Текущая версия: 4.0
 
 ---
 
-## 📊 Бенчмарки
+## Бенчмарки
 
 **Расположение:** `crates/axiom-bench/`
 
-Один crate, один растущий бенчмарк. Не создавать отдельные бенчи в других crates — всё измерение производительности живёт здесь.
-
-### Структура
-
 ```
-crates/axiom-bench/
-├── Cargo.toml               # criterion 0.5 + зависимости на все crates
-└── benches/
-    ├── core_bench.rs        # axiom-core: Token, Connection, Event
-    ├── space_bench.rs       # axiom-space: SpatialHashGrid, distance2
-    ├── domain_bench.rs      # axiom-domain + axiom-arbiter: EventGenerator, resonance_search
-    └── engine_bench.rs      # axiom-runtime: AxiomEngine полный цикл
+crates/axiom-bench/benches/
+├── core_bench.rs    # Token, Connection, Event
+├── space_bench.rs   # SpatialHashGrid, distance2
+├── domain_bench.rs  # AshtiCore, resonance_search
+└── engine_bench.rs  # AxiomEngine полный цикл
 ```
-
-### Принципы
-
-- **Один crate, один benchmarks suite** — не дублировать измерения в других crates
-- **Охват растёт вместе с моделью** — при добавлении нового модуля/алгоритма добавить bench в соответствующий файл
-- **Ограничивать тяжёлые группы:** `group.measurement_time(Duration::from_secs(5)); group.sample_size(20);`
-- **Мутирующие функции** — использовать `iter_batched` (не `iter`), иначе состояние накапливается между итерациями
-- **Проверять корректность** перед измерением: `cargo test --benches -p axiom-bench` (каждый бенч — 1 итерация, быстро)
-
-### Команды
 
 ```bash
-# Проверить корректность (без измерений, ~5 сек)
-cargo test --benches -p axiom-bench
-
-# Запустить конкретный файл
-cargo bench -p axiom-bench --bench core_bench
-cargo bench -p axiom-bench --bench space_bench
-cargo bench -p axiom-bench --bench domain_bench
+cargo test --benches -p axiom-bench          # проверка без измерений
 cargo bench -p axiom-bench --bench engine_bench
-
-# Запустить конкретную группу
-cargo bench -p axiom-bench --bench engine_bench -- "TickForward"
-
-# Все бенчи (долго, ~5-10 минут)
 cargo bench -p axiom-bench
 ```
 
-### Когда дописывать
-
-- Добавлен новый алгоритм в горячем пути → добавить в соответствующий `*_bench.rs`
-- Новый crate с вычислительным ядром → добавить зависимость в `axiom-bench/Cargo.toml` и bench-функции в существующий файл по смыслу
-- Изменена сигнатура benchmarked функции → обновить bench (не создавать дубль)
-
-### Результаты
-
-Хранятся в `docs/bench/` (HTML от criterion) и фиксируются в `docs/bench/RESULTS.md` после значимых изменений модели.
+Результаты фиксируются в `docs/bench/RESULTS.md`.
 
 ---
 
-## 🧪 Тестирование
+## Тестирование
 
 ```bash
-# Все тесты
-cargo test
-
-# Конкретный модуль
-cargo test com::
-
-# С выводом
-cargo test -- --nocapture
+cargo test                                   # все тесты
+cargo test -p axiom-runtime                  # один crate
+cargo test over_domain::weavers::frame       # один модуль
+cargo test --features telegram,opensearch    # все features
 ```
 
-**Требования:**
-- Unit тесты для всех pub функций
-- Integration тесты для модулей
-- Cross-spec validation тесты
+Требования: unit-тесты для всех pub-функций, integration-тесты для модулей.
 
 ---
 
-## 🔧 Git Workflow
+## Git
 
 ```bash
-# Стандартный workflow
-git add -A
+git add <files>
 git commit -m "type: subject
 
-- detail 1
-- detail 2
+- detail
 
-🤖 Generated with Claude Code
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-git push origin main
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push
 ```
 
-**Типы коммитов:**
-- `feat:` - новая функциональность
-- `fix:` - исправление бага
-- `docs:` - документация
-- `test:` - тесты
-- `refactor:` - рефакторинг
-
----
-
-## 🎯 Приоритеты
-
-1. **Спецификации** - единственный источник правды
-2. **Тесты** - гарантия корректности
-3. **Документация** - STATUS, ROADMAP актуальны
-4. **Код** - чистота, читаемость, минимализм
-
----
-
-## 📊 Критерии готовности
-
-Задача считается завершенной когда:
-- [ ] Код реализован согласно спецификации
-- [ ] Тесты написаны и проходят (100%)
-- [ ] STATUS.md обновлен
-- [ ] ROADMAP.md обновлен (выполненное удалено)
-- [ ] Коммит создан и запушен
-- [ ] Старые планы перенесены в DEFERRED.md (при необходимости)
-
----
-
-## 🚀 Быстрый старт новой задачи
-
-1. Открыть ROADMAP.md - смотрим текущую фазу
-2. Читать спецификацию из `docs/spec/`
-3. Проверить существующий код в `runtime/src/`
-4. Запустить тесты - `cargo test`
-5. Реализовать функционал
-6. Написать тесты
-7. Обновить STATUS.md, ROADMAP.md
-8. Коммит + пуш
-
----
-
-## 📝 Минимализм
-
-**Принцип:** Краткость, структура, порядок
-
-- **STATUS.md** - 1 страница, только текущее состояние
-- **ROADMAP.md** - 1-2 страницы, только активные планы
-- **Код** - без избыточных комментариев
-- **Документация** - только суть, без воды
-
----
-
-**Обновлено:** 2026-03-20
-**Версия:** 2.1 - Добавлена модель времени
+Типы: `feat:` `fix:` `docs:` `test:` `refactor:` `chore:`
