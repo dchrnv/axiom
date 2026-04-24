@@ -1,7 +1,7 @@
 
 # Axiom Core Specification
 
-Version: 3.0 (2026-04-14)
+Version: 4.0 (2026-04-24)
 
 ## 1 Назначение
 
@@ -33,7 +33,11 @@ Version: 3.0 (2026-04-14)
 **GENOME** — конституция системы, заморожена в `Arc<Genome>` после старта, не изменяется в рантайме.
 **Gateway** — единственная точка входа для внешних систем; владеет AxiomEngine.
 **Channel** — in-process FIFO очередь команд и событий.
-**Anchor** — фиксированный токен в семантическом пространстве (mass=255, temperature=0, state=Locked); ориентир для позиционирования новых токенов.
+**Anchor** — фиксированный семантический токен (mass=255, temperature=0, state=Locked); ориентир для позиционирования новых токенов.
+**Over-Domain Layer** — слой над-доменных компонентов над AshtiCore. Читают состояние через `&AshtiCore`, пишут только через UCL. Не владеют доменными данными.
+**FrameWeaver** — Over-Domain компонент; сканирует синтаксические связи (категория 0x08) в MAYA, кристаллизует стабильные паттерны в EXPERIENCE как Frame-анкеры.
+**Frame** — синтаксический паттерн, кристаллизованный в EXPERIENCE (TOKEN_FLAG_FRAME_ANCHOR, state=STATE_ACTIVE). Особо устойчивые Frame могут быть промоутированы в SUTRA через CODEX (state=STATE_LOCKED).
+**lineage_hash** — FNV-1a hash над отсортированными sutra_ids всех участников Frame. Детерминированный идентификатор паттерна независимо от порядка обнаружения связей.
 
 ### Адресация доменов
 `domain_id = level_id × 100 + structural_role`
@@ -65,7 +69,7 @@ Version: 3.0 (2026-04-14)
 
 ## 4 Token (64 байта)
 
-4.1. **Структура** — sutra_id, domain_id, position, velocity, momentum, термодинамика, last_event_id, state.
+4.1. **Структура** — sutra_id, domain_id, type_flags, position, velocity, momentum, термодинамика (mass, temperature, valence), state, lineage_hash, last_event_id.
 4.2. **Существование** — Token всегда принадлежит одному Domain.
 4.3. **Время** — синхронизируется через last_event_id (COM event_id).
 4.4. **Состояния** — STATE_ACTIVE (1), STATE_SLEEPING (2), STATE_LOCKED (3). Locked-токены не двигаются и не затухают.
@@ -105,6 +109,10 @@ Version: 3.0 (2026-04-14)
 9.6. **Безопасный код** — `#![deny(unsafe_code)]` во всех crates ядра.
 9.7. **Якоря неизменяемы** — state=Locked, temperature=0. Физика поля не двигает якорные токены.
 9.8. **Fallback гарантирован** — система работает без якорей (FNV-1a hash). Якоря — улучшение, не зависимость.
+9.9. **Frame-анкеры в EXPERIENCE** — state=STATE_ACTIVE, type_flags содержит TOKEN_FLAG_FRAME_ANCHOR. Это не то же самое, что семантические якоря (9.7): Frame-анкеры живые, температура и масса изменяются при реактивации.
+9.10. **Промоция Frame в SUTRA** — только через CODEX; промотированный анкер: state=STATE_LOCKED, type_flags содержит TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE. Оригинал в EXPERIENCE сохраняется.
+9.11. **lineage_hash детерминированность** — FNV-1a над sorted(sutra_ids участников). Одинаковый набор участников → одинаковый hash при любом порядке обнаружения связей. Служит ключом дедупликации Frame.
+9.12. **CycleStrategy в EXPERIENCE** — циклические связи в EXPERIENCE допустимы (CycleStrategy::Allow). DAG-инвариант применяется только при промоции в SUTRA.
 
 ## 10 Расширения
 
@@ -113,6 +121,7 @@ Version: 3.0 (2026-04-14)
 10.3. **Дополнительные EventType** — допустимы в COM.
 10.4. **Внешние транспорты** — реализуют `RuntimeAdapter` или `EventObserver`; ядро не зависит от них.
 10.5. **Новые уровни якорей** — добавляются через YAML без изменения кода.
+10.6. **Over-Domain компоненты** — не хранят собственных доменных данных; читают только через `&AshtiCore`; изменения вносят исключительно через UCL-команды, обрабатываемые Engine.
 
 ## 11 Версионирование
 
