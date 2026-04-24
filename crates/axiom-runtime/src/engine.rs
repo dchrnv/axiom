@@ -16,7 +16,7 @@ use axiom_genome::Genome;
 use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
 use std::collections::HashMap;
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
-use crate::over_domain::{WeaverId, OverDomainComponent};
+use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -159,6 +159,8 @@ pub struct AxiomEngine {
     /// Создаются при boot после GUARDIAN, хранятся как trait objects.
     /// Конкретные Weavers (FrameWeaver) также хранятся по значению для weaver-specific API.
     pub over_domain_components: Vec<Box<dyn OverDomainComponent>>,
+    /// FrameWeaver — хранится по значению (не через dyn) для доступа к drain_commands().
+    pub frame_weaver: FrameWeaver,
 }
 
 impl AxiomEngine {
@@ -184,6 +186,7 @@ impl AxiomEngine {
             worker_count,
             thread_pool: build_thread_pool(worker_count),
             over_domain_components: Vec::new(),
+            frame_weaver: FrameWeaver::with_default_config(),
         })
     }
 
@@ -240,11 +243,12 @@ impl AxiomEngine {
     #[cfg(feature = "adapters")]
     pub fn snapshot_for_broadcast(&self) -> crate::broadcast::BroadcastSnapshot {
         crate::broadcast::BroadcastSnapshot {
-            tick_count:       self.tick_count,
-            com_next_id:      self.com_next_id,
-            trace_count:      self.trace_count(),
-            tension_count:    self.tension_count(),
-            domain_summaries: self.domain_summaries(),
+            tick_count:           self.tick_count,
+            com_next_id:          self.com_next_id,
+            trace_count:          self.trace_count(),
+            tension_count:        self.tension_count(),
+            domain_summaries:     self.domain_summaries(),
+            frame_weaver_stats:   Some(self.frame_weaver.stats.clone()),
         }
     }
 
@@ -669,6 +673,17 @@ impl AxiomEngine {
             }
         }
         self.over_domain_components = components;
+
+        // FrameWeaver: tick + исполнить накопленные команды
+        // Borrow-safe: frame_weaver и ashti — разные поля self
+        let fw_interval = self.frame_weaver.on_tick_interval();
+        if fw_interval > 0 && t % fw_interval as u64 == 0 {
+            let _ = self.frame_weaver.on_tick(t, &self.ashti);
+        }
+        let fw_commands: Vec<UclCommand> = self.frame_weaver.drain_commands();
+        for fw_cmd in fw_commands {
+            let _ = self.process_command(&fw_cmd);
+        }
 
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
     }

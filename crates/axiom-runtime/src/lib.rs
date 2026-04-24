@@ -51,3 +51,4 @@ pub use gateway::Gateway;
 pub use channel::{Channel, ChannelBatchResult};
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
 pub use over_domain::{WeaverId, OverDomainError, OverDomainComponent, Weaver, CrystallizationProposal, PromotionProposal};
+pub use over_domain::{FrameWeaver, FrameWeaverStats, FrameWeaverConfig};

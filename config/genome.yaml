@@ -39,6 +39,12 @@ access_rules:
   - { module: Shell,     resource: ExperienceMemory,  permission: Read      }
   # Adapters
   - { module: Adapters,  resource: MayaOutput,        permission: Read      }
+  # FrameWeaver — читает MAYA, пишет в EXPERIENCE; SUTRA только через CODEX
+  - { module: FrameWeaver,  resource: MayaOutput,        permission: Read      }
+  - { module: FrameWeaver,  resource: ExperienceMemory,  permission: ReadWrite }
+  - { module: FrameWeaver,  resource: SutraTokens,       permission: Control   }
+  - { module: FrameWeaver,  resource: AshtiField,        permission: Read      }
+  - { module: FrameWeaver,  resource: GenomeConfig,      permission: Read      }
 
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }

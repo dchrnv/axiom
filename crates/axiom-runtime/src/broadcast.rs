@@ -10,6 +10,7 @@
 
 use axiom_core::STATE_LOCKED;
 use serde::Serialize;
+use crate::over_domain::FrameWeaverStats;
 
 /// Лёгкий snapshot состояния Engine для периодического broadcast.
 ///
@@ -27,6 +28,8 @@ pub struct BroadcastSnapshot {
     pub tension_count: usize,
     /// Краткая сводка по каждому из 11 доменов
     pub domain_summaries: Vec<DomainSummary>,
+    /// Статистика FrameWeaver (None до первого тика сканирования)
+    pub frame_weaver_stats: Option<FrameWeaverStats>,
 }
 
 /// Краткая сводка одного домена для BroadcastSnapshot.

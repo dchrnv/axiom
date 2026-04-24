@@ -78,6 +78,12 @@ impl Genome {
             AccessRule { module: M::Shell, resource: R::ExperienceMemory,     permission: P::Read },
             // Adapters
             AccessRule { module: M::Adapters, resource: R::MayaOutput,        permission: P::Read },
+            // FrameWeaver — читает MAYA, пишет в EXPERIENCE; SUTRA только через CODEX (Control)
+            AccessRule { module: M::FrameWeaver, resource: R::MayaOutput,        permission: P::Read      },
+            AccessRule { module: M::FrameWeaver, resource: R::ExperienceMemory,  permission: P::ReadWrite },
+            AccessRule { module: M::FrameWeaver, resource: R::SutraTokens,       permission: P::Control   },
+            AccessRule { module: M::FrameWeaver, resource: R::AshtiField,        permission: P::Read      },
+            AccessRule { module: M::FrameWeaver, resource: R::GenomeConfig,      permission: P::Read      },
         ];
 
         let protocol_rules = vec![

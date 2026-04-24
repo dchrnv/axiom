@@ -190,6 +190,7 @@ pub enum CycleStrategy {
 
 /// Статистика FrameWeaver для BroadcastSnapshot.
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "adapters", derive(serde::Serialize))]
 pub struct FrameWeaverStats {
     pub scans_performed: u64,
     pub candidates_detected: u64,
