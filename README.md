@@ -4,18 +4,17 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-991%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1017%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)](#licensing)
-
-«Свобода для людей, для корпораций за деньги».
+[![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
+](#licensing)
 
 ---
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 991 tests passing.**
+**Axiom is in active development — core architecture complete, 1017 tests passing.**
 
 ---
 
@@ -154,6 +153,7 @@ let result = gw.process_channel(&mut ch);
 ### Documentation
 
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
+- [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver: scan/кристаллизация/промоция
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md) — WebSocket, REST, Dashboard, Telegram, OpenSearch
