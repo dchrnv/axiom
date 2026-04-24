@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 25.0
-**Обновлён:** 2026-04-23
+**Версия:** 26.0
+**Обновлён:** 2026-04-24
 
 ---
 
@@ -50,21 +50,6 @@
 Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
 
 **Когда:** При первой реальной ONNX-модели.
-
----
-
-### FW-TD-01 — FrameWeaver: pending_commands не подключены к tick-loop
-
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs`, `crates/axiom-runtime/src/engine.rs`
-
-`FrameWeaver::on_tick` накапливает UCL-команды в `pending_commands`, но `handle_tick_forward` их не сливает и не исполняет. Метод `drain_commands()` создан, но не вызывается.
-
-**Что нужно (Фаза 4):**
-1. Хранить `FrameWeaver` по значению в `AxiomEngine` (рядом с `guardian`)
-2. После цикла `over_domain_components` вызвать `frame_weaver.drain_commands()` и пропустить каждую команду через `self.process_command()`
-3. Зарегистрировать `FrameWeaver` также в `over_domain_components` через Box (для on_tick)
-
-**Когда:** Фаза 4 FrameWeaver — следующий активный этап.
 
 ---
 

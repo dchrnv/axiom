@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-23
+**Обновлено:** 2026-04-24
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**991 тестов (1014 с --features telegram,opensearch), 0 failures**
+**1017 тестов (1040 с --features telegram,opensearch), 0 failures**
 
 ```
 AxiomEngine
@@ -20,10 +20,12 @@ AxiomEngine
   └── Over-Domain Layer:
         ├── OverDomainComponent trait (object-safe, on_tick каждые N тиков через mem::take)
         ├── Weaver trait (type Pattern, scan, propose_to_dream, check_promotion)
-        └── FrameWeaver V1.1 — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
+        └── FrameWeaver V1.1 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
               scan_state, build_crystallization_commands, ReinforceFrame (lineage_hash dedup),
               build_promotion_commands (→ SUTRA STATE_LOCKED + TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE),
-              CycleStrategy::Allow (default), pending_commands (подключается в Фазе 4)
+              CycleStrategy::Allow (default); встроен в AxiomEngine (on_tick + drain_commands);
+              GENOME: 5 access rules (MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control);
+              26 unit-тестов: scan, crystallization, reactivation, promotion, stats
 
 FractalChain — N уровней AshtiCore (MAYA[n] → SUTRA[n+1], skills exchange)
 ConfigWatcher — горячая перезагрузка axiom.yaml (inotify), передаётся в tick_loop
@@ -102,12 +104,12 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 183 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.1), Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters") |
+| axiom-runtime | 191 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.1 ✅), Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats |
 | axiom-agent | 152 (175 all-features) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop (CliState, adaptive sleep, ConfigWatcher), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | — | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **991 (1014 all-features)** | |
+| **Итого** | **1017 (1040 all-features)** | |
 
 ---
 
@@ -151,3 +153,5 @@ axiom-space:
 | Tech Debt | EA-TD-01..06: domain_name, CliState, adaptive tick, ConfigWatcher, DetailLevel | ✅ |
 | EA-TD-02 | TokenSnapshot::shell — точный compute_shell через SemanticContributionTable | ✅ |
 | FrameWeaver 1–3 | Over-Domain Layer traits + FrameWeaver V1.1 (scan→EXPERIENCE, ReinforceFrame, CycleStrategy::Allow) | ✅ |
+| FrameWeaver 4 | Интеграция в AxiomEngine (on_tick + drain_commands), BroadcastSnapshot + FrameWeaverStats, GENOME permissions | ✅ |
+| FrameWeaver 5 | 26 unit-тестов: fnv1a, scan, crystallization, reactivation, promotion, stats | ✅ |
