@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 37.0  
-**Дата:** 2026-04-24
+**Версия:** 38.0  
+**Дата:** 2026-04-27
 
 ---
 
@@ -16,8 +16,9 @@ axiom-ucl → axiom-upo                          axiom-agent
                                                 (axiom-cli)
 ```
 
-**FrameWeaver V1.1 завершён (Фазы 1–5).** 1017 тестов, 0 failures.  
-**Over-Domain Layer:** traits `OverDomainComponent` + `Weaver`; `FrameWeaver` встроен в `AxiomEngine` (on_tick + drain_commands).  
+**FrameWeaver V1.1 стабилизирован.** 1030 тестов, 0 failures.  
+**Over-Domain Layer:** traits `OverDomainComponent` + `Weaver`; `FrameWeaver` встроен в `AxiomEngine`.  
+**Стабилизация (2026-04-26–27):** `restore_frame_from_anchor`, UnfoldFrame handler, tick в Weaver trait, оптимизация 311→238 ns, e2e smoke test.  
 **Онтология:** SUTRA / EXPERIENCE / MAYA. Frame живёт в EXPERIENCE (STATE_ACTIVE), промоция в SUTRA через CODEX.
 
 ---

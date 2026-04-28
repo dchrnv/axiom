@@ -52,3 +52,11 @@ harness = false
 [[bench]]
 name = "integration_bench"
 harness = false
+
+[[bench]]
+name = "frameweaver_overhead"
+harness = false
+
+[[bench]]
+name = "hot_path_regression"
+harness = false

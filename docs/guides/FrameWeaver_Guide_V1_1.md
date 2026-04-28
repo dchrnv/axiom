@@ -1,9 +1,9 @@
 # FrameWeaver V1.1 — Руководство
 
-**Версия:** 1.1  
-**Дата:** 2026-04-24  
+**Версия:** 1.1 (актуализирован 2026-04-26 — стабилизация)  
 **Спека:** [FrameWeaver_V1_1.md](../spec/Weaver/FrameWeaver_V1_1.md)  
-**Архитектура:** [Over_Domain_Layer_V1_1.md](../spec/Weaver/Over_Domain_Layer_V1_1.md)
+**Архитектура:** [Over_Domain_Layer_V1_1.md](../spec/Weaver/Over_Domain_Layer_V1_1.md)  
+**Errata:** [FrameWeaver_V1_1_errata.md](../spec/Weaver/erratas/FrameWeaver_V1_1_errata.md)
 
 ---
 
@@ -128,6 +128,30 @@ pub struct InjectFrameAnchorPayload {  // repr(C), 48 байт
 
 Важно: поля упорядочены от бо́льшего alignment к меньшему. Без этого `repr(C)` дал бы 52 байта из-за padding'а вокруг `u64`.
 
+### UnfoldFramePayload (OpCode::UnfoldFrame)
+
+Разворачивает Frame из EXPERIENCE (или SUTRA) в произвольный целевой домен. Создаёт копию анкера и его связей:
+
+```rust
+pub struct UnfoldFramePayload {  // repr(C), 48 байт
+    pub frame_anchor_id:  u32,   // sutra_id анкера в EXPERIENCE/SUTRA
+    pub target_domain_id: u16,   // домен назначения (например, LOGIC = 106)
+    pub unfold_depth:     u8,    // глубина (1 = только прямые участники)
+    pub reserved:         [u8; 41],
+}
+```
+
+Обработчик в `engine.rs::handle_unfold_frame`:
+1. Ищет анкер в EXPERIENCE → если не найден, fallback в SUTRA
+2. Вызывает `restore_frame_from_anchor` для восстановления участников из графа связей
+3. Генерирует новый `anchor_id` через `lineage_hash ^ (target_domain as u64).wrapping_mul(0x9e3779b97f4a7c15)`
+4. Инжектирует новый анкер + BondTokens в `target_domain_id`
+5. Инкрементирует `stats.unfold_requests`
+
+Возвращает `CommandStatus::Success` (0) при успехе. При отсутствии анкера или невозможности восстановить участников — `SystemError` (5).
+
+---
+
 ### BondTokensPayload (OpCode::BondTokens)
 
 Одна команда на каждого участника Frame. Связывает Frame-анкер с участником:
@@ -206,12 +230,14 @@ self.over_domain_components = components;
 let fw_interval = self.frame_weaver.on_tick_interval();
 if fw_interval > 0 && t % fw_interval as u64 == 0 {
     let _ = self.frame_weaver.on_tick(t, &self.ashti);
-}
-let fw_commands: Vec<UclCommand> = self.frame_weaver.drain_commands();
-for fw_cmd in fw_commands {
-    let _ = self.process_command(&fw_cmd);
+    let fw_commands: Vec<UclCommand> = self.frame_weaver.drain_commands();
+    for fw_cmd in fw_commands {
+        let _ = self.process_command(&fw_cmd);
+    }
 }
 ```
+
+`drain_commands` вызывается только внутри interval-guard — это важная оптимизация. При `scan_interval=20` без неё вызов происходил каждый тик и добавлял ~73 ns (24% overhead). После переноса внутрь guard: 311 → 238 ns/тик при 50 токенах в LOGIC.
 
 `drain_commands` использует `mem::take` — O(1), без копирования.
 
@@ -235,7 +261,7 @@ for fw_cmd in fw_commands {
 pub frame_weaver_stats: Option<FrameWeaverStats>
 ```
 
-Содержит счётчики: `scans_performed`, `candidates_detected`, `crystallizations_approved`, `frame_reactivations`, `promotions_proposed`, `frames_in_experience`, `frames_in_sutra`.
+Содержит счётчики: `scans_performed`, `candidates_detected`, `crystallizations_approved`, `frame_reactivations`, `promotions_proposed`, `frames_in_experience`, `frames_in_sutra`, `unfold_requests`.
 
 ---
 
@@ -270,25 +296,90 @@ MAX_MODULES           = 17
 
 ---
 
+## restore_frame_from_anchor
+
+Публичная функция для восстановления списка участников Frame из графа связей домена:
+
+```rust
+pub fn restore_frame_from_anchor(
+    anchor_id: u32,
+    source_state: &DomainState,
+) -> Result<RestoredFrame, RestoreError>
+```
+
+Алгоритм:
+1. Находит токен с `sutra_id == anchor_id` в `source_state.tokens`
+2. Проверяет `TOKEN_FLAG_FRAME_ANCHOR` на токене
+3. Итерирует активные связи с `source_id == anchor_id` и категорией `0x08`
+4. Для каждой связи проверяет, что `target_id` присутствует в `source_state.tokens` — если нет, возвращает `DanglingParticipant`
+5. Декодирует `origin_domain_id` из `reserved_gate[0..2]` (big-endian u16)
+
+```rust
+pub enum RestoreError {
+    AnchorNotFound,
+    NotAFrameAnchor,
+    InvalidLinkType(u16),
+    DanglingParticipant(u32),  // target_id не найден в source_state
+}
+
+pub struct RestoredFrame {
+    pub anchor:       Token,
+    pub anchor_id:    u32,
+    pub category:     u16,
+    pub participants: Vec<Participant>,
+}
+```
+
+**Важное ограничение**: функция проверяет присутствие участников только в `source_state` (обычно EXPERIENCE). В реальной системе участники живут в SUTRA или MAYA — при вызове из контекста, где они недоступны в `source_state`, нужно инжектировать их заранее или использовать fallback.
+
+Используется в:
+- `handle_unfold_frame` (engine.rs) — восстановление перед копированием Frame
+- `on_tick` (frame.rs) — промоция использует `restore_frame_from_anchor` вместо `dummy_candidate`
+
+---
+
 ## Известные ограничения (DEFERRED)
 
-| ID | Проблема |
-|----|----------|
-| FW-TD-02 | `min_participant_anchors` не проверяется в `qualifies_for_promotion` |
-| FW-TD-03 | `Weaver::check_promotion` использует `tick_proxy = 0` вместо реального tick |
-| FW-TD-04 | `on_boot` не проверяет GENOME-права для FrameWeaver |
-| FW-TD-05 | `propose_to_dream` — DREAM-фаза не реализована, команды пустые |
-| FW-TD-06 | Промоция из `on_tick` создаёт SUTRA-анкер без BondTokens к участникам |
-| FW-TD-07 | `RuleTrigger::DreamCycle`, `HighConfidence`, `RepeatedAssembly` всегда false |
+| ID | Проблема | Статус |
+|----|----------|--------|
+| FW-TD-02 | `min_participant_anchors` не проверяется в `qualifies_for_promotion` | open |
+| FW-TD-03 | `Weaver::check_promotion` без tick | ✅ закрыт (стабилизация Этап 1) |
+| FW-TD-04 | `on_boot` не проверяет GENOME-права для FrameWeaver | open |
+| FW-TD-05 | `propose_to_dream` — DREAM-фаза не реализована | ⏸ deferred |
+| FW-TD-06 | Промоция создаёт SUTRA-анкер без BondTokens к участникам | ✅ закрыт (стабилизация Этап 2) |
+| FW-TD-07 | `RuleTrigger::DreamCycle`, `HighConfidence`, `RepeatedAssembly` всегда false | open |
 
 ---
 
 ## Тесты
 
-Юнит-тесты в `frame.rs` (26 тестов, `#[cfg(test)] mod tests`):
+**Юнит-тесты** в `frame.rs` (`#[cfg(test)] mod tests`):
 
 ```
 cargo test -p axiom-runtime over_domain::weavers::frame
 ```
 
-Покрытие: fnv1a_lineage_hash, proposed_id_from_hash, scan_state (6 сценариев), build_crystallization_commands, update_candidates, on_tick (кристаллизация + реактивация), drain_commands, check_promotion, stats.
+Покрытие: fnv1a_lineage_hash, proposed_id_from_hash, scan_state (6 сценариев), build_crystallization_commands, update_candidates, on_tick (кристаллизация + реактивация), drain_commands, check_promotion, stats, restore_frame_from_anchor (4 сценария), tick в scan/check_promotion.
+
+**Интеграционные тесты** в `tests/engine_tests.rs`:
+
+```
+cargo test -p axiom-runtime --test engine_tests
+```
+
+Включают: `unfold_frame_to_target_domain`, `unfold_frame_source_auto_detect_experience`, `unfold_frame_returns_error_for_missing_anchor`.
+
+**End-to-end smoke test** в `tests/frameweaver_smoke_test.rs`:
+
+```
+cargo test -p axiom-runtime --test frameweaver_smoke_test
+```
+
+Сценарий: MAYA синтаксический узор (25 тиков) → Frame в EXPERIENCE → UnfoldFrame в LOGIC → проверка stats.
+
+**Бенчмарки** в `axiom-bench`:
+
+```
+cargo bench --bench frameweaver_overhead    # A/B/C/D isolation
+cargo bench --bench hot_path_regression    # TickForward ≤150 ns регрессия
+```

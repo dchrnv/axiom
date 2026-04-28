@@ -13,10 +13,10 @@ use axiom_core::{Token, Connection, Event, FLAG_ACTIVE};
 use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
-use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
+use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, UnfoldFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
 use std::collections::HashMap;
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
-use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver};
+use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -389,6 +389,7 @@ impl AxiomEngine {
             OpCode::CoreShutdown   => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             OpCode::BondTokens        => self.handle_bond_tokens(cmd),
             OpCode::ReinforceFrame    => self.handle_reinforce_frame(cmd),
+            OpCode::UnfoldFrame       => self.handle_unfold_frame(cmd),
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
             OpCode::LockMembrane
             | OpCode::ReshapeDomain
@@ -397,8 +398,7 @@ impl AxiomEngine {
             | OpCode::SplitToken
             | OpCode::ChangeTemperature
             | OpCode::ApplyGravity
-            | OpCode::PhaseTransition
-            | OpCode::UnfoldFrame     => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            | OpCode::PhaseTransition  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
             #[allow(unreachable_patterns)]
             _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
         }
@@ -606,6 +606,82 @@ impl AxiomEngine {
         }
     }
 
+    fn handle_unfold_frame(&mut self, cmd: &UclCommand) -> UclResult {
+        let p = read_unfold_frame_payload(&cmd.payload);
+        let level = self.ashti.level_id();
+        let experience_domain = level * 100 + 9;
+        let sutra_domain = level * 100;
+        let target_domain = p.target_domain_id;
+
+        if self.ashti.index_of(target_domain).is_none() {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+        }
+
+        // Найти Frame: сначала в EXPERIENCE, потом в SUTRA
+        let source_domain = if let Some(idx) = self.ashti.index_of(experience_domain) {
+            if let Some(state) = self.ashti.state(idx) {
+                if state.tokens.iter().any(|t| t.sutra_id == p.frame_anchor_id) {
+                    experience_domain
+                } else {
+                    sutra_domain
+                }
+            } else {
+                sutra_domain
+            }
+        } else {
+            sutra_domain
+        };
+
+        let restored = {
+            let idx = match self.ashti.index_of(source_domain) {
+                Some(i) => i,
+                None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+            };
+            let state = match self.ashti.state(idx) {
+                Some(s) => s,
+                None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+            };
+            match restore_frame_from_anchor(p.frame_anchor_id, state) {
+                Ok(r)  => r,
+                Err(_) => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::INVALID_PAYLOAD, 0),
+            }
+        };
+
+        // Создать копию анкера в target_domain
+        let event_id = self.next_event_id();
+        let new_anchor_id = {
+            let low = (restored.anchor.lineage_hash ^ (target_domain as u64).wrapping_mul(0x9e3779b97f4a7c15)) as u32;
+            if low == 0 { 1 } else { low }
+        };
+        let mut new_anchor = restored.anchor;
+        new_anchor.sutra_id = new_anchor_id;
+        new_anchor.domain_id = target_domain;
+        new_anchor.last_event_id = event_id;
+
+        if self.ashti.inject_token(target_domain, new_anchor).is_err() {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0);
+        }
+
+        // Создать BondTokens к каждому участнику
+        let mut bonds_created = 0u16;
+        for participant in &restored.participants {
+            let bond_event_id = self.next_event_id();
+            let mut conn = Connection::new(new_anchor_id, participant.sutra_id, target_domain, bond_event_id);
+            conn.link_type = participant.role_link_type;
+            conn.flags = FLAG_ACTIVE;
+            conn.reserved_gate[0] = (participant.origin_domain_id >> 8) as u8;
+            conn.reserved_gate[1] = (participant.origin_domain_id & 0xFF) as u8;
+            conn.reserved_gate[2] = (participant.role_link_type >> 8) as u8;
+            conn.reserved_gate[3] = (participant.role_link_type & 0xFF) as u8;
+            if self.ashti.inject_connection(target_domain, conn).is_ok() {
+                bonds_created += 1;
+            }
+        }
+
+        self.frame_weaver.stats.unfold_requests += 1;
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, bonds_created + 1)
+    }
+
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
         self.tick_count += 1;
         let t = self.tick_count;
@@ -675,14 +751,15 @@ impl AxiomEngine {
         self.over_domain_components = components;
 
         // FrameWeaver: tick + исполнить накопленные команды
-        // Borrow-safe: frame_weaver и ashti — разные поля self
+        // Borrow-safe: frame_weaver и ashti — разные поля self.
+        // drain_commands вызывается только когда on_tick реально отработал.
         let fw_interval = self.frame_weaver.on_tick_interval();
         if fw_interval > 0 && t % fw_interval as u64 == 0 {
             let _ = self.frame_weaver.on_tick(t, &self.ashti);
-        }
-        let fw_commands: Vec<UclCommand> = self.frame_weaver.drain_commands();
-        for fw_cmd in fw_commands {
-            let _ = self.process_command(&fw_cmd);
+            let fw_commands = self.frame_weaver.drain_commands();
+            for fw_cmd in fw_commands {
+                let _ = self.process_command(&fw_cmd);
+            }
         }
 
         make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
@@ -1027,6 +1104,18 @@ fn read_bond_tokens_payload(payload: &[u8; 48]) -> BondTokensPayload {
         origin_domain: read_u16_le(payload, 20),
         role_id:       read_u16_le(payload, 22),
         reserved:      [0; 24],
+    }
+}
+
+/// UnfoldFramePayload из raw payload bytes
+///
+/// Layout: frame_anchor_id[0..4], target_domain_id[4..6], unfold_depth[6].
+fn read_unfold_frame_payload(payload: &[u8; 48]) -> UnfoldFramePayload {
+    UnfoldFramePayload {
+        frame_anchor_id:  u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        target_domain_id: read_u16_le(payload, 4),
+        unfold_depth:     payload[6],
+        reserved:         [0; 41],
     }
 }
 

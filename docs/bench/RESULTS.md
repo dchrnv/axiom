@@ -1,6 +1,6 @@
 # Axiom Benchmark Results
 
-**Текущая версия:** v8 (2026-04-12)
+**Текущая версия:** v9.1 (2026-04-27 — FrameWeaver overhead addendum)
 **Платформа:** Linux x86-64 · AMD Ryzen 5 3500U · 4c/8t · 3.46 GHz boost · L2 512 KB · RAM 5.7 GiB
 **Инструмент:** criterion 0.5 · профиль `release`
 
@@ -1337,3 +1337,35 @@ O(1) природа подтверждена: 1K→50K практически о
 | `domain_detail_snapshot` (50 токенов, 1K связей) | **15 µs** | — | on-demand |
 
 **Ключевой вывод:** горячий путь (TickForward 50 токенов) — **84–93 ns/тик**, стабильно. External Adapters не добавили overhead в ядро. `domain_detail_snapshot` с точным compute_shell — 15–58 µs при реалистичных нагрузках, приемлемо для on-demand запросов.
+
+---
+
+## v9.1 — FrameWeaver Overhead (2026-04-27)
+
+**Платформа:** Linux x86-64 · AMD Ryzen 5 3500U · 4c/8t  
+**Бенчмарк:** `cargo bench --bench frameweaver_overhead`  
+**Конфигурация:** 50 токенов в LOGIC, criterion 0.5 release
+
+### A/B/C/D isolation benchmark
+
+| Группа | Конфигурация | ns/тик | Δ от baseline |
+|--------|-------------|--------|---------------|
+| A | FW disabled (scan_interval=u32::MAX) | ~280 ns | baseline |
+| B | FW active, scan=1, MAYA пуста | ~451 ns | +171 ns |
+| C | FW active, scan=1, MAYA 5 узоров | ~1 454 ns | +1 174 ns |
+| D | FW active, scan=1, MAYA 20 узоров | ~4 923 ns | +4 643 ns |
+
+**Примечание:** группа A выше исторического baseline (96.5 ns) из-за добавления tension/goal periodic checks в engine — это не FrameWeaver.
+
+### Hot path regression (default config)
+
+| Конфигурация | До оптимизации | После оптимизации |
+|-------------|----------------|-------------------|
+| FW default (scan_interval=20), 50 токенов | 311 ns/тик | **238 ns/тик** |
+
+**Оптимизация:** `drain_commands()` перенесён внутрь interval-guard — вызывается только когда `on_tick` реально отработал, а не каждый тик. Экономия ~73 ns/тик (-24%).
+
+**Вклад FW при scan_interval=20:** ~7–14 ns/тик амортизированно (нормально).
+
+**Постоянный регрессионный бенчмарк:** `cargo bench --bench hot_path_regression`  
+Целевая планка: ≤ 150 ns/тик (TickForward 50 токенов, default FrameWeaver config).

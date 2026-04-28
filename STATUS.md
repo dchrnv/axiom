@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-24
+**Обновлено:** 2026-04-27
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1017 тестов (1040 с --features telegram,opensearch), 0 failures**
+**1030 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -23,9 +23,12 @@ AxiomEngine
         └── FrameWeaver V1.1 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
               scan_state, build_crystallization_commands, ReinforceFrame (lineage_hash dedup),
               build_promotion_commands (→ SUTRA STATE_LOCKED + TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE),
-              CycleStrategy::Allow (default); встроен в AxiomEngine (on_tick + drain_commands);
+              CycleStrategy::Allow (default); Weaver trait: scan(tick,…), check_promotion(tick,…);
+              restore_frame_from_anchor — восстановление участников из графа EXPERIENCE;
+              UnfoldFrame handler — разворачивает Frame в произвольный целевой домен;
+              встроен в AxiomEngine (on_tick + drain_commands внутри interval-guard);
               GENOME: 5 access rules (MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control);
-              26 unit-тестов: scan, crystallization, reactivation, promotion, stats
+              35+ unit-тестов + integration + e2e smoke; FrameWeaverStats: unfold_requests
 
 FractalChain — N уровней AshtiCore (MAYA[n] → SUTRA[n+1], skills exchange)
 ConfigWatcher — горячая перезагрузка axiom.yaml (inotify), передаётся в tick_loop
@@ -64,7 +67,8 @@ axiom-runtime:
   ├── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
   ├── domain_name(id: u16) — pub fn, экспортируется без feature-gate
   ├── Over-Domain Layer (over_domain/): OverDomainComponent, Weaver traits; FrameWeaver V1.1
-  │   BondTokens + ReinforceFrame + InjectFrameAnchor handlers в engine.rs
+  │   BondTokens + ReinforceFrame + InjectFrameAnchor + UnfoldFrame handlers в engine.rs
+  │   restore_frame_from_anchor (pub fn, over_domain::weavers::frame)
   └── Broadcast types (--features adapters): BroadcastSnapshot, DomainSummary,
       DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot; snapshot_for_broadcast(),
       domain_detail_snapshot(), trace_count(), tension_count(), last_matched()
@@ -104,12 +108,12 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 191 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.1 ✅), Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats |
+| axiom-runtime | 204 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.1 ✅), Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 152 (175 all-features) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop (CliState, adaptive sleep, ConfigWatcher), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | — | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1017 (1040 all-features)** | |
+| **Итого** | **1030** | |
 
 ---
 
@@ -155,3 +159,4 @@ axiom-space:
 | FrameWeaver 1–3 | Over-Domain Layer traits + FrameWeaver V1.1 (scan→EXPERIENCE, ReinforceFrame, CycleStrategy::Allow) | ✅ |
 | FrameWeaver 4 | Интеграция в AxiomEngine (on_tick + drain_commands), BroadcastSnapshot + FrameWeaverStats, GENOME permissions | ✅ |
 | FrameWeaver 5 | 26 unit-тестов: fnv1a, scan, crystallization, reactivation, promotion, stats | ✅ |
+| FW Stabilization | E1: restore_frame_from_anchor + UnfoldFrame handler + реальная промоция; E2: tick в Weaver trait; E3: drain_commands оптимизация 311→238 ns; E4 deferred. 1030 тестов. | ✅ |

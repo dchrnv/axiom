@@ -129,8 +129,8 @@ pub trait Weaver: OverDomainComponent {
 
     /// Сканировать MAYA и вернуть список распознанных паттернов-кандидатов.
     ///
-    /// Вызывается из on_tick по расписанию weaver_scan_intervals.
-    fn scan(&mut self, maya_state: &DomainState) -> Vec<Self::Pattern>;
+    /// `tick` — текущий tick_count Engine; записывается в `detected_at_tick` кандидата.
+    fn scan(&mut self, tick: u64, maya_state: &DomainState) -> Vec<Self::Pattern>;
 
     /// Преобразовать стабильных кандидатов в предложения для DREAM-фазы.
     ///
@@ -139,9 +139,9 @@ pub trait Weaver: OverDomainComponent {
 
     /// Проверить Frame в EXPERIENCE на соответствие правилам промоции.
     ///
-    /// Вызывается по расписанию weaver_promotion_intervals (значительно реже scan).
-    /// Возвращает пустой Vec если нет кандидатов на промоцию.
-    fn check_promotion(&self, experience_state: &DomainState, anchors: &[&Token]) -> Vec<PromotionProposal>;
+    /// `tick` — текущий tick_count; используется для проверки `min_age_ticks`.
+    /// Вызывается значительно реже scan. Возвращает пустой Vec если нет кандидатов.
+    fn check_promotion(&self, tick: u64, experience_state: &DomainState, anchors: &[&Token]) -> Vec<PromotionProposal>;
 
     /// Numeric ID компонента для TickSchedule
     fn weaver_id(&self) -> WeaverId;

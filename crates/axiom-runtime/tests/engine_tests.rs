@@ -8,7 +8,8 @@ use std::sync::Arc;
 use axiom_runtime::{AxiomEngine, AxiomError};
 use axiom_genome::Genome;
 use axiom_config::GUARDIAN_CHECK_REQUIRED;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{UclCommand, OpCode, UnfoldFramePayload};
+use axiom_core::{Token, Connection, FLAG_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR, FRAME_CATEGORY_SYNTAX};
 
 fn make_cmd(opcode: OpCode, target_id: u32) -> UclCommand {
     UclCommand::new(opcode, target_id, 100, 0)
@@ -328,4 +329,83 @@ fn test_inject_anchor_tokens_domain() {
     let n = engine.inject_anchor_tokens(&set);
     assert_eq!(n, 1);
     assert_eq!(engine.token_count(101), before + 1);
+}
+
+// ============================================================
+// UnfoldFrame (Этап 2 стабилизации FrameWeaver)
+// ============================================================
+
+const EXPERIENCE_ID: u16 = 109;
+const SUTRA_ID:      u16 = 100;
+
+/// Подготовить EXPERIENCE-Frame в engine.ashti: анкер + participants.
+fn inject_test_frame(engine: &mut AxiomEngine, anchor_id: u32, participant_ids: &[u32]) {
+    let mut anchor = Token::new(anchor_id, EXPERIENCE_ID, [0; 3], 0);
+    anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
+    anchor.lineage_hash = anchor_id as u64 ^ 0xDEAD;
+    engine.ashti.inject_token(EXPERIENCE_ID, anchor).unwrap();
+
+    for (i, &pid) in participant_ids.iter().enumerate() {
+        engine.ashti.inject_token(EXPERIENCE_ID, Token::new(pid, EXPERIENCE_ID, [0; 3], 0)).unwrap();
+        let layer = (i as u8 % 8) + 1;
+        let link_type = 0x0800u16 | ((layer as u16) << 4);
+        let mut conn = Connection::new(anchor_id, pid, EXPERIENCE_ID, 1);
+        conn.link_type = link_type;
+        conn.flags = FLAG_ACTIVE;
+        conn.reserved_gate[1] = 110; // origin_domain=MAYA
+        engine.ashti.inject_connection(EXPERIENCE_ID, conn).unwrap();
+    }
+}
+
+fn make_unfold_cmd(anchor_id: u32, target_domain: u16) -> UclCommand {
+    let payload = UnfoldFramePayload {
+        frame_anchor_id:  anchor_id,
+        target_domain_id: target_domain,
+        unfold_depth:     1,
+        reserved:         [0; 41],
+    };
+    UclCommand::new(OpCode::UnfoldFrame, 0, 10, 0).with_payload(&payload)
+}
+
+#[test]
+fn unfold_frame_to_target_domain() {
+    let mut engine = AxiomEngine::new();
+    inject_test_frame(&mut engine, 8000, &[8001, 8002, 8003]);
+
+    let before_tokens = engine.token_count(LOGIC_ID);
+    let before_conns = engine.ashti.state(engine.ashti.index_of(LOGIC_ID).unwrap()).unwrap().connections.len();
+
+    let cmd = make_unfold_cmd(8000, LOGIC_ID);
+    let result = engine.process_command(&cmd);
+    assert_eq!(result.status, axiom_ucl::CommandStatus::Success as u8);
+
+    // В LOGIC должен появиться новый токен-анкер
+    assert_eq!(engine.token_count(LOGIC_ID), before_tokens + 1);
+    // В LOGIC должны появиться 3 новые связи
+    let after_conns = engine.ashti.state(engine.ashti.index_of(LOGIC_ID).unwrap()).unwrap().connections.len();
+    assert_eq!(after_conns, before_conns + 3);
+
+    // Оригинальный Frame в EXPERIENCE остался нетронутым
+    assert!(engine.ashti.find_token_by_sutra_id(EXPERIENCE_ID, 8000).is_some());
+}
+
+#[test]
+fn unfold_frame_source_auto_detect_experience() {
+    let mut engine = AxiomEngine::new();
+    inject_test_frame(&mut engine, 8100, &[8101, 8102]);
+
+    let cmd = make_unfold_cmd(8100, LOGIC_ID);
+    let result = engine.process_command(&cmd);
+    assert_eq!(result.status, axiom_ucl::CommandStatus::Success as u8,
+        "должен найти Frame в EXPERIENCE и успешно развернуть");
+}
+
+#[test]
+fn unfold_frame_returns_error_for_missing_anchor() {
+    let mut engine = AxiomEngine::new();
+    // Анкера 9999 нет ни в EXPERIENCE, ни в SUTRA
+    let cmd = make_unfold_cmd(9999, LOGIC_ID);
+    let result = engine.process_command(&cmd);
+    assert_ne!(result.status, axiom_ucl::CommandStatus::Success as u8,
+        "должен вернуть ошибку при отсутствии анкера");
 }

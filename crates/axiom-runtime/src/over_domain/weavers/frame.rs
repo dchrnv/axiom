@@ -15,7 +15,8 @@ use std::sync::Arc;
 
 use axiom_core::{
     Connection, Token, FLAG_ACTIVE, STATE_ACTIVE, STATE_LOCKED,
-    TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE, FRAME_CATEGORY_SYNTAX,
+    TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
+    FRAME_CATEGORY_SYNTAX, FRAME_CATEGORY_MASK,
 };
 use axiom_domain::{AshtiCore, DomainState};
 use axiom_genome::{Genome, ModuleId};
@@ -208,6 +209,88 @@ pub struct FrameWeaverStats {
 }
 
 // ============================================================================
+// restore_frame_from_anchor — восстановление Frame из анкера
+// ============================================================================
+
+/// Ошибка восстановления Frame из EXPERIENCE/SUTRA.
+#[derive(Debug)]
+pub enum RestoreError {
+    /// Анкер-токен не найден в source_state
+    AnchorNotFound,
+    /// Токен найден, но не является Frame-анкером (нет TOKEN_FLAG_FRAME_ANCHOR)
+    NotAFrameAnchor,
+    /// Связь ведёт к несуществующему токену
+    DanglingParticipant(u32),
+    /// Связь от анкера с link_type не из категории 0x08
+    InvalidLinkType(u16),
+}
+
+impl std::fmt::Display for RestoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RestoreError::AnchorNotFound          => write!(f, "anchor not found"),
+            RestoreError::NotAFrameAnchor         => write!(f, "token is not a frame anchor"),
+            RestoreError::DanglingParticipant(id) => write!(f, "dangling participant: {id}"),
+            RestoreError::InvalidLinkType(lt)     => write!(f, "invalid link type: {lt:#06x}"),
+        }
+    }
+}
+
+impl std::error::Error for RestoreError {}
+
+/// Восстановленный Frame из EXPERIENCE или SUTRA.
+#[derive(Debug)]
+pub struct RestoredFrame {
+    pub anchor: Token,
+    pub anchor_id: u32,
+    pub category: u16,
+    pub participants: Vec<Participant>,
+}
+
+/// Восстановить Frame из анкера в source_state.
+///
+/// Обходит граф связей, декодирует reserved_gate и собирает список участников.
+/// Read-only операция — UCL-команды не генерируются.
+pub fn restore_frame_from_anchor(
+    anchor_id: u32,
+    source_state: &DomainState,
+) -> Result<RestoredFrame, RestoreError> {
+    let anchor = source_state.tokens.iter()
+        .find(|t| t.sutra_id == anchor_id)
+        .copied()
+        .ok_or(RestoreError::AnchorNotFound)?;
+
+    if (anchor.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0 {
+        return Err(RestoreError::NotAFrameAnchor);
+    }
+
+    let category = anchor.type_flags & FRAME_CATEGORY_MASK;
+
+    let mut participants = Vec::new();
+    for conn in source_state.connections.iter() {
+        if conn.source_id != anchor_id || (conn.flags & FLAG_ACTIVE) == 0 {
+            continue;
+        }
+        if (conn.link_type >> 8) != 0x08 {
+            return Err(RestoreError::InvalidLinkType(conn.link_type));
+        }
+        if !source_state.tokens.iter().any(|t| t.sutra_id == conn.target_id) {
+            return Err(RestoreError::DanglingParticipant(conn.target_id));
+        }
+        let origin_domain = u16::from_be_bytes([conn.reserved_gate[0], conn.reserved_gate[1]]);
+        let layer = ((conn.link_type & 0x00F0) >> 4) as u8;
+        participants.push(Participant {
+            sutra_id: conn.target_id,
+            origin_domain_id: origin_domain,
+            role_link_type: conn.link_type,
+            layer,
+        });
+    }
+
+    Ok(RestoredFrame { anchor, anchor_id, category, participants })
+}
+
+// ============================================================================
 // FrameWeaver
 // ============================================================================
 
@@ -306,6 +389,10 @@ impl FrameWeaver {
     ///
     /// Возвращает кандидатов: группы синтаксических связей с source_id как Frame-голова.
     /// Требование: ≥ 2 различных слоя и ≥ min_participants участников.
+    pub fn scan_state_pub(&self, maya_state: &DomainState, maya_domain_id: u16) -> Vec<FrameCandidate> {
+        self.scan_state(maya_state, maya_domain_id)
+    }
+
     fn scan_state(&self, maya_state: &DomainState, maya_domain_id: u16) -> Vec<FrameCandidate> {
         // Фильтровать активные синтаксические связи (категория 0x08)
         let syn_conns: Vec<&Connection> = maya_state.connections.iter()
@@ -723,17 +810,20 @@ impl OverDomainComponent for FrameWeaver {
             for token in &frame_anchors {
                 for rule in &self.config.promotion_rules.clone() {
                     if self.qualifies_for_promotion(token, rule, tick) {
-                        // Reconstruction FrameCandidate из анкера для build_promotion_commands
-                        let dummy_candidate = FrameCandidate {
-                            anchor_position: token.position,
-                            participants: Vec::new(), // упрощение: участники не восстанавливаются здесь
-                            detected_at_tick: token.last_event_id,
-                            stability_count: 0,
-                            category: token.type_flags & axiom_core::FRAME_CATEGORY_MASK,
-                            lineage_hash: token.lineage_hash,
+                        let restored = match restore_frame_from_anchor(token.sutra_id, state) {
+                            Ok(r)  => r,
+                            Err(_) => break, // аномалия данных — пропустить кандидата
+                        };
+                        let candidate = FrameCandidate {
+                            anchor_position: restored.anchor.position,
+                            participants:    restored.participants,
+                            detected_at_tick: restored.anchor.last_event_id,
+                            stability_count:  0,
+                            category:         restored.category,
+                            lineage_hash:     restored.anchor.lineage_hash,
                         };
                         let cmds = Self::build_promotion_commands(
-                            &dummy_candidate, token.sutra_id, sutra_domain_id
+                            &candidate, token.sutra_id, sutra_domain_id
                         );
                         self.pending_commands.extend(cmds);
                         self.stats.promotions_proposed += 1;
@@ -758,10 +848,12 @@ impl OverDomainComponent for FrameWeaver {
 impl Weaver for FrameWeaver {
     type Pattern = FrameCandidate;
 
-    fn scan(&mut self, maya_state: &DomainState) -> Vec<FrameCandidate> {
-        // Вызывается напрямую (для unit-тестов и DREAM-интеграции в Phase 4).
+    fn scan(&mut self, tick: u64, maya_state: &DomainState) -> Vec<FrameCandidate> {
+        // Вызывается напрямую (для unit-тестов и DREAM-интеграции).
         // В on_tick используется scan_state с явным domain_id.
-        self.scan_state(maya_state, 0)
+        let candidates = self.scan_state(maya_state, 0);
+        self.update_candidates(candidates.clone(), tick);
+        candidates
     }
 
     fn propose_to_dream(&self, patterns: &[FrameCandidate]) -> Vec<CrystallizationProposal> {
@@ -780,18 +872,18 @@ impl Weaver for FrameWeaver {
 
     fn check_promotion(
         &self,
+        tick: u64,
         experience_state: &DomainState,
         anchors: &[&Token],
     ) -> Vec<PromotionProposal> {
         let mut proposals = Vec::new();
-        let tick_proxy = 0u64; // tick недоступен в этой сигнатуре; используется 0 (deferred: передать tick через параметр)
 
         for anchor in anchors {
             if (anchor.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0 {
                 continue;
             }
             for rule in &self.config.promotion_rules {
-                if self.qualifies_for_promotion(anchor, rule, tick_proxy) {
+                if self.qualifies_for_promotion(anchor, rule, tick) {
                     proposals.push(PromotionProposal {
                         weaver_id: self.weaver_id(),
                         anchor_id: anchor.sutra_id,
@@ -1107,7 +1199,7 @@ mod tests {
         anchor.temperature = 255;
         anchor.mass = 255;
         // min_reactivations=10, но reactivation_counts пустой
-        let proposals = fw.check_promotion(&empty_state(), &[&anchor]);
+        let proposals = fw.check_promotion(0, &empty_state(), &[&anchor]);
         assert!(proposals.is_empty());
     }
 
@@ -1116,7 +1208,7 @@ mod tests {
         let fw = FrameWeaver::with_default_config();
         let token = Token::new(42, 109, [0; 3], 0);
         // type_flags=0, не TOKEN_FLAG_FRAME_ANCHOR
-        let proposals = fw.check_promotion(&empty_state(), &[&token]);
+        let proposals = fw.check_promotion(0, &empty_state(), &[&token]);
         assert!(proposals.is_empty());
     }
 
@@ -1131,6 +1223,48 @@ mod tests {
         assert_eq!(fw.stats.scans_performed, 2);
     }
 
+    // ── этап 1: tick в трейт-методах ────────────────────────────────────────
+
+    #[test]
+    fn check_promotion_respects_min_age() {
+        let config = FrameWeaverConfig {
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks: 500,
+                min_reactivations: 0,
+                min_temperature: 0,
+                min_mass: 0,
+                min_participant_anchors: 0,
+                requires_codex_approval: false,
+                id: "test".to_string(),
+            }],
+            ..Default::default()
+        };
+        let fw = FrameWeaver::new(config);
+        let mut anchor = Token::new(42, 109, [0; 3], 100); // last_event_id = 100
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+
+        // tick=200: возраст = 200-100 = 100 < 500 → не дозрел
+        let proposals = fw.check_promotion(200, &empty_state(), &[&anchor]);
+        assert!(proposals.is_empty(), "не должен продвигать слишком молодой Frame");
+
+        // tick=700: возраст = 700-100 = 600 >= 500 → дозрел
+        let proposals = fw.check_promotion(700, &empty_state(), &[&anchor]);
+        assert!(!proposals.is_empty(), "должен предложить промоцию зрелого Frame");
+    }
+
+    #[test]
+    fn scan_records_correct_detection_tick() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            ..Default::default()
+        });
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
+        fw.scan(50, &state);
+        // после scan() кандидат должен быть добавлен с detected_at_tick = 50
+        let hash = fw.scan_state(&state, 0)[0].lineage_hash;
+        assert_eq!(fw.candidates[&hash].detected_at_tick, 50);
+    }
+
     #[test]
     fn stats_candidates_detected_increments() {
         let mut fw = FrameWeaver::new(FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() });
@@ -1143,5 +1277,192 @@ mod tests {
         // Второй тик: тот же кандидат уже существует в map → не детектируется снова
         fw.on_tick(2, &ashti).unwrap();
         assert_eq!(fw.stats.candidates_detected, 1);
+    }
+
+    // ── этап 2: restore_frame_from_anchor ────────────────────────────────────
+
+    fn make_frame_state(anchor_id: u32, participant_ids: &[u32]) -> DomainState {
+        let mut state = empty_state();
+        // Anchor token
+        let mut anchor = Token::new(anchor_id, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
+        anchor.lineage_hash = FrameWeaver::fnv1a_lineage_hash(
+            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+        );
+        state.tokens.push(anchor);
+        // Participant tokens + connections
+        for (i, &pid) in participant_ids.iter().enumerate() {
+            let ptok = Token::new(pid, 100, [0; 3], 0);
+            state.tokens.push(ptok);
+            let layer = (i as u8 % 8) + 1;
+            let link_type = 0x0800u16 | ((layer as u16) << 4);
+            let mut conn = Connection::new(anchor_id, pid, 109, 1);
+            conn.link_type = link_type;
+            conn.reserved_gate[0] = 0;   // origin_domain BE hi
+            conn.reserved_gate[1] = 110; // origin_domain BE lo (=110=MAYA)
+            state.connections.push(conn);
+        }
+        state
+    }
+
+    #[test]
+    fn restore_simple_frame() {
+        let state = make_frame_state(1000, &[1001, 1002]);
+        let r = restore_frame_from_anchor(1000, &state).unwrap();
+        assert_eq!(r.anchor_id, 1000);
+        assert_eq!(r.category, FRAME_CATEGORY_SYNTAX);
+        assert_eq!(r.participants.len(), 2);
+        assert!(r.participants.iter().all(|p| p.origin_domain_id == 110));
+    }
+
+    #[test]
+    fn restore_returns_error_for_non_anchor() {
+        let mut state = empty_state();
+        let tok = Token::new(42, 109, [0; 3], 0); // type_flags=0
+        state.tokens.push(tok);
+        let err = restore_frame_from_anchor(42, &state).unwrap_err();
+        assert!(matches!(err, RestoreError::NotAFrameAnchor));
+    }
+
+    #[test]
+    fn restore_returns_error_for_missing_anchor() {
+        let err = restore_frame_from_anchor(9999, &empty_state()).unwrap_err();
+        assert!(matches!(err, RestoreError::AnchorNotFound));
+    }
+
+    #[test]
+    fn restore_detects_dangling_participant() {
+        let mut state = empty_state();
+        let mut anchor = Token::new(1000, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+        state.tokens.push(anchor);
+        // Связь к target 9999, которого нет в tokens
+        let mut conn = Connection::new(1000, 9999, 109, 1);
+        conn.link_type = 0x0810; // syntactic, layer 1
+        state.connections.push(conn);
+        let err = restore_frame_from_anchor(1000, &state).unwrap_err();
+        assert!(matches!(err, RestoreError::DanglingParticipant(9999)));
+    }
+
+    #[test]
+    fn restore_extracts_correct_layers() {
+        let mut state = empty_state();
+        let mut anchor = Token::new(1000, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+        state.tokens.push(anchor);
+        // 8 участников, по одному на каждый слой
+        for layer in 1u8..=8 {
+            let pid = 2000 + layer as u32;
+            state.tokens.push(Token::new(pid, 100, [0; 3], 0));
+            let link_type = 0x0800u16 | ((layer as u16) << 4);
+            let mut conn = Connection::new(1000, pid, 109, 1);
+            conn.link_type = link_type;
+            state.connections.push(conn);
+        }
+        let r = restore_frame_from_anchor(1000, &state).unwrap();
+        assert_eq!(r.participants.len(), 8);
+        let mut found_layers: Vec<u8> = r.participants.iter().map(|p| p.layer).collect();
+        found_layers.sort_unstable();
+        assert_eq!(found_layers, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+
+    // ── этап 2: промоция с restore_frame_from_anchor ─────────────────────────
+
+    fn make_promotion_ashti(anchor_id: u32, participant_ids: &[u32]) -> (AshtiCore, u64) {
+        let mut ashti = AshtiCore::new(1);
+        // EXPERIENCE = level*100+9 = 109
+        let mut anchor = Token::new(anchor_id, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
+        anchor.lineage_hash = FrameWeaver::fnv1a_lineage_hash(
+            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+        );
+        anchor.temperature = 255;
+        anchor.mass = 255;
+        ashti.inject_token(109, anchor).unwrap();
+        // Inject participant tokens into SUTRA (100) и в EXPERIENCE (109) для restore_frame_from_anchor
+        for &pid in participant_ids {
+            ashti.inject_token(100, Token::new(pid, 100, [0; 3], 0)).unwrap();
+            ashti.inject_token(109, Token::new(pid, 109, [0; 3], 0)).unwrap();
+        }
+        // Inject syntactic bonds in EXPERIENCE
+        for (i, &pid) in participant_ids.iter().enumerate() {
+            let layer = (i as u8 % 8) + 1;
+            let link_type = 0x0800u16 | ((layer as u16) << 4);
+            let mut conn = Connection::new(anchor_id, pid, 109, 1);
+            conn.link_type = link_type;
+            conn.reserved_gate[1] = 110; // origin_domain=110
+            ashti.inject_connection(109, conn).unwrap();
+        }
+        let hash = FrameWeaver::fnv1a_lineage_hash(
+            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+        );
+        (ashti, hash)
+    }
+
+    #[test]
+    fn promotion_creates_sutra_frame_with_participants() {
+        let config = FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks:           0,
+                min_reactivations:       0,
+                min_temperature:         200,
+                min_mass:                100,
+                min_participant_anchors: 0,
+                requires_codex_approval: false,
+                id:                      "test_promo".to_string(),
+            }],
+            ..Default::default()
+        };
+        let mut fw = FrameWeaver::new(config);
+        let anchor_id = 5000u32;
+        let participants = &[5001u32, 5002, 5003];
+        let (ashti, _hash) = make_promotion_ashti(anchor_id, participants);
+
+        // Запустить тик — промоция должна сработать
+        fw.on_tick(200_000, &ashti).unwrap();
+        let cmds = fw.drain_commands();
+
+        // Должна быть хотя бы одна команда InjectToken (SUTRA-анкер) + 3 BondTokens
+        let inject_count = cmds.iter().filter(|c| c.opcode == OpCode::InjectToken as u16).count();
+        let bond_count = cmds.iter().filter(|c| c.opcode == OpCode::BondTokens as u16).count();
+        assert!(inject_count >= 1, "ожидается SUTRA-анкер");
+        assert_eq!(bond_count, participants.len(), "ожидается {n} bonds", n = participants.len());
+        assert_eq!(fw.stats.promotions_proposed, 1);
+    }
+
+    #[test]
+    fn promotion_skipped_for_dangling_anchor() {
+        let config = FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks:           0,
+                min_reactivations:       0,
+                min_temperature:         200,
+                min_mass:                100,
+                min_participant_anchors: 0,
+                requires_codex_approval: false,
+                id:                      "test_promo".to_string(),
+            }],
+            ..Default::default()
+        };
+        let mut fw = FrameWeaver::new(config);
+        let mut ashti = AshtiCore::new(1);
+        // Анкер есть, но нет связей → restore вернёт Ok с пустыми participants
+        let mut anchor = Token::new(7000, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
+        anchor.temperature = 255;
+        anchor.mass = 255;
+        ashti.inject_token(109, anchor).unwrap();
+        // Добавить связь к несуществующему токену
+        let mut bad_conn = Connection::new(7000, 9999, 109, 1);
+        bad_conn.link_type = 0x0810;
+        ashti.inject_connection(109, bad_conn).unwrap();
+
+        fw.on_tick(200_000, &ashti).unwrap();
+        let cmds = fw.drain_commands();
+        // restore вернёт DanglingParticipant → промоция пропущена
+        assert!(cmds.is_empty(), "промоция не должна выполняться при dangling participant");
+        assert_eq!(fw.stats.promotions_proposed, 0);
     }
 }

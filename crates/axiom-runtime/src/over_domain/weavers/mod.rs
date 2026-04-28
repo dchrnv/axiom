@@ -12,4 +12,5 @@ pub use frame::{
     FrameWeaverConfig, FrameWeaverStats,
     PromotionRule, CrystallizationRule, RuleTrigger, RuleCondition, RuleAction,
     CycleStrategy, FRAME_WEAVER_ID,
+    RestoreError, RestoredFrame, restore_frame_from_anchor,
 };
