@@ -31,6 +31,10 @@ pub const TOKEN_FLAG_FRAME_ANCHOR: u16 = 0x0010;
 /// В SUTRA: domain_id=100, state=STATE_LOCKED, оригинал в EXPERIENCE сохраняется.
 pub const TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE: u16 = 0x0020;
 
+/// Токен-отчёт о завершённом DreamCycle.
+/// Записывается в EXPERIENCE (domain_id=109) после каждого Consolidation этапа.
+pub const TOKEN_FLAG_DREAM_REPORT: u16 = 0x0040;
+
 /// Маска для выделения категории Frame из type_flags (старший байт).
 pub const FRAME_CATEGORY_MASK: u16 = 0xFF00;
 

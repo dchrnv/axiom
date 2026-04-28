@@ -13,6 +13,7 @@
 pub mod state;
 pub mod fatigue;
 pub mod scheduler;
+pub mod cycle;
 
 pub use state::{
     DreamPhaseState,
@@ -25,3 +26,7 @@ pub use state::{
 
 pub use fatigue::{FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker};
 pub use scheduler::{DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind};
+pub use cycle::{
+    DreamCycleConfig, DreamCycle, DreamCycleStats, CycleStage, CycleAdvanceResult,
+    DreamProposal, DreamProposalKind, DreamReport,
+};
