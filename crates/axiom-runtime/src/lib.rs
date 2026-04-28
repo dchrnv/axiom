@@ -54,3 +54,5 @@ pub use over_domain::{WeaverId, OverDomainError, OverDomainComponent, Weaver, Cr
 pub use over_domain::{FrameWeaver, FrameWeaverStats, FrameWeaverConfig};
 pub use over_domain::{DreamPhaseState, DreamPhaseStats, GatewayPriority,
     SleepTrigger, WakeReason, DreamPhaseEvent};
+pub use over_domain::{FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker};
+pub use over_domain::{DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind};

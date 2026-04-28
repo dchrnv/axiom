@@ -62,6 +62,11 @@ impl DomainState {
         self.tokens.len()
     }
 
+    /// Максимальное число токенов, допустимое в домене.
+    pub fn token_capacity(&self) -> usize {
+        self.token_capacity
+    }
+
     /// Количество связей в буфере.
     pub fn connection_count(&self) -> usize {
         self.connections.len()

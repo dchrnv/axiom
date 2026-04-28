@@ -38,4 +38,6 @@ pub use weavers::{
 pub use dream_phase::{
     DreamPhaseState, SleepTrigger, WakeReason,
     DreamPhaseEvent, GatewayPriority, DreamPhaseStats,
+    FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker,
+    DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
 };

@@ -17,7 +17,7 @@ use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload
 use std::collections::{HashMap, VecDeque};
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor,
-    DreamPhaseState, DreamPhaseStats};
+    DreamPhaseState, DreamPhaseStats, DreamScheduler, DreamSchedulerConfig, FatigueWeights, FatigueSnapshot};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -169,6 +169,12 @@ pub struct AxiomEngine {
     /// Буфер Critical-приоритетных команд во время DREAMING.
     /// Тип: Vec<UclCommand> — прямая очередь UCL-команд (см. errata E1).
     pub(crate) dream_priority_buffer: VecDeque<UclCommand>,
+    /// DreamScheduler — определяет когда переходить в DREAMING.
+    pub dream_scheduler: DreamScheduler,
+    /// Значение causal horizon на предыдущем snapshot-тике (для delta).
+    pub(crate) last_horizon_value: u64,
+    /// Тик, когда был сделан предыдущий horizon snapshot.
+    pub(crate) last_horizon_tick: u64,
 }
 
 impl AxiomEngine {
@@ -198,6 +204,9 @@ impl AxiomEngine {
             dream_phase_state: DreamPhaseState::default(),
             dream_phase_stats: DreamPhaseStats::default(),
             dream_priority_buffer: VecDeque::new(),
+            dream_scheduler: DreamScheduler::with_defaults(),
+            last_horizon_value: 0,
+            last_horizon_tick: 0,
         })
     }
 
@@ -228,6 +237,35 @@ impl AxiomEngine {
     /// Число токенов в домене по domain_id
     pub fn token_count(&self, domain_id: u16) -> usize {
         self.ashti.token_count(domain_id)
+    }
+
+    // ── DREAM Phase helpers ───────────────────────────────────────────────────
+
+    /// Собирает FatigueSnapshot из текущего состояния Engine.
+    ///
+    /// Вычисляет delta causal horizon относительно последнего вызова.
+    /// Обновляет last_horizon_value и last_horizon_tick.
+    pub fn collect_fatigue_snapshot(&mut self) -> FatigueSnapshot {
+        let current_horizon = self.ashti.compute_horizon();
+        let horizon_delta = current_horizon.saturating_sub(self.last_horizon_value);
+        let ticks_since = (self.tick_count.saturating_sub(self.last_horizon_tick)) as u32;
+
+        self.last_horizon_value = current_horizon;
+        self.last_horizon_tick  = self.tick_count;
+
+        // EXPERIENCE domain: index 9 (level_id*100 + 9)
+        let (exp_token_count, exp_capacity) = self.ashti.state(9)
+            .map(|s| (s.token_count() as u32, s.token_capacity() as u32))
+            .unwrap_or((0, 1));
+
+        FatigueSnapshot {
+            uncrystallized_candidates: self.frame_weaver.candidates_count() as u32,
+            experience_token_count:    exp_token_count,
+            experience_capacity:       exp_capacity,
+            pending_heavy_proposals:   0, // Этап 3: DreamCycle proposals — пока 0
+            causal_horizon_delta:      horizon_delta,
+            ticks_since_last_check:    ticks_since.max(1),
+        }
     }
 
     // ── Convenience accessors (используются адаптерами и диагностикой) ──────

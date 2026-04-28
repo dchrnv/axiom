@@ -330,6 +330,11 @@ impl FrameWeaver {
         std::mem::take(&mut self.pending_commands)
     }
 
+    /// Число накопленных Frame-кандидатов (ещё не кристаллизованных).
+    pub fn candidates_count(&self) -> usize {
+        self.candidates.len()
+    }
+
     /// Синтаксический слой из link_type: S1=0 … S8=7 (соответствует (link_type & 0x00F0) >> 4).
     fn layer_of(link_type: u16) -> u8 {
         ((link_type & 0x00F0) >> 4) as u8

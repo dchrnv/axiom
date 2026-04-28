@@ -11,6 +11,8 @@
 //   cycle    — DreamCycle, DreamProposal, DreamReport (Этап 3)
 
 pub mod state;
+pub mod fatigue;
+pub mod scheduler;
 
 pub use state::{
     DreamPhaseState,
@@ -20,3 +22,6 @@ pub use state::{
     GatewayPriority,
     DreamPhaseStats,
 };
+
+pub use fatigue::{FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker};
+pub use scheduler::{DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind};
