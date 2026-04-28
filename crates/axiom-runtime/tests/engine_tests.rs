@@ -5,7 +5,7 @@
 // Домены адресуются по schema: level_id(1) * 100 + role = 100..110.
 
 use std::sync::Arc;
-use axiom_runtime::{AxiomEngine, AxiomError};
+use axiom_runtime::{AxiomEngine, AxiomError, DreamPhaseState, GatewayPriority};
 use axiom_genome::Genome;
 use axiom_config::GUARDIAN_CHECK_REQUIRED;
 use axiom_ucl::{UclCommand, OpCode, UnfoldFramePayload};
@@ -408,4 +408,33 @@ fn unfold_frame_returns_error_for_missing_anchor() {
     let result = engine.process_command(&cmd);
     assert_ne!(result.status, axiom_ucl::CommandStatus::Success as u8,
         "должен вернуть ошибку при отсутствии анкера");
+}
+
+// ── DREAM Phase Stage 1: состояния и GatewayPriority ─────────────────────────
+
+#[test]
+fn dream_phase_state_starts_as_wake() {
+    let engine = AxiomEngine::new();
+    assert_eq!(engine.dream_phase_state, DreamPhaseState::Wake,
+        "AxiomEngine должен стартовать в состоянии Wake");
+}
+
+#[test]
+fn dream_phase_state_default_is_wake() {
+    assert_eq!(DreamPhaseState::default(), DreamPhaseState::Wake);
+}
+
+#[test]
+fn gateway_priority_default_is_normal() {
+    let p = GatewayPriority::default();
+    assert_eq!(p, GatewayPriority::Normal,
+        "GatewayPriority по умолчанию должен быть Normal");
+}
+
+#[test]
+fn dream_phase_stats_total_sleeps_starts_zero() {
+    let engine = AxiomEngine::new();
+    assert_eq!(engine.dream_phase_stats.total_sleeps, 0);
+    assert_eq!(engine.dream_phase_stats.total_dream_ticks, 0);
+    assert_eq!(engine.dream_phase_stats.interrupted_dreams, 0);
 }

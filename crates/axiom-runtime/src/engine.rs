@@ -14,9 +14,10 @@ use axiom_config::DomainConfig;
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
 use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, UnfoldFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
-use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor};
+use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor,
+    DreamPhaseState, DreamPhaseStats};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -161,6 +162,13 @@ pub struct AxiomEngine {
     pub over_domain_components: Vec<Box<dyn OverDomainComponent>>,
     /// FrameWeaver — хранится по значению (не через dyn) для доступа к drain_commands().
     pub frame_weaver: FrameWeaver,
+    /// Текущее состояние DREAM-фазы (Wake / FallingAsleep / Dreaming / Waking).
+    pub dream_phase_state: DreamPhaseState,
+    /// Счётчики DREAM-фазы (дополняются в этапах 2–4).
+    pub dream_phase_stats: DreamPhaseStats,
+    /// Буфер Critical-приоритетных команд во время DREAMING.
+    /// Тип: Vec<UclCommand> — прямая очередь UCL-команд (см. errata E1).
+    pub(crate) dream_priority_buffer: VecDeque<UclCommand>,
 }
 
 impl AxiomEngine {
@@ -187,6 +195,9 @@ impl AxiomEngine {
             thread_pool: build_thread_pool(worker_count),
             over_domain_components: Vec::new(),
             frame_weaver: FrameWeaver::with_default_config(),
+            dream_phase_state: DreamPhaseState::default(),
+            dream_phase_stats: DreamPhaseStats::default(),
+            dream_priority_buffer: VecDeque::new(),
         })
     }
 

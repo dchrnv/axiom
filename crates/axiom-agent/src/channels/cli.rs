@@ -781,7 +781,8 @@ impl CliChannel {
                         } else {
                             AdapterPayload::Inject { text: trimmed }
                         };
-                        let cmd = AdapterCommand { id, source: AdapterSource::Cli, payload };
+                        let cmd = AdapterCommand { id, source: AdapterSource::Cli, payload,
+                            priority: axiom_runtime::GatewayPriority::Normal };
                         if tx.send(cmd).await.is_err() { break; }
                     }
                 }

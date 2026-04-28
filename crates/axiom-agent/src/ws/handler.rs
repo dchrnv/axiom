@@ -109,6 +109,7 @@ async fn dispatch(
                 id,
                 source: AdapterSource::WebSocket(conn_id),
                 payload,
+                priority: axiom_runtime::GatewayPriority::Normal,
             };
             if state.command_tx.send(cmd).await.is_err() {
                 let err = error_msg(None, "engine unavailable".to_string());

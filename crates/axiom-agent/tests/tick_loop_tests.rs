@@ -61,9 +61,10 @@ async fn test_tick_loop_terminates_on_quit_command() {
 
     // Отправляем :quit — tick loop должен завершиться
     tx.send(AdapterCommand {
-        id:      "q".to_string(),
-        source:  AdapterSource::Cli,
-        payload: AdapterPayload::MetaMutate { cmd: ":quit".to_string() },
+        id:       "q".to_string(),
+        source:   AdapterSource::Cli,
+        payload:  AdapterPayload::MetaMutate { cmd: ":quit".to_string() },
+        priority: axiom_runtime::GatewayPriority::Normal,
     }).await.unwrap();
     drop(tx); // закрываем канал после отправки
 
@@ -80,9 +81,10 @@ async fn test_tick_loop_processes_inject_command() {
     let snap = make_snapshot();
 
     tx.send(AdapterCommand {
-        id:      "i1".to_string(),
-        source:  AdapterSource::Cli,
-        payload: AdapterPayload::Inject { text: "test input".to_string() },
+        id:       "i1".to_string(),
+        source:   AdapterSource::Cli,
+        payload:  AdapterPayload::Inject { text: "test input".to_string() },
+        priority: axiom_runtime::GatewayPriority::Normal,
     }).await.unwrap();
 
     // Отправляем quit чтобы loop завершился

@@ -4,16 +4,20 @@
 // Команды от адаптеров в tick_loop и ответы tick_loop адаптерам.
 // Единый канал — mpsc::Sender<AdapterCommand>.
 
+use axiom_runtime::GatewayPriority;
 use crate::protocol::ServerMessage;
 
 /// Команда от любого адаптера в tick loop.
 pub struct AdapterCommand {
     /// UUID-подобный ID для корреляции ответа (пустая строка допустима для CLI)
-    pub id:      String,
+    pub id:       String,
     /// Источник команды
-    pub source:  AdapterSource,
+    pub source:   AdapterSource,
     /// Содержимое команды
-    pub payload: AdapterPayload,
+    pub payload:  AdapterPayload,
+    /// Приоритет команды — определяет поведение во время DREAMING.
+    /// Normal буферизуется, Critical вызывает пробуждение.
+    pub priority: GatewayPriority,
 }
 
 /// Источник команды.
@@ -49,9 +53,10 @@ impl AdapterCommand {
     /// Команда graceful shutdown — для SIGTERM из любого источника.
     pub fn shutdown() -> Self {
         Self {
-            id:      "shutdown".to_string(),
-            source:  AdapterSource::Cli,
-            payload: AdapterPayload::MetaMutate { cmd: ":quit".to_string() },
+            id:       "shutdown".to_string(),
+            source:   AdapterSource::Cli,
+            payload:  AdapterPayload::MetaMutate { cmd: ":quit".to_string() },
+            priority: GatewayPriority::Normal,
         }
     }
 }

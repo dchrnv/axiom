@@ -53,9 +53,10 @@ async fn get_domain(
     let mut rx = state.broadcast_tx.subscribe();
 
     if state.command_tx.send(AdapterCommand {
-        id:      req_id.clone(),
-        source:  AdapterSource::Rest,
-        payload: AdapterPayload::DomainSnapshot { domain_id: id },
+        id:       req_id.clone(),
+        source:   AdapterSource::Rest,
+        payload:  AdapterPayload::DomainSnapshot { domain_id: id },
+        priority: axiom_runtime::GatewayPriority::Normal,
     }).await.is_err() {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
@@ -100,9 +101,10 @@ async fn post_inject(
     let mut rx = state.broadcast_tx.subscribe();
 
     if state.command_tx.send(AdapterCommand {
-        id:      req_id.clone(),
-        source:  AdapterSource::Rest,
-        payload: AdapterPayload::Inject { text: body.text },
+        id:       req_id.clone(),
+        source:   AdapterSource::Rest,
+        payload:  AdapterPayload::Inject { text: body.text },
+        priority: axiom_runtime::GatewayPriority::Normal,
     }).await.is_err() {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
@@ -153,9 +155,10 @@ async fn post_command(
     };
 
     if state.command_tx.send(AdapterCommand {
-        id:      req_id.clone(),
-        source:  AdapterSource::Rest,
+        id:       req_id.clone(),
+        source:   AdapterSource::Rest,
         payload,
+        priority: axiom_runtime::GatewayPriority::Normal,
     }).await.is_err() {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
