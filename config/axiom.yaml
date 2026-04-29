@@ -30,3 +30,4 @@ presets:
   spatial: "presets/spatial/medium.yaml"
   semantic_contributions: "schema/semantic_contributions.yaml"
   # heartbeat_file: "presets/heartbeat.yaml"  # опционально
+  dream_file: "presets/dream.yaml"

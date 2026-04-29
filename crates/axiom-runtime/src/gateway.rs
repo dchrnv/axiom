@@ -46,6 +46,21 @@ impl Gateway {
         Self::new(AxiomEngine::new())
     }
 
+    /// Создать Gateway, загрузив конфигурацию из axiom.yaml.
+    ///
+    /// Применяет DreamConfig если `presets.dream_file` задан и файл существует.
+    /// При ошибках загрузки — fallback на defaults (не паникует).
+    pub fn with_config(config_path: &std::path::Path) -> Self {
+        let mut gateway = Self::with_default_engine();
+        let mut loader = axiom_config::ConfigLoader::new();
+        if let Ok(loaded) = loader.load_all(config_path) {
+            if let Some(dream_cfg) = loaded.dream {
+                gateway.engine.apply_dream_config(&dream_cfg);
+            }
+        }
+        gateway
+    }
+
     /// Зарегистрировать broadcast-наблюдатель (получает все события).
     ///
     /// Эквивалентно `subscribe_all`. Сохранено для обратной совместимости.
@@ -137,11 +152,16 @@ impl Gateway {
 
     /// Проверить наличие обновлений конфигурации (неблокирующий вызов).
     ///
-    /// Если файл конфигурации изменился — возвращает новую `LoadedAxiomConfig`.
-    /// Вызывающий код применяет изменения через `engine_mut()` по своему усмотрению.
+    /// Если файл конфигурации изменился — применяет hot-reloadable поля
+    /// (DreamConfig) и возвращает новую `LoadedAxiomConfig`.
     /// Возвращает `None` если наблюдатель не подключён или изменений не было.
-    pub fn check_config_reload(&self) -> Option<LoadedAxiomConfig> {
-        self.config_watcher.as_ref()?.poll()
+    pub fn check_config_reload(&mut self) -> Option<LoadedAxiomConfig> {
+        let loaded = self.config_watcher.as_ref()?.poll()?;
+        // Hot-reload DreamConfig (допустимо менять в WAKE без перезапуска)
+        if let Some(ref dream_cfg) = loaded.dream {
+            self.engine.apply_dream_config(dream_cfg);
+        }
+        Some(loaded)
     }
 
     /// Обработать все команды из канала.

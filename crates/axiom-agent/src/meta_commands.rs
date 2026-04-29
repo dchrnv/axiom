@@ -563,6 +563,7 @@ pub fn handle_meta_read(
                 "axiom" => writeln!(out, "{}", axiom_config::schema::axiom_schema_json()).unwrap(),
                 "domain" => writeln!(out, "{}", axiom_config::schema::domain_schema_json()).unwrap(),
                 "heartbeat" => writeln!(out, "{}", axiom_config::schema::heartbeat_schema_json()).unwrap(),
+                "dream" => writeln!(out, "{}", axiom_config::schema::dream_schema_json()).unwrap(),
                 "cli" => {
                     let schema = schemars::schema_for!(CliConfigFile);
                     match serde_json::to_string_pretty(&schema) {
@@ -571,10 +572,11 @@ pub fn handle_meta_read(
                     }
                 }
                 _ => {
-                    writeln!(out, "  Usage: :schema [axiom|domain|heartbeat|cli]").unwrap();
+                    writeln!(out, "  Usage: :schema [axiom|domain|heartbeat|dream|cli]").unwrap();
                     writeln!(out, "    axiom     — JSON-схема axiom.yaml (корневой конфиг)").unwrap();
                     writeln!(out, "    domain    — JSON-схема доменного конфига (presets/domains/)").unwrap();
                     writeln!(out, "    heartbeat — JSON-схема heartbeat.yaml").unwrap();
+                    writeln!(out, "    dream     — JSON-схема dream.yaml (DREAM Phase)").unwrap();
                     writeln!(out, "    cli       — JSON-схема axiom-cli.yaml").unwrap();
                 }
             }
@@ -960,7 +962,7 @@ pub(crate) const HELP_TEXT: &str = "\
   :guardian             — GUARDIAN stats
   :arbiter              — Arbiter thresholds per domain
   :perf                 — производительность тиков
-  :schema [kind]        — JSON-схема конфига (axiom|domain|heartbeat|cli)
+  :schema [kind]        — JSON-схема конфига (axiom|domain|heartbeat|dream|cli)
   :anchors [sub]        — якорные токены (axes|layer L<n>|domain D<n>|<word>)
   :match \"<text>\"       — тест маппинга текста → позиция
   ── управление ─────────────────────────────────────────────

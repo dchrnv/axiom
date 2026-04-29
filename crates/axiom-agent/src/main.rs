@@ -29,7 +29,12 @@ fn main() {
     };
 
     // ── Gateway + Engine ──────────────────────────────────────────────────────
-    let mut gateway = Gateway::with_default_engine();
+    let axiom_config_path = Path::new("config/axiom.yaml");
+    let mut gateway = if axiom_config_path.exists() {
+        Gateway::with_config(axiom_config_path)
+    } else {
+        Gateway::with_default_engine()
+    };
 
     // ── Перцепторы ────────────────────────────────────────────────────────────
     let mut perceptors: Vec<Box<dyn Perceptor>> = Vec::new();
@@ -99,8 +104,8 @@ fn main() {
         }
 
         // Горячая перезагрузка конфигурации (если настроена)
-        if let Some(_new_cfg) = gateway.check_config_reload() {
-            eprintln!("[agent] Config reloaded.");
+        if gateway.check_config_reload().is_some() {
+            eprintln!("[agent] Config reloaded (dream settings applied).");
         }
     }
 

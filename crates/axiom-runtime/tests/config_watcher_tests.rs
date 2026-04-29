@@ -41,7 +41,7 @@ fn temp_dir(suffix: &str) -> std::path::PathBuf {
 
 #[test]
 fn test_gateway_no_watcher_returns_none() {
-    let gw = Gateway::with_default_engine();
+    let mut gw = Gateway::with_default_engine();
     assert!(gw.check_config_reload().is_none());
 }
 

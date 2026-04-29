@@ -28,6 +28,7 @@
 /// Якорные токены — калибровка семантического пространства
 pub mod anchor;
 pub mod domain_config;
+pub mod dream_config;
 pub mod heartbeat_config;
 pub mod loader;
 /// Пресеты токенов и связей
@@ -44,6 +45,7 @@ pub use domain_config::{
     MEMBRANE_OPEN, MEMBRANE_SEMI, MEMBRANE_CLOSED, MEMBRANE_ADAPTIVE,
     GUARDIAN_CHECK_REQUIRED,
 };
+pub use dream_config::{DreamConfig, SchedulerConfig, FatigueWeightsConfig, CycleConfig};
 pub use heartbeat_config::HeartbeatConfig;
 pub use loader::{
     AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, LoadedAxiomConfig,

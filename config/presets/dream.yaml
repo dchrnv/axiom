@@ -1,0 +1,31 @@
+# DREAM Phase Configuration
+# docs/spec/Dream/DREAM_Phase_V1_0.md, разделы 3–4
+#
+# Для dev/тестов используй DreamConfig::dev() в коде (idle_threshold: 10).
+# Этот файл — production-дефолты.
+
+scheduler:
+  # Минимум тиков в WAKE между снами (защита от rapid cycling)
+  min_wake_ticks: 1000
+  # Тиков без внешнего intake → переход в FallingAsleep
+  idle_threshold: 200
+  # Fatigue score (0–255) → переход в FallingAsleep
+  fatigue_threshold: 180
+
+fatigue_weights:
+  # Кандидаты FrameWeaver без кристаллизации
+  uncrystallized_candidates: 80
+  # Заполненность EXPERIENCE (tokens / capacity)
+  experience_pressure: 100
+  # Тяжёлые предложения в очереди DreamCycle
+  pending_heavy_proposals: 60
+  # Скорость роста causal horizon
+  causal_horizon_growth_rate: 30
+
+cycle:
+  # Максимум тиков одного DreamCycle (защита от зависания)
+  max_dream_duration_ticks: 50000
+  # Максимум предложений за один цикл
+  max_proposals_per_cycle: 100
+  # Предложений за один тик стадии Processing
+  batch_size: 8

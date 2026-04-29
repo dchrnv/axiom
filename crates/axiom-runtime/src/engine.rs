@@ -1188,6 +1188,35 @@ impl AxiomEngine {
         injected
     }
 
+    /// Применить DreamConfig к engine — обновляет DreamScheduler, DreamCycle и FatigueWeights.
+    ///
+    /// Безопасно вызывать в любом состоянии WAKE. Вызов в DREAMING/WAKING/FALLING_ASLEEP
+    /// допустим, но изменения вступят в силу с начала следующего цикла.
+    pub fn apply_dream_config(&mut self, cfg: &axiom_config::DreamConfig) {
+        use crate::over_domain::{DreamSchedulerConfig, FatigueWeights, DreamCycleConfig};
+
+        let sched_cfg = DreamSchedulerConfig {
+            min_wake_ticks:    cfg.scheduler.min_wake_ticks,
+            idle_threshold:    cfg.scheduler.idle_threshold,
+            fatigue_threshold: cfg.scheduler.fatigue_threshold,
+        };
+        let weights = FatigueWeights {
+            uncrystallized_candidates:  cfg.fatigue_weights.uncrystallized_candidates,
+            experience_pressure:        cfg.fatigue_weights.experience_pressure,
+            pending_heavy_proposals:    cfg.fatigue_weights.pending_heavy_proposals,
+            causal_horizon_growth_rate: cfg.fatigue_weights.causal_horizon_growth_rate,
+        };
+        let cycle_cfg = DreamCycleConfig {
+            max_dream_duration_ticks: cfg.cycle.max_dream_duration_ticks,
+            max_proposals_per_cycle:  cfg.cycle.max_proposals_per_cycle as usize,
+            enable_recombination:     false, // V2.0+
+            batch_size:               cfg.cycle.batch_size as usize,
+        };
+
+        self.dream_scheduler = DreamScheduler::new(sched_cfg, weights);
+        self.dream_cycle     = DreamCycle::new(cycle_cfg);
+    }
+
     /// Найти токен по sutra_id по всем доменам AshtiCore
     fn find_token_by_sutra_id(&self, sutra_id: u32) -> Option<Token> {
         for (_, state) in self.ashti.all_states() {

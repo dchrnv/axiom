@@ -9,6 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::domain_config::DomainConfig;
+use crate::dream_config::DreamConfig;
 use crate::heartbeat_config::HeartbeatConfig;
 use crate::preset::{TokenPreset, ConnectionPreset};
 
@@ -41,6 +42,8 @@ pub struct PresetsConfig {
     pub semantic_contributions: Option<String>,
     /// Путь к YAML файлу HeartbeatConfig (опционально)
     pub heartbeat_file: Option<String>,
+    /// Путь к YAML файлу DreamConfig (опционально)
+    pub dream_file: Option<String>,
 }
 
 /// Результат полной загрузки конфигурации через `ConfigLoader::load_all`
@@ -56,6 +59,8 @@ pub struct LoadedAxiomConfig {
     pub domains: HashMap<String, DomainConfig>,
     /// Heartbeat конфигурация (если загружена)
     pub heartbeat: Option<HeartbeatConfig>,
+    /// DREAM Phase конфигурация (если загружена)
+    pub dream: Option<DreamConfig>,
 }
 
 /// Конфигурация runtime
@@ -177,6 +182,16 @@ impl ConfigLoader {
     pub fn load_heartbeat_config(&mut self, path: &Path) -> Result<HeartbeatConfig, ConfigError> {
         let content = fs::read_to_string(path).map_err(ConfigError::IoError)?;
         let config: HeartbeatConfig = crate::schema::validate_yaml(&content)?;
+
+        config.validate().map_err(ConfigError::ValidationError)?;
+
+        Ok(config)
+    }
+
+    /// Загрузить DreamConfig из YAML
+    pub fn load_dream_config(&mut self, path: &Path) -> Result<DreamConfig, ConfigError> {
+        let content = fs::read_to_string(path).map_err(ConfigError::IoError)?;
+        let config: DreamConfig = crate::schema::validate_yaml(&content)?;
 
         config.validate().map_err(ConfigError::ValidationError)?;
 
@@ -431,10 +446,23 @@ impl ConfigLoader {
             None
         };
 
+        // Загружаем DreamConfig если путь задан
+        let dream = if let Some(ref d_path) = root.presets.dream_file.clone() {
+            let path = base.join(d_path);
+            if path.exists() {
+                Some(self.load_dream_config(&path)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         Ok(LoadedAxiomConfig {
             root,
             domains,
             heartbeat,
+            dream,
         })
     }
 

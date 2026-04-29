@@ -33,6 +33,11 @@ pub fn heartbeat_schema_json() -> String {
     schema_json::<crate::heartbeat_config::HeartbeatConfig>()
 }
 
+/// JSON-схема DreamConfig.
+pub fn dream_schema_json() -> String {
+    schema_json::<crate::dream_config::DreamConfig>()
+}
+
 /// Распарсить YAML-строку как `T`, предварительно провалидировав против JSON-схемы.
 ///
 /// При несоответствии схеме возвращает `ConfigError::ValidationError` с подробным
