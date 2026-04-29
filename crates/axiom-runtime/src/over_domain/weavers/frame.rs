@@ -31,6 +31,7 @@ use crate::over_domain::traits::{
     CrystallizationProposal, OverDomainComponent, OverDomainError,
     PromotionProposal, Weaver, WeaverId,
 };
+use crate::over_domain::dream_phase::cycle::{DreamProposal, DreamProposalKind};
 
 /// Numeric ID для TickSchedule.weaver_scan_intervals.
 pub const FRAME_WEAVER_ID: WeaverId = 1;
@@ -804,39 +805,9 @@ impl OverDomainComponent for FrameWeaver {
                 .count() as u64;
         }
 
-        // ── 5. Проверить промоцию EXPERIENCE → SUTRA ────────────────────────
-        if let Some(state) = exp_state {
-            let frame_anchors: Vec<Token> = state.tokens.iter()
-                .filter(|t| (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0
-                    && (t.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) == 0)
-                .copied()
-                .collect();
-
-            for token in &frame_anchors {
-                for rule in &self.config.promotion_rules.clone() {
-                    if self.qualifies_for_promotion(token, rule, tick) {
-                        let restored = match restore_frame_from_anchor(token.sutra_id, state) {
-                            Ok(r)  => r,
-                            Err(_) => break, // аномалия данных — пропустить кандидата
-                        };
-                        let candidate = FrameCandidate {
-                            anchor_position: restored.anchor.position,
-                            participants:    restored.participants,
-                            detected_at_tick: restored.anchor.last_event_id,
-                            stability_count:  0,
-                            category:         restored.category,
-                            lineage_hash:     restored.anchor.lineage_hash,
-                        };
-                        let cmds = Self::build_promotion_commands(
-                            &candidate, token.sutra_id, sutra_domain_id
-                        );
-                        self.pending_commands.extend(cmds);
-                        self.stats.promotions_proposed += 1;
-                        break;
-                    }
-                }
-            }
-        }
+        // ── 5. Промоция EXPERIENCE → SUTRA убрана из on_tick (DREAM Phase V1.0) ─
+        // Промоция теперь только через DreamCycle: FrameWeaver::dream_propose()
+        // вызывается из Engine при переходе в FallingAsleep.
 
         Ok(())
     }
@@ -909,6 +880,54 @@ impl Weaver for FrameWeaver {
 
     fn target_domain(&self) -> u16 {
         109 // EXPERIENCE
+    }
+}
+
+// ============================================================================
+// DREAM Phase integration
+// ============================================================================
+
+impl FrameWeaver {
+    /// Собрать DreamProposal-ы для всех Frame-анкеров в EXPERIENCE,
+    /// которые квалифицируются для промоции по правилам PromotionRule.
+    ///
+    /// Вызывается из AxiomEngine при переходе FallingAsleep → Dreaming.
+    pub fn dream_propose(&self, ashti: &AshtiCore) -> Vec<DreamProposal> {
+        let level = ashti.level_id();
+        let exp_domain_id   = level * 100 + 9;
+        let sutra_domain_id = level * 100;
+
+        let exp_state = match ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i)) {
+            Some(s) => s,
+            None    => return Vec::new(),
+        };
+
+        let tick = 0u64; // tick не нужен — qualifies_for_promotion сравнивает last_event_id
+        let mut proposals = Vec::new();
+
+        for token in &exp_state.tokens {
+            if (token.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0            { continue; }
+            if (token.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) != 0 { continue; }
+
+            for rule in &self.config.promotion_rules {
+                if self.qualifies_for_promotion(token, rule, tick) {
+                    proposals.push(DreamProposal {
+                        source:           FRAME_WEAVER_ID,
+                        priority:         100,
+                        created_at_event: token.last_event_id,
+                        kind: DreamProposalKind::Promotion {
+                            anchor_id:     token.sutra_id,
+                            source_domain: exp_domain_id,
+                            target_domain: sutra_domain_id,
+                            rule_id:       rule.id.clone(),
+                        },
+                    });
+                    break; // одна промоция на frame за цикл
+                }
+            }
+        }
+
+        proposals
     }
 }
 
@@ -1406,6 +1425,8 @@ mod tests {
 
     #[test]
     fn promotion_creates_sutra_frame_with_participants() {
+        // DREAM Phase V1.0: промоция убрана из on_tick.
+        // Теперь промоция инициируется через dream_propose() при засыпании.
         let config = FrameWeaverConfig {
             scan_interval_ticks: 1,
             promotion_rules: vec![PromotionRule {
@@ -1419,21 +1440,38 @@ mod tests {
             }],
             ..Default::default()
         };
-        let mut fw = FrameWeaver::new(config);
+        let fw = FrameWeaver::new(config);
         let anchor_id = 5000u32;
         let participants = &[5001u32, 5002, 5003];
         let (ashti, _hash) = make_promotion_ashti(anchor_id, participants);
 
-        // Запустить тик — промоция должна сработать
-        fw.on_tick(200_000, &ashti).unwrap();
-        let cmds = fw.drain_commands();
+        // dream_propose() должна найти Frame и вернуть Promotion proposal
+        let proposals = fw.dream_propose(&ashti);
+        assert_eq!(proposals.len(), 1, "ожидается одно Promotion proposal");
+        assert!(matches!(
+            &proposals[0].kind,
+            crate::over_domain::dream_phase::cycle::DreamProposalKind::Promotion { anchor_id: aid, .. }
+            if *aid == 5000
+        ), "proposal должен содержать anchor_id=5000");
 
-        // Должна быть хотя бы одна команда InjectToken (SUTRA-анкер) + 3 BondTokens
-        let inject_count = cmds.iter().filter(|c| c.opcode == OpCode::InjectToken as u16).count();
+        // on_tick больше не генерирует promotion-команды
+        let mut fw_mut = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks:           0,
+                min_reactivations:       0,
+                min_temperature:         200,
+                min_mass:                100,
+                min_participant_anchors: 0,
+                requires_codex_approval: false,
+                id:                      "test_promo".to_string(),
+            }],
+            ..Default::default()
+        });
+        fw_mut.on_tick(200_000, &ashti).unwrap();
+        let cmds = fw_mut.drain_commands();
         let bond_count = cmds.iter().filter(|c| c.opcode == OpCode::BondTokens as u16).count();
-        assert!(inject_count >= 1, "ожидается SUTRA-анкер");
-        assert_eq!(bond_count, participants.len(), "ожидается {n} bonds", n = participants.len());
-        assert_eq!(fw.stats.promotions_proposed, 1);
+        assert_eq!(bond_count, 0, "on_tick не должен генерировать promotion BondTokens");
     }
 
     #[test]

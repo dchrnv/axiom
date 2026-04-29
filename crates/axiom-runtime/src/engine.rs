@@ -17,7 +17,9 @@ use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload
 use std::collections::{HashMap, VecDeque};
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor,
-    DreamPhaseState, DreamPhaseStats, DreamScheduler, DreamSchedulerConfig, FatigueWeights, FatigueSnapshot};
+    DreamPhaseState, DreamPhaseStats, DreamScheduler, DreamSchedulerConfig, FatigueWeights, FatigueSnapshot,
+    DreamCycle, DreamCycleConfig, SleepTrigger, WakeReason, DreamPhaseEvent, SleepDecision, GatewayPriority,
+    SleepTriggerKind};
 use crate::snapshot::{EngineSnapshot, DomainSnapshot};
 use crate::orchestrator;
 use crate::adaptive::AdaptiveTickRate;
@@ -171,10 +173,19 @@ pub struct AxiomEngine {
     pub(crate) dream_priority_buffer: VecDeque<UclCommand>,
     /// DreamScheduler — определяет когда переходить в DREAMING.
     pub dream_scheduler: DreamScheduler,
+    /// DreamCycle — машина стадий сна (Stabilization → Processing → Consolidation).
+    pub dream_cycle: DreamCycle,
     /// Значение causal horizon на предыдущем snapshot-тике (для delta).
     pub(crate) last_horizon_value: u64,
     /// Тик, когда был сделан предыдущий horizon snapshot.
     pub(crate) last_horizon_tick: u64,
+    /// Триггер засыпания (сохраняется в FallingAsleep для передачи в DreamCycle).
+    pub(crate) falling_asleep_trigger: Option<SleepTrigger>,
+    /// Fatigue score в момент засыпания.
+    pub(crate) falling_asleep_fatigue: u8,
+    /// true — в этом тике был внешний ввод (InjectToken через process_and_observe).
+    /// Сбрасывается в начале каждого handle_tick_forward.
+    pub(crate) had_intake_this_tick: bool,
 }
 
 impl AxiomEngine {
@@ -205,8 +216,12 @@ impl AxiomEngine {
             dream_phase_stats: DreamPhaseStats::default(),
             dream_priority_buffer: VecDeque::new(),
             dream_scheduler: DreamScheduler::with_defaults(),
+            dream_cycle: DreamCycle::with_defaults(),
             last_horizon_value: 0,
             last_horizon_tick: 0,
+            falling_asleep_trigger: None,
+            falling_asleep_fatigue: 0,
+            had_intake_this_tick: false,
         })
     }
 
@@ -237,6 +252,18 @@ impl AxiomEngine {
     /// Число токенов в домене по domain_id
     pub fn token_count(&self, domain_id: u16) -> usize {
         self.ashti.token_count(domain_id)
+    }
+
+    // ── DREAM Phase accessors (pub для интеграционных тестов) ─────────────────
+
+    /// true — если в текущем тике был внешний ввод (InjectToken через process_and_observe).
+    pub fn had_intake_this_tick(&self) -> bool {
+        self.had_intake_this_tick
+    }
+
+    /// true — если в буфере прерывания есть Critical-команды.
+    pub fn has_critical_pending(&self) -> bool {
+        !self.dream_priority_buffer.is_empty()
     }
 
     // ── DREAM Phase helpers ───────────────────────────────────────────────────
@@ -473,6 +500,7 @@ impl AxiomEngine {
         );
 
         if is_inject && self.arbiter_ready() {
+            self.had_intake_this_tick = true;
             let p = parse_inject_token_payload(&cmd.payload);
             let event_id = self.next_event_id();
             let token = build_token_from_inject(&p, p.target_domain_id, event_id);
@@ -733,6 +761,22 @@ impl AxiomEngine {
 
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
         self.tick_count += 1;
+        let had_intake = self.had_intake_this_tick;
+        self.had_intake_this_tick = false;
+
+        let count = match self.dream_phase_state {
+            DreamPhaseState::Wake         => self.tick_wake(had_intake),
+            DreamPhaseState::FallingAsleep => self.tick_falling_asleep(),
+            DreamPhaseState::Dreaming      => self.tick_dreaming(),
+            DreamPhaseState::Waking        => self.tick_waking(),
+        };
+
+        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
+    }
+
+    // ── DREAM state ticks ──────────────────────────────────────────────────────
+
+    fn tick_wake(&mut self, had_intake: bool) -> u16 {
         let t = self.tick_count;
         let s = self.tick_schedule.clone();
 
@@ -741,9 +785,7 @@ impl AxiomEngine {
         let count = events.len() as u16;
         self.pending_events.extend(events);
 
-        // Warm path: tension traces (Cognitive Depth)
-        // Impulse-токены проходят через когнитивный pipeline (SUTRA→EXPERIENCE→ASHTI→MAYA).
-        // TOKEN_FLAG_IMPULSE предотвращает петлю: impulse → tension → impulse → ...
+        // Warm path: tension traces
         if s.tension_check_interval > 0 && t % s.tension_check_interval as u64 == 0 {
             let impulses = self.ashti.arbiter_heartbeat_pulse(t, true);
             for mut token in impulses {
@@ -752,8 +794,7 @@ impl AxiomEngine {
             }
         }
 
-        // Warm path: goal impulses (Cognitive Depth)
-        // Аналогично: goal-импульсы маршрутизируются когнитивно, не физически.
+        // Warm path: goal impulses
         if s.goal_check_interval > 0 && t % s.goal_check_interval as u64 == 0 {
             let goals = self.ashti.generate_goal_impulses(t, s.goal_check_interval as u64);
             for impulse in goals {
@@ -763,7 +804,7 @@ impl AxiomEngine {
             }
         }
 
-        // Warm path: DREAM
+        // Warm path: legacy DREAM proposals (CODEX)
         if s.dream_interval > 0 && t % s.dream_interval as u64 == 0 {
             let _ = self.dream_propose();
         }
@@ -778,7 +819,7 @@ impl AxiomEngine {
             let _ = self.run_horizon_gc();
         }
 
-        // Cold path: reconcile семантического пространства
+        // Cold path: reconcile
         if s.reconcile_interval > 0 && t % s.reconcile_interval as u64 == 0 {
             let _ = self.ashti.reconcile_all();
         }
@@ -788,8 +829,7 @@ impl AxiomEngine {
             let _ = self.snapshot_and_prune();
         }
 
-        // Over-Domain: tick all registered components per their interval
-        // Use mem::take to satisfy borrow checker (components need &self.ashti read-only)
+        // Over-Domain components
         let mut components = std::mem::take(&mut self.over_domain_components);
         for component in &mut components {
             let interval = component.on_tick_interval();
@@ -799,9 +839,7 @@ impl AxiomEngine {
         }
         self.over_domain_components = components;
 
-        // FrameWeaver: tick + исполнить накопленные команды
-        // Borrow-safe: frame_weaver и ashti — разные поля self.
-        // drain_commands вызывается только когда on_tick реально отработал.
+        // FrameWeaver
         let fw_interval = self.frame_weaver.on_tick_interval();
         if fw_interval > 0 && t % fw_interval as u64 == 0 {
             let _ = self.frame_weaver.on_tick(t, &self.ashti);
@@ -811,7 +849,135 @@ impl AxiomEngine {
             }
         }
 
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
+        // DreamScheduler: проверить триггеры засыпания
+        let snapshot = self.collect_fatigue_snapshot();
+        let decision = self.dream_scheduler.on_wake_tick(t, snapshot, had_intake);
+        if let SleepDecision::GoToSleep(kind) = decision {
+            let trigger = sleep_trigger_from_kind(kind, &self.dream_scheduler);
+            self.transition_to_falling_asleep(trigger);
+        }
+
+        count
+    }
+
+    fn tick_falling_asleep(&mut self) -> u16 {
+        // Один тик: финализируем горячий путь, запускаем DreamCycle
+        let events = self.ashti.tick();
+        let count = events.len() as u16;
+        self.pending_events.extend(events);
+
+        let trigger = self.falling_asleep_trigger.take()
+            .unwrap_or(SleepTrigger::Idle { idle_ticks: 0 });
+        let fatigue = self.falling_asleep_fatigue;
+        let event_id = self.com_next_id;
+
+        // Собрать proposals от FrameWeaver
+        let proposals = self.frame_weaver.dream_propose(&self.ashti);
+        for p in proposals {
+            self.dream_cycle.submit(p);
+        }
+
+        self.dream_cycle.start_cycle(self.tick_count, event_id, trigger, fatigue);
+        self.dream_phase_state = DreamPhaseState::Dreaming;
+        // V1.0: DreamPhaseEvent::FallingAsleepToDreaming — событие зафиксировано в stats,
+        // полная рассылка через EventBus добавляется в Этапе 6.
+
+        count
+    }
+
+    fn tick_dreaming(&mut self) -> u16 {
+        self.dream_phase_stats.total_dream_ticks += 1;
+
+        // Critical interrupt: если в буфере есть команда — просыпаемся
+        if !self.dream_priority_buffer.is_empty() {
+            self.transition_to_waking(WakeReason::CriticalSignal { source: 0 });
+            return 0;
+        }
+
+        // Reduced heartbeat: только физика (упрощённо — полный tick ASHTI)
+        // V2.0: тикать только DREAM(107) и EXPERIENCE(109)
+        let events = self.ashti.tick();
+        self.pending_events.extend(events);
+
+        let tick = self.tick_count;
+        let event_id = self.com_next_id;
+
+        let result = self.dream_cycle.advance(tick, &self.ashti, event_id);
+
+        match result {
+            crate::over_domain::CycleAdvanceResult::InProgress  => {}
+            crate::over_domain::CycleAdvanceResult::Complete    => {
+                self.apply_dream_cycle_commands();
+                self.transition_to_waking(WakeReason::CycleComplete);
+            }
+            crate::over_domain::CycleAdvanceResult::Timeout     => {
+                let max = 50_000; // default — cycle config не публичен в этой версии
+                self.transition_to_waking(WakeReason::Timeout { max_dream_duration: max });
+            }
+            crate::over_domain::CycleAdvanceResult::NotActive   => {
+                self.transition_to_waking(WakeReason::CycleComplete);
+            }
+        }
+
+        0
+    }
+
+    fn tick_waking(&mut self) -> u16 {
+        // Размораживаем Critical-буфер
+        let buffered: Vec<UclCommand> = self.dream_priority_buffer.drain(..).collect();
+        for cmd in buffered {
+            let _ = self.process_command(&cmd);
+        }
+
+        let events = self.ashti.tick();
+        let count = events.len() as u16;
+        self.pending_events.extend(events);
+
+        let tick = self.tick_count;
+        self.dream_scheduler.on_dream_finished(tick);
+        self.dream_phase_state = DreamPhaseState::Wake;
+
+        count
+    }
+
+    // ── переходы состояний ────────────────────────────────────────────────────
+
+    fn transition_to_falling_asleep(&mut self, trigger: SleepTrigger) {
+        let fatigue = self.dream_scheduler.current_fatigue();
+        self.falling_asleep_trigger = Some(trigger);
+        self.falling_asleep_fatigue = fatigue;
+        self.dream_phase_state = DreamPhaseState::FallingAsleep;
+        self.dream_phase_stats.total_sleeps += 1;
+    }
+
+    fn transition_to_waking(&mut self, reason: WakeReason) {
+        let is_interrupted = !matches!(reason, WakeReason::CycleComplete | WakeReason::Timeout { .. });
+        if is_interrupted {
+            self.dream_phase_stats.interrupted_dreams += 1;
+        }
+        self.dream_phase_state = DreamPhaseState::Waking;
+    }
+
+    fn apply_dream_cycle_commands(&mut self) {
+        let cmds = self.dream_cycle.drain_commands();
+        for cmd in cmds {
+            let _ = self.process_command(&cmd);
+        }
+    }
+
+    /// Зарегистрировать Critical-команду для выполнения во время/после DREAMING.
+    pub fn submit_priority_command(&mut self, cmd: UclCommand, priority: GatewayPriority) {
+        match priority {
+            GatewayPriority::Normal => {
+                // Normal-команды во время DREAMING буферизуются в dream_priority_buffer
+                // со специальным маркером — в V1.0 просто пропускаем (не обрабатываем)
+                // Полная буферизация Normal-команд — Этап 6 (Gateway integration)
+            }
+            GatewayPriority::Critical | GatewayPriority::Emergency => {
+                // Critical: помещаем в буфер прерывания — система проснётся на следующем тике
+                self.dream_priority_buffer.push_back(cmd);
+            }
+        }
     }
 
     fn handle_dual_path(&mut self, cmd: &UclCommand) -> UclResult {
@@ -1214,4 +1380,13 @@ fn build_token_from_inject(p: &InjectTokenPayload, domain_id: u16, event_id: u64
     token.temperature = temperature;
     token.type_flags = p.token_type as u16;
     token
+}
+
+/// Построить SleepTrigger из SleepTriggerKind и текущего состояния DreamScheduler.
+fn sleep_trigger_from_kind(kind: SleepTriggerKind, scheduler: &DreamScheduler) -> SleepTrigger {
+    match kind {
+        SleepTriggerKind::Idle            => SleepTrigger::Idle { idle_ticks: scheduler.current_idle_ticks() },
+        SleepTriggerKind::Fatigue         => SleepTrigger::Fatigue { fatigue_score: scheduler.current_fatigue() },
+        SleepTriggerKind::ExplicitCommand => SleepTrigger::ExplicitCommand { source: 0 },
+    }
 }

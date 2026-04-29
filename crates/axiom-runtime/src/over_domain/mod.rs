@@ -40,4 +40,6 @@ pub use dream_phase::{
     DreamPhaseEvent, GatewayPriority, DreamPhaseStats,
     FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker,
     DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
+    DreamCycleConfig, DreamCycle, DreamCycleStats, CycleStage, CycleAdvanceResult,
+    DreamProposal, DreamProposalKind, DreamReport,
 };
