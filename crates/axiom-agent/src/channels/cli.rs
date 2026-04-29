@@ -862,7 +862,8 @@ impl CliChannel {
 
         let is_mutating = matches!(cmd,
             ":save" | ":load" | ":autosave" | ":tick" |
-            ":export" | ":import" | ":quit" | ":q"
+            ":export" | ":import" | ":quit" | ":q" |
+            ":force-sleep" | ":wake-up"
         );
 
         if is_mutating {

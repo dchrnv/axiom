@@ -6,6 +6,7 @@
 
 /// Четыре состояния системы. Переход — через DreamScheduler и DreamCycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "adapters", derive(serde::Serialize))]
 #[repr(u8)]
 pub enum DreamPhaseState {
     #[default]
@@ -58,6 +59,7 @@ pub enum GatewayPriority {
 /// Счётчики DREAM-фазы для BroadcastSnapshot и CLI :dream-stats.
 /// Поля добавляются по мере реализации этапов.
 #[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "adapters", derive(serde::Serialize))]
 pub struct DreamPhaseStats {
     pub total_sleeps:          u64,
     pub total_dream_ticks:     u64,

@@ -10,7 +10,7 @@
 
 use axiom_core::STATE_LOCKED;
 use serde::Serialize;
-use crate::over_domain::FrameWeaverStats;
+use crate::over_domain::{FrameWeaverStats, DreamPhaseState, DreamPhaseStats, CycleStage};
 
 /// Лёгкий snapshot состояния Engine для периодического broadcast.
 ///
@@ -30,6 +30,25 @@ pub struct BroadcastSnapshot {
     pub domain_summaries: Vec<DomainSummary>,
     /// Статистика FrameWeaver (None до первого тика сканирования)
     pub frame_weaver_stats: Option<FrameWeaverStats>,
+    /// Snapshot DREAM Phase (состояние + статистика)
+    pub dream_phase: Option<DreamPhaseSnapshot>,
+}
+
+/// Snapshot состояния DREAM-фазы для BroadcastSnapshot.
+#[derive(Serialize, Clone)]
+pub struct DreamPhaseSnapshot {
+    pub state:           DreamPhaseState,
+    pub current_fatigue: u8,
+    pub idle_ticks:      u32,
+    pub stats:           DreamPhaseStats,
+    pub current_cycle:   Option<ActiveCycleSnapshot>,
+}
+
+/// Snapshot активного DreamCycle (только если state == Dreaming).
+#[derive(Serialize, Clone)]
+pub struct ActiveCycleSnapshot {
+    pub stage:      CycleStage,
+    pub queue_size: usize,
 }
 
 /// Краткая сводка одного домена для BroadcastSnapshot.

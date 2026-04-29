@@ -40,6 +40,7 @@ impl Default for DreamCycleConfig {
 // ── стадии ────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "adapters", derive(serde::Serialize))]
 pub enum CycleStage {
     Stabilization,
     Processing,

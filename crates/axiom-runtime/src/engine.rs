@@ -318,6 +318,26 @@ impl AxiomEngine {
     /// Лёгкий snapshot для broadcast (только числа, без клонирования токенов).
     #[cfg(feature = "adapters")]
     pub fn snapshot_for_broadcast(&self) -> crate::broadcast::BroadcastSnapshot {
+        use crate::broadcast::{DreamPhaseSnapshot, ActiveCycleSnapshot};
+        use crate::over_domain::DreamPhaseState;
+
+        let cycle_snap = if self.dream_phase_state == DreamPhaseState::Dreaming {
+            self.dream_cycle.current_stage().map(|stage| ActiveCycleSnapshot {
+                stage,
+                queue_size: self.dream_cycle.queue_len(),
+            })
+        } else {
+            None
+        };
+
+        let dream_snap = DreamPhaseSnapshot {
+            state:           self.dream_phase_state,
+            current_fatigue: self.dream_scheduler.current_fatigue(),
+            idle_ticks:      self.dream_scheduler.current_idle_ticks(),
+            stats:           self.dream_phase_stats.clone(),
+            current_cycle:   cycle_snap,
+        };
+
         crate::broadcast::BroadcastSnapshot {
             tick_count:           self.tick_count,
             com_next_id:          self.com_next_id,
@@ -325,6 +345,7 @@ impl AxiomEngine {
             tension_count:        self.tension_count(),
             domain_summaries:     self.domain_summaries(),
             frame_weaver_stats:   Some(self.frame_weaver.stats.clone()),
+            dream_phase:          Some(dream_snap),
         }
     }
 

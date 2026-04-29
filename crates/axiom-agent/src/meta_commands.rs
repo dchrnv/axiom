@@ -428,6 +428,27 @@ pub fn handle_meta_read(
             }
         }
 
+        ":dream-stats" => {
+            let state   = engine.dream_phase_state;
+            let fatigue = engine.dream_scheduler.current_fatigue();
+            let idle    = engine.dream_scheduler.current_idle_ticks();
+            let stats   = &engine.dream_phase_stats;
+            let sched   = &engine.dream_scheduler.stats;
+            writeln!(out, "  ══ DREAM Phase ══════════════════════════").unwrap();
+            writeln!(out, "  Current state:      {:?}", state).unwrap();
+            writeln!(out, "  Current fatigue:    {}/255 ({:.0}%)", fatigue, fatigue as f32 / 2.55).unwrap();
+            writeln!(out, "  Idle ticks:         {}", idle).unwrap();
+            writeln!(out, "  Total sleeps:       {}", stats.total_sleeps).unwrap();
+            writeln!(out, "  Total dream ticks:  {}", stats.total_dream_ticks).unwrap();
+            writeln!(out, "  Interrupted dreams: {}", stats.interrupted_dreams).unwrap();
+            writeln!(out, "  By trigger:  Idle={}, Fatigue={}, Explicit={}",
+                sched.idle_triggers, sched.fatigue_triggers, sched.explicit_triggers).unwrap();
+            let cycle = &engine.dream_cycle.stats;
+            writeln!(out, "  Cycles:  total={}, complete={}, timeout={}, approved={}, vetoed={}",
+                cycle.total_cycles, cycle.completed_cycles, cycle.timed_out_cycles,
+                cycle.total_approved, cycle.total_vetoed).unwrap();
+        }
+
         ":multipass" => {
             writeln!(out, "  ══ Multi-Pass Statistics ══════════════").unwrap();
             writeln!(out, "  total events:     {}", engine.com_next_id).unwrap();
@@ -760,6 +781,21 @@ pub fn handle_meta_mutate(
             MetaAction::None
         }
 
+        ":force-sleep" => {
+            engine.dream_scheduler.submit_explicit_command(0);
+            writeln!(output, "  Submitted explicit sleep command. System will fall asleep on next tick.").unwrap();
+            MetaAction::None
+        }
+
+        ":wake-up" => {
+            use axiom_runtime::GatewayPriority;
+            use axiom_ucl::{UclCommand, OpCode};
+            let wake_cmd = UclCommand::new(OpCode::TickForward, 0, 255, 0);
+            engine.submit_priority_command(wake_cmd, GatewayPriority::Critical);
+            writeln!(output, "  Critical wake signal sent. State: {:?}", engine.dream_phase_state).unwrap();
+            MetaAction::None
+        }
+
         ":save" => {
             let dir_str = parts.get(1).copied().unwrap_or(config.data_dir.as_str());
             let dir = std::path::Path::new(dir_str);
@@ -912,6 +948,7 @@ pub(crate) const HELP_TEXT: &str = "\
   :tension              — активные tension traces
   :depth                — параметры Cognitive Depth
   :dream                — DREAM-цикл и кандидаты на кристаллизацию
+  :dream-stats          — DREAM Phase: состояние, fatigue, статистика циклов
   :multipass            — статистика multi-pass обработки
   :reflector            — per-domain точность REFLECTOR
   :impulses             — диагностика очереди импульсов
@@ -928,6 +965,8 @@ pub(crate) const HELP_TEXT: &str = "\
   :match \"<text>\"       — тест маппинга текста → позиция
   ── управление ─────────────────────────────────────────────
   :tick [N]             — ручной тик (N раз)
+  :force-sleep          — принудительное засыпание на следующем тике
+  :wake-up              — Critical-сигнал пробуждения из DREAMING
   :verbose [on|off]     — подробный вывод после тика
   :detail [off|min|mid|max] — уровень детализации
   :watch <field>        — следить за traces|tension|tps
