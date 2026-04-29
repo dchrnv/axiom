@@ -25,6 +25,9 @@ pub enum VetoReason {
     ZeroSutraId,
     /// Запрещено GENOME (Arbiter не имеет доступа Execute на AshtiField)
     GenomeDenied,
+    /// Попытка записать Frame-анкер в SUTRA вне состояния DREAMING.
+    /// Инвариант: SUTRA-промоция только через DreamCycle.
+    SutraFrameWriteOutsideDream,
 }
 
 /// Решение GUARDIAN по рефлексу.
@@ -226,6 +229,33 @@ impl Guardian {
             self.violation_count += 1;
         }
         allowed
+    }
+
+    // ============================================================
+    // DREAM Phase state guards
+    // ============================================================
+
+    /// Проверить допустимость записи Frame-анкера в SUTRA.
+    ///
+    /// Инвариант: FRAME_ANCHOR-записи в SUTRA (domain 100 для level 1) допустимы
+    /// только в состоянии DREAMING. Обычные токены в SUTRA не ограничены.
+    ///
+    /// Возвращает `Some(VetoReason)` если запись должна быть заблокирована.
+    pub fn check_frame_anchor_sutra_write(
+        &self,
+        cmd_flags: u8,
+        target_domain_id: u16,
+        dream_state: crate::over_domain::DreamPhaseState,
+    ) -> Option<VetoReason> {
+        use axiom_ucl::flags::FRAME_ANCHOR;
+        use crate::over_domain::DreamPhaseState;
+
+        // Проверяем только FRAME_ANCHOR-записи в SUTRA (domain_id % 100 == 0)
+        if cmd_flags & FRAME_ANCHOR == 0 { return None; }
+        if target_domain_id % 100 != 0    { return None; }
+        if dream_state == DreamPhaseState::Dreaming { return None; }
+
+        Some(VetoReason::SutraFrameWriteOutsideDream)
     }
 
     // ============================================================

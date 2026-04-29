@@ -627,6 +627,13 @@ impl AxiomEngine {
         let p = read_frame_anchor_payload(&cmd.payload);
         let domain_id = p.target_domain_id;
 
+        // GUARDIAN: FRAME_ANCHOR-записи в SUTRA только в состоянии DREAMING
+        if let Some(_veto) = self.guardian.check_frame_anchor_sutra_write(
+            cmd.flags, domain_id, self.dream_phase_state
+        ) {
+            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::GUARDIAN_VIOLATION, 0);
+        }
+
         if self.ashti.index_of(domain_id).is_none() {
             return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
         }
