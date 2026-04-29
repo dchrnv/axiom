@@ -1,6 +1,6 @@
 # AXIOM MODULE SPECIFICATION: FRAMEWEAVER V1.1
 
-**Статус:** Актуальная спецификация (core)
+**Статус:** Superseded — заменена FrameWeaver V1.2
 **Версия:** 1.1.0
 **Дата:** 2026-04-22
 **Codename:** "First Weaver"
