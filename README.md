@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1030%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1088%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1030 tests passing.**
+**Axiom is in active development — core architecture complete, 1088 tests passing.**
 
 ---
 
@@ -52,6 +52,7 @@
 - **Arbiter** — двойная маршрутизация: быстрый рефлекс через Experience или медленный проход по всем доменам. Как System 1 / System 2 — только без нейронов.
 - **Guardian** — CODEX-проверки и GENOME-ограничения. Системные правила, которые нельзя обойти.
 - **Over-Domain Layer** — слой компонентов над доменами. **FrameWeaver** сканирует синтаксические узоры в MAYA, кристаллизует стабильные структуры в EXPERIENCE и предлагает промоцию фундаментальных паттернов в SUTRA через CODEX.
+- **DREAM Phase** — когнитивный сон. Система циклически переходит в состояние `Dreaming`, где FrameWeaver предлагает промоцию устойчивых Frame в SUTRA через `DreamCycle`. Три триггера входа: бездействие, усталость (composite fatigue score 0–255), явная команда. Запись в SUTRA разрешена только в `DREAMING` — онтологический инвариант системы.
 - **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
 - **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
 - **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
@@ -107,10 +108,17 @@
                     │    adapt_thresholds, dream_propose           │
                     │                                              │
                     │  Over-Domain Layer ──────────────────────    │
-                    │    FrameWeaver: MAYA→scan→EXPERIENCE         │
+                    │    FrameWeaver V1.2: MAYA→scan→EXPERIENCE    │
                     │      синтаксические узоры (0x08 Syntactic)  │
                     │      кристаллизация / ReinforceFrame /       │
-                    │      промоция в SUTRA через CODEX            │
+                    │      промоция в SUTRA через CODEX (DREAMING) │
+                    │                                              │
+                    │  DREAM Phase ────────────────────────────    │
+                    │    Wake → FallingAsleep → Dreaming → Waking  │
+                    │    DreamScheduler (Idle/Fatigue/Explicit)    │
+                    │    DreamCycle: Stabilization→Processing→     │
+                    │               Consolidation                  │
+                    │    GUARDIAN: SUTRA write only in DREAMING    │
                     │                                              │
                     │  COM ── монотонный event_id, TickSchedule    │
                     └──────────────────────────────────────────────┘
@@ -153,7 +161,8 @@ let result = gw.process_channel(&mut ch);
 ### Documentation
 
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
-- [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver: scan/кристаллизация/промоция
+- [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver V1.2: scan/кристаллизация/промоция
+- [docs/guides/DREAM_Phase_Guide.md](docs/guides/DREAM_Phase_Guide.md) — DREAM Phase V1.0: состояния, триггеры, усталость, DreamCycle, CLI, конфиги
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md) — WebSocket, REST, Dashboard, Telegram, OpenSearch

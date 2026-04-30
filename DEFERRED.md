@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 26.0
-**Обновлён:** 2026-04-24
+**Версия:** 27.0
+**Обновлён:** 2026-04-30
 
 ---
 
@@ -91,18 +91,13 @@
 
 ---
 
-### FW-TD-05 — propose_to_dream возвращает пустые команды (DREAM не реализован)
+### ~~FW-TD-05 — propose_to_dream возвращает пустые команды (DREAM не реализован)~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:767`, метод `propose_to_dream`
+**Закрыто:** 2026-04-29 в DREAM Phase V1.0 + FrameWeaver V1.2.
 
-`CrystallizationProposal.commands = Vec::new()` — команды предполагается заполнять DREAM-движком при принятии предложения. DREAM-фаза не существует; `Engine` не вызывает `propose_to_dream` нигде — метод используется только в тестах и будущей интеграции.
+`propose_to_dream()` заменён на `dream_propose()` — вызывается однократно при входе в `FallingAsleep`. FrameWeaver сканирует кандидатов и передаёт `DreamProposal::Promotion` в `DreamCycle`. Интеграция через `DreamCycle` (Stabilization→Processing→Consolidation).
 
-**Что нужно:**
-1. Создать DREAM-компонент (Over-Domain или отдельный домен 107)
-2. Engine подавать стабильные кандидаты через `propose_to_dream`, DREAM принимает/отклоняет и заполняет commands
-3. Или упростить: убрать DREAM как посредника, вызывать `propose_to_dream` → `process_command` напрямую
-
-**Когда:** При проектировании DREAM-фазы (когнитивный сон/рефлексия).
+Оставшийся вопрос о заполнении `commands` снят: промоция идёт через `DreamCycle`, а не через `process_command` напрямую.
 
 ---
 
@@ -123,8 +118,8 @@
 **Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:511-513`, `trigger_matches`
 
 Три ветки `RuleTrigger` всегда возвращают `false`:
-- `DreamCycle` — ждёт сигнала от DREAM-фазы (не существует)
-- `HighConfidence(f32)` — нет confidence scoring у кандидатов
+- `DreamCycle` — DREAM Phase V1.0 реализована, но сигнал из DreamCycle в FrameWeaver ещё не подключён
+- `HighConfidence(f32)` — нет confidence scoring у кандидатов (см. также DreamPhase_V2_plus.md)
 - `RepeatedAssembly { window_ticks }` — нет счётчика повторных сборок в скользящем окне
 
 **Что нужно:**
@@ -140,9 +135,9 @@
 
 **Где:** `crates/axiom-agent/src/tick_loop.rs`, ветка `if let Some(_new_cfg) = watcher.poll()`
 
-`ConfigWatcher` перенесён в `tick_loop` (EA-TD-05 ✅), поллинг работает, изменения axiom.yaml
-обнаруживаются. Однако применение обновлённых domain-пресетов к уже запущенному `AxiomEngine`
-не реализовано — `AxiomEngine` не имеет метода `apply_domain_config(&DomainConfig)`.
+**Частично закрыто (2026-04-29):** `Gateway::check_config_reload()` теперь автоматически применяет `DreamConfig` при hot-reload через `engine.apply_dream_config(&cfg.dream)`. DreamScheduler и DreamCycle перенастраиваются без рестарта.
+
+Оставшаяся часть: применение обновлённых **domain**-пресетов к уже запущенному `AxiomEngine` не реализовано — `AxiomEngine` не имеет метода `apply_domain_config(&DomainConfig)`.
 
 **Что нужно:**
 1. Добавить `pub fn apply_domain_config(&mut self, domain_id: u16, cfg: &DomainConfig)` в `AxiomEngine`

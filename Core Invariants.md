@@ -1,7 +1,7 @@
 
 # Axiom Core Specification
 
-Version: 4.0 (2026-04-24)
+Version: 5.0 (2026-04-30)
 
 ## 1 Назначение
 
@@ -39,6 +39,14 @@ Version: 4.0 (2026-04-24)
 **Frame** — синтаксический паттерн, кристаллизованный в EXPERIENCE (TOKEN_FLAG_FRAME_ANCHOR, state=STATE_ACTIVE). Особо устойчивые Frame могут быть промоутированы в SUTRA через CODEX (state=STATE_LOCKED).
 **lineage_hash** — FNV-1a hash над отсортированными sutra_ids всех участников Frame. Детерминированный идентификатор паттерна независимо от порядка обнаружения связей.
 
+### DREAM Phase
+**DreamPhaseState** — состояние системы относительно когнитивного сна. Четыре значения: `Wake` (нормальная обработка), `FallingAsleep` (переход, `dream_propose()` вызывается однократно), `Dreaming` (DreamCycle активен, SUTRA-запись разрешена), `Waking` (возврат, обработка Critical-команд).
+**DreamScheduler** — компонент, принимающий решение о переходе в сон. Три триггера: Idle (накопленные idle-тики), Fatigue (composite score ≥ threshold), ExplicitCommand (`:force-sleep`).
+**FatigueTracker** — вычисляет composite fatigue score 0–255 из 4 факторов (uncrystallized_candidates, experience_pressure, pending_heavy_proposals, causal_horizon_growth_rate) с весами.
+**DreamCycle** — цикл переработки в DREAMING: Stabilization (накопление proposals) → Processing (рассмотрение batch) → Consolidation (финализация). Прерывается GatewayPriority::Critical.
+**DreamProposal** — предложение, формируемое Weaver в `dream_propose()`. Два вида: `Promotion` (кристаллизованный Frame → SUTRA) и `HeavyCrystallization` (V2.0, сейчас Vetoed).
+**GatewayPriority** — приоритет входящей команды. `Normal` — игнорируется в `Dreaming`. `Critical` — прерывает DreamCycle, переводит в `Waking`. `Emergency` — в V1.0 = Critical; отдельная семантика deferred.
+
 ### Адресация доменов
 `domain_id = level_id × 100 + structural_role`
 
@@ -46,6 +54,7 @@ Version: 4.0 (2026-04-24)
 
 ### Конфигурация и физика
 **DomainConfig** — 128 байт конфигурация Домена, определяющая его природу и поведение.
+**DreamConfig** — конфигурация DREAM-фазы: `SchedulerConfig` (min_wake_ticks, idle_threshold, fatigue_threshold), `FatigueWeightsConfig` (4 веса факторов), `CycleConfig` (max_dream_duration_ticks, max_proposals_per_cycle, batch_size). Загружается из `config/presets/dream.yaml`.
 **CausalFrontier V2.0** — приоритетная очередь событий с State Machine и Storm Control.
 **GridHash** — O(1) хэш-индекс для ассоциативной памяти; shift-фактор квантует позиционное пространство.
 **AnchorSet** — набор якорных токенов трёх уровней (axes/layers/domains), загружается из `config/anchors/`.
@@ -113,6 +122,9 @@ Version: 4.0 (2026-04-24)
 9.10. **Промоция Frame в SUTRA** — только через CODEX; промотированный анкер: state=STATE_LOCKED, type_flags содержит TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE. Оригинал в EXPERIENCE сохраняется.
 9.11. **lineage_hash детерминированность** — FNV-1a над sorted(sutra_ids участников). Одинаковый набор участников → одинаковый hash при любом порядке обнаружения связей. Служит ключом дедупликации Frame.
 9.12. **CycleStrategy в EXPERIENCE** — циклические связи в EXPERIENCE допустимы (CycleStrategy::Allow). DAG-инвариант применяется только при промоции в SUTRA.
+9.13. **SUTRA-запись FRAME_ANCHOR только в DREAMING** — запись токена с флагом `TOKEN_FLAG_FRAME_ANCHOR` в SUTRA допустима исключительно в состоянии `DreamPhaseState::Dreaming`. Нарушение блокируется `GUARDIAN::check_frame_anchor_sutra_write()`. Это онтологический инвариант: истина кристаллизуется только в состоянии сна.
+9.14. **Четыре состояния DREAM** — допустимые значения `DreamPhaseState`: Wake → FallingAsleep → Dreaming → Waking → Wake. Переходы строго последовательны; обратный переход из Dreaming/Waking возможен только через Waking.
+9.15. **GatewayPriority::Critical прерывает сон** — команда с `GatewayPriority::Critical` в состоянии `Dreaming` или `Waking` немедленно прерывает DreamCycle и инициирует переход в Waking → Wake. `Normal`-команды в Dreaming отклоняются без обработки.
 
 ## 10 Расширения
 

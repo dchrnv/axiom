@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-27
+**Обновлено:** 2026-04-30
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1030 тестов, 0 failures**
+**1088 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -20,7 +20,7 @@ AxiomEngine
   └── Over-Domain Layer:
         ├── OverDomainComponent trait (object-safe, on_tick каждые N тиков через mem::take)
         ├── Weaver trait (type Pattern, scan, propose_to_dream, check_promotion)
-        └── FrameWeaver V1.1 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
+        └── FrameWeaver V1.2 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
               scan_state, build_crystallization_commands, ReinforceFrame (lineage_hash dedup),
               build_promotion_commands (→ SUTRA STATE_LOCKED + TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE),
               CycleStrategy::Allow (default); Weaver trait: scan(tick,…), check_promotion(tick,…);
@@ -28,7 +28,18 @@ AxiomEngine
               UnfoldFrame handler — разворачивает Frame в произвольный целевой домен;
               встроен в AxiomEngine (on_tick + drain_commands внутри interval-guard);
               GENOME: 5 access rules (MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control);
-              35+ unit-тестов + integration + e2e smoke; FrameWeaverStats: unfold_requests
+              35+ unit-тестов + integration + e2e smoke; FrameWeaverStats: unfold_requests;
+              V1.2: промоция перенесена из on_tick → dream_propose() (вызов при FallingAsleep)
+
+DREAM Phase V1.0 ✅ — когнитивный сон: 4 состояния (Wake/FallingAsleep/Dreaming/Waking)
+  ├── DreamScheduler — 3 триггера: Idle (порог idle тиков), Fatigue (0-255, 4 фактора), ExplicitCommand
+  ├── FatigueTracker — composite score = Σ(factor × weight) / Σ(weight); отслеживает 4 показателя
+  ├── DreamCycle — 3 этапа: Stabilization → Processing → Consolidation; DreamProposal (Promotion/HeavyCrystallization)
+  ├── GUARDIAN: check_frame_anchor_sutra_write() — FRAME_ANCHOR в SUTRA только в DREAMING
+  ├── GatewayPriority: Normal (игнорируется в DREAMING) / Critical (пробуждение) / Emergency (V2.0=Critical)
+  ├── Gateway::with_config() — старт с загрузкой DreamConfig из axiom.yaml
+  ├── CLI: :dream-stats / :force-sleep / :wake-up
+  └── BroadcastSnapshot расширен: dream_phase, dream_stats (FatigueStats, SchedulerStats, CycleStats)
 
 FractalChain — N уровней AshtiCore (MAYA[n] → SUTRA[n+1], skills exchange)
 ConfigWatcher — горячая перезагрузка axiom.yaml (inotify), передаётся в tick_loop
@@ -73,10 +84,11 @@ axiom-runtime:
       DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot; snapshot_for_broadcast(),
       domain_detail_snapshot(), trace_count(), tension_count(), last_matched()
 
-axiom-config (Config V1.0 + D-07 + Anchor V1.0):
-  ├── PresetsConfig.heartbeat_file → LoadedAxiomConfig.heartbeat (Option<HeartbeatConfig>)
+axiom-config (Config V1.0 + D-07 + Anchor V1.0 + DreamConfig):
+  ├── PresetsConfig.heartbeat_file / dream_file → LoadedAxiomConfig.heartbeat / dream (Option<…>)
+  ├── DreamConfig: SchedulerConfig + FatigueWeightsConfig + CycleConfig; default/dev/production/validate()
   ├── ConfigWatcher — поллится в tick_loop каждый тик (EA-TD-05 ✅)
-  ├── schema — JsonSchema на всех конфигах, validate_yaml<T>(), :schema CLI-команда
+  ├── schema — JsonSchema на всех конфигах включая DreamConfig, validate_yaml<T>(), :schema CLI-команда
   └── AnchorSet — якорные токены: axes/layers/domains, YAML-загрузка, match_text(), compute_position/shell/weight
 
 axiom-persist (D-04):
@@ -100,7 +112,7 @@ axiom-space:
 | axiom-core | 34 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, JsonSchema, AnchorSet |
+| axiom-config | 91 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
 | axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
@@ -108,12 +120,12 @@ axiom-space:
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 204 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.1 ✅), Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-runtime | 280 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.2 ✅), DREAM Phase V1.0 (DreamScheduler, FatigueTracker, DreamCycle, DreamProposal), Gateway (with_config, check_config_reload), Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 152 (175 all-features) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop (CliState, adaptive sleep, ConfigWatcher), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | — | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1030** | |
+| **Итого** | **1088** | |
 
 ---
 
@@ -159,4 +171,9 @@ axiom-space:
 | FrameWeaver 1–3 | Over-Domain Layer traits + FrameWeaver V1.1 (scan→EXPERIENCE, ReinforceFrame, CycleStrategy::Allow) | ✅ |
 | FrameWeaver 4 | Интеграция в AxiomEngine (on_tick + drain_commands), BroadcastSnapshot + FrameWeaverStats, GENOME permissions | ✅ |
 | FrameWeaver 5 | 26 unit-тестов: fnv1a, scan, crystallization, reactivation, promotion, stats | ✅ |
-| FW Stabilization | E1: restore_frame_from_anchor + UnfoldFrame handler + реальная промоция; E2: tick в Weaver trait; E3: drain_commands оптимизация 311→238 ns; E4 deferred. 1030 тестов. | ✅ |
+| FW Stabilization | E1: restore_frame_from_anchor + UnfoldFrame handler + реальная промоция; E2: tick в Weaver trait; E3: drain_commands оптимизация 311→238 ns; E4 deferred. | ✅ |
+| FrameWeaver V1.2 | Промоция перенесена из on_tick (steps 4–5) → dream_propose(); вызов при FallingAsleep; Errata E2–E4 зафиксированы | ✅ |
+| DREAM Phase 1–5 | DreamScheduler + FatigueTracker + DreamCycle + DreamProposal + GUARDIAN check_frame_anchor_sutra_write; unit-тесты | ✅ |
+| DREAM Phase 6 | CLI :dream-stats / :force-sleep / :wake-up; BroadcastSnapshot расширен; dream_cli_tests (5 тестов) | ✅ |
+| DREAM Phase 7 | Smoke-тест 8 тестов: full_cycle, multiple_cycles, interrupted_cycle, scheduler_stats, promotions | ✅ |
+| DreamConfig | axiom-config: SchedulerConfig+FatigueWeightsConfig+CycleConfig; apply_dream_config() в engine; Gateway::with_config(); hot-reload; dream.yaml; :schema dream | ✅ |
