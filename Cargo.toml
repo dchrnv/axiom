@@ -47,6 +47,6 @@ axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
 futures-util = "0.3"
 postcard = { version = "1", features = ["use-std"] }
-tokio-tungstenite = "0.26"
+tokio-tungstenite = "0.24"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
