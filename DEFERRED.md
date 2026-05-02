@@ -1,7 +1,59 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 27.0
-**Обновлён:** 2026-04-30
+**Версия:** 28.0
+**Обновлён:** 2026-05-02
+
+---
+
+## Workstation V1.0 — отложено из Stage 2
+
+### BRD-TD-01 — DomainActivity throttle enforcement
+
+**Где:** `crates/axiom-broadcasting/src/server.rs` → `should_send()`
+
+`BroadcastingConfig::domain_activity_threshold` объявлен, но `should_send()` его не проверяет — событие `DomainActivity` всегда проходит фильтр. Полная реализация требует `recent_activity` дельты от Engine.
+
+**Когда:** Stage 3+ (Engine integration).
+
+---
+
+### BRD-TD-03 — Snapshot resync при RecvError::Lagged
+
+**Где:** `crates/axiom-broadcasting/src/server.rs`, ветка `RecvError::Lagged`
+
+При переполнении broadcast-очереди клиент теряет события. Сейчас сервер логирует предупреждение и продолжает. По спеке нужно отправить клиенту полный `SystemSnapshot` для resync. Помечено `// SCALE-POINT` в коде.
+
+**Когда:** Stage 3+ (после Engine integration — нужен живой snapshot).
+
+---
+
+### BRD-TD-05 — Полнота полей build_system_snapshot()
+
+**Где:** `crates/axiom-broadcasting/src/snapshot.rs`
+
+Многие поля `SystemSnapshot` заполнены нулями/пустыми значениями: `capacity`, `temperature_decay`, `temperature_avg`, `recent_activity`, `layer_activations`, `guardian_stats`, `last_dream_report`, `adapter_progress`. Расширяется по мере добавления публичного API в axiom-runtime.
+
+**Когда:** Постепенно, по мере Stage 3–8.
+
+---
+
+### BRD-TD-07 — Engine tick-loop → BroadcastHandle интеграция
+
+**Где:** axiom-runtime (Engine), axiom-broadcasting (BroadcastHandle)
+
+Спека предписывала `broadcasting` feature в axiom-runtime, который зависит от axiom-broadcasting. Невозможно: axiom-broadcasting уже зависит от axiom-runtime → цикл зависимостей. Правильный подход: интеграция делается на уровне бинарного crate (будущий `axiom-node` или демо-бинарник) который зависит на оба crate и вызывает `handle.publish(...)` из хука тик-цикла. Engine к этому готов: `snapshot_for_broadcast()` уже экспортируется через `BroadcastSnapshot`.
+
+**Когда:** Stage 8 или при добавлении `axiom-node` бинарника.
+
+---
+
+### BRD-TD-06 — Интеграционный тест pong timeout
+
+**Где:** `crates/axiom-broadcasting/src/tests.rs`
+
+Тест 2.7.e проверяет только что сервер отправляет Ping. Проверку разрыва соединения при отсутствии Pong сделать нельзя: `tokio-tungstenite` клиент автоматически отвечает на Ping без участия пользовательского кода.
+
+**Когда:** При необходимости — через raw TCP клиент без WebSocket framing.
 
 ---
 

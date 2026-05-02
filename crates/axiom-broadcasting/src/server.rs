@@ -1,16 +1,16 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-
+use std::sync::{Arc, RwLock};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, mpsc, Mutex};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use tokio_tungstenite::{accept_async, WebSocketStream};
+use tokio_tungstenite::accept_async;
 use tracing::{debug, info, warn};
 
-use axiom_protocol::messages::{ClientKind, ClientMessage, EngineMessage, ShutdownReason};
+use axiom_protocol::messages::{ClientMessage, EngineMessage, ShutdownReason};
 use axiom_protocol::commands::EngineCommand;
+use axiom_protocol::snapshot::SystemSnapshot;
 use axiom_protocol::PROTOCOL_VERSION;
 
 use crate::config::BroadcastingConfig;
@@ -24,6 +24,8 @@ pub struct BroadcastHandle {
     pub event_tx: broadcast::Sender<EngineMessage>,
     /// Engine polls pending commands from clients here.
     pub command_rx: Mutex<mpsc::UnboundedReceiver<(u64, EngineCommand)>>,
+    /// Pre-serialized EngineMessage::Snapshot sent to each new client on connect.
+    snapshot_cache: RwLock<Option<Vec<u8>>>,
 }
 
 impl BroadcastHandle {
@@ -36,6 +38,16 @@ impl BroadcastHandle {
     /// Non-blocking poll: returns one pending command if available.
     pub async fn try_recv_command(&self) -> Option<(u64, EngineCommand)> {
         self.command_rx.lock().await.try_recv().ok()
+    }
+
+    /// Update the cached snapshot sent to new clients on connect.
+    /// Called by Engine after each tick or on demand.
+    pub fn update_snapshot(&self, snap: SystemSnapshot) {
+        if let Ok(bytes) = postcard::to_stdvec(&EngineMessage::Snapshot(snap)) {
+            if let Ok(mut guard) = self.snapshot_cache.write() {
+                *guard = Some(bytes);
+            }
+        }
     }
 }
 
@@ -56,6 +68,7 @@ impl BroadcastServer {
         let handle = Arc::new(BroadcastHandle {
             event_tx: event_tx.clone(),
             command_rx: Mutex::new(command_rx),
+            snapshot_cache: RwLock::new(None),
         });
 
         let server = BroadcastServer {
@@ -140,21 +153,57 @@ impl BroadcastServer {
         let bytes = postcard::to_stdvec(&server_hello)?;
         ws_sink.send(WsMessage::Binary(bytes)).await?;
 
+        // Send current snapshot so client has initial state without waiting for next event
+        let cached_snapshot = self.handle.snapshot_cache.read()
+            .ok()
+            .and_then(|g| g.as_ref().cloned());
+        if let Some(snap_bytes) = cached_snapshot {
+            ws_sink.send(WsMessage::Binary(snap_bytes)).await?;
+        }
+
         // Subscribe to broadcast channel
         let mut event_rx = self.handle.event_tx.subscribe();
         let command_tx = self.command_tx.clone();
         let mut subscribed_categories = subscriptions;
+        let tick_event_interval = self.config.tick_event_interval;
+
+        // Heartbeat: server initiates ping every heartbeat_interval, expects pong within pong_timeout.
+        let heartbeat_interval = self.config.heartbeat_interval;
+        let pong_timeout_dur = self.config.pong_timeout;
+        let mut heartbeat = tokio::time::interval(heartbeat_interval);
+        heartbeat.tick().await; // skip the immediate first tick
+        let mut pong_expires_at: Option<tokio::time::Instant> = None;
 
         // Main client loop
         let mut ws_sink = ws_sink;
         loop {
+            let pong_deadline = pong_expires_at; // Copy into loop body for the async block
+
             tokio::select! {
+                // Pong timeout: fires when we sent a ping and no pong arrived in time
+                _ = async move {
+                    match pong_deadline {
+                        Some(d) => tokio::time::sleep_until(d).await,
+                        None    => std::future::pending::<()>().await,
+                    }
+                } => {
+                    warn!("Client {} pong timeout, disconnecting", client_id);
+                    break;
+                }
+
+                // Heartbeat: send ping to client (skip if already waiting for pong)
+                _ = heartbeat.tick(), if pong_expires_at.is_none() => {
+                    if ws_sink.send(WsMessage::Ping(vec![])).await.is_err() {
+                        break;
+                    }
+                    pong_expires_at = Some(tokio::time::Instant::now() + pong_timeout_dur);
+                }
+
                 // Outbound: Engine events → client
                 result = event_rx.recv() => {
                     match result {
                         Ok(msg) => {
-                            // Apply subscription filter
-                            if !should_send(&msg, subscribed_categories) {
+                            if !should_send(&msg, subscribed_categories, tick_event_interval) {
                                 continue;
                             }
                             let bytes = match postcard::to_stdvec(&msg) {
@@ -191,6 +240,9 @@ impl BroadcastServer {
                         Some(Ok(WsMessage::Ping(data))) => {
                             let _ = ws_sink.send(WsMessage::Pong(data)).await;
                         }
+                        Some(Ok(WsMessage::Pong(_))) => {
+                            pong_expires_at = None;
+                        }
                         Some(Ok(WsMessage::Close(_))) | None => break,
                         _ => {}
                     }
@@ -203,14 +255,19 @@ impl BroadcastServer {
     }
 }
 
-fn should_send(msg: &EngineMessage, categories: u64) -> bool {
+fn should_send(msg: &EngineMessage, categories: u64, tick_event_interval: u32) -> bool {
     use axiom_protocol::event_category::*;
     use axiom_protocol::events::EngineEvent;
 
     match msg {
         EngineMessage::Event(ev) => {
             let cat = match ev {
-                EngineEvent::Tick { .. }           => TICK,
+                EngineEvent::Tick { tick, .. } => {
+                    if tick % tick_event_interval as u64 != 0 {
+                        return false;
+                    }
+                    TICK
+                }
                 EngineEvent::DomainActivity { .. } => DOMAIN_ACTIVITY,
                 EngineEvent::DreamPhaseTransition { .. } => DREAM_PHASE,
                 EngineEvent::FrameCrystallized { .. }

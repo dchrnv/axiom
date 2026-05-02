@@ -4,7 +4,6 @@
 /// a safe zero/empty default. Full field coverage happens when Engine exposes
 /// a richer snapshot API (future errata).
 use axiom_protocol::{
-    adapters::AdapterProgress,
     events::EngineState,
     snapshot::{
         DomainConfigSummary, DomainSnapshot, DreamPhaseStats, FatigueSnapshot, FrameWeaverStats,

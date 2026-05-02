@@ -11,6 +11,10 @@ pub struct BroadcastingConfig {
     pub event_drop_strategy: DropStrategy,
     /// Trigger full Snapshot resync when queue reaches this size.
     pub snapshot_resync_threshold: usize,
+    /// How often to send WebSocket ping to each client.
+    pub heartbeat_interval: std::time::Duration,
+    /// Max time to wait for pong before disconnecting.
+    pub pong_timeout: std::time::Duration,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +33,8 @@ impl Default for BroadcastingConfig {
             max_event_queue_per_client: 1000,
             event_drop_strategy: DropStrategy::DropOldest,
             snapshot_resync_threshold: 800,
+            heartbeat_interval: std::time::Duration::from_secs(30),
+            pong_timeout: std::time::Duration::from_secs(10),
         }
     }
 }

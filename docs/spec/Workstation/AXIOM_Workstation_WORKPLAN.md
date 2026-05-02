@@ -13,8 +13,8 @@
 |------|-------------------------------------------------|-------------|-------------|
 | 0    | Подготовка проекта                              | ✅ DONE     | 2026-05-02  |
 | 1    | axiom-protocol                                  | ✅ DONE     | 2026-05-02  |
-| 2    | axiom-broadcasting + Engine integration         | TODO        | —           |
-| 3    | axiom-workstation базовая инфраструктура        | TODO        | —           |
+| 2    | axiom-broadcasting + Engine integration         | ✅ DONE     | 2026-05-02  |
+| 3    | axiom-workstation базовая инфраструктура        | ✅ DONE     | 2026-05-02  |
 | 4    | Multi-window, tabs, System Map                  | TODO        | —           |
 | 5    | Configuration tab                               | TODO        | —           |
 | 6    | Conversation tab                                | TODO        | —           |
@@ -98,7 +98,97 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 2–11 (TODO)
+## Этап 2 — axiom-broadcasting ✅ DONE
+
+**Дата:** 2026-05-02
+
+### Что сделано
+
+**Модули:**
+- `config.rs` — BroadcastingConfig (C4): tick_event_interval=100, domain_activity_threshold=5,
+  max_event_queue_per_client=1000, heartbeat_interval=30s, pong_timeout=10s, DropOldest
+- `server.rs` — BroadcastServer + BroadcastHandle:
+  - accept loop, per-client tokio task
+  - бинарное postcard handshake: ClientMessage::Hello → EngineMessage::Hello / Bye(VersionMismatch)
+  - subscription filter (event_category битовые флаги + tick % tick_event_interval)
+  - broadcast fan-out: event_tx → всем подписанным клиентам
+  - command channel: клиент → Engine (mpsc unbounded)
+  - heartbeat: сервер посылает Ping каждые heartbeat_interval, ждёт Pong до pong_timeout
+  - RecvError::Lagged: предупреждение логируется, соединение не разрывается (SCALE-POINT)
+- `snapshot.rs` — build_system_snapshot(): BroadcastSnapshot → SystemSnapshot
+- `tests.rs` — 6 интеграционных тестов (2.7.a–f)
+
+**Технические решения:**
+- tokio-tungstenite зафиксирован на 0.24 (совместимость с axiom-agent, Vec<u8> API)
+- build_system_snapshot() в axiom-broadcasting (не в axiom-runtime) — избегаем циклических deps
+
+### Критерии готовности
+
+- [x] BroadcastServer запускается и принимает соединения
+- [x] Handshake с version check (major byte)
+- [x] Subscription filter работает (tick interval + category bits)
+- [x] Outgoing heartbeat: сервер инициирует ping
+- [x] 6 интеграционных тестов: 2.7.a–f (все pass)
+- [x] Весь workspace зелёный (ноль регрессий)
+
+### Deferred (не блокирует Stage 3)
+
+- **BRD-TD-01** — DomainActivity threshold enforcement (требует Engine API)
+- **BRD-TD-03** — Snapshot resync при RecvError::Lagged (SCALE-POINT в коде)
+- **BRD-TD-05** — Полнота полей build_system_snapshot() (zero defaults, расширяется с Engine API)
+- **BRD-TD-06** — Pong timeout disconnect integration test (tungstenite клиент авто-отвечает на ping)
+- Engine integration: broadcasting feature в axiom-runtime + hook в tick loop → **начало Stage 3**
+
+### Errata этапа 2
+
+- tokio-tungstenite в workspace был 0.26+ (Bytes API) — откатили до 0.24 (Vec<u8>)
+- BroadcastingConfig: добавлены `heartbeat_interval` и `pong_timeout` поля (не были в исходной спеке)
+
+---
+
+## Этап 3 — axiom-workstation базовая инфраструктура ✅ DONE
+
+**Дата:** 2026-05-02
+
+### Что сделано
+
+**Новые файлы:**
+- `settings.rs` — UiSettings (engine_address: String), load_settings() / save_settings(), config path через dirs
+- `app.rs` — WorkstationApp: ConnectionState (4 состояния), Message (6 вариантов), update/view/subscription
+- `connection.rs` — ws_subscription() → iced::Subscription, run_session() с handshake + основным циклом
+
+**Ключевые решения:**
+- iced 0.13: `iced::stream::channel(size, FnOnce) + iced::Subscription::run_with_id(id, stream)` — channel из iced::subscription отсутствует
+- Reconnect backoff: `[1, 2, 5, 10, 30]` сек, attempt счётчик сбрасывается при успешном соединении
+- ConnectionState::Connected содержит `connected_at: Instant` (uptime в view)
+- Handshake: Hello → Hello(engine_version) → WsConnected
+- recent_events: VecDeque с capacity 1000
+
+**Тесты:**
+- 3.7.a `test_settings_roundtrip` — TOML сериализация / десериализация
+- 3.7.b `test_settings_default` — дефолтный адрес 127.0.0.1:9876
+- 3.7.c `test_websocket_handshake` — подключение к BroadcastServer, ожидание WsConnected
+
+### Критерии готовности
+
+- [x] `cargo check -p axiom-workstation` — ноль ошибок
+- [x] `cargo test -p axiom-workstation` — 3/3 тестов pass
+- [x] ConnectionState / Message определены
+- [x] WebSocket subscription с reconnect backoff
+- [x] Settings persistence (TOML в config dir)
+- [x] Базовый view: статус соединения + tick + events count
+
+### Deferred
+
+- BRD-TD-07: Engine tick-loop → BroadcastHandle (cyclic dep axiom-runtime ↔ axiom-broadcasting — откладывается в axiom-node)
+
+### Errata этапа 3
+
+- `iced::subscription::channel` не существует в iced 0.13.1 — правильный путь: `iced::stream::channel + iced::Subscription::run_with_id`
+
+---
+
+## Этапы 4–11 (TODO)
 
 _Детализируются поэтапно по мере продвижения._
 
