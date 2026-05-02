@@ -1,0 +1,21 @@
+[package]
+name = "axiom-workstation"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "axiom-workstation"
+path = "src/main.rs"
+
+[dependencies]
+axiom-protocol = { path = "../axiom-protocol" }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+postcard = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+iced = "0.13"
+dirs = "5"

@@ -1,0 +1,16 @@
+[package]
+name = "axiom-broadcasting"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axiom-protocol = { path = "../axiom-protocol" }
+axiom-core = { path = "../axiom-core" }
+axiom-runtime = { path = "../axiom-runtime" }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+postcard = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
