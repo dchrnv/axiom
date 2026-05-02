@@ -12,7 +12,7 @@
 | Этап | Название                                        | Статус      | Дата        |
 |------|-------------------------------------------------|-------------|-------------|
 | 0    | Подготовка проекта                              | ✅ DONE     | 2026-05-02  |
-| 1    | axiom-protocol                                  | TODO        | —           |
+| 1    | axiom-protocol                                  | ✅ DONE     | 2026-05-02  |
 | 2    | axiom-broadcasting + Engine integration         | TODO        | —           |
 | 3    | axiom-workstation базовая инфраструктура        | TODO        | —           |
 | 4    | Multi-window, tabs, System Map                  | TODO        | —           |
@@ -60,13 +60,41 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этап 1 — axiom-protocol (TODO)
+## Этап 1 — axiom-protocol ✅ DONE
 
-_Детализируется перед началом этапа._
+**Дата:** 2026-05-02
 
-**CORRECTIONS к учёту:**
-- C2: добавить ConfigSchema, ConfigSection, ConfigField, ConfigFieldType, ConfigValue
-- C2: GetConfig { section } → **не реализовывать**; заменяется GetConfigSchema / GetConfigSection / UpdateConfigField
+### Что сделано
+
+**Модули:**
+- `messages.rs` — EngineMessage, ClientMessage, ClientKind, ShutdownReason, CommandResultData
+- `snapshot.rs` — SystemSnapshot, DomainSnapshot, OverDomainSnapshot, FatigueSnapshot, DreamReport, FrameWeaverStats, GuardianStats, DreamPhaseStats, FrameDetails, DomainConfigSummary
+- `events.rs` — EngineEvent (14 вариантов), EngineState, SleepTrigger, AlertLevel
+- `commands.rs` — EngineCommand (14 вариантов; GetConfig не реализован — C2)
+- `config.rs` — ConfigSchema, ConfigSection, ConfigField, ConfigFieldType, ConfigValue, ConfigCategory (C2)
+- `bench.rs` — BenchSpec, BenchOptions, BenchResults, BenchEnvironment
+- `adapters.rs` — AdapterInfo, AdapterOption, AdapterProgress, AdapterStatus
+- `lib.rs` — event_category битовые флаги, PROTOCOL_VERSION = 0x01_00_00_00
+- `tests.rs` — 41 round-trip тест через postcard
+
+**CORRECTIONS применены:**
+- C2: GetConfigSchema / GetConfigSection / UpdateConfigField вместо GetConfig
+- C2: полная иерархия ConfigSchema в config.rs
+- C2: ConfigSchema(ConfigSchema), ConfigSection(ConfigSection), ConfigUpdateApplied, ConfigValidationError в CommandResultData
+- ConfigFieldType::Float имеет опциональный `step: Option<f64>`
+
+### Критерии готовности
+
+- [x] Все типы определены
+- [x] postcard сериализация работает для всех вариантов
+- [x] 41 round-trip тест (требование ≥ 30)
+- [x] axiom-protocol компилируется без errors
+- [x] PROTOCOL_VERSION определён
+- [x] Весь workspace зелёный (ноль регрессий)
+
+### Errata этапа 1
+
+- `BenchOptions` не имел `PartialEq` через `Default` derive — добавлен явно.
 
 ---
 
