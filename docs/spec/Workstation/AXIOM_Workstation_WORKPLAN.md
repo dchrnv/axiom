@@ -433,6 +433,132 @@ _Нет расхождений со спекой._
 
 ---
 
+## Этап 8 — Files + Benchmarks tabs ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Новые файлы:**
+- `ui/files.rs` — Files tab: выбор адаптера (кнопки), поле пути + Browse placeholder, кнопка Start, прогресс-панель с cancel-confirm, история импортов
+- `ui/benchmarks.rs` — Benchmarks tab: поле iterations, кнопка Run (placeholder), прогресс бегущего бенча, история результатов с форматированием ns→µs→ms
+
+**Новые типы в app.rs:**
+- `RunningImport` — adapter_id, source, processed, total
+- `CompletedImport` — adapter_id, source, tokens_added, errors, timestamp_secs, cancelled
+- `FilesState` — available_adapters, adapters_fetched, source_path, selected_adapter_id, running_import, completed_imports, cancel_confirm
+- `RunningBench` — bench_id, run_id, completed, total
+- `BenchmarksState` — history (VecDeque<BenchResults>), running, iterations_input
+
+**Новые Message варианты:**
+- Files: `FilesPathChanged`, `FilesAdapterSelected`, `FilesStartImport`, `FilesCancelRequest`, `FilesConfirmCancel`, `FilesCancelDismiss`
+- Benchmarks: `BenchIterationsChanged`, `BenchRun`
+
+**Интеграция с WsEvent:**
+- `AdapterStarted` → FilesState.running_import
+- `AdapterProgress` → running_import.processed/total
+- `AdapterFinished` → running_import → completed_imports
+- `BenchStarted` → BenchmarksState.running
+- `BenchProgress` → running.completed/total
+- `BenchFinished` → running → history
+
+**CommandSenderReady** расширен: при подключении отправляет `ListAdapters` (id2).
+**WsCommandResult** → `AdapterList` → files.available_adapters.
+
+**Тесты (8.6.a–f):**
+- `test_files_path_changed`, `test_files_start_import_no_adapter_noop`, `test_adapter_started_sets_running`, `test_adapter_finished_moves_to_completed`, `test_bench_lifecycle`, `test_adapter_list_result`
+
+### Критерии готовности
+
+- [x] Files: список адаптеров из движка
+- [x] Files: path input + Start/Cancel
+- [x] Files: прогресс-бар и cancel-confirm flow
+- [x] Files: история импортов (max 50)
+- [x] Benchmarks: прогресс бегущего бенча
+- [x] Benchmarks: история результатов с ns→µs→ms
+- [x] 27/27 тестов pass
+
+### Deferred
+
+- **WS8-TD-01** — Нативный файловый пикер (`rfd`) — зависимость не добавлена
+- **WS8-TD-02** — `EngineCommand::RunBench` отсутствует в протоколе
+
+### Errata этапа 8
+
+- `let adapter_row: Element<'a, Message>` — явная аннотация типа нужна при условном `if` с `text()`: компилятор не может вывести тип параметра `Theme` без контекста.
+
+---
+
+## Этап 9 — Welcome + общие компоненты ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Новые файлы:**
+- `ui/welcome.rs` — экран приветствия: "AXIOM" 52pt + "Workstation" 28pt, центровка; 4 состояния по ConnectionState (Connecting, Reconnecting, Disconnected, Connected)
+
+**Изменения app.rs:**
+- `AppPhase` enum: `Welcome` / `Main`
+- `AlertEntry` struct: message + timestamp_secs
+- Новые поля в WorkstationApp: `phase`, `show_connection_details`, `alerts: VecDeque<AlertEntry>`, `subscription_key: u64`
+- `push_alert()` метод
+- `WsConnected` в Welcome → переход в Main + save_settings (создаёт конфиг-файл, фиксирует "видел")
+- `ConfigApply` для workstation.connection инкрементирует `subscription_key` (fix WS5-TD-01)
+- `ConversationSubmit` + `WsCommandResult` возвращают `chat_scroll_to_bottom()` через `Task::batch`
+- `AnimationTick` — авто-dismiss alerts старше 10s
+- `view()` диспатчит Welcome vs Main по `phase`
+- `main_window_view` использует `iced::widget::stack!` для overlay алертов
+- Module-level функции: `chat_scroll_to_bottom()`, `alert_overlay()`, `keyboard_shortcut()`
+
+**Новые Message варианты:**
+- `SkipToMain`, `ToggleConnectionDetails`, `DismissAlert(usize)`, `ConfigApplyActive`
+
+**Изменения ui/header.rs** (переписан):
+- Индикатор соединения → кнопка `button::text`, эмитит `ToggleConnectionDetails`
+- При `show_details=true` — панель с engine address/version/uptime + кнопка Disconnect
+
+**Изменения connection.rs (WS5-TD-01 fix):**
+- `ws_subscription(address: String, key: u64)` → id = `(address, key)` в `Subscription::run_with_id`
+
+**Изменения settings.rs:**
+- `is_first_run() -> bool` — `!config_path().exists()`
+
+**Клавиатурные шорткаты (keyboard_shortcut fn):**
+- Ctrl+1–8 → переключение табов
+- Ctrl+, → Config tab
+- Ctrl+S → ConfigApplyActive
+- Ctrl+Z → ConfigDiscard
+
+**Тесты (9.5.a–f):**
+- `test_skip_to_main`, `test_ws_connected_transitions_welcome_to_main`, `test_ws_connected_main_stays_main`, `test_subscription_key_increments_on_address_change`, `test_toggle_connection_details`, `test_dismiss_alert`
+
+**Закрыто из DEFERRED:** WS5-TD-01, WS6-TD-02
+
+### Критерии готовности
+
+- [x] Welcome screen с 4 состояниями по подключению
+- [x] First-run detection через config_path().exists()
+- [x] WsConnected в Welcome → переход в Main
+- [x] Alert overlay через stack!, auto-dismiss 10s
+- [x] Clickable connection indicator + details popup
+- [x] Keyboard shortcuts Ctrl+1–8, Ctrl+S, Ctrl+Z
+- [x] Hot-reload адреса через subscription_key
+- [x] 33/33 тестов pass
+
+### Deferred
+
+- **WS9-TD-01** — MenuBar (iced 0.13 нет нативного widget)
+- **WS9-TD-02** — Welcome fade-in анимация
+- **WS9-TD-03** — DetachTab UI (зависит от WS9-TD-01)
+
+### Errata этапа 9
+
+- `iced::keyboard::on_key_press` принимает `fn` pointer, не замыкание: сигнатура `fn(Key, Modifiers) -> Option<Message>` — хешируемый указатель функции. Решение: вынести в module-level `fn keyboard_shortcut(...)`.
+- WS5-TD-01: передача только `address.clone()` как ID давала одинаковый ID при смене адреса → subscription не перезапускалась. Исправлено через `(address, key)` кортеж.
+
+---
+
 ## Этап 10 — Live Field (3D) ✅ DONE
 
 **Дата:** 2026-05-03
@@ -480,4 +606,7 @@ _Заполняется по ходу реализации. Переноситс
 
 | # | Этап | Расхождение | Решение |
 |---|------|-------------|---------|
-| — | —    | —           | —       |
+| 1 | 8    | `text()` в условном `if` не выводит параметр `Theme` | Явная аннотация `let adapter_row: Element<'a, Message> = ...` |
+| 2 | 9    | `on_key_press` принимает `fn` pointer, не замыкание | Вынести в module-level `fn keyboard_shortcut(...)` |
+| 3 | 9    | `run_with_id(address)` не перезапускается при той же строке | ID изменён на кортеж `(address, key)` + поле `subscription_key: u64` |
+| 4 | 10   | `DomainSnapshot` не содержит индивидуальных позиций токенов | Процедурная визуализация через детерминированный LCG; реальные данные — WS10-TD-01 |
