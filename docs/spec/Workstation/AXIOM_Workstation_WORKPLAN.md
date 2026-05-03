@@ -15,7 +15,7 @@
 | 1    | axiom-protocol                                  | ✅ DONE     | 2026-05-02  |
 | 2    | axiom-broadcasting + Engine integration         | ✅ DONE     | 2026-05-02  |
 | 3    | axiom-workstation базовая инфраструктура        | ✅ DONE     | 2026-05-02  |
-| 4    | Multi-window, tabs, System Map                  | TODO        | —           |
+| 4    | Multi-window, tabs, System Map                  | ✅ DONE     | 2026-05-03  |
 | 5    | Configuration tab                               | TODO        | —           |
 | 6    | Conversation tab                                | TODO        | —           |
 | 7    | Patterns + Dream State tabs                     | TODO        | —           |
@@ -188,7 +188,56 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 4–11 (TODO)
+## Этап 4 — Multi-window, tabs, System Map ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Архитектура:**
+- Переход с `iced::application` на `iced::daemon` (multi-window view с `window::Id`)
+- Главное окно открывается в `run_with` через `window::open()`
+- `view(&self, id: window::Id)` диспатчится на main vs detached окна
+
+**Новые файлы:**
+- `ui/mod.rs` — модуль UI-компонентов
+- `ui/header.rs` — заголовок с индикатором подключения
+- `ui/tabs.rs` — таб-бар (фильтрует detached вкладки)
+- `ui/placeholder.rs` — заглушка для нереализованных вкладок
+- `ui/system_map.rs` — System Map через `canvas::Program`
+
+**System Map (canvas):**
+- Мандала: 3 концентрических кольца + 8 разделителей ASHTI + ядро SUTRA
+- Пульсация через `animation_phase` (sin-функция)
+- Цвет состояния: Wake=синий, Dreaming=индиго, FallingAsleep/Waking=переходные
+- Домены вокруг мандалы: активные подсвечиваются, линии к центру
+- Bottom labels: state, fatigue%, tick, frames, events
+- Loading state: вращающаяся дуга
+
+**Новые features iced:**
+- `canvas` — iced::widget::canvas
+- `tokio` — iced::time::every
+
+### Критерии готовности
+
+- [x] Multi-window: main + detached окна с разным view
+- [x] Tabs переключаются (TabSelected message)
+- [x] TabKind: 8 вкладок (Map + 7 placeholder)
+- [x] Detach: открывает новое окно, убирает таб из main bar
+- [x] Window close: main → exit(), detached → close + вернуть таб
+- [x] System Map рендерит мандалу с Canvas
+- [x] Анимация ~30fps через iced::time::every(33ms)
+- [x] 7 тестов: 3.7.a, 3.7.b, 3.7.d (stage 3) + 4 новых (4.6.a + 3 unit)
+
+### Errata этапа 4
+
+- `iced::application` не поддерживает разные view по window::Id — нужен `iced::daemon`
+- `Padding` в iced 0.13 не поддерживает `[i32; 4]` — только `[u16; 2]` / `f32` / `u16`
+- canvas и time::every требуют явных features в Cargo.toml
+
+---
+
+## Этапы 5–11 (TODO)
 
 _Детализируются поэтапно по мере продвижения._
 
