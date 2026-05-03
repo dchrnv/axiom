@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 32.0
+**Версия:** 34.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -104,6 +104,32 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
 **Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
+
+---
+
+## Workstation V1.0 — отложено из Stage 8
+
+### WS8-TD-01 — Файловый пикер (rfd)
+
+**Где:** `crates/axiom-workstation/src/ui/files.rs`, кнопка «Browse…» рядом с полем пути
+
+Спека описывает кнопку открытия нативного файлового диалога. Зависимость `rfd` не включена в `Cargo.toml`. Сейчас источник вводится вручную через `text_input`.
+
+**Что нужно:** Добавить `rfd = { version = "0.14", features = ["tokio"] }` в `axiom-workstation/Cargo.toml`, добавить `Message::FilesPickPath` и кнопку Browse, которая вызывает `rfd::AsyncFileDialog::new().pick_file()` через `Task::future`.
+
+**Когда:** Stage 9 или при первом реальном использовании импорта.
+
+---
+
+### WS8-TD-02 — RunBench отсутствует в протоколе
+
+**Где:** `crates/axiom-protocol/src/commands.rs`, `crates/axiom-workstation/src/app.rs`
+
+`EngineCommand` не содержит варианта `RunBench`. Вкладка Benchmarks отображает историю результатов (через `BenchFinished` события) и прогресс запущенного бенча, но запустить бенч из Workstation невозможно. `Message::BenchRun` присутствует в коде, но является no-op.
+
+**Что нужно:** Добавить в протокол `EngineCommand::RunBench { spec: BenchSpec }`, реализовать в Engine и отправлять из `update()` при `Message::BenchRun`.
+
+**Когда:** При добавлении benchmark-runner в Engine.
 
 ---
 

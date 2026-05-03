@@ -5,7 +5,9 @@ use iced::widget::column;
 use iced::{Element, Subscription, Task, window};
 
 use axiom_protocol::{
-    commands::EngineCommand,
+    adapters::AdapterInfo,
+    bench::BenchResults,
+    commands::{EngineCommand, ImportOptions},
     config::{ConfigSchema, ConfigSection, ConfigValue},
     events::EngineEvent,
     messages::CommandResultData,
@@ -14,7 +16,7 @@ use axiom_protocol::{
 
 use crate::connection::ws_subscription;
 use crate::settings::{load_settings, save_settings, UiSettings};
-use crate::ui::{config, conversation, dream_state, header, patterns, placeholder, system_map, tabs};
+use crate::ui::{benchmarks, config, conversation, dream_state, files, header, patterns, placeholder, system_map, tabs};
 
 fn current_timestamp_secs() -> u64 {
     SystemTime::now()
@@ -154,6 +156,54 @@ impl DreamWindowState {
     }
 }
 
+// ── FilesState ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct CompletedImport {
+    pub adapter_id: String,
+    pub source: String,
+    pub tokens_added: u32,
+    pub errors: u32,
+    pub timestamp_secs: u64,
+    pub cancelled: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RunningImport {
+    pub adapter_id: String,
+    pub source: String,
+    pub processed: u64,
+    pub total: u64,
+}
+
+#[derive(Debug, Default)]
+pub struct FilesState {
+    pub available_adapters: Vec<AdapterInfo>,
+    pub adapters_fetched: bool,
+    pub source_path: String,
+    pub selected_adapter_id: Option<String>,
+    pub running_import: Option<RunningImport>,
+    pub completed_imports: VecDeque<CompletedImport>,
+    pub cancel_confirm: bool,
+}
+
+// ── BenchmarksState ────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct RunningBench {
+    pub bench_id: String,
+    pub run_id: u64,
+    pub completed: u32,
+    pub total: u32,
+}
+
+#[derive(Debug, Default)]
+pub struct BenchmarksState {
+    pub history: VecDeque<BenchResults>,
+    pub running: Option<RunningBench>,
+    pub iterations_input: String,
+}
+
 // ── ConfigurationState ─────────────────────────────────────────────────────
 
 #[derive(Debug, Default)]
@@ -253,6 +303,17 @@ pub enum Message {
     ForceSleepConfirm,
     ForceSleepCancel,
     ForceWakeRequest,
+    // Files tab
+    FilesPathChanged(String),
+    FilesAdapterSelected(String),
+    FilesStartImport,
+    FilesCancelRequest,
+    FilesConfirmCancel,
+    FilesCancelDismiss,
+    // Benchmarks tab
+    BenchIterationsChanged(String),
+    #[allow(dead_code)]
+    BenchRun,
 }
 
 // ── WorkstationApp ─────────────────────────────────────────────────────────
@@ -272,6 +333,8 @@ pub struct WorkstationApp {
     pub command_tx: Option<CommandSender>,
     pub next_command_id: u64,
     pub config: ConfigurationState,
+    pub files: FilesState,
+    pub benchmarks: BenchmarksState,
 }
 
 impl WorkstationApp {
@@ -298,6 +361,8 @@ impl WorkstationApp {
             conversation: ConversationState::default(),
             patterns: PatternsState::default(),
             dream_state: DreamWindowState::default(),
+            files: FilesState::default(),
+            benchmarks: BenchmarksState::default(),
         }
     }
 
@@ -417,6 +482,64 @@ impl WorkstationApp {
                     EngineEvent::DomainActivity { layer_activations, .. } => {
                         self.patterns.push_layer_snapshot(*layer_activations);
                     }
+                    EngineEvent::AdapterStarted { adapter_id, source } => {
+                        self.files.running_import = Some(RunningImport {
+                            adapter_id: adapter_id.clone(),
+                            source: source.clone(),
+                            processed: 0,
+                            total: 0,
+                        });
+                    }
+                    EngineEvent::AdapterProgress { adapter_id, processed, total } => {
+                        if let Some(ref mut ri) = self.files.running_import {
+                            if &ri.adapter_id == adapter_id {
+                                ri.processed = *processed;
+                                ri.total = *total;
+                            }
+                        }
+                    }
+                    EngineEvent::AdapterFinished { adapter_id: _, tokens_added, errors } => {
+                        if let Some(ri) = self.files.running_import.take() {
+                            let imp = CompletedImport {
+                                adapter_id: ri.adapter_id,
+                                source: ri.source,
+                                tokens_added: *tokens_added,
+                                errors: *errors,
+                                timestamp_secs: current_timestamp_secs(),
+                                cancelled: false,
+                            };
+                            if self.files.completed_imports.len() >= 50 {
+                                self.files.completed_imports.pop_back();
+                            }
+                            self.files.completed_imports.push_front(imp);
+                        }
+                    }
+                    EngineEvent::BenchStarted { bench_id, run_id } => {
+                        self.benchmarks.running = Some(RunningBench {
+                            bench_id: bench_id.clone(),
+                            run_id: *run_id,
+                            completed: 0,
+                            total: 0,
+                        });
+                    }
+                    EngineEvent::BenchProgress { run_id, completed, total } => {
+                        if let Some(ref mut rb) = self.benchmarks.running {
+                            if rb.run_id == *run_id {
+                                rb.completed = *completed;
+                                rb.total = *total;
+                            }
+                        }
+                    }
+                    EngineEvent::BenchFinished { run_id, results } => {
+                        if let Some(rb) = self.benchmarks.running.take() {
+                            if rb.run_id == *run_id {
+                                if self.benchmarks.history.len() >= 20 {
+                                    self.benchmarks.history.pop_back();
+                                }
+                                self.benchmarks.history.push_front(results.clone());
+                            }
+                        }
+                    }
                     _ => {}
                 }
                 self.recent_events.push_back(ev);
@@ -453,13 +576,21 @@ impl WorkstationApp {
                     Ok(CommandResultData::ConfigValidationError { field_id, message }) => {
                         self.config.validation_errors.insert(field_id, message);
                     }
+                    Ok(CommandResultData::AdapterList(adapters)) => {
+                        self.files.available_adapters = adapters;
+                        self.files.adapters_fetched = true;
+                    }
                     _ => {}
                 }
             }
             Message::CommandSenderReady(sender) => {
-                let id = self.next_id();
+                let id1 = self.next_id();
+                let id2 = self.next_id();
                 self.command_tx = Some(sender);
-                return self.send_command_task(id, EngineCommand::GetConfigSchema);
+                return Task::batch([
+                    self.send_command_task(id1, EngineCommand::GetConfigSchema),
+                    self.send_command_task(id2, EngineCommand::ListAdapters),
+                ]);
             }
             Message::SendCommand(cmd) => {
                 let id = self.next_id();
@@ -560,6 +691,51 @@ impl WorkstationApp {
                 let id = self.next_id();
                 return self.send_command_task(id, EngineCommand::ForceWake);
             }
+            Message::FilesPathChanged(path) => {
+                self.files.source_path = path;
+            }
+            Message::FilesAdapterSelected(id) => {
+                self.files.selected_adapter_id = Some(id);
+            }
+            Message::FilesStartImport => {
+                let Some(adapter_id) = self.files.selected_adapter_id.clone() else {
+                    return Task::none();
+                };
+                if self.files.source_path.is_empty() || self.files.running_import.is_some() {
+                    return Task::none();
+                }
+                let id = self.next_id();
+                return self.send_command_task(
+                    id,
+                    EngineCommand::StartImport {
+                        adapter_id,
+                        source_path: self.files.source_path.clone(),
+                        options: ImportOptions { params: vec![], target_domain: None },
+                    },
+                );
+            }
+            Message::FilesCancelRequest => {
+                if self.files.running_import.is_some() {
+                    self.files.cancel_confirm = true;
+                }
+            }
+            Message::FilesConfirmCancel => {
+                self.files.cancel_confirm = false;
+                if let Some(ref ri) = self.files.running_import {
+                    let import_id = ri.adapter_id.clone();
+                    let id = self.next_id();
+                    return self.send_command_task(id, EngineCommand::CancelImport { import_id });
+                }
+            }
+            Message::FilesCancelDismiss => {
+                self.files.cancel_confirm = false;
+            }
+            Message::BenchIterationsChanged(s) => {
+                self.benchmarks.iterations_input = s;
+            }
+            Message::BenchRun => {
+                // Deferred: RunBench не добавлен в протокол (WS8-TD-02)
+            }
             Message::ConversationSubmit => {
                 let text = self.conversation.input_buffer.trim().to_string();
                 if text.is_empty() || self.conversation.sending {
@@ -636,6 +812,8 @@ impl WorkstationApp {
             TabKind::DreamState => {
                 dream_state::dream_state_view(&self.dream_state, &self.engine_snapshot)
             }
+            TabKind::Files => files::files_view(&self.files),
+            TabKind::Benchmarks => benchmarks::benchmarks_view(&self.benchmarks),
             _ => placeholder::placeholder_view(tab.label()),
         }
     }
@@ -925,5 +1103,131 @@ mod tests {
 
         assert_eq!(app.patterns.layer_history[0].front(), Some(&50));
         assert_eq!(app.patterns.layer_history[4].front(), Some(&200));
+    }
+
+    // Test 8.6.a — FilesPathChanged updates source_path
+    #[test]
+    fn test_files_path_changed() {
+        let mut app = WorkstationApp::new();
+        assert!(app.files.source_path.is_empty());
+
+        let _ = app.update(Message::FilesPathChanged("/data/corpus.txt".to_string()));
+        assert_eq!(app.files.source_path, "/data/corpus.txt");
+    }
+
+    // Test 8.6.b — FilesStartImport with no adapter is no-op
+    #[test]
+    fn test_files_start_import_no_adapter_noop() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::FilesPathChanged("/data/f.txt".to_string()));
+        let _ = app.update(Message::FilesStartImport);
+        assert!(app.files.running_import.is_none());
+    }
+
+    // Test 8.6.c — AdapterStarted sets running_import
+    #[test]
+    fn test_adapter_started_sets_running() {
+        let mut app = WorkstationApp::new();
+        assert!(app.files.running_import.is_none());
+
+        let _ = app.update(Message::WsEvent(EngineEvent::AdapterStarted {
+            adapter_id: "plain_text".to_string(),
+            source: "/data/corpus.txt".to_string(),
+        }));
+
+        let ri = app.files.running_import.as_ref().unwrap();
+        assert_eq!(ri.adapter_id, "plain_text");
+        assert_eq!(ri.source, "/data/corpus.txt");
+        assert_eq!(ri.processed, 0);
+    }
+
+    // Test 8.6.d — AdapterFinished moves to completed
+    #[test]
+    fn test_adapter_finished_moves_to_completed() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::WsEvent(EngineEvent::AdapterStarted {
+            adapter_id: "plain_text".to_string(),
+            source: "/data/corpus.txt".to_string(),
+        }));
+        let _ = app.update(Message::WsEvent(EngineEvent::AdapterFinished {
+            adapter_id: "plain_text".to_string(),
+            tokens_added: 1500,
+            errors: 2,
+        }));
+
+        assert!(app.files.running_import.is_none());
+        assert_eq!(app.files.completed_imports.len(), 1);
+        let imp = &app.files.completed_imports[0];
+        assert_eq!(imp.tokens_added, 1500);
+        assert_eq!(imp.errors, 2);
+        assert!(!imp.cancelled);
+    }
+
+    // Test 8.6.e — BenchStarted/Progress/Finished flow
+    #[test]
+    fn test_bench_lifecycle() {
+        use axiom_protocol::bench::{BenchEnvironment, BenchResults};
+
+        let mut app = WorkstationApp::new();
+        assert!(app.benchmarks.running.is_none());
+
+        let _ = app.update(Message::WsEvent(EngineEvent::BenchStarted {
+            bench_id: "memory_recall".to_string(),
+            run_id: 42,
+        }));
+        assert!(app.benchmarks.running.is_some());
+        assert_eq!(app.benchmarks.running.as_ref().unwrap().run_id, 42);
+
+        let _ = app.update(Message::WsEvent(EngineEvent::BenchProgress {
+            run_id: 42,
+            completed: 50,
+            total: 100,
+        }));
+        assert_eq!(app.benchmarks.running.as_ref().unwrap().completed, 50);
+
+        let results = BenchResults {
+            bench_id: "memory_recall".to_string(),
+            iterations: 100,
+            median_ns: 1200.0,
+            p50_ns: 1200.0,
+            p99_ns: 3500.0,
+            std_dev_ns: 200.0,
+            environment: BenchEnvironment {
+                os: "linux".to_string(),
+                arch: "x86_64".to_string(),
+                engine_version: 1,
+            },
+        };
+        let _ = app.update(Message::WsEvent(EngineEvent::BenchFinished {
+            run_id: 42,
+            results,
+        }));
+
+        assert!(app.benchmarks.running.is_none());
+        assert_eq!(app.benchmarks.history.len(), 1);
+        assert_eq!(app.benchmarks.history[0].bench_id, "memory_recall");
+    }
+
+    // Test 8.6.f — AdapterList result populates available_adapters
+    #[test]
+    fn test_adapter_list_result() {
+        let mut app = WorkstationApp::new();
+        assert!(!app.files.adapters_fetched);
+
+        let adapters = vec![AdapterInfo {
+            id: "plain_text".to_string(),
+            name: "Plain Text".to_string(),
+            description: "Imports plain text files".to_string(),
+            supported_extensions: vec!["txt".to_string()],
+            options_schema: vec![],
+        }];
+        let _ = app.update(Message::WsCommandResult {
+            command_id: 99,
+            result: Ok(CommandResultData::AdapterList(adapters)),
+        });
+
+        assert!(app.files.adapters_fetched);
+        assert_eq!(app.files.available_adapters.len(), 1);
+        assert_eq!(app.files.available_adapters[0].id, "plain_text");
     }
 }

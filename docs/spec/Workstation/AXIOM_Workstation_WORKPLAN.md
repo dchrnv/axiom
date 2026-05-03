@@ -19,7 +19,7 @@
 | 5    | Configuration tab                               | ✅ DONE     | 2026-05-03  |
 | 6    | Conversation tab                                | ✅ DONE     | 2026-05-03  |
 | 7    | Patterns + Dream State tabs                     | ✅ DONE     | 2026-05-03  |
-| 8    | Files + Benchmarks tabs                         | TODO        | —           |
+| 8    | Files + Benchmarks tabs                         | ✅ DONE     | 2026-05-03  |
 | 9    | Welcome + общие компоненты                      | TODO        | —           |
 | 10   | Live Field (3D)                                 | TODO        | —           |
 | 11   | Финальная валидация и release prep              | TODO        | —           |
