@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 28.0
-**Обновлён:** 2026-05-02
+**Версия:** 29.0
+**Обновлён:** 2026-05-03
 
 ---
 
@@ -54,6 +54,56 @@
 Тест 2.7.e проверяет только что сервер отправляет Ping. Проверку разрыва соединения при отсутствии Pong сделать нельзя: `tokio-tungstenite` клиент автоматически отвечает на Ping без участия пользовательского кода.
 
 **Когда:** При необходимости — через raw TCP клиент без WebSocket framing.
+
+---
+
+## Workstation V1.0 — отложено из Stage 4
+
+### WS4-TD-01 — DetachTab: нет UI-триггера
+
+**Где:** `crates/axiom-workstation/src/ui/tabs.rs`
+
+`Message::DetachTab(tab)` и вся логика detach/re-attach реализованы в `app.rs`, но в таб-баре нет кнопки/жеста для вызова. По спеке — правый клик на табе или иконка «открепить».
+
+**Когда:** Stage 9 (общие компоненты + контекстное меню).
+
+---
+
+### WS4-TD-02 — System Map canvas без Cache
+
+**Где:** `crates/axiom-workstation/src/ui/system_map.rs`
+
+Canvas перерисовывается каждые 33ms (AnimationTick) без разделения на статический и анимированный слой. По спеке — статические элементы (домены, подписи) кешируются через `canvas::Cache`, анимация мандалы — отдельный `Frame`. При большом количестве доменов это может просадить FPS.
+
+**Когда:** Stage 10 (Live Field) — тогда появится реальная нагрузка на canvas, и оптимизация станет оправданной.
+
+---
+
+### WS4-TD-03 — System Map: неполные визуальные фичи спеки
+
+**Где:** `crates/axiom-workstation/src/ui/system_map.rs`
+
+Не реализованы три элемента из спеки (Документ 3A, раздел 2.4):
+- **ASHTI sector fill** — активные домены должны заливать соответствующий сектор среднего кольца мандалы (цвет состояния). Сейчас только линии-разделители.
+- **Flow lines** — линии между доменами должны подсвечиваться при `EngineEvent::DomainActivity` за последние ~500ms. Сейчас статические линии к центру.
+- **Alert ring** — при `guardian_stats.vetoes_since_wake > 0` снаружи мандалы появляется тонкое красное кольцо. Не реализовано.
+
+**Когда:** По мере Stage 5–8 — после Engine integration, когда будут живые данные для проверки.
+
+---
+
+### WS4-TD-04 — SystemSnapshot: поля bottom-panel из спеки отсутствуют в протоколе
+
+**Где:** `crates/axiom-protocol/src/snapshot.rs`, `crates/axiom-workstation/src/ui/system_map.rs`
+
+Спека (Документ 3A, раздел 4.5) описывает в bottom-panel поля `last_hot_path_ns` (время горячего пути) и `promotions_today` / `last_dream_ago`. В `SystemSnapshot` их нет. Bottom-panel сейчас показывает state, fatigue%, tick, frames, events — всё что есть в протоколе.
+
+**Что нужно:** Добавить в `SystemSnapshot`:
+- `hot_path_ns: u64` — измеряется в tick-loop
+- `promotions_today: u32` — счётчик в FrameWeaverStats
+- `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
+
+**Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
 
 ---
 
