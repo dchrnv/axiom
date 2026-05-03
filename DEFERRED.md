@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 36.0
+**Версия:** 37.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -104,6 +104,28 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
 **Когда:** При интеграции живого Engine (axiom-node) — когда snapshot будет заполняться реальными данными.
+
+---
+
+## Workstation V1.0 — отложено из Stage 10
+
+### WS10-TD-01 — Live Field: индивидуальные позиции токенов (протокол-gap)
+
+**Где:** `crates/axiom-workstation/src/ui/live_field.rs`, `crates/axiom-protocol/src/snapshot.rs`
+
+`DomainSnapshot` содержит только агрегированные данные: `token_count: u32`, `layer_activations: [u8; 8]`, `temperature_avg: u8`. Спека Live Field (Документ 3B, раздел 3) требует индивидуальные данные на токен: position 3D, mass, temperature, activation_strength, anchor_membership.
+
+Сейчас позиции генерируются процедурно: детерминированный LCG по `(domain_id, index)`, сферические позиции радиуса [0.3, 1.0], слой назначается по весам `layer_activations`. Визуально правдоподобно, но не отражает реальное состояние памяти.
+
+**Что нужно:** Добавить в протокол (новый тип `TokenFieldPoint`) и в `DomainSnapshot`:
+```
+token_field: Vec<TokenFieldPoint>
+```
+где `TokenFieldPoint { position: [f32; 3], layer: u8, temperature: u8, anchor_membership: Option<u32> }`.
+
+Осложняющий фактор: при большом `token_count` snapshot становится тяжёлым. Потребуется rate-limiting/sampling или отдельный streaming-канал (WS-subscribe на конкретный domain).
+
+**Когда:** При интеграции живого Engine (axiom-node) или при необходимости реального visualization для debugging.
 
 ---
 

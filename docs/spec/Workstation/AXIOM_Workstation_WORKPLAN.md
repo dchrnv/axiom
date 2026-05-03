@@ -21,7 +21,7 @@
 | 7    | Patterns + Dream State tabs                     | ✅ DONE     | 2026-05-03  |
 | 8    | Files + Benchmarks tabs                         | ✅ DONE     | 2026-05-03  |
 | 9    | Welcome + общие компоненты                      | ✅ DONE     | 2026-05-03  |
-| 10   | Live Field (3D)                                 | TODO        | —           |
+| 10   | Live Field (3D)                                 | ✅ DONE     | 2026-05-03  |
 | 11   | Финальная валидация и release prep              | TODO        | —           |
 
 ---
@@ -433,9 +433,44 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 8–11 (TODO)
+## Этап 10 — Live Field (3D) ✅ DONE
 
-_Детализируются поэтапно по мере продвижения._
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**app.rs:**
+- Типы: `OrbitCamera`, `DisplayOptions`, `LiveFieldOption`, `LiveFieldState`
+- Новые сообщения: `LiveFieldDomainSelected`, `LiveFieldCameraRotate`, `LiveFieldCameraZoom`, `LiveFieldCameraReset`, `LiveFieldToggleOption`
+- Поле `live_field: LiveFieldState` в `WorkstationApp`
+- Обработчики в `update()`: вращение/зум/сброс камеры, переключение display-опций
+- Tab wiring: `TabKind::LiveField → live_field::live_field_view(...)`
+
+**ui/live_field.rs (новый):**
+- Боковая панель: список доменов (кнопки-селекторы), статы выбранного домена, 4 display-toggle, "Reset camera"
+- `canvas::Program` (`LiveFieldCanvas<'a>`) с `type State = DragState`
+- Орбитальная камера: сферические координаты (azimuth, elevation, distance), простое перспективное проецирование (матрица вращения Ry(-az)·Rx(-el), затем деление на -fz)
+- Мышь: drag → `LiveFieldCameraRotate`, scroll → `LiveFieldCameraZoom`, `mouse_interaction: Grab/Grabbing`
+- Процедурные точки: детерминированный LCG по (domain_id, index), позиции в сфере радиуса [0.3, 1.0], MAX_POINTS=300 на домен
+- Layer color coding: 8 цветов (синий→пурпурный), выбор слоя по `layer_activations` weights
+- `show_connections`: fan-линии от точек к anchor-точке (первой точке домена)
+- `show_anchors`: октаэдр из 12 рёбер в origin
+- `highlight_recent`: +1px к точкам активных доменов
+- "No engine data" fallback текст в canvas
+
+**Протокол-gap:** `DomainSnapshot` не содержит индивидуальных позиций токенов → WS10-TD-01 в DEFERRED.
+
+### Тесты
+
+6 новых тестов (10.5.a–f): domain select, rotate, elevation clamp, zoom clamp, reset, toggle.
+
+**Итого:** 39 тестов, 0 ошибок.
+
+---
+
+## Этапы 11 (TODO)
+
+_Детализируется поэтапно по мере продвижения._
 
 ---
 

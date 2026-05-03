@@ -16,7 +16,7 @@ use axiom_protocol::{
 
 use crate::connection::ws_subscription;
 use crate::settings::{is_first_run, load_settings, save_settings, UiSettings};
-use crate::ui::{benchmarks, config, conversation, dream_state, files, header, patterns, placeholder, system_map, tabs, welcome};
+use crate::ui::{benchmarks, config, conversation, dream_state, files, header, live_field, patterns, system_map, tabs, welcome};
 
 // ── AppPhase ───────────────────────────────────────────────────────────────
 
@@ -220,6 +220,55 @@ pub struct BenchmarksState {
     pub iterations_input: String,
 }
 
+// ── LiveFieldState ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct OrbitCamera {
+    pub azimuth: f32,
+    pub elevation: f32,
+    pub distance: f32,
+}
+
+impl Default for OrbitCamera {
+    fn default() -> Self {
+        Self { azimuth: 0.3, elevation: 0.4, distance: 4.0 }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DisplayOptions {
+    pub show_connections: bool,
+    pub show_anchors: bool,
+    pub layer_color_coding: bool,
+    pub highlight_recent: bool,
+}
+
+impl Default for DisplayOptions {
+    fn default() -> Self {
+        Self {
+            show_connections: true,
+            show_anchors: true,
+            layer_color_coding: true,
+            highlight_recent: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LiveFieldOption {
+    ShowConnections,
+    ShowAnchors,
+    LayerColorCoding,
+    HighlightRecent,
+}
+
+#[derive(Debug, Default)]
+pub struct LiveFieldState {
+    pub selected_domain: Option<u16>,
+    pub camera: OrbitCamera,
+    pub display: DisplayOptions,
+}
+
 // ── ConfigurationState ─────────────────────────────────────────────────────
 
 #[derive(Debug, Default)]
@@ -336,6 +385,12 @@ pub enum Message {
     ToggleConnectionDetails,
     // Alert system
     DismissAlert(usize),
+    // Live Field tab
+    LiveFieldDomainSelected(u16),
+    LiveFieldCameraRotate { dx: f32, dy: f32 },
+    LiveFieldCameraZoom(f32),
+    LiveFieldCameraReset,
+    LiveFieldToggleOption(LiveFieldOption),
     // Keyboard
     ConfigApplyActive,
 }
@@ -359,6 +414,7 @@ pub struct WorkstationApp {
     pub config: ConfigurationState,
     pub files: FilesState,
     pub benchmarks: BenchmarksState,
+    pub live_field: LiveFieldState,
     pub phase: AppPhase,
     pub show_connection_details: bool,
     pub alerts: VecDeque<AlertEntry>,
@@ -391,6 +447,7 @@ impl WorkstationApp {
             dream_state: DreamWindowState::default(),
             files: FilesState::default(),
             benchmarks: BenchmarksState::default(),
+            live_field: LiveFieldState::default(),
             phase: if is_first_run() { AppPhase::Welcome } else { AppPhase::Main },
             show_connection_details: false,
             alerts: VecDeque::with_capacity(5),
@@ -797,6 +854,38 @@ impl WorkstationApp {
                     self.alerts.remove(idx);
                 }
             }
+            Message::LiveFieldDomainSelected(id) => {
+                self.live_field.selected_domain = Some(id);
+            }
+            Message::LiveFieldCameraRotate { dx, dy } => {
+                self.live_field.camera.azimuth += dx * 3.0;
+                self.live_field.camera.elevation =
+                    (self.live_field.camera.elevation - dy * 3.0).clamp(-1.4, 1.4);
+            }
+            Message::LiveFieldCameraZoom(delta) => {
+                self.live_field.camera.distance =
+                    (self.live_field.camera.distance + delta).clamp(1.5, 15.0);
+            }
+            Message::LiveFieldCameraReset => {
+                self.live_field.camera = OrbitCamera::default();
+            }
+            Message::LiveFieldToggleOption(opt) => match opt {
+                LiveFieldOption::ShowConnections => {
+                    self.live_field.display.show_connections =
+                        !self.live_field.display.show_connections;
+                }
+                LiveFieldOption::ShowAnchors => {
+                    self.live_field.display.show_anchors = !self.live_field.display.show_anchors;
+                }
+                LiveFieldOption::LayerColorCoding => {
+                    self.live_field.display.layer_color_coding =
+                        !self.live_field.display.layer_color_coding;
+                }
+                LiveFieldOption::HighlightRecent => {
+                    self.live_field.display.highlight_recent =
+                        !self.live_field.display.highlight_recent;
+                }
+            },
             Message::ConfigApplyActive => {
                 let section_id = self.config.active_section_id.clone();
                 return self.update(Message::ConfigApply { section_id });
@@ -893,9 +982,11 @@ impl WorkstationApp {
             TabKind::DreamState => {
                 dream_state::dream_state_view(&self.dream_state, &self.engine_snapshot)
             }
+            TabKind::LiveField => {
+                live_field::live_field_view(&self.live_field, &self.engine_snapshot)
+            }
             TabKind::Files => files::files_view(&self.files),
             TabKind::Benchmarks => benchmarks::benchmarks_view(&self.benchmarks),
-            _ => placeholder::placeholder_view(tab.label()),
         }
     }
 
@@ -1435,6 +1526,84 @@ mod tests {
         let _ = app.update(Message::DismissAlert(0));
         assert_eq!(app.alerts.len(), 1);
         assert_eq!(app.alerts[0].message, "Alert 2");
+    }
+
+    // Test 10.5.a — LiveFieldDomainSelected sets selected_domain
+    #[test]
+    fn test_live_field_domain_selected() {
+        let mut app = WorkstationApp::new();
+        assert!(app.live_field.selected_domain.is_none());
+
+        let _ = app.update(Message::LiveFieldDomainSelected(102));
+        assert_eq!(app.live_field.selected_domain, Some(102));
+
+        let _ = app.update(Message::LiveFieldDomainSelected(105));
+        assert_eq!(app.live_field.selected_domain, Some(105));
+    }
+
+    // Test 10.5.b — LiveFieldCameraRotate updates azimuth and elevation
+    #[test]
+    fn test_live_field_camera_rotate() {
+        let mut app = WorkstationApp::new();
+        let initial_az = app.live_field.camera.azimuth;
+        let initial_el = app.live_field.camera.elevation;
+
+        let _ = app.update(Message::LiveFieldCameraRotate { dx: 0.1, dy: 0.1 });
+
+        assert!((app.live_field.camera.azimuth - (initial_az + 0.3)).abs() < 1e-5);
+        assert!((app.live_field.camera.elevation - (initial_el - 0.3)).abs() < 1e-5);
+    }
+
+    // Test 10.5.c — elevation is clamped to [-1.4, 1.4]
+    #[test]
+    fn test_live_field_camera_elevation_clamped() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::LiveFieldCameraRotate { dx: 0.0, dy: 10.0 });
+        assert!(app.live_field.camera.elevation >= -1.4);
+
+        let _ = app.update(Message::LiveFieldCameraRotate { dx: 0.0, dy: -10.0 });
+        assert!(app.live_field.camera.elevation <= 1.4);
+    }
+
+    // Test 10.5.d — LiveFieldCameraZoom changes distance, clamped to [1.5, 15.0]
+    #[test]
+    fn test_live_field_camera_zoom_clamped() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::LiveFieldCameraZoom(100.0));
+        assert!(app.live_field.camera.distance <= 15.0);
+
+        let _ = app.update(Message::LiveFieldCameraZoom(-100.0));
+        assert!(app.live_field.camera.distance >= 1.5);
+    }
+
+    // Test 10.5.e — LiveFieldCameraReset restores default camera
+    #[test]
+    fn test_live_field_camera_reset() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::LiveFieldCameraRotate { dx: 2.0, dy: 1.0 });
+        let _ = app.update(Message::LiveFieldCameraReset);
+
+        let cam = &app.live_field.camera;
+        assert!((cam.azimuth - OrbitCamera::default().azimuth).abs() < 1e-5);
+        assert!((cam.elevation - OrbitCamera::default().elevation).abs() < 1e-5);
+        assert!((cam.distance - OrbitCamera::default().distance).abs() < 1e-5);
+    }
+
+    // Test 10.5.f — LiveFieldToggleOption flips display flags
+    #[test]
+    fn test_live_field_toggle_option() {
+        let mut app = WorkstationApp::new();
+        assert!(app.live_field.display.show_connections);
+
+        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::ShowConnections));
+        assert!(!app.live_field.display.show_connections);
+
+        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::ShowConnections));
+        assert!(app.live_field.display.show_connections);
+
+        assert!(app.live_field.display.layer_color_coding);
+        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::LayerColorCoding));
+        assert!(!app.live_field.display.layer_color_coding);
     }
 
     // Test 8.6.f — AdapterList result populates available_adapters
