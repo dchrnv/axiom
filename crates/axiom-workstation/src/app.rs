@@ -9,12 +9,12 @@ use axiom_protocol::{
     config::{ConfigSchema, ConfigSection, ConfigValue},
     events::EngineEvent,
     messages::CommandResultData,
-    snapshot::SystemSnapshot,
+    snapshot::{DreamReport, SystemSnapshot},
 };
 
 use crate::connection::ws_subscription;
 use crate::settings::{load_settings, save_settings, UiSettings};
-use crate::ui::{config, conversation, header, placeholder, system_map, tabs};
+use crate::ui::{config, conversation, dream_state, header, patterns, placeholder, system_map, tabs};
 
 fn current_timestamp_secs() -> u64 {
     SystemTime::now()
@@ -91,6 +91,66 @@ impl ConversationState {
             timestamp_secs: current_timestamp_secs(),
             kind,
         });
+    }
+}
+
+// ── PatternsState ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub enum FrameEvent {
+    Crystallized { anchor_id: u32, layers_present: u8, participant_count: u8, timestamp_secs: u64 },
+    Reactivated { anchor_id: u32, new_temperature: u8, timestamp_secs: u64 },
+    Vetoed { reason: String, timestamp_secs: u64 },
+    Promoted { source_anchor_id: u32, sutra_anchor_id: u32, timestamp_secs: u64 },
+}
+
+#[derive(Debug)]
+pub struct PatternsState {
+    pub layer_history: [VecDeque<u8>; 8],
+    pub recent_frames: VecDeque<FrameEvent>,
+}
+
+impl Default for PatternsState {
+    fn default() -> Self {
+        Self {
+            layer_history: std::array::from_fn(|_| VecDeque::with_capacity(30)),
+            recent_frames: VecDeque::with_capacity(100),
+        }
+    }
+}
+
+impl PatternsState {
+    pub fn push_layer_snapshot(&mut self, activations: [u8; 8]) {
+        for (i, val) in activations.into_iter().enumerate() {
+            if self.layer_history[i].len() >= 30 {
+                self.layer_history[i].pop_back();
+            }
+            self.layer_history[i].push_front(val);
+        }
+    }
+
+    pub fn push_frame_event(&mut self, ev: FrameEvent) {
+        if self.recent_frames.len() >= 100 {
+            self.recent_frames.pop_back();
+        }
+        self.recent_frames.push_front(ev);
+    }
+}
+
+// ── DreamWindowState ───────────────────────────────────────────────────────
+
+#[derive(Debug, Default)]
+pub struct DreamWindowState {
+    pub recent_dreams: VecDeque<DreamReport>,
+    pub confirm_force_sleep: bool,
+}
+
+impl DreamWindowState {
+    pub fn push_dream(&mut self, report: DreamReport) {
+        if self.recent_dreams.len() >= 20 {
+            self.recent_dreams.pop_back();
+        }
+        self.recent_dreams.push_front(report);
     }
 }
 
@@ -188,6 +248,11 @@ pub enum Message {
     ConversationInputChanged(String),
     ConversationDomainSelected(u16),
     ConversationSubmit,
+    // Dream State tab
+    ForceSleepRequest,
+    ForceSleepConfirm,
+    ForceSleepCancel,
+    ForceWakeRequest,
 }
 
 // ── WorkstationApp ─────────────────────────────────────────────────────────
@@ -202,6 +267,8 @@ pub struct WorkstationApp {
     pub active_tab_in_main: TabKind,
     pub animation_phase: f32,
     pub conversation: ConversationState,
+    pub patterns: PatternsState,
+    pub dream_state: DreamWindowState,
     pub command_tx: Option<CommandSender>,
     pub next_command_id: u64,
     pub config: ConfigurationState,
@@ -229,6 +296,8 @@ impl WorkstationApp {
                 ..Default::default()
             },
             conversation: ConversationState::default(),
+            patterns: PatternsState::default(),
+            dream_state: DreamWindowState::default(),
         }
     }
 
@@ -279,6 +348,17 @@ impl WorkstationApp {
             }
             Message::WsSnapshot(snap) => {
                 tracing::debug!("Snapshot: tick={}", snap.current_tick);
+                self.patterns.push_layer_snapshot(snap.over_domain.layer_activations);
+                // Accumulate DreamReports
+                if let Some(report) = &snap.last_dream_report {
+                    let is_new = self.dream_state.recent_dreams
+                        .front()
+                        .map(|r| r.cycle_id != report.cycle_id)
+                        .unwrap_or(true);
+                    if is_new {
+                        self.dream_state.push_dream(report.clone());
+                    }
+                }
                 self.engine_snapshot = Some(snap);
             }
             Message::WsEvent(ev) => {
@@ -286,9 +366,15 @@ impl WorkstationApp {
                 if self.recent_events.len() >= 1000 {
                     self.recent_events.pop_front();
                 }
-                // Conversation correlation
+                // Patterns feed + conversation correlation
                 match &ev {
                     EngineEvent::FrameCrystallized { anchor_id, layers_present, participant_count } => {
+                        self.patterns.push_frame_event(FrameEvent::Crystallized {
+                            anchor_id: *anchor_id,
+                            layers_present: *layers_present,
+                            participant_count: *participant_count,
+                            timestamp_secs: current_timestamp_secs(),
+                        });
                         if self.conversation.is_recent_submit() {
                             self.conversation.push_system(
                                 format!(
@@ -300,6 +386,11 @@ impl WorkstationApp {
                         }
                     }
                     EngineEvent::FrameReactivated { anchor_id, new_temperature } => {
+                        self.patterns.push_frame_event(FrameEvent::Reactivated {
+                            anchor_id: *anchor_id,
+                            new_temperature: *new_temperature,
+                            timestamp_secs: current_timestamp_secs(),
+                        });
                         if self.conversation.is_recent_submit() {
                             self.conversation.push_system(
                                 format!(
@@ -309,6 +400,22 @@ impl WorkstationApp {
                                 SystemMessageKind::FrameReactivated,
                             );
                         }
+                    }
+                    EngineEvent::FramePromoted { source_anchor_id, sutra_anchor_id } => {
+                        self.patterns.push_frame_event(FrameEvent::Promoted {
+                            source_anchor_id: *source_anchor_id,
+                            sutra_anchor_id: *sutra_anchor_id,
+                            timestamp_secs: current_timestamp_secs(),
+                        });
+                    }
+                    EngineEvent::GuardianVeto { reason, .. } => {
+                        self.patterns.push_frame_event(FrameEvent::Vetoed {
+                            reason: reason.clone(),
+                            timestamp_secs: current_timestamp_secs(),
+                        });
+                    }
+                    EngineEvent::DomainActivity { layer_activations, .. } => {
+                        self.patterns.push_layer_snapshot(*layer_activations);
                     }
                     _ => {}
                 }
@@ -438,6 +545,21 @@ impl WorkstationApp {
             Message::ConversationDomainSelected(domain) => {
                 self.conversation.target_domain = domain;
             }
+            Message::ForceSleepRequest => {
+                self.dream_state.confirm_force_sleep = true;
+            }
+            Message::ForceSleepCancel => {
+                self.dream_state.confirm_force_sleep = false;
+            }
+            Message::ForceSleepConfirm => {
+                self.dream_state.confirm_force_sleep = false;
+                let id = self.next_id();
+                return self.send_command_task(id, EngineCommand::ForceSleep);
+            }
+            Message::ForceWakeRequest => {
+                let id = self.next_id();
+                return self.send_command_task(id, EngineCommand::ForceWake);
+            }
             Message::ConversationSubmit => {
                 let text = self.conversation.input_buffer.trim().to_string();
                 if text.is_empty() || self.conversation.sending {
@@ -507,6 +629,12 @@ impl WorkstationApp {
             }
             TabKind::Conversation => {
                 conversation::conversation_view(&self.conversation)
+            }
+            TabKind::Patterns => {
+                patterns::patterns_view(&self.patterns)
+            }
+            TabKind::DreamState => {
+                dream_state::dream_state_view(&self.dream_state, &self.engine_snapshot)
             }
             _ => placeholder::placeholder_view(tab.label()),
         }
@@ -732,5 +860,70 @@ mod tests {
             &app.conversation.messages[1],
             ConversationMessage::System { kind: SystemMessageKind::Error, .. }
         ));
+    }
+
+    // Test 7.6.a — FrameCrystallized event populates patterns feed
+    #[test]
+    fn test_patterns_frame_event_from_ws_event() {
+        let mut app = WorkstationApp::new();
+        assert!(app.patterns.recent_frames.is_empty());
+
+        let _ = app.update(Message::WsEvent(EngineEvent::FrameCrystallized {
+            anchor_id: 1234,
+            layers_present: 0b00100001,
+            participant_count: 3,
+        }));
+
+        assert_eq!(app.patterns.recent_frames.len(), 1);
+        assert!(matches!(
+            &app.patterns.recent_frames[0],
+            FrameEvent::Crystallized { anchor_id: 1234, participant_count: 3, .. }
+        ));
+    }
+
+    // Test 7.6.b — GuardianVeto event adds to patterns feed
+    #[test]
+    fn test_patterns_veto_event() {
+        let mut app = WorkstationApp::new();
+
+        let _ = app.update(Message::WsEvent(EngineEvent::GuardianVeto {
+            reason: "missing S1".to_string(),
+            command_summary: "cmd".to_string(),
+        }));
+
+        assert_eq!(app.patterns.recent_frames.len(), 1);
+        assert!(matches!(
+            &app.patterns.recent_frames[0],
+            FrameEvent::Vetoed { reason, .. } if reason == "missing S1"
+        ));
+    }
+
+    // Test 7.6.c — force sleep request opens confirmation
+    #[test]
+    fn test_dream_force_sleep_confirm_flow() {
+        let mut app = WorkstationApp::new();
+        assert!(!app.dream_state.confirm_force_sleep);
+
+        let _ = app.update(Message::ForceSleepRequest);
+        assert!(app.dream_state.confirm_force_sleep);
+
+        let _ = app.update(Message::ForceSleepCancel);
+        assert!(!app.dream_state.confirm_force_sleep);
+    }
+
+    // Test 7.6.d — layer_history updated on DomainActivity event
+    #[test]
+    fn test_patterns_layer_history_from_event() {
+        let mut app = WorkstationApp::new();
+        assert!(app.patterns.layer_history[0].is_empty());
+
+        let _ = app.update(Message::WsEvent(EngineEvent::DomainActivity {
+            domain_id: 101,
+            recent_activity: 10,
+            layer_activations: [50, 100, 30, 0, 200, 10, 5, 150],
+        }));
+
+        assert_eq!(app.patterns.layer_history[0].front(), Some(&50));
+        assert_eq!(app.patterns.layer_history[4].front(), Some(&200));
     }
 }

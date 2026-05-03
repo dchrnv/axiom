@@ -18,7 +18,7 @@
 | 4    | Multi-window, tabs, System Map                  | ✅ DONE     | 2026-05-03  |
 | 5    | Configuration tab                               | ✅ DONE     | 2026-05-03  |
 | 6    | Conversation tab                                | ✅ DONE     | 2026-05-03  |
-| 7    | Patterns + Dream State tabs                     | TODO        | —           |
+| 7    | Patterns + Dream State tabs                     | ✅ DONE     | 2026-05-03  |
 | 8    | Files + Benchmarks tabs                         | TODO        | —           |
 | 9    | Welcome + общие компоненты                      | TODO        | —           |
 | 10   | Live Field (3D)                                 | TODO        | —           |
@@ -361,7 +361,79 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 7–11 (TODO)
+## Этап 7 — Patterns + Dream State tabs ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Новые файлы:**
+- `ui/patterns.rs` — Patterns tab: sparklines L1-L8 + recent frames feed
+- `ui/dream_state.rs` — Dream State tab: current state + fatigue + dream history
+
+**Новые типы в app.rs:**
+- `FrameEvent` — 4 варианта: Crystallized / Reactivated / Vetoed / Promoted
+- `PatternsState` — layer_history ([VecDeque<u8>; 8]) + recent_frames (VecDeque<FrameEvent>)
+- `DreamWindowState` — recent_dreams (VecDeque<DreamReport>) + confirm_force_sleep
+
+**Patterns UI:**
+- Sparklines L1-L8 через Unicode block chars (▁▂▃▄▅▆▇█) в monospace шрифте
+- Цветовое кодирование уровня: silent/low/medium/high/highest
+- Recent frames лента: ● кристаллизация, ↻ реактивация, ⊗ veto, ↑ промоция
+- format_ago(): "just now" / "Xs ago" / "Xm ago"
+
+**Dream State UI:**
+- Текущее состояние крупно (WAKE/DREAMING/...) с цветом по state
+- Ticks since last transition
+- Force sleep с inline-подтверждением (Cancel + Sleep now)
+- Wake up кнопка в DREAMING состоянии
+- Fatigue panel: процент, sparkline из history, token_rate, ticks_since_dream
+- Recent dreams: cycle_id, fatigue before→after, accepted/rejected/promoted counts
+
+**Интеграция с WsEvent:**
+- FrameCrystallized → PatternsState.push_frame_event + conversation correlation
+- FrameReactivated → patterns + conversation
+- FramePromoted → patterns
+- GuardianVeto → patterns
+- DomainActivity → push_layer_snapshot (per-domain activations)
+
+**Интеграция с WsSnapshot:**
+- over_domain.layer_activations → push_layer_snapshot
+- last_dream_report → DreamWindowState.push_dream (если новый cycle_id)
+
+**Новые Message варианты:**
+- ForceSleepRequest, ForceSleepConfirm, ForceSleepCancel, ForceWakeRequest
+
+**Тесты (7.6.a–d):**
+- `test_patterns_frame_event_from_ws_event` — FrameCrystallized → patterns feed
+- `test_patterns_veto_event` — GuardianVeto → patterns feed
+- `test_dream_force_sleep_confirm_flow` — Request → confirm_force_sleep=true, Cancel → false
+- `test_patterns_layer_history_from_event` — DomainActivity → layer_history
+
+### Критерии готовности
+
+- [x] Patterns: sparklines L1-L8 с level-labels
+- [x] Patterns: recent frames с 4 типами событий (●↻⊗↑)
+- [x] Dream State: текущее состояние с цветом
+- [x] Dream State: fatigue с sparkline
+- [x] Dream State: recent dreams лента
+- [x] Force-sleep с inline подтверждением
+- [x] Wake-up кнопка в DREAMING состоянии
+- [x] 21/21 тестов pass
+
+### Deferred
+
+- **WS7-TD-01** — Syntactic S1-S8 sparklines (данные отсутствуют в протоколе — нет `syntactic_layer_activations` в FrameWeaverStats)
+- **WS7-TD-02** — Show more / пагинация в Patterns и Dream State лентах
+
+### Errata этапа 7
+
+- `Element` в iced 0.13 не имеет метода `.width()` — нужен `container(elem).width(N)`
+- Syntactic layers S1-S8 отсутствуют в протоколе (FrameWeaverStats не содержит per-layer stats)
+
+---
+
+## Этапы 8–11 (TODO)
 
 _Детализируются поэтапно по мере продвижения._
 

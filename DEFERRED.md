@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 31.0
+**Версия:** 32.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -104,6 +104,30 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
 **Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
+
+---
+
+## Workstation V1.0 — отложено из Stage 7
+
+### WS7-TD-01 — Syntactic S1-S8 sparklines в Patterns
+
+**Где:** `crates/axiom-workstation/src/ui/patterns.rs`, `crates/axiom-protocol/src/snapshot.rs`
+
+Спека описывает 8 синтаксических слоёв (S1-S8: core arguments, modification, structural, pragmatic, temporal, spatial, causal internal, meta) с отдельными sparklines. Данных нет в протоколе — `FrameWeaverStats` содержит только агрегированные счётчики (total_frames, last_crystallization_tick и т.д.) без per-layer активности.
+
+**Что нужно:** Добавить `syntactic_layer_activations: [u8; 8]` в `FrameWeaverStats` в протоколе + заполнять из Engine side.
+
+**Когда:** Stage 8+ (Engine integration) или при необходимости более детальной отладки FrameWeaver.
+
+---
+
+### WS7-TD-02 — Show more / пагинация в лентах Patterns и Dream State
+
+**Где:** `crates/axiom-workstation/src/ui/patterns.rs`, `crates/axiom-workstation/src/ui/dream_state.rs`
+
+Спека показывает "[ Show more... ]" кнопку внизу лент. Сейчас показываются все накопленные события (max 100 для frames, max 20 для dreams) без пагинации.
+
+**Когда:** Stage 9 (общие компоненты), или когда появятся реальные данные и ленты начнут переполняться.
 
 ---
 
