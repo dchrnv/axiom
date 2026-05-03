@@ -15,8 +15,24 @@ use axiom_protocol::{
 };
 
 use crate::connection::ws_subscription;
-use crate::settings::{load_settings, save_settings, UiSettings};
-use crate::ui::{benchmarks, config, conversation, dream_state, files, header, patterns, placeholder, system_map, tabs};
+use crate::settings::{is_first_run, load_settings, save_settings, UiSettings};
+use crate::ui::{benchmarks, config, conversation, dream_state, files, header, patterns, placeholder, system_map, tabs, welcome};
+
+// ── AppPhase ───────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppPhase {
+    Welcome,
+    Main,
+}
+
+// ── AlertEntry ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct AlertEntry {
+    pub message: String,
+    pub timestamp_secs: u64,
+}
 
 fn current_timestamp_secs() -> u64 {
     SystemTime::now()
@@ -314,6 +330,14 @@ pub enum Message {
     BenchIterationsChanged(String),
     #[allow(dead_code)]
     BenchRun,
+    // Welcome screen
+    SkipToMain,
+    // Connection details popup
+    ToggleConnectionDetails,
+    // Alert system
+    DismissAlert(usize),
+    // Keyboard
+    ConfigApplyActive,
 }
 
 // ── WorkstationApp ─────────────────────────────────────────────────────────
@@ -335,6 +359,10 @@ pub struct WorkstationApp {
     pub config: ConfigurationState,
     pub files: FilesState,
     pub benchmarks: BenchmarksState,
+    pub phase: AppPhase,
+    pub show_connection_details: bool,
+    pub alerts: VecDeque<AlertEntry>,
+    pub subscription_key: u64,
 }
 
 impl WorkstationApp {
@@ -363,7 +391,21 @@ impl WorkstationApp {
             dream_state: DreamWindowState::default(),
             files: FilesState::default(),
             benchmarks: BenchmarksState::default(),
+            phase: if is_first_run() { AppPhase::Welcome } else { AppPhase::Main },
+            show_connection_details: false,
+            alerts: VecDeque::with_capacity(5),
+            subscription_key: 0,
         }
+    }
+
+    pub fn push_alert(&mut self, message: String) {
+        if self.alerts.len() >= 5 {
+            self.alerts.pop_front();
+        }
+        self.alerts.push_back(AlertEntry {
+            message,
+            timestamp_secs: current_timestamp_secs(),
+        });
     }
 
     fn rebuild_sections(&mut self) {
@@ -403,6 +445,10 @@ impl WorkstationApp {
                     engine_version,
                     connected_at: Instant::now(),
                 };
+                if self.phase == AppPhase::Welcome {
+                    self.phase = AppPhase::Main;
+                    save_settings(&self.settings);
+                }
             }
             Message::WsDisconnected => {
                 self.connection = ConnectionState::Disconnected;
@@ -564,7 +610,7 @@ impl WorkstationApp {
                             );
                         }
                     }
-                    return Task::none();
+                    return chat_scroll_to_bottom();
                 }
                 tracing::debug!("CommandResult id={}: {:?}", command_id, result);
                 match result {
@@ -621,6 +667,8 @@ impl WorkstationApp {
             }
             Message::AnimationTick => {
                 self.animation_phase = (self.animation_phase + 0.005) % 1.0;
+                let now = current_timestamp_secs();
+                self.alerts.retain(|a| now.saturating_sub(a.timestamp_secs) < 10);
             }
             Message::ConfigSectionSelected(section_id) => {
                 self.config.active_section_id = section_id;
@@ -641,6 +689,7 @@ impl WorkstationApp {
                 if section_id == "workstation.connection" {
                     if let Some(ConfigValue::String(addr)) = changes.get("engine_address") {
                         self.settings.engine_address = addr.clone();
+                        self.subscription_key += 1;
                         save_settings(&self.settings);
                         self.rebuild_sections();
                     }
@@ -736,6 +785,22 @@ impl WorkstationApp {
             Message::BenchRun => {
                 // Deferred: RunBench не добавлен в протокол (WS8-TD-02)
             }
+            Message::SkipToMain => {
+                self.phase = AppPhase::Main;
+                save_settings(&self.settings);
+            }
+            Message::ToggleConnectionDetails => {
+                self.show_connection_details = !self.show_connection_details;
+            }
+            Message::DismissAlert(idx) => {
+                if idx < self.alerts.len() {
+                    self.alerts.remove(idx);
+                }
+            }
+            Message::ConfigApplyActive => {
+                let section_id = self.config.active_section_id.clone();
+                return self.update(Message::ConfigApply { section_id });
+            }
             Message::ConversationSubmit => {
                 let text = self.conversation.input_buffer.trim().to_string();
                 if text.is_empty() || self.conversation.sending {
@@ -751,16 +816,16 @@ impl WorkstationApp {
                 self.conversation.last_submit_at = Some(Instant::now());
                 let id = self.next_id();
                 self.conversation.pending_submit_id = Some(id);
-                return self.send_command_task(
-                    id,
-                    EngineCommand::SubmitText { text, target_domain: target },
-                );
+                return Task::batch([
+                    self.send_command_task(id, EngineCommand::SubmitText { text, target_domain: target }),
+                    chat_scroll_to_bottom(),
+                ]);
             }
         }
         Task::none()
     }
 
-    fn next_available_tab(&self, excluded: TabKind) -> TabKind {
+    pub fn next_available_tab(&self, excluded: TabKind) -> TabKind {
         TabKind::all()
             .into_iter()
             .find(|&t| t != excluded && !self.detached_windows.values().any(|&dt| dt == t))
@@ -769,7 +834,10 @@ impl WorkstationApp {
 
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         if Some(id) == self.main_window {
-            self.main_window_view()
+            match self.phase {
+                AppPhase::Welcome => welcome::welcome_view(&self.connection),
+                AppPhase::Main => self.main_window_view(),
+            }
         } else if let Some(&tab) = self.detached_windows.get(&id) {
             self.detached_window_view(tab)
         } else {
@@ -779,17 +847,30 @@ impl WorkstationApp {
 
     fn main_window_view(&self) -> Element<'_, Message> {
         let detached: Vec<TabKind> = self.detached_windows.values().copied().collect();
-        column![
-            header::header_view(&self.connection),
+        let base = column![
+            header::header_view(
+                &self.connection,
+                self.show_connection_details,
+                &self.settings.engine_address,
+            ),
             tabs::tabs_bar(self.active_tab_in_main, &detached),
             self.tab_content_for(self.active_tab_in_main),
-        ]
-        .into()
+        ];
+
+        if self.alerts.is_empty() {
+            base.into()
+        } else {
+            iced::widget::stack![
+                base,
+                alert_overlay(&self.alerts),
+            ]
+            .into()
+        }
     }
 
     fn detached_window_view(&self, tab: TabKind) -> Element<'_, Message> {
         column![
-            header::header_view(&self.connection),
+            header::header_view(&self.connection, false, &self.settings.engine_address),
             self.tab_content_for(tab),
         ]
         .into()
@@ -820,10 +901,83 @@ impl WorkstationApp {
 
     pub fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
-            ws_subscription(self.settings.engine_address.clone()),
+            ws_subscription(self.settings.engine_address.clone(), self.subscription_key),
             iced::time::every(Duration::from_millis(33)).map(|_| Message::AnimationTick),
             window::close_requests().map(Message::WindowCloseRequested),
+            iced::keyboard::on_key_press(keyboard_shortcut),
         ])
+    }
+}
+
+// ── Module-level helpers ───────────────────────────────────────────────────
+
+fn chat_scroll_to_bottom() -> Task<Message> {
+    use iced::widget::scrollable;
+    scrollable::scroll_to(
+        scrollable::Id::new("chat_feed"),
+        scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
+    )
+}
+
+fn alert_overlay(alerts: &VecDeque<AlertEntry>) -> Element<'_, Message> {
+    use iced::widget::{button, column, container, row, text};
+    use iced::{Alignment, Color, Length, Padding};
+
+    let items: Vec<Element<Message>> = alerts
+        .iter()
+        .enumerate()
+        .map(|(i, a)| {
+            container(
+                row![
+                    text(&a.message).size(12).color(Color::WHITE),
+                    button(text("✕").size(11))
+                        .on_press(Message::DismissAlert(i))
+                        .style(button::text),
+                ]
+                .spacing(8)
+                .align_y(Alignment::Center),
+            )
+            .padding(Padding { top: 6.0, right: 10.0, bottom: 6.0, left: 10.0 })
+            .style(|_theme| iced::widget::container::Style {
+                background: Some(iced::Background::Color(Color::from_rgba(0.15, 0.15, 0.15, 0.9))),
+                border: iced::Border {
+                    radius: 4.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .into()
+        })
+        .collect();
+
+    container(column(items).spacing(4))
+        .padding(12)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_bottom(Length::Fill)
+        .align_right(Length::Fill)
+        .into()
+}
+
+fn keyboard_shortcut(key: iced::keyboard::Key, modifiers: iced::keyboard::Modifiers) -> Option<Message> {
+    use iced::keyboard::Key;
+    if modifiers.control() {
+        match key.as_ref() {
+            Key::Character("1") => Some(Message::TabSelected(TabKind::SystemMap)),
+            Key::Character("2") => Some(Message::TabSelected(TabKind::LiveField)),
+            Key::Character("3") => Some(Message::TabSelected(TabKind::Patterns)),
+            Key::Character("4") => Some(Message::TabSelected(TabKind::DreamState)),
+            Key::Character("5") => Some(Message::TabSelected(TabKind::Conversation)),
+            Key::Character("6") => Some(Message::TabSelected(TabKind::Files)),
+            Key::Character("7") => Some(Message::TabSelected(TabKind::Configuration)),
+            Key::Character("8") => Some(Message::TabSelected(TabKind::Benchmarks)),
+            Key::Character(",") => Some(Message::TabSelected(TabKind::Configuration)),
+            Key::Character("s") => Some(Message::ConfigApplyActive),
+            Key::Character("z") => Some(Message::ConfigDiscard),
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 
@@ -1206,6 +1360,81 @@ mod tests {
         assert!(app.benchmarks.running.is_none());
         assert_eq!(app.benchmarks.history.len(), 1);
         assert_eq!(app.benchmarks.history[0].bench_id, "memory_recall");
+    }
+
+    // Test 9.5.a — SkipToMain transitions Welcome → Main
+    #[test]
+    fn test_skip_to_main() {
+        let mut app = WorkstationApp::new();
+        app.phase = AppPhase::Welcome;
+
+        let _ = app.update(Message::SkipToMain);
+        assert_eq!(app.phase, AppPhase::Main);
+    }
+
+    // Test 9.5.b — WsConnected during Welcome → Main
+    #[test]
+    fn test_ws_connected_transitions_welcome_to_main() {
+        let mut app = WorkstationApp::new();
+        app.phase = AppPhase::Welcome;
+
+        let _ = app.update(Message::WsConnected { engine_version: 1 });
+        assert_eq!(app.phase, AppPhase::Main);
+    }
+
+    // Test 9.5.c — WsConnected during Main stays Main
+    #[test]
+    fn test_ws_connected_main_stays_main() {
+        let mut app = WorkstationApp::new();
+        app.phase = AppPhase::Main;
+
+        let _ = app.update(Message::WsConnected { engine_version: 1 });
+        assert_eq!(app.phase, AppPhase::Main);
+    }
+
+    // Test 9.5.d — subscription_key increments on address change (WS5-TD-01)
+    #[test]
+    fn test_subscription_key_increments_on_address_change() {
+        let mut app = WorkstationApp::new();
+        assert_eq!(app.subscription_key, 0);
+
+        let _ = app.update(Message::ConfigFieldChanged {
+            section_id: "workstation.connection".to_string(),
+            field_id: "engine_address".to_string(),
+            value: ConfigValue::String("10.0.0.1:9876".to_string()),
+        });
+        let _ = app.update(Message::ConfigApply {
+            section_id: "workstation.connection".to_string(),
+        });
+
+        assert_eq!(app.subscription_key, 1);
+        assert_eq!(app.settings.engine_address, "10.0.0.1:9876");
+    }
+
+    // Test 9.5.e — ToggleConnectionDetails flips flag
+    #[test]
+    fn test_toggle_connection_details() {
+        let mut app = WorkstationApp::new();
+        assert!(!app.show_connection_details);
+
+        let _ = app.update(Message::ToggleConnectionDetails);
+        assert!(app.show_connection_details);
+
+        let _ = app.update(Message::ToggleConnectionDetails);
+        assert!(!app.show_connection_details);
+    }
+
+    // Test 9.5.f — DismissAlert removes correct entry
+    #[test]
+    fn test_dismiss_alert() {
+        let mut app = WorkstationApp::new();
+        app.push_alert("Alert 1".to_string());
+        app.push_alert("Alert 2".to_string());
+        assert_eq!(app.alerts.len(), 2);
+
+        let _ = app.update(Message::DismissAlert(0));
+        assert_eq!(app.alerts.len(), 1);
+        assert_eq!(app.alerts[0].message, "Alert 2");
     }
 
     // Test 8.6.f — AdapterList result populates available_adapters

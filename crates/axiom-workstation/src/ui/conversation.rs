@@ -39,6 +39,7 @@ fn message_feed<'a>(messages: &'a [ConversationMessage]) -> Element<'a, Message>
     let cards: Vec<Element<Message>> = messages.iter().map(message_card).collect();
 
     scrollable(column(cards).spacing(4).padding([8u16, 12u16]))
+        .id(iced::widget::scrollable::Id::new("chat_feed"))
         .height(Length::Fill)
         .into()
 }

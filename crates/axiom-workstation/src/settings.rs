@@ -21,6 +21,10 @@ fn config_path() -> PathBuf {
         .join("config.toml")
 }
 
+pub fn is_first_run() -> bool {
+    !config_path().exists()
+}
+
 pub fn load_settings() -> UiSettings {
     std::fs::read_to_string(config_path())
         .ok()

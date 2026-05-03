@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 34.1
+**Версия:** 36.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -107,6 +107,42 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 
 ---
 
+## Workstation V1.0 — отложено из Stage 9
+
+### WS9-TD-01 — Главное меню (iced 0.13 нет нативного menu widget)
+
+**Где:** `crates/axiom-workstation/src/app.rs`, `crates/axiom-workstation/src/ui/`
+
+Спека (Документ 3D раздел 10.4) описывает меню `File / Engine / View / Configuration / Help`. В iced 0.13 нет нативного MenuBar виджета без `iced_aw`. Сейчас меню не реализовано.
+
+**Что нужно:** Добавить зависимость `iced_aw` или реализовать кастомные dropdown через `stack` + condition, либо дождаться iced 0.14+ с нативным меню.
+
+**Когда:** Stage 11 (полировка) или при добавлении `iced_aw`.
+
+---
+
+### WS9-TD-02 — Welcome screen анимация (fade-in)
+
+**Где:** `crates/axiom-workstation/src/ui/welcome.rs`
+
+Спека (Документ 3A раздел 1.4) описывает: fade-in 800ms, "AXIOM" появляется первым, через 500ms "Workstation", затем пауза и подключение. Сейчас экран статический — нет fade анимации.
+
+**Что нужно:** Добавить `welcome_opacity: f32` в `WelcomeState`, накапливать через `AnimationTick`, применять через alpha-channel в View. Требует iced 0.13 `opacity()` или кастомный overlay.
+
+**Когда:** Stage 11 (polish) или по запросу.
+
+---
+
+### WS9-TD-03 — DetachTab UI: кнопка в таб-баре
+
+**Где:** `crates/axiom-workstation/src/ui/tabs.rs`, `crates/axiom-workstation/src/app.rs`
+
+Уже в DEFERRED как WS4-TD-01. Спека 10.5 уточняет: в V1.0 нет context menu, но View-меню должно содержать "Detach current tab". Без MenuBar (WS9-TD-01) эта функция недоступна.
+
+**Когда:** После WS9-TD-01 (Menu bar).
+
+---
+
 ## Workstation V1.0 — отложено из Stage 8
 
 ### WS8-TD-01 — Файловый пикер (rfd)
@@ -169,29 +205,21 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 
 ---
 
-### WS6-TD-02 — Auto-scroll to bottom в ленте
+### ~~WS6-TD-02 — Auto-scroll to bottom в ленте~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/conversation.rs`, `message_feed()`
+**Закрыто:** 2026-05-03 в Stage 9.
 
-При добавлении нового сообщения лента не прокручивается вниз автоматически. Нужен `scrollable::Id::new("chat_feed")` + `Task::done(scrollable::scroll_to(id, AbsoluteOffset { x: 0.0, y: f32::MAX }))` из `update()` при каждом `push`.
-
-**Когда:** Stage 9 или по запросу пользователя.
+`scrollable` в `message_feed()` теперь имеет `Id::new("chat_feed")`. В `update()` при `ConversationSubmit` и `WsCommandResult` (submit) возвращается `scrollable::scroll_to(Id::new("chat_feed"), AbsoluteOffset { x: 0.0, y: f32::MAX })` через `chat_scroll_to_bottom()`.
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 5
 
-### WS5-TD-01 — Горячая перезагрузка WS-адреса
+### ~~WS5-TD-01 — Горячая перезагрузка WS-адреса~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/app.rs`, `crates/axiom-workstation/src/connection.rs`
+**Закрыто:** 2026-05-03 в Stage 9.
 
-При изменении `engine_address` через Config вкладку и Apply — `settings.engine_address` обновляется и сохраняется, но `ws_subscription` запущен с **старым адресом** (id-ключ подписки = старый адрес). Новая подписка с новым адресом запустится только после перезапуска приложения.
-
-Правильное решение: при изменении адреса принудительно завершить старую подписку и запустить новую. В iced это делается через смену `id` в `Subscription::run_with_id`.
-
-**Что нужно:** После `ConfigApply` для `workstation.connection` триггерить пересоздание subscription (например, через поле `subscription_key: String` в стейте, которое обновляется → iced видит новый id → пересоздаёт).
-
-**Когда:** Stage 9 или при реальной необходимости менять адрес без рестарта.
+Добавлено поле `subscription_key: u64` в `WorkstationApp`. В `ConfigApply` для `workstation.connection` `subscription_key` инкрементируется → iced видит новый id для `Subscription::run_with_id` → пересоздаёт subscription с новым адресом. `ws_subscription` принимает `key: u64` как второй параметр.
 
 ---
 

@@ -17,9 +17,9 @@ use crate::app::{CommandSender, Message};
 
 const BACKOFF_SECS: &[u64] = &[1, 2, 5, 10, 30];
 
-pub fn ws_subscription(address: String) -> iced::Subscription<Message> {
+pub fn ws_subscription(address: String, key: u64) -> iced::Subscription<Message> {
     iced::Subscription::run_with_id(
-        address.clone(),
+        (address.clone(), key),
         iced::stream::channel(100, move |mut output| async move {
             let mut attempt: u32 = 0;
             loop {

@@ -8,3 +8,4 @@ pub mod patterns;
 pub mod placeholder;
 pub mod system_map;
 pub mod tabs;
+pub mod welcome;
