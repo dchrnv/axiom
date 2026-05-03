@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 29.0
+**Версия:** 30.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -104,6 +104,22 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
 **Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
+
+---
+
+## Workstation V1.0 — отложено из Stage 5
+
+### WS5-TD-01 — Горячая перезагрузка WS-адреса
+
+**Где:** `crates/axiom-workstation/src/app.rs`, `crates/axiom-workstation/src/connection.rs`
+
+При изменении `engine_address` через Config вкладку и Apply — `settings.engine_address` обновляется и сохраняется, но `ws_subscription` запущен с **старым адресом** (id-ключ подписки = старый адрес). Новая подписка с новым адресом запустится только после перезапуска приложения.
+
+Правильное решение: при изменении адреса принудительно завершить старую подписку и запустить новую. В iced это делается через смену `id` в `Subscription::run_with_id`.
+
+**Что нужно:** После `ConfigApply` для `workstation.connection` триггерить пересоздание subscription (например, через поле `subscription_key: String` в стейте, которое обновляется → iced видит новый id → пересоздаёт).
+
+**Когда:** Stage 9 или при реальной необходимости менять адрес без рестарта.
 
 ---
 

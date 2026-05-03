@@ -16,7 +16,7 @@
 | 2    | axiom-broadcasting + Engine integration         | ✅ DONE     | 2026-05-02  |
 | 3    | axiom-workstation базовая инфраструктура        | ✅ DONE     | 2026-05-02  |
 | 4    | Multi-window, tabs, System Map                  | ✅ DONE     | 2026-05-03  |
-| 5    | Configuration tab                               | TODO        | —           |
+| 5    | Configuration tab                               | ✅ DONE     | 2026-05-03  |
 | 6    | Conversation tab                                | TODO        | —           |
 | 7    | Patterns + Dream State tabs                     | TODO        | —           |
 | 8    | Files + Benchmarks tabs                         | TODO        | —           |
@@ -237,7 +237,72 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 5–11 (TODO)
+## Этап 5 — Configuration tab ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Новые файлы:**
+- `ui/config.rs` — schema-driven Configuration UI
+
+**Архитектура:**
+- Двухпанельный layout: левая панель (дерево секций) + правая панель (поля)
+- `ConfigurationState.sections: Vec<ConfigSection>` — секции хранятся в стейте, не вычисляются в view (решение проблемы lifetime iced)
+- `rebuild_sections()` — пересобирает список при получении схемы или изменении настроек
+
+**Bidirectional WS (connection.rs обновлён):**
+- После handshake создаётся `(cmd_tx, cmd_rx): iced::futures::channel::mpsc::channel(32)`
+- `CommandSenderReady(CommandSender)` → app хранит sender, немедленно отправляет `GetConfigSchema`
+- Основной loop: `tokio::select!` на `stream.next()` и `cmd_rx.next()`
+- `WsCommandResult` обрабатывает `ConfigSchema`, `ConfigUpdateApplied`, `ConfigValidationError`
+
+**UI компоненты (config.rs):**
+- `section_panel()` — рекурсивное дерево секций с depth-indent
+- `field_panel()` + `field_row()` + `field_control()` — рендер по `ConfigFieldType`
+- Контролы: `Bool`→checkbox, `String`→text_input, `Integer/UInt/Float`→text_input+parse, `Enum`→button row, `Duration/Domain`→text_input
+- Pending-индикатор: `●` в label поля
+- Apply/Discard кнопки (disabled при нет pending)
+
+**Workstation-секция:**
+- `build_workstation_section(settings)` — локальная секция "Connection" с полем `engine_address`
+- ConfigApply для workstation: обновляет `settings.engine_address` + `save_settings()` + `rebuild_sections()`
+- ConfigApply для engine-секций: `UpdateConfigField` команда на каждое изменённое поле
+
+**Новые Message варианты:**
+- `CommandSenderReady(CommandSender)`, `SendCommand(EngineCommand)`, `WsCommandResult { command_id, result }`
+- `ConfigSectionSelected(String)`, `ConfigFieldChanged { section_id, field_id, value }`, `ConfigApply { section_id }`, `ConfigDiscard`
+
+**Тесты (5.7.a–d):**
+- `test_field_change_marks_pending` — изменение поля → pending
+- `test_discard_clears_pending` — Discard очищает pending активной секции
+- `test_apply_workstation_updates_settings` — Apply workstation → settings.engine_address
+- `test_section_navigation` — выбор секции обновляет active_section_id
+
+### Критерии готовности
+
+- [x] Schema-driven UI: все `ConfigFieldType` варианты рендерятся
+- [x] Workstation-секция (Connection) с полем engine_address
+- [x] Apply/Discard с pending-индикацией
+- [x] Bidirectional WS: команды app → engine
+- [x] GetConfigSchema при подключении
+- [x] `cargo check -p axiom-workstation` — ноль ошибок
+- [x] `cargo test -p axiom-workstation` — 11/11 тестов pass
+
+### Deferred
+
+- **WS5-TD-01** — Конфиг вкладка: горячая перезагрузка WS-адреса (требует рестарт subscription)
+- **WS5-TD-02** — Конфиг: горячая перезагрузка engine subscription при смене адреса
+
+### Errata этапа 5
+
+- `Padding` в iced 0.13 не поддерживает `[i32; 4]` — используется `Padding { top, right, bottom, left }` struct
+- `build_section_list` не может быть локальным в view-функции (lifetime проблема iced) — секции перенесены в `ConfigurationState.sections: Vec<ConfigSection>`, пересобираются через `rebuild_sections()`
+- `workstation_section` переименован в `build_workstation_section` (pub для вызова из app.rs)
+
+---
+
+## Этапы 6–11 (TODO)
 
 _Детализируются поэтапно по мере продвижения._
 

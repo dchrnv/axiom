@@ -8,11 +8,12 @@ use tokio_tungstenite::{
 };
 use tokio::net::TcpStream;
 use axiom_protocol::{
+    commands::EngineCommand,
     messages::{ClientKind, ClientMessage, EngineMessage},
     PROTOCOL_VERSION,
 };
 
-use crate::app::Message;
+use crate::app::{CommandSender, Message};
 
 const BACKOFF_SECS: &[u64] = &[1, 2, 5, 10, 30];
 
@@ -85,29 +86,54 @@ pub(crate) async fn run_session(
         }
     };
 
+    // Создаём канал для команд App → Engine
+    let (cmd_tx, mut cmd_rx) =
+        iced::futures::channel::mpsc::channel::<(u64, EngineCommand)>(32);
+
     output.send(Message::WsConnected { engine_version }).await
         .map_err(|_| "App closed".to_string())?;
 
-    // Основной цикл чтения
+    output.send(Message::CommandSenderReady(CommandSender(cmd_tx))).await
+        .map_err(|_| "App closed".to_string())?;
+
+    // Основной цикл: читаем WS и команды от App
     loop {
-        match stream.next().await {
-            Some(Ok(WsMessage::Binary(b))) => {
-                let app_msg = match postcard::from_bytes::<EngineMessage>(&b) {
-                    Ok(EngineMessage::Snapshot(snap)) => Message::WsSnapshot(snap),
-                    Ok(EngineMessage::Event(ev))      => Message::WsEvent(ev),
-                    Ok(EngineMessage::Bye { .. })      => return Ok(()),
-                    _                                  => continue,
-                };
-                if output.send(app_msg).await.is_err() {
-                    return Ok(());
+        tokio::select! {
+            ws_msg = stream.next() => {
+                match ws_msg {
+                    Some(Ok(WsMessage::Binary(b))) => {
+                        let app_msg = match postcard::from_bytes::<EngineMessage>(&b) {
+                            Ok(EngineMessage::Snapshot(snap)) => Message::WsSnapshot(snap),
+                            Ok(EngineMessage::Event(ev)) => Message::WsEvent(ev),
+                            Ok(EngineMessage::CommandResult { command_id, result }) => {
+                                Message::WsCommandResult { command_id, result }
+                            }
+                            Ok(EngineMessage::Bye { .. }) => return Ok(()),
+                            _ => continue,
+                        };
+                        if output.send(app_msg).await.is_err() {
+                            return Ok(());
+                        }
+                    }
+                    Some(Ok(WsMessage::Ping(data))) => {
+                        let _ = sink.send(WsMessage::Pong(data)).await;
+                    }
+                    Some(Ok(WsMessage::Close(_))) | None => return Ok(()),
+                    Some(Err(e)) => return Err(e.to_string()),
+                    Some(Ok(_)) => {}
                 }
             }
-            Some(Ok(WsMessage::Ping(data))) => {
-                let _ = sink.send(WsMessage::Pong(data)).await;
+            cmd = cmd_rx.next() => {
+                match cmd {
+                    Some((id, command)) => {
+                        let msg = ClientMessage::Command { command_id: id, command };
+                        let bytes = postcard::to_stdvec(&msg).map_err(|e| e.to_string())?;
+                        sink.send(WsMessage::Binary(bytes)).await
+                            .map_err(|e| e.to_string())?;
+                    }
+                    None => return Ok(()),
+                }
             }
-            Some(Ok(WsMessage::Close(_))) | None => return Ok(()),
-            Some(Err(e))                          => return Err(e.to_string()),
-            Some(Ok(_))                           => {}
         }
     }
 }
@@ -137,14 +163,14 @@ mod tests {
             run_session(ws, &mut tx).await.ok();
         });
 
-        let msg = tokio::time::timeout(
-            Duration::from_millis(500),
-            rx.next(),
-        ).await.expect("timeout").expect("channel closed");
-
-        assert!(
-            matches!(msg, Message::WsConnected { .. }),
-            "expected WsConnected, got {:?}", msg
-        );
+        // Skip CommandSenderReady, find WsConnected
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(500);
+        loop {
+            let msg = tokio::time::timeout_at(deadline, rx.next())
+                .await.expect("timeout").expect("channel closed");
+            if matches!(msg, Message::WsConnected { .. }) {
+                return;
+            }
+        }
     }
 }
