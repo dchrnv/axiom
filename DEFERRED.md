@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 30.0
+**Версия:** 31.0
 **Обновлён:** 2026-05-03
 
 ---
@@ -104,6 +104,28 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
 **Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
+
+---
+
+## Workstation V1.0 — отложено из Stage 6
+
+### WS6-TD-01 — Multi-line text editor + Ctrl+Enter
+
+**Где:** `crates/axiom-workstation/src/ui/conversation.rs`, input_panel()
+
+Сейчас используется `text_input` (однострочный). Спека требует multi-line с Enter = новая строка, Ctrl+Enter = отправка. Нужно переключиться на `iced::widget::text_editor` с `text_editor::Content` в `ConversationState`. Обнаружение Ctrl+Enter требует отдельной клавиатурной подписки (`iced::keyboard::on_key_press`).
+
+**Когда:** Stage 9 (общие компоненты) или по мере необходимости.
+
+---
+
+### WS6-TD-02 — Auto-scroll to bottom в ленте
+
+**Где:** `crates/axiom-workstation/src/ui/conversation.rs`, `message_feed()`
+
+При добавлении нового сообщения лента не прокручивается вниз автоматически. Нужен `scrollable::Id::new("chat_feed")` + `Task::done(scrollable::scroll_to(id, AbsoluteOffset { x: 0.0, y: f32::MAX }))` из `update()` при каждом `push`.
+
+**Когда:** Stage 9 или по запросу пользователя.
 
 ---
 

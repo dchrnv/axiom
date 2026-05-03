@@ -17,7 +17,7 @@
 | 3    | axiom-workstation базовая инфраструктура        | ✅ DONE     | 2026-05-02  |
 | 4    | Multi-window, tabs, System Map                  | ✅ DONE     | 2026-05-03  |
 | 5    | Configuration tab                               | ✅ DONE     | 2026-05-03  |
-| 6    | Conversation tab                                | TODO        | —           |
+| 6    | Conversation tab                                | ✅ DONE     | 2026-05-03  |
 | 7    | Patterns + Dream State tabs                     | TODO        | —           |
 | 8    | Files + Benchmarks tabs                         | TODO        | —           |
 | 9    | Welcome + общие компоненты                      | TODO        | —           |
@@ -302,7 +302,66 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 6–11 (TODO)
+## Этап 6 — Conversation tab ✅ DONE
+
+**Дата:** 2026-05-03
+
+### Что сделано
+
+**Новые файлы:**
+- `ui/conversation.rs` — UI чата (лента + форма ввода)
+
+**Новые типы в app.rs:**
+- `ConversationState` — messages, input_buffer, target_domain, sending, last_submit_at, pending_submit_id
+- `ConversationMessage` — User / System enum
+- `SystemMessageKind` — Acknowledgment / FrameCreated / FrameReactivated / Error
+
+**UI (conversation.rs):**
+- Лента сообщений: scrollable, старые сверху, новые снизу
+- `You` / `System` префиксы с цветовым кодированием по kind
+- Timestamp в формате HH:MM:SS (UTC)
+- Selector целевого домена: 8 кнопок EXEC/SHDW/CODX/MAP/PROB/LOGI/DREM/ETHI
+- text_input с on_submit (Enter) + кнопка Submit
+- Submit disabled при sending=true или пустом буфере
+- "Sending..." лейбл при отправке
+
+**Логика (app.rs):**
+- `ConversationSubmit` → push User message, sending=true, запоминает pending_submit_id, отправляет `EngineCommand::SubmitText`
+- `WsCommandResult` с pending_submit_id → push Acknowledgment или Error system message, clearing input_buffer
+- `WsEvent::FrameCrystallized/FrameReactivated` → если `is_recent_submit()` (< 5 сек) → push FrameCreated/FrameReactivated в ленту
+
+**Тесты (6.7.a–f):**
+- `test_conversation_empty_no_submit` — пустой ввод без эффекта
+- `test_conversation_submit_adds_message` — Submit добавляет User message, sending=true
+- `test_conversation_no_double_submit` — двойной submit пока sending → только одно сообщение
+- `test_conversation_domain_selector` — смена домена
+- `test_conversation_ack_on_result` — CommandResult(Ok) → Ack, input очищен
+- `test_conversation_error_on_result` — CommandResult(Err) → Error message
+
+### Критерии готовности
+
+- [x] Tab Conversation открывается
+- [x] Подача текста работает (User message в ленте)
+- [x] Системные ответы появляются (Acknowledgment / FrameCreated / FrameReactivated / Error)
+- [x] Цвет сообщений: Error — тёплый красный, Frame — зелёный, Reactivated — фиолетовый
+- [x] Submit по Enter и по кнопке
+- [x] Selector целевого домена (8 вариантов)
+- [x] Корреляция с FrameCrystallized / FrameReactivated (< 5 сек)
+- [x] 17/17 тестов pass
+
+### Deferred
+
+- **WS6-TD-01** — Multi-line text_editor + Ctrl+Enter (сейчас text_input, одна строка)
+- **WS6-TD-02** — Auto-scroll to bottom при новом сообщении (требует `scrollable::Id` + `scroll_to` Task)
+
+### Errata этапа 6
+
+- Timestamp без chrono: `SystemTime::UNIX_EPOCH` + `secs % 86400` → UTC HH:MM:SS
+- Корреляция через `Instant::elapsed()` в ConversationState, не через timestamp
+
+---
+
+## Этапы 7–11 (TODO)
 
 _Детализируются поэтапно по мере продвижения._
 

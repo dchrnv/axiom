@@ -1,5 +1,5 @@
 use std::collections::{HashMap, VecDeque};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use iced::widget::column;
 use iced::{Element, Subscription, Task, window};
@@ -14,7 +14,14 @@ use axiom_protocol::{
 
 use crate::connection::ws_subscription;
 use crate::settings::{load_settings, save_settings, UiSettings};
-use crate::ui::{config, header, placeholder, system_map, tabs};
+use crate::ui::{config, conversation, header, placeholder, system_map, tabs};
+
+fn current_timestamp_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
 
 // ── CommandSender ──────────────────────────────────────────────────────────
 
@@ -29,6 +36,61 @@ impl std::fmt::Debug for CommandSender {
 impl Clone for CommandSender {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+// ── ConversationState ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SystemMessageKind {
+    Acknowledgment,
+    FrameCreated,
+    FrameReactivated,
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub enum ConversationMessage {
+    User { text: String, target_domain: u16, timestamp_secs: u64 },
+    System { text: String, timestamp_secs: u64, kind: SystemMessageKind },
+}
+
+#[derive(Debug)]
+pub struct ConversationState {
+    pub messages: Vec<ConversationMessage>,
+    pub input_buffer: String,
+    pub target_domain: u16,
+    pub sending: bool,
+    pub last_submit_at: Option<Instant>,
+    pub pending_submit_id: Option<u64>,
+}
+
+impl Default for ConversationState {
+    fn default() -> Self {
+        Self {
+            messages: Vec::new(),
+            input_buffer: String::new(),
+            target_domain: 101,
+            sending: false,
+            last_submit_at: None,
+            pending_submit_id: None,
+        }
+    }
+}
+
+impl ConversationState {
+    pub fn is_recent_submit(&self) -> bool {
+        self.last_submit_at
+            .map(|t| t.elapsed().as_secs() < 5)
+            .unwrap_or(false)
+    }
+
+    pub fn push_system(&mut self, text: String, kind: SystemMessageKind) {
+        self.messages.push(ConversationMessage::System {
+            text,
+            timestamp_secs: current_timestamp_secs(),
+            kind,
+        });
     }
 }
 
@@ -122,6 +184,10 @@ pub enum Message {
     ConfigFieldChanged { section_id: String, field_id: String, value: ConfigValue },
     ConfigApply { section_id: String },
     ConfigDiscard,
+    // Conversation tab
+    ConversationInputChanged(String),
+    ConversationDomainSelected(u16),
+    ConversationSubmit,
 }
 
 // ── WorkstationApp ─────────────────────────────────────────────────────────
@@ -135,6 +201,7 @@ pub struct WorkstationApp {
     pub detached_windows: HashMap<window::Id, TabKind>,
     pub active_tab_in_main: TabKind,
     pub animation_phase: f32,
+    pub conversation: ConversationState,
     pub command_tx: Option<CommandSender>,
     pub next_command_id: u64,
     pub config: ConfigurationState,
@@ -161,6 +228,7 @@ impl WorkstationApp {
                 active_section_id: "workstation.connection".to_string(),
                 ..Default::default()
             },
+            conversation: ConversationState::default(),
         }
     }
 
@@ -218,9 +286,56 @@ impl WorkstationApp {
                 if self.recent_events.len() >= 1000 {
                     self.recent_events.pop_front();
                 }
+                // Conversation correlation
+                match &ev {
+                    EngineEvent::FrameCrystallized { anchor_id, layers_present, participant_count } => {
+                        if self.conversation.is_recent_submit() {
+                            self.conversation.push_system(
+                                format!(
+                                    "Frame #{} crystallized. Layers: {}. Participants: {}.",
+                                    anchor_id, layers_present, participant_count
+                                ),
+                                SystemMessageKind::FrameCreated,
+                            );
+                        }
+                    }
+                    EngineEvent::FrameReactivated { anchor_id, new_temperature } => {
+                        if self.conversation.is_recent_submit() {
+                            self.conversation.push_system(
+                                format!(
+                                    "Frame #{} reactivated. Temperature: {}.",
+                                    anchor_id, new_temperature
+                                ),
+                                SystemMessageKind::FrameReactivated,
+                            );
+                        }
+                    }
+                    _ => {}
+                }
                 self.recent_events.push_back(ev);
             }
             Message::WsCommandResult { command_id, result } => {
+                // SubmitText result check first
+                if Some(command_id) == self.conversation.pending_submit_id {
+                    self.conversation.pending_submit_id = None;
+                    self.conversation.sending = false;
+                    match result {
+                        Ok(_) => {
+                            self.conversation.input_buffer.clear();
+                            self.conversation.push_system(
+                                "Обработан текст.".to_string(),
+                                SystemMessageKind::Acknowledgment,
+                            );
+                        }
+                        Err(e) => {
+                            self.conversation.push_system(
+                                format!("Ошибка: {}", e),
+                                SystemMessageKind::Error,
+                            );
+                        }
+                    }
+                    return Task::none();
+                }
                 tracing::debug!("CommandResult id={}: {:?}", command_id, result);
                 match result {
                     Ok(CommandResultData::ConfigSchema(schema)) => {
@@ -317,6 +432,32 @@ impl WorkstationApp {
                     .remove(&self.config.active_section_id);
                 self.config.validation_errors.clear();
             }
+            Message::ConversationInputChanged(text) => {
+                self.conversation.input_buffer = text;
+            }
+            Message::ConversationDomainSelected(domain) => {
+                self.conversation.target_domain = domain;
+            }
+            Message::ConversationSubmit => {
+                let text = self.conversation.input_buffer.trim().to_string();
+                if text.is_empty() || self.conversation.sending {
+                    return Task::none();
+                }
+                let target = self.conversation.target_domain;
+                self.conversation.messages.push(ConversationMessage::User {
+                    text: text.clone(),
+                    target_domain: target,
+                    timestamp_secs: current_timestamp_secs(),
+                });
+                self.conversation.sending = true;
+                self.conversation.last_submit_at = Some(Instant::now());
+                let id = self.next_id();
+                self.conversation.pending_submit_id = Some(id);
+                return self.send_command_task(
+                    id,
+                    EngineCommand::SubmitText { text, target_domain: target },
+                );
+            }
         }
         Task::none()
     }
@@ -363,6 +504,9 @@ impl WorkstationApp {
             }
             TabKind::Configuration => {
                 config::config_view(&self.config, &self.settings)
+            }
+            TabKind::Conversation => {
+                conversation::conversation_view(&self.conversation)
             }
             _ => placeholder::placeholder_view(tab.label()),
         }
@@ -492,5 +636,101 @@ mod tests {
 
         let _ = app.update(Message::ConfigSectionSelected("engine.core".to_string()));
         assert_eq!(app.config.active_section_id, "engine.core");
+    }
+
+    // Test 6.7.a — empty input → no submit
+    #[test]
+    fn test_conversation_empty_no_submit() {
+        let mut app = WorkstationApp::new();
+        assert!(app.conversation.input_buffer.is_empty());
+
+        let _ = app.update(Message::ConversationSubmit);
+
+        assert!(app.conversation.messages.is_empty());
+        assert!(!app.conversation.sending);
+    }
+
+    // Test 6.7.b — submit adds user message, sets sending
+    #[test]
+    fn test_conversation_submit_adds_message() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::ConversationInputChanged("Кошка спит на окне.".to_string()));
+        let _ = app.update(Message::ConversationSubmit);
+
+        assert_eq!(app.conversation.messages.len(), 1);
+        assert!(app.conversation.sending);
+        assert!(app.conversation.pending_submit_id.is_some());
+        assert!(matches!(
+            &app.conversation.messages[0],
+            ConversationMessage::User { text, target_domain: 101, .. } if text == "Кошка спит на окне."
+        ));
+    }
+
+    // Test 6.7.c — duplicate submit while sending is no-op
+    #[test]
+    fn test_conversation_no_double_submit() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::ConversationInputChanged("text".to_string()));
+        let _ = app.update(Message::ConversationSubmit);
+        assert!(app.conversation.sending);
+
+        let _ = app.update(Message::ConversationSubmit);
+        // Still only one user message
+        assert_eq!(app.conversation.messages.len(), 1);
+    }
+
+    // Test 6.7.d — domain selector changes target domain
+    #[test]
+    fn test_conversation_domain_selector() {
+        let mut app = WorkstationApp::new();
+        assert_eq!(app.conversation.target_domain, 101);
+
+        let _ = app.update(Message::ConversationDomainSelected(106));
+        assert_eq!(app.conversation.target_domain, 106);
+    }
+
+    // Test 6.7.e — command result clears sending + adds ack
+    #[test]
+    fn test_conversation_ack_on_result() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::ConversationInputChanged("hello".to_string()));
+        let _ = app.update(Message::ConversationSubmit);
+
+        let submit_id = app.conversation.pending_submit_id.unwrap();
+        assert!(app.conversation.sending);
+
+        let _ = app.update(Message::WsCommandResult {
+            command_id: submit_id,
+            result: Ok(CommandResultData::None),
+        });
+
+        assert!(!app.conversation.sending);
+        assert!(app.conversation.input_buffer.is_empty());
+        assert_eq!(app.conversation.messages.len(), 2); // User + Ack
+        assert!(matches!(
+            &app.conversation.messages[1],
+            ConversationMessage::System { kind: SystemMessageKind::Acknowledgment, .. }
+        ));
+    }
+
+    // Test 6.7.f — error result adds error message
+    #[test]
+    fn test_conversation_error_on_result() {
+        let mut app = WorkstationApp::new();
+        let _ = app.update(Message::ConversationInputChanged("hello".to_string()));
+        let _ = app.update(Message::ConversationSubmit);
+
+        let submit_id = app.conversation.pending_submit_id.unwrap();
+        let _ = app.update(Message::WsCommandResult {
+            command_id: submit_id,
+            result: Err("domain is full".to_string()),
+        });
+
+        assert!(!app.conversation.sending);
+        assert_eq!(app.conversation.messages.len(), 2); // User + Error
+        assert!(matches!(
+            &app.conversation.messages[1],
+            ConversationMessage::System { kind: SystemMessageKind::Error, .. }
+        ));
     }
 }
