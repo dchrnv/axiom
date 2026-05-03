@@ -1,6 +1,6 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 34.0
+**Версия:** 34.1
 **Обновлён:** 2026-05-03
 
 ---
@@ -33,7 +33,7 @@
 
 Многие поля `SystemSnapshot` заполнены нулями/пустыми значениями: `capacity`, `temperature_decay`, `temperature_avg`, `recent_activity`, `layer_activations`, `guardian_stats`, `last_dream_report`, `adapter_progress`. Расширяется по мере добавления публичного API в axiom-runtime.
 
-**Когда:** Постепенно, по мере Stage 3–8.
+**Когда:** Постепенно, по мере интеграции Engine (axiom-node).
 
 ---
 
@@ -43,7 +43,7 @@
 
 Спека предписывала `broadcasting` feature в axiom-runtime, который зависит от axiom-broadcasting. Невозможно: axiom-broadcasting уже зависит от axiom-runtime → цикл зависимостей. Правильный подход: интеграция делается на уровне бинарного crate (будущий `axiom-node` или демо-бинарник) который зависит на оба crate и вызывает `handle.publish(...)` из хука тик-цикла. Engine к этому готов: `snapshot_for_broadcast()` уже экспортируется через `BroadcastSnapshot`.
 
-**Когда:** Stage 8 или при добавлении `axiom-node` бинарника.
+**Когда:** При добавлении `axiom-node` бинарника, который зависит на оба crate.
 
 ---
 
@@ -88,7 +88,7 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - **Flow lines** — линии между доменами должны подсвечиваться при `EngineEvent::DomainActivity` за последние ~500ms. Сейчас статические линии к центру.
 - **Alert ring** — при `guardian_stats.vetoes_since_wake > 0` снаружи мандалы появляется тонкое красное кольцо. Не реализовано.
 
-**Когда:** По мере Stage 5–8 — после Engine integration, когда будут живые данные для проверки.
+**Когда:** Stage 10 (Live Field) — тогда будут живые данные и реальная нагрузка на canvas для проверки.
 
 ---
 
@@ -103,7 +103,7 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 - `promotions_today: u32` — счётчик в FrameWeaverStats
 - `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
 
-**Когда:** Stage 8 (Engine integration) — когда Engine будет публиковать живой snapshot.
+**Когда:** При интеграции живого Engine (axiom-node) — когда snapshot будет заполняться реальными данными.
 
 ---
 
