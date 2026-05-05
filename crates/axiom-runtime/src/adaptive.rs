@@ -23,9 +23,9 @@ pub enum TickRateReason {
 impl std::fmt::Display for TickRateReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TickRateReason::Idle          => write!(f, "idle"),
-            TickRateReason::TensionHigh   => write!(f, "tension_high"),
-            TickRateReason::MultiPass     => write!(f, "multi_pass"),
+            TickRateReason::Idle => write!(f, "idle"),
+            TickRateReason::TensionHigh => write!(f, "tension_high"),
+            TickRateReason::MultiPass => write!(f, "multi_pass"),
             TickRateReason::ExternalInput => write!(f, "external_input"),
         }
     }
@@ -68,13 +68,13 @@ pub struct AdaptiveTickRate {
 impl Default for AdaptiveTickRate {
     fn default() -> Self {
         Self {
-            min_hz:      60,
-            max_hz:      1000,
-            current_hz:  60,
-            step_up:     200,
-            step_down:   20,
-            cooldown:    50,
-            idle_ticks:  0,
+            min_hz: 60,
+            max_hz: 1000,
+            current_hz: 60,
+            step_up: 200,
+            step_down: 20,
+            cooldown: 50,
+            idle_ticks: 0,
             last_reason: TickRateReason::Idle,
         }
     }
@@ -92,7 +92,10 @@ impl AdaptiveTickRate {
     pub fn on_idle_tick(&mut self) {
         self.idle_ticks += 1;
         if self.idle_ticks >= self.cooldown {
-            self.current_hz = self.current_hz.saturating_sub(self.step_down).max(self.min_hz);
+            self.current_hz = self
+                .current_hz
+                .saturating_sub(self.step_down)
+                .max(self.min_hz);
             if self.current_hz == self.min_hz {
                 self.last_reason = TickRateReason::Idle;
             }

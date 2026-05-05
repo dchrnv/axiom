@@ -3,9 +3,9 @@
 
 #![cfg(feature = "adapters")]
 
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot, DomainDetailSnapshot, TokenSnapshot};
 use axiom_core::{Token, STATE_LOCKED};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_runtime::{AxiomEngine, TokenSnapshot};
+use axiom_ucl::{OpCode, UclCommand};
 
 fn new_engine() -> AxiomEngine {
     AxiomEngine::new()
@@ -85,7 +85,11 @@ fn test_snapshot_domain_summaries_ids_range_100_to_110() {
 fn test_snapshot_domain_names_not_unknown() {
     let snap = new_engine().snapshot_for_broadcast();
     for domain in &snap.domain_summaries {
-        assert_ne!(domain.name, "UNKNOWN", "domain {} has unknown name", domain.domain_id);
+        assert_ne!(
+            domain.name, "UNKNOWN",
+            "domain {} has unknown name",
+            domain.domain_id
+        );
     }
 }
 
@@ -117,7 +121,11 @@ fn test_domain_detail_snapshot_sutra_exists() {
 fn test_domain_detail_snapshot_all_11_domains_exist() {
     let engine = new_engine();
     for id in 100u16..=110 {
-        assert!(engine.domain_detail_snapshot(id).is_some(), "domain {} not found", id);
+        assert!(
+            engine.domain_detail_snapshot(id).is_some(),
+            "domain {} not found",
+            id
+        );
     }
 }
 
@@ -156,7 +164,10 @@ fn test_token_snapshot_heavy_cold_token_not_anchor() {
     token.temperature = 0;
     // state остаётся STATE_ACTIVE
     let snap = TokenSnapshot::from(&token);
-    assert!(!snap.is_anchor, "heavy cold non-locked token must not be anchor");
+    assert!(
+        !snap.is_anchor,
+        "heavy cold non-locked token must not be anchor"
+    );
 }
 
 #[test]

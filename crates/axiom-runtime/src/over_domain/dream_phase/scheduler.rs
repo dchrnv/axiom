@@ -4,7 +4,7 @@
 // DreamScheduler — решает когда системе перейти в DREAMING.
 // Спецификация: docs/spec/Dream/DREAM_Phase_V1_0.md, раздел 4.
 
-use super::fatigue::{FatigueTracker, FatigueWeights, FatigueSnapshot, IdleTracker};
+use super::fatigue::{FatigueSnapshot, FatigueTracker, FatigueWeights, IdleTracker};
 
 /// Конфигурация порогов DreamScheduler.
 #[derive(Debug, Clone, Copy)]
@@ -20,9 +20,9 @@ pub struct DreamSchedulerConfig {
 impl Default for DreamSchedulerConfig {
     fn default() -> Self {
         Self {
-            min_wake_ticks:    1000,
-            idle_threshold:     200,
-            fatigue_threshold:  180,
+            min_wake_ticks: 1000,
+            idle_threshold: 200,
+            fatigue_threshold: 180,
         }
     }
 }
@@ -60,14 +60,14 @@ pub struct DreamSchedulerStats {
 /// DreamScheduler — периодически вызывается из WAKE-тика,
 /// решает нужно ли переходить в DREAMING.
 pub struct DreamScheduler {
-    config:                  DreamSchedulerConfig,
-    fatigue:                 FatigueTracker,
-    idle:                    IdleTracker,
+    config: DreamSchedulerConfig,
+    fatigue: FatigueTracker,
+    idle: IdleTracker,
     /// Тик, когда система последний раз вышла из DREAMING (или 0 — никогда).
-    wake_since_tick:         u64,
+    wake_since_tick: u64,
     /// Ожидающая явная команда перейти в DREAMING (source_id).
-    explicit_pending:        Option<u16>,
-    pub stats:               DreamSchedulerStats,
+    explicit_pending: Option<u16>,
+    pub stats: DreamSchedulerStats,
 }
 
 impl DreamScheduler {
@@ -147,8 +147,8 @@ impl DreamScheduler {
     fn record(&mut self, kind: SleepTriggerKind) {
         self.stats.sleep_decisions += 1;
         match kind {
-            SleepTriggerKind::Idle            => self.stats.idle_triggers    += 1,
-            SleepTriggerKind::Fatigue         => self.stats.fatigue_triggers  += 1,
+            SleepTriggerKind::Idle => self.stats.idle_triggers += 1,
+            SleepTriggerKind::Fatigue => self.stats.fatigue_triggers += 1,
             SleepTriggerKind::ExplicitCommand => self.stats.explicit_triggers += 1,
         }
     }
@@ -160,7 +160,11 @@ mod tests {
 
     fn scheduler_min0() -> DreamScheduler {
         DreamScheduler::new(
-            DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 5, fatigue_threshold: 200 },
+            DreamSchedulerConfig {
+                min_wake_ticks: 0,
+                idle_threshold: 5,
+                fatigue_threshold: 200,
+            },
             FatigueWeights::default(),
         )
     }
@@ -168,7 +172,11 @@ mod tests {
     #[test]
     fn stays_awake_below_min_wake_ticks() {
         let mut s = DreamScheduler::new(
-            DreamSchedulerConfig { min_wake_ticks: 100, idle_threshold: 1, fatigue_threshold: 1 },
+            DreamSchedulerConfig {
+                min_wake_ticks: 100,
+                idle_threshold: 1,
+                fatigue_threshold: 1,
+            },
             FatigueWeights::default(),
         );
         // даже с idle=5 — не засыпаем пока ticks_awake < 100
@@ -199,7 +207,10 @@ mod tests {
         let snap = FatigueSnapshot::default();
         // сразу на первом тике (min_wake=0)
         let dec = s.on_wake_tick(0, snap, true);
-        assert_eq!(dec, SleepDecision::GoToSleep(SleepTriggerKind::ExplicitCommand));
+        assert_eq!(
+            dec,
+            SleepDecision::GoToSleep(SleepTriggerKind::ExplicitCommand)
+        );
         assert_eq!(s.stats.explicit_triggers, 1);
         // команда consumed — следующий тик: StayAwake (idle не накоплен)
         let dec2 = s.on_wake_tick(1, snap, true);
@@ -211,7 +222,9 @@ mod tests {
         let mut s = scheduler_min0();
         let snap = FatigueSnapshot::default();
         // накапливаем idle
-        for i in 0..5u64 { s.on_wake_tick(i, snap, false); }
+        for i in 0..5u64 {
+            s.on_wake_tick(i, snap, false);
+        }
         // будит систему на тике 100
         s.on_dream_finished(100);
         // теперь idle = 0, wake_since_tick = 100 → ticks_awake = 0
@@ -222,13 +235,21 @@ mod tests {
     #[test]
     fn goes_to_sleep_on_fatigue() {
         let mut s = DreamScheduler::new(
-            DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 9999, fatigue_threshold: 100 },
-            FatigueWeights { experience_pressure: 255, uncrystallized_candidates: 0,
-                pending_heavy_proposals: 0, causal_horizon_growth_rate: 0 },
+            DreamSchedulerConfig {
+                min_wake_ticks: 0,
+                idle_threshold: 9999,
+                fatigue_threshold: 100,
+            },
+            FatigueWeights {
+                experience_pressure: 255,
+                uncrystallized_candidates: 0,
+                pending_heavy_proposals: 0,
+                causal_horizon_growth_rate: 0,
+            },
         );
         let snap = FatigueSnapshot {
             experience_token_count: 800,
-            experience_capacity:    1000,
+            experience_capacity: 1000,
             ..FatigueSnapshot::default()
         };
         // fatigue score ≈ 204 → >= threshold 100
@@ -242,10 +263,14 @@ mod tests {
         let mut s = scheduler_min0();
         let snap = FatigueSnapshot::default();
         // первое засыпание по idle
-        for i in 0..=4u64 { s.on_wake_tick(i, snap, false); }
+        for i in 0..=4u64 {
+            s.on_wake_tick(i, snap, false);
+        }
         s.on_dream_finished(10);
         // второе засыпание по idle
-        for i in 10..=14u64 { s.on_wake_tick(i, snap, false); }
+        for i in 10..=14u64 {
+            s.on_wake_tick(i, snap, false);
+        }
         assert_eq!(s.stats.sleep_decisions, 2);
         assert_eq!(s.stats.idle_triggers, 2);
     }

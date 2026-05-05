@@ -1,4 +1,4 @@
-use axiom_core::{Connection, FLAG_ACTIVE, FLAG_INHIBITED, FLAG_TEMPORARY, FLAG_CRITICAL};
+use axiom_core::{Connection, FLAG_ACTIVE, FLAG_CRITICAL, FLAG_INHIBITED, FLAG_TEMPORARY};
 
 #[test]
 fn test_connection_size() {

@@ -11,7 +11,10 @@ pub enum PersistError {
     /// manifest.yaml повреждён или отсутствует
     CorruptManifest(String),
     /// Версия формата несовместима
-    VersionMismatch { expected: &'static str, found: String },
+    VersionMismatch {
+        expected: &'static str,
+        found: String,
+    },
     /// Ошибка I/O
     Io(io::Error),
     /// Ошибка bincode-декодирования
@@ -23,13 +26,15 @@ pub enum PersistError {
 impl std::fmt::Display for PersistError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PersistError::NotFound(p)            => write!(f, "persist: not found: {p}"),
-            PersistError::CorruptManifest(msg)   => write!(f, "persist: corrupt manifest: {msg}"),
-            PersistError::VersionMismatch { expected, found }
-                => write!(f, "persist: version mismatch (expected={expected}, found={found})"),
-            PersistError::Io(e)                  => write!(f, "persist: io error: {e}"),
-            PersistError::Decode(msg)            => write!(f, "persist: decode error: {msg}"),
-            PersistError::Encode(msg)            => write!(f, "persist: encode error: {msg}"),
+            PersistError::NotFound(p) => write!(f, "persist: not found: {p}"),
+            PersistError::CorruptManifest(msg) => write!(f, "persist: corrupt manifest: {msg}"),
+            PersistError::VersionMismatch { expected, found } => write!(
+                f,
+                "persist: version mismatch (expected={expected}, found={found})"
+            ),
+            PersistError::Io(e) => write!(f, "persist: io error: {e}"),
+            PersistError::Decode(msg) => write!(f, "persist: decode error: {msg}"),
+            PersistError::Encode(msg) => write!(f, "persist: encode error: {msg}"),
         }
     }
 }

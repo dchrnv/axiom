@@ -21,9 +21,9 @@ use crate::protocol::ServerMessage;
 /// Конфигурация OpenSearch-адаптера.
 pub struct OpenSearchConfig {
     /// URL кластера, например "http://localhost:9200"
-    pub url:           String,
+    pub url: String,
     /// Имя индекса (default: "axiom-events")
-    pub index:         String,
+    pub index: String,
     /// Индексировать Tick каждые N тиков (0 = не индексировать)
     pub tick_interval: u64,
 }
@@ -31,8 +31,8 @@ pub struct OpenSearchConfig {
 impl Default for OpenSearchConfig {
     fn default() -> Self {
         Self {
-            url:           "http://localhost:9200".to_string(),
-            index:         "axiom-events".to_string(),
+            url: "http://localhost:9200".to_string(),
+            index: "axiom-events".to_string(),
             tick_interval: 0,
         }
     }
@@ -40,15 +40,15 @@ impl Default for OpenSearchConfig {
 
 /// Собрать JSON-документ из ServerMessage::Result.
 pub fn build_result_doc(
-    command_id:     &str,
-    path:           &str,
-    domain_id:      u16,
-    domain_name:    &str,
-    coherence:      f32,
-    reflex_hit:     bool,
+    command_id: &str,
+    path: &str,
+    domain_id: u16,
+    domain_name: &str,
+    coherence: f32,
+    reflex_hit: bool,
     traces_matched: u32,
-    position:       [i16; 3],
-    event_id:       u64,
+    position: [i16; 3],
+    event_id: u64,
 ) -> serde_json::Value {
     serde_json::json!({
         "@timestamp":    now_rfc3339(),
@@ -67,9 +67,9 @@ pub fn build_result_doc(
 
 /// Собрать JSON-документ из ServerMessage::Tick.
 pub fn build_tick_doc(
-    tick_count:   u64,
-    traces:       u32,
-    tension:      u32,
+    tick_count: u64,
+    traces: u32,
+    tension: u32,
     last_matched: u32,
 ) -> serde_json::Value {
     serde_json::json!({
@@ -87,7 +87,7 @@ fn now_rfc3339() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();
-    let secs  = now.as_secs();
+    let secs = now.as_secs();
     let millis = now.subsec_millis();
 
     // Простой ISO 8601 UTC: YYYY-MM-DDTHH:MM:SS.mmmZ
@@ -107,12 +107,12 @@ fn days_to_ymd(days: u64) -> (u64, u64, u64) {
     let era = z / 146097;
     let doe = z % 146097;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y   = yoe + era * 400;
+    let y = yoe + era * 400;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp  = (5 * doy + 2) / 153;
-    let d   = doy - (153 * mp + 2) / 5 + 1;
-    let m   = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y   = if m <= 2 { y + 1 } else { y };
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
     (y, m, d)
 }
 
@@ -123,7 +123,9 @@ pub struct OpenSearchAdapter {
 
 impl OpenSearchAdapter {
     pub fn new(config: OpenSearchConfig) -> Self {
-        Self { config: Arc::new(config) }
+        Self {
+            config: Arc::new(config),
+        }
     }
 
     /// Запустить адаптер: подписывается на broadcast, индексирует события.
@@ -134,27 +136,44 @@ impl OpenSearchAdapter {
     }
 }
 
-async fn index_task(
-    config: Arc<OpenSearchConfig>,
-    mut rx: broadcast::Receiver<ServerMessage>,
-) {
-    let client   = reqwest::Client::new();
+async fn index_task(config: Arc<OpenSearchConfig>, mut rx: broadcast::Receiver<ServerMessage>) {
+    let client = reqwest::Client::new();
     let endpoint = format!("{}/{}/_doc", config.url.trim_end_matches('/'), config.index);
 
     loop {
         match rx.recv().await {
             Ok(ServerMessage::Result {
-                command_id, path, domain_id, domain_name,
-                coherence, reflex_hit, traces_matched, position, event_id, ..
+                command_id,
+                path,
+                domain_id,
+                domain_name,
+                coherence,
+                reflex_hit,
+                traces_matched,
+                position,
+                event_id,
+                ..
             }) => {
                 let doc = build_result_doc(
-                    &command_id, &path, domain_id, &domain_name,
-                    coherence, reflex_hit, traces_matched, position, event_id,
+                    &command_id,
+                    &path,
+                    domain_id,
+                    &domain_name,
+                    coherence,
+                    reflex_hit,
+                    traces_matched,
+                    position,
+                    event_id,
                 );
                 post_doc(&client, &endpoint, &doc).await;
             }
 
-            Ok(ServerMessage::Tick { tick_count, traces, tension, last_matched }) => {
+            Ok(ServerMessage::Tick {
+                tick_count,
+                traces,
+                tension,
+                last_matched,
+            }) => {
                 if config.tick_interval > 0 && tick_count % config.tick_interval == 0 {
                     let doc = build_tick_doc(tick_count, traces, tension, last_matched);
                     post_doc(&client, &endpoint, &doc).await;
@@ -162,14 +181,15 @@ async fn index_task(
             }
 
             Err(broadcast::error::RecvError::Lagged(_)) => {}
-            Err(broadcast::error::RecvError::Closed)    => return,
+            Err(broadcast::error::RecvError::Closed) => return,
             Ok(_) => {}
         }
     }
 }
 
 async fn post_doc(client: &reqwest::Client, endpoint: &str, doc: &serde_json::Value) {
-    let _ = client.post(endpoint)
+    let _ = client
+        .post(endpoint)
         .json(doc)
         .timeout(Duration::from_secs(5))
         .send()
@@ -185,25 +205,25 @@ mod tests {
 
     #[test]
     fn build_result_doc_has_required_fields() {
-        let doc = build_result_doc("cmd1", "Direct", 100, "SUTRA", 0.9, false, 3, [1,2,3], 42);
-        assert_eq!(doc["type"],        "result");
-        assert_eq!(doc["command_id"],  "cmd1");
+        let doc = build_result_doc("cmd1", "Direct", 100, "SUTRA", 0.9, false, 3, [1, 2, 3], 42);
+        assert_eq!(doc["type"], "result");
+        assert_eq!(doc["command_id"], "cmd1");
         assert_eq!(doc["domain_name"], "SUTRA");
-        assert_eq!(doc["domain_id"],   100);
+        assert_eq!(doc["domain_id"], 100);
         assert!((doc["coherence"].as_f64().unwrap() - 0.9).abs() < 1e-4);
-        assert_eq!(doc["reflex_hit"],  false);
+        assert_eq!(doc["reflex_hit"], false);
         assert_eq!(doc["traces_matched"], 3);
-        assert_eq!(doc["event_id"],    42);
+        assert_eq!(doc["event_id"], 42);
         assert!(doc["@timestamp"].as_str().unwrap().ends_with('Z'));
     }
 
     #[test]
     fn build_tick_doc_has_required_fields() {
         let doc = build_tick_doc(500, 12, 3, 7);
-        assert_eq!(doc["type"],         "tick");
-        assert_eq!(doc["tick_count"],   500);
-        assert_eq!(doc["traces"],       12);
-        assert_eq!(doc["tension"],      3);
+        assert_eq!(doc["type"], "tick");
+        assert_eq!(doc["tick_count"], 500);
+        assert_eq!(doc["traces"], 12);
+        assert_eq!(doc["tension"], 3);
         assert_eq!(doc["last_matched"], 7);
         assert!(doc["@timestamp"].as_str().unwrap().ends_with('Z'));
     }
@@ -241,14 +261,17 @@ mod tests {
     #[test]
     fn opensearch_config_default() {
         let cfg = OpenSearchConfig::default();
-        assert_eq!(cfg.url,   "http://localhost:9200");
+        assert_eq!(cfg.url, "http://localhost:9200");
         assert_eq!(cfg.index, "axiom-events");
         assert_eq!(cfg.tick_interval, 0);
     }
 
     #[test]
     fn tick_interval_zero_means_skip() {
-        let cfg = OpenSearchConfig { tick_interval: 0, ..OpenSearchConfig::default() };
+        let cfg = OpenSearchConfig {
+            tick_interval: 0,
+            ..OpenSearchConfig::default()
+        };
         // tick_count=100 % 0 would panic — condition guards against it
         assert!(cfg.tick_interval == 0);
     }
@@ -264,7 +287,7 @@ mod tests {
     #[test]
     fn endpoint_construction() {
         let cfg = OpenSearchConfig {
-            url:   "http://localhost:9200/".to_string(),
+            url: "http://localhost:9200/".to_string(),
             index: "axiom-events".to_string(),
             tick_interval: 0,
         };

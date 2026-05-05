@@ -33,7 +33,11 @@ fn test_domain_shell_cache_new() {
     // Все профили должны быть EMPTY_SHELL
     for i in 0..10 {
         assert_eq!(cache.get(i), &EMPTY_SHELL);
-        assert!(!cache.is_dirty(i), "Token {} should not be dirty initially", i);
+        assert!(
+            !cache.is_dirty(i),
+            "Token {} should not be dirty initially",
+            i
+        );
     }
 }
 
@@ -86,7 +90,11 @@ fn test_domain_shell_cache_clear_all_dirty() {
     cache.clear_all_dirty();
 
     for i in 0..5 {
-        assert!(!cache.is_dirty(i), "Token {} should be clean after clear_all", i);
+        assert!(
+            !cache.is_dirty(i),
+            "Token {} should be clean after clear_all",
+            i
+        );
     }
 }
 
@@ -256,11 +264,13 @@ fn test_compute_shell_single_connection() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [20, 10, 0, 0, 5, 0, 0, 0]); // Structural
 
-    let mut conn = Connection::default();
-    conn.source_id = 100;
-    conn.target_id = 200;
-    conn.link_type = 0x0100; // Structural category
-    conn.strength = 1.0;
+    let conn = Connection {
+        source_id: 100,
+        target_id: 200,
+        link_type: 0x0100, // Structural category
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
 
@@ -285,17 +295,21 @@ fn test_compute_shell_multiple_connections() {
     table.set_category(0x01, [20, 0, 0, 0, 0, 0, 0, 0]); // Structural
     table.set_category(0x02, [0, 0, 0, 0, 15, 0, 0, 0]); // Semantic
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 100;
-    conn1.target_id = 200;
-    conn1.link_type = 0x0100; // Structural
-    conn1.strength = 1.0;
+    let conn1 = Connection {
+        source_id: 100,
+        target_id: 200,
+        link_type: 0x0100, // Structural
+        strength: 1.0,
+        ..Default::default()
+    };
 
-    let mut conn2 = Connection::default();
-    conn2.source_id = 100;
-    conn2.target_id = 300;
-    conn2.link_type = 0x0200; // Semantic
-    conn2.strength = 1.0;
+    let conn2 = Connection {
+        source_id: 100,
+        target_id: 300,
+        link_type: 0x0200, // Semantic
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn1, conn2];
 
@@ -314,11 +328,13 @@ fn test_compute_shell_weighted_strength() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 100;
-    conn1.target_id = 200;
-    conn1.link_type = 0x0100;
-    conn1.strength = 2.0; // Двойной вес
+    let conn1 = Connection {
+        source_id: 100,
+        target_id: 200,
+        link_type: 0x0100,
+        strength: 2.0, // Двойной вес
+        ..Default::default()
+    };
 
     let connections = vec![conn1];
 
@@ -337,17 +353,21 @@ fn test_compute_shell_source_and_target() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 100;
-    conn1.target_id = 200;
-    conn1.link_type = 0x0100;
-    conn1.strength = 1.0;
+    let conn1 = Connection {
+        source_id: 100,
+        target_id: 200,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
-    let mut conn2 = Connection::default();
-    conn2.source_id = 300;
-    conn2.target_id = 100; // Токен 100 как target
-    conn2.link_type = 0x0100;
-    conn2.strength = 1.0;
+    let conn2 = Connection {
+        source_id: 300,
+        target_id: 100, // Токен 100 как target
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn1, conn2];
 
@@ -365,11 +385,13 @@ fn test_compute_shell_normalization() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [100, 50, 25, 10, 5, 2, 1, 0]);
 
-    let mut conn = Connection::default();
-    conn.source_id = 100;
-    conn.target_id = 200;
-    conn.link_type = 0x0100;
-    conn.strength = 1.0;
+    let conn = Connection {
+        source_id: 100,
+        target_id: 200,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
 
@@ -382,8 +404,8 @@ fn test_compute_shell_normalization() {
     assert_eq!(profile[2], 64);
     assert_eq!(profile[3], 26); // 10 × 2.55 = 25.5 → 26
     assert_eq!(profile[4], 13); // 5 × 2.55 = 12.75 → 13
-    assert_eq!(profile[5], 5);  // 2 × 2.55 = 5.1 → 5
-    assert_eq!(profile[6], 3);  // 1 × 2.55 = 2.55 → 3
+    assert_eq!(profile[5], 5); // 2 × 2.55 = 5.1 → 5
+    assert_eq!(profile[6], 3); // 1 × 2.55 = 2.55 → 3
     assert_eq!(profile[7], 0);
 }
 
@@ -393,11 +415,13 @@ fn test_compute_shell_irrelevant_connections() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 200; // НЕ наш токен
-    conn1.target_id = 300;
-    conn1.link_type = 0x0100;
-    conn1.strength = 1.0;
+    let conn1 = Connection {
+        source_id: 200, // НЕ наш токен
+        target_id: 300,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn1];
 
@@ -490,11 +514,13 @@ fn test_update_dirty_shells_single_token() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [20, 10, 0, 0, 5, 0, 0, 0]);
 
-    let mut conn = Connection::default();
-    conn.source_id = 2; // token_id 2 → index 1
-    conn.target_id = 4;
-    conn.link_type = 0x0100;
-    conn.strength = 1.0;
+    let conn = Connection {
+        source_id: 2, // token_id 2 → index 1
+        target_id: 4,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
 
@@ -521,17 +547,21 @@ fn test_update_dirty_shells_multiple_tokens() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [10, 0, 0, 0, 0, 0, 0, 0]);
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 1;
-    conn1.target_id = 2;
-    conn1.link_type = 0x0100;
-    conn1.strength = 1.0;
+    let conn1 = Connection {
+        source_id: 1,
+        target_id: 2,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
-    let mut conn2 = Connection::default();
-    conn2.source_id = 3;
-    conn2.target_id = 4;
-    conn2.link_type = 0x0100;
-    conn2.strength = 1.0;
+    let conn2 = Connection {
+        source_id: 3,
+        target_id: 4,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn1, conn2];
 
@@ -556,11 +586,13 @@ fn test_incremental_vs_full_update() {
     let mut table = SemanticContributionTable::new();
     table.set_category(0x01, [15, 5, 0, 0, 0, 0, 0, 0]);
 
-    let mut conn = Connection::default();
-    conn.source_id = 1;
-    conn.target_id = 2;
-    conn.link_type = 0x0100;
-    conn.strength = 1.0;
+    let conn = Connection {
+        source_id: 1,
+        target_id: 2,
+        link_type: 0x0100,
+        strength: 1.0,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
 
@@ -599,10 +631,12 @@ fn test_collect_affected_tokens_empty() {
 #[test]
 fn test_collect_affected_tokens_single_connection() {
     // Одна связь затрагивает 2 токена
-    let mut conn = Connection::default();
-    conn.source_id = 5; // token_index = 4
-    conn.target_id = 10; // token_index = 9
-    conn.link_type = 0x0100;
+    let conn = Connection {
+        source_id: 5,  // token_index = 4
+        target_id: 10, // token_index = 9
+        link_type: 0x0100,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
     let mut affected = collect_affected_tokens(&connections);
@@ -616,20 +650,26 @@ fn test_collect_affected_tokens_single_connection() {
 #[test]
 fn test_collect_affected_tokens_multiple_connections() {
     // Несколько связей с дубликатами
-    let mut conn1 = Connection::default();
-    conn1.source_id = 1; // index 0
-    conn1.target_id = 2; // index 1
-    conn1.link_type = 0x0100;
+    let conn1 = Connection {
+        source_id: 1, // index 0
+        target_id: 2, // index 1
+        link_type: 0x0100,
+        ..Default::default()
+    };
 
-    let mut conn2 = Connection::default();
-    conn2.source_id = 2; // index 1 (дубликат)
-    conn2.target_id = 3; // index 2
-    conn2.link_type = 0x0200;
+    let conn2 = Connection {
+        source_id: 2, // index 1 (дубликат)
+        target_id: 3, // index 2
+        link_type: 0x0200,
+        ..Default::default()
+    };
 
-    let mut conn3 = Connection::default();
-    conn3.source_id = 3; // index 2 (дубликат)
-    conn3.target_id = 4; // index 3
-    conn3.link_type = 0x0100;
+    let conn3 = Connection {
+        source_id: 3, // index 2 (дубликат)
+        target_id: 4, // index 3
+        link_type: 0x0100,
+        ..Default::default()
+    };
 
     let connections = vec![conn1, conn2, conn3];
     let mut affected = collect_affected_tokens(&connections);
@@ -643,10 +683,12 @@ fn test_collect_affected_tokens_multiple_connections() {
 #[test]
 fn test_collect_affected_tokens_self_loops() {
     // Связь токена с самим собой
-    let mut conn = Connection::default();
-    conn.source_id = 7; // index 6
-    conn.target_id = 7; // index 6 (тот же токен)
-    conn.link_type = 0x0300;
+    let conn = Connection {
+        source_id: 7, // index 6
+        target_id: 7, // index 6 (тот же токен)
+        link_type: 0x0300,
+        ..Default::default()
+    };
 
     let connections = vec![conn];
     let affected = collect_affected_tokens(&connections);
@@ -661,15 +703,19 @@ fn test_collect_affected_tokens_integration_with_mark_dirty() {
     // Интеграция: collect_affected_tokens + mark_dirty
     let mut cache = DomainShellCache::new(10);
 
-    let mut conn1 = Connection::default();
-    conn1.source_id = 2; // index 1
-    conn1.target_id = 5; // index 4
-    conn1.link_type = 0x0100;
+    let conn1 = Connection {
+        source_id: 2, // index 1
+        target_id: 5, // index 4
+        link_type: 0x0100,
+        ..Default::default()
+    };
 
-    let mut conn2 = Connection::default();
-    conn2.source_id = 7; // index 6
-    conn2.target_id = 9; // index 8
-    conn2.link_type = 0x0200;
+    let conn2 = Connection {
+        source_id: 7, // index 6
+        target_id: 9, // index 8
+        link_type: 0x0200,
+        ..Default::default()
+    };
 
     let connections = vec![conn1, conn2];
 
@@ -736,7 +782,7 @@ fn test_reconcile_shell_batch_drift_detected() {
     new_conn.link_type = 0x0200; // Semantic (другой тип!)
 
     // Запишем старый профиль в кэш
-    let old_profile = compute_shell(1, &vec![old_conn], &table);
+    let old_profile = compute_shell(1, &[old_conn], &table);
     cache.profiles[0] = old_profile;
 
     // Reconciliation с новыми связями
@@ -748,8 +794,14 @@ fn test_reconcile_shell_batch_drift_detected() {
 
     // Профиль должен обновиться
     let expected_profile = compute_shell(1, &new_connections, &table);
-    assert_eq!(cache.profiles[0], expected_profile, "Profile should be updated");
-    assert_ne!(cache.profiles[0], old_profile, "Profile should differ from old");
+    assert_eq!(
+        cache.profiles[0], expected_profile,
+        "Profile should be updated"
+    );
+    assert_ne!(
+        cache.profiles[0], old_profile,
+        "Profile should differ from old"
+    );
 }
 
 #[test]
@@ -779,7 +831,10 @@ fn test_reconcile_shell_batch_multiple_tokens() {
     let token_indices = vec![0, 1, 2, 3, 4];
     let drift_count = reconcile_shell_batch(&mut cache, &token_indices, &connections, &table);
 
-    assert_eq!(drift_count, 0, "No drift should be detected when profiles are correct");
+    assert_eq!(
+        drift_count, 0,
+        "No drift should be detected when profiles are correct"
+    );
 
     // Теперь испортим профили Token 1, Token 3, и Token 5
     cache.profiles[0] = [100, 100, 100, 100, 100, 100, 100, 100]; // wrong
@@ -792,7 +847,10 @@ fn test_reconcile_shell_batch_multiple_tokens() {
     assert_eq!(drift_count, 3, "Three tokens should have drift");
 
     // Token 5 не имеет связей → должен стать EMPTY после reconciliation
-    assert_eq!(cache.profiles[4], EMPTY_SHELL, "Token 5 should be empty after reconciliation");
+    assert_eq!(
+        cache.profiles[4], EMPTY_SHELL,
+        "Token 5 should be empty after reconciliation"
+    );
 }
 
 // --- Phase 2.10: Shell V3.0 Invariants Validation ---
@@ -812,7 +870,10 @@ fn test_shell_v3_invariant_determinism() {
     let profile1 = compute_shell(1, &connections, &table);
     let profile2 = compute_shell(1, &connections, &table);
 
-    assert_eq!(profile1, profile2, "Shell computation must be deterministic");
+    assert_eq!(
+        profile1, profile2,
+        "Shell computation must be deterministic"
+    );
 }
 
 #[test]
@@ -836,7 +897,10 @@ fn test_shell_v3_invariant_domain_locality() {
     let profile_mixed = compute_shell(1, &connections_mixed, &table);
 
     // Token 1 не участвует в conn2 → профиль не должен измениться
-    assert_eq!(profile_pure, profile_mixed, "Shell must be domain-local (only own connections matter)");
+    assert_eq!(
+        profile_pure, profile_mixed,
+        "Shell must be domain-local (only own connections matter)"
+    );
 }
 
 #[test]
@@ -859,7 +923,6 @@ fn test_shell_v3_invariant_no_events() {
     let _drift = reconcile_shell_batch(&mut cache, &token_indices, &connections, &table);
 
     // Тест проходит если компиляция успешна - функции детерминистичны и не имеют side effects
-    assert!(true, "Shell functions must not generate COM events");
 }
 
 #[test]
@@ -882,7 +945,10 @@ fn test_shell_v3_invariant_cache_coherence() {
 
     // Проверяем согласованность
     let expected_profile = compute_shell(1, &connections, &table);
-    assert_eq!(cache.profiles[0], expected_profile, "Cache must be coherent after reconciliation");
+    assert_eq!(
+        cache.profiles[0], expected_profile,
+        "Cache must be coherent after reconciliation"
+    );
 }
 
 #[test]
@@ -902,7 +968,6 @@ fn test_shell_v3_invariant_zero_allocation() {
     }
 
     // Тест проходит если компиляция успешна - функция использует только стек
-    assert!(true, "compute_shell must be zero-allocation");
 }
 
 // ─── SemanticContributionTable::from_yaml ────────────────────────────────────
@@ -932,14 +997,16 @@ fn test_from_yaml_loads_ashti_core_preset() {
 
 #[test]
 fn test_from_yaml_category_structural() {
-    let table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    let table =
+        SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
     // 0x01: Structural → [20, 5, 0, 0, 5, 0, 0, 0]
     assert_eq!(table.get(0x0100), &[20, 5, 0, 0, 5, 0, 0, 0]);
 }
 
 #[test]
 fn test_from_yaml_category_social() {
-    let table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    let table =
+        SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
     // 0x05: Social → [0, 0, 0, 5, 0, 25, 0, 0]
     assert_eq!(table.get(0x0500), &[0, 0, 0, 5, 0, 25, 0, 0]);
 }
@@ -948,12 +1015,16 @@ fn test_from_yaml_category_social() {
 fn test_from_yaml_missing_file() {
     let result = SemanticContributionTable::from_yaml(std::path::Path::new("/nonexistent.yaml"));
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), axiom_shell::ShellConfigError::IoError(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        axiom_shell::ShellConfigError::IoError(_)
+    ));
 }
 
 #[test]
 fn test_from_yaml_matches_default_for_all_categories() {
-    let yaml_table = SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
+    let yaml_table =
+        SemanticContributionTable::from_yaml(&schema_path("semantic_contributions.yaml")).unwrap();
     let default_table = SemanticContributionTable::default_ashti_core();
 
     // Категории 0x00..0xFF: только 0x01..0x07 имеют вклад

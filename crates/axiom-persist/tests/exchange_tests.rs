@@ -1,12 +1,10 @@
 // Тесты Knowledge Exchange — Фаза 4 Memory Persistence V1.0
 
 use axiom_persist::{
-    export_traces, export_skills,
-    import_traces, import_skills,
-    IMPORT_WEIGHT_FACTOR,
+    export_skills, export_traces, import_skills, import_traces, IMPORT_WEIGHT_FACTOR,
 };
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 use std::path::PathBuf;
 
 fn temp_path(name: &str) -> PathBuf {
@@ -37,7 +35,10 @@ fn test_export_traces_creates_file() {
 
     let report = export_traces(&engine, &path, 0.0).expect("export failed");
     assert!(path.exists(), "export file must exist");
-    assert_eq!(report.exported, engine.ashti.experience().traces().len() as u32);
+    assert_eq!(
+        report.exported,
+        engine.ashti.experience().traces().len() as u32
+    );
 }
 
 // ─── Тест 2: export → import → traces появляются в engine B ──────────────────
@@ -61,10 +62,14 @@ fn test_export_import_traces_round_trip() {
 
     // Если были traces → они должны появиться в B (с учётом GUARDIAN-фильтра)
     let imported_count = report.imported + report.guardian_rejected;
-    assert_eq!(imported_count, traces_before as u32,
-        "imported + rejected должно равняться числу экспортированных");
-    assert!(report.imported > 0 || traces_before == 0,
-        "хотя бы один trace должен пройти GUARDIAN если были traces");
+    assert_eq!(
+        imported_count, traces_before as u32,
+        "imported + rejected должно равняться числу экспортированных"
+    );
+    assert!(
+        report.imported > 0 || traces_before == 0,
+        "хотя бы один trace должен пройти GUARDIAN если были traces"
+    );
 }
 
 // ─── Тест 3: импортированные traces получают weight × IMPORT_WEIGHT_FACTOR ─────
@@ -75,8 +80,13 @@ fn test_import_traces_weight_reduced() {
     let mut engine_a = AxiomEngine::new();
     inject_and_tick(&mut engine_a, 25);
 
-    let weights_before: Vec<f32> = engine_a.ashti.experience().traces()
-        .iter().map(|t| t.weight).collect();
+    let weights_before: Vec<f32> = engine_a
+        .ashti
+        .experience()
+        .traces()
+        .iter()
+        .map(|t| t.weight)
+        .collect();
 
     if weights_before.is_empty() {
         export_traces(&engine_a, &path, 0.0).expect("export");
@@ -92,7 +102,13 @@ fn test_import_traces_weight_reduced() {
 
     for trace in engine_b.ashti.experience().traces() {
         assert!(
-            trace.weight <= weights_before.iter().cloned().fold(f32::NEG_INFINITY, f32::max) * IMPORT_WEIGHT_FACTOR + 1e-5,
+            trace.weight
+                <= weights_before
+                    .iter()
+                    .cloned()
+                    .fold(f32::NEG_INFINITY, f32::max)
+                    * IMPORT_WEIGHT_FACTOR
+                    + 1e-5,
             "imported weight must be ≤ max_original × IMPORT_WEIGHT_FACTOR"
         );
         assert!(trace.weight > 0.0, "weight must be positive");
@@ -103,8 +119,8 @@ fn test_import_traces_weight_reduced() {
 
 #[test]
 fn test_guardian_rejects_zero_sutra_id() {
-    use axiom_persist::exchange::{TracePackage, ExchangeHeader};
     use axiom_core::Token;
+    use axiom_persist::exchange::{ExchangeHeader, TracePackage};
 
     let path = temp_path("guardian_reject");
 
@@ -121,12 +137,12 @@ fn test_guardian_rejects_zero_sutra_id() {
             count: 1,
         },
         traces: vec![axiom_persist::format::StoredTrace {
-            pattern:       bad_token,
-            weight:        0.9,
-            created_at:    1,
-            last_used:     1,
+            pattern: bad_token,
+            weight: 0.9,
+            created_at: 1,
+            last_used: 1,
             success_count: 5,
-            pattern_hash:  0,
+            pattern_hash: 0,
         }],
     };
 
@@ -136,7 +152,10 @@ fn test_guardian_rejects_zero_sutra_id() {
     let mut engine = AxiomEngine::new();
     let report = import_traces(&mut engine, &path).expect("import");
 
-    assert_eq!(report.guardian_rejected, 1, "GUARDIAN должен отклонить sutra_id=0");
+    assert_eq!(
+        report.guardian_rejected, 1,
+        "GUARDIAN должен отклонить sutra_id=0"
+    );
     assert_eq!(report.imported, 0);
     assert_eq!(engine.ashti.experience().traces().len(), 0);
 }
@@ -167,7 +186,10 @@ fn test_import_skills_deduplication() {
     let r2 = import_skills(&mut engine_b, &path).expect("second import");
 
     // При пустом пакете всё нули — проверяем что не паникует
-    assert_eq!(r2.guardian_rejected + r2.imported + r2.skipped_duplicate, r2.total);
+    assert_eq!(
+        r2.guardian_rejected + r2.imported + r2.skipped_duplicate,
+        r2.total
+    );
 }
 
 // ─── Тест 7: Неправильный тип пакета → PersistError::Decode ──────────────────
@@ -184,7 +206,7 @@ fn test_wrong_package_kind_returns_error() {
     match import_skills(&mut engine_b, &path) {
         Err(axiom_persist::PersistError::Decode(_)) => {} // ожидаемо
         Err(e) => panic!("unexpected error: {e}"),
-        Ok(_)  => panic!("expected Decode error for wrong kind"),
+        Ok(_) => panic!("expected Decode error for wrong kind"),
     }
 }
 
@@ -199,7 +221,7 @@ fn test_import_missing_file_returns_error() {
     match import_traces(&mut engine, &path) {
         Err(axiom_persist::PersistError::Io(_)) => {}
         Err(e) => panic!("expected Io error, got: {e}"),
-        Ok(_)  => panic!("expected error"),
+        Ok(_) => panic!("expected error"),
     }
 }
 
@@ -207,16 +229,18 @@ fn test_import_missing_file_returns_error() {
 
 #[test]
 fn test_export_traces_threshold() {
-    let path_all  = temp_path("threshold_all");
+    let path_all = temp_path("threshold_all");
     let path_high = temp_path("threshold_high");
     let mut engine = AxiomEngine::new();
     inject_and_tick(&mut engine, 30);
 
-    let r_all  = export_traces(&engine, &path_all,  0.0).expect("export all");
+    let r_all = export_traces(&engine, &path_all, 0.0).expect("export all");
     let r_high = export_traces(&engine, &path_high, 0.99).expect("export high");
 
-    assert!(r_high.exported <= r_all.exported,
-        "high threshold must export ≤ total traces");
+    assert!(
+        r_high.exported <= r_all.exported,
+        "high threshold must export ≤ total traces"
+    );
 }
 
 // ─── Тест 10: ImportReport summary_line не паникует ──────────────────────────
@@ -224,7 +248,12 @@ fn test_export_traces_threshold() {
 #[test]
 fn test_import_report_summary() {
     use axiom_persist::ImportReport;
-    let r = ImportReport { total: 10, imported: 7, guardian_rejected: 2, skipped_duplicate: 1 };
+    let r = ImportReport {
+        total: 10,
+        imported: 7,
+        guardian_rejected: 2,
+        skipped_duplicate: 1,
+    };
     let s = r.summary_line();
     assert!(s.contains("7"));
     assert!(s.contains("2"));

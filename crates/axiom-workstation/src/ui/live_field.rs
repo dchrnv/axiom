@@ -10,14 +10,54 @@ use crate::app::{DisplayOptions, LiveFieldOption, LiveFieldState, Message, Orbit
 const MAX_POINTS: u32 = 300;
 
 const LAYER_COLORS: [Color; 8] = [
-    Color { r: 0.35, g: 0.60, b: 1.00, a: 0.85 },
-    Color { r: 0.30, g: 0.85, b: 0.75, a: 0.85 },
-    Color { r: 0.45, g: 0.90, b: 0.40, a: 0.85 },
-    Color { r: 0.75, g: 0.90, b: 0.30, a: 0.85 },
-    Color { r: 0.95, g: 0.80, b: 0.20, a: 0.85 },
-    Color { r: 1.00, g: 0.58, b: 0.20, a: 0.85 },
-    Color { r: 1.00, g: 0.35, b: 0.35, a: 0.85 },
-    Color { r: 0.85, g: 0.30, b: 0.90, a: 0.85 },
+    Color {
+        r: 0.35,
+        g: 0.60,
+        b: 1.00,
+        a: 0.85,
+    },
+    Color {
+        r: 0.30,
+        g: 0.85,
+        b: 0.75,
+        a: 0.85,
+    },
+    Color {
+        r: 0.45,
+        g: 0.90,
+        b: 0.40,
+        a: 0.85,
+    },
+    Color {
+        r: 0.75,
+        g: 0.90,
+        b: 0.30,
+        a: 0.85,
+    },
+    Color {
+        r: 0.95,
+        g: 0.80,
+        b: 0.20,
+        a: 0.85,
+    },
+    Color {
+        r: 1.00,
+        g: 0.58,
+        b: 0.20,
+        a: 0.85,
+    },
+    Color {
+        r: 1.00,
+        g: 0.35,
+        b: 0.35,
+        a: 0.85,
+    },
+    Color {
+        r: 0.85,
+        g: 0.30,
+        b: 0.90,
+        a: 0.85,
+    },
 ];
 
 // ── Public view ────────────────────────────────────────────────────────────
@@ -31,12 +71,9 @@ pub fn live_field_view<'a>(
         .map(|s| s.domains.as_slice())
         .unwrap_or(&[]);
 
-    row![
-        side_panel(lf, domains),
-        canvas_area(lf, snapshot),
-    ]
-    .height(Length::Fill)
-    .into()
+    row![side_panel(lf, domains), canvas_area(lf, snapshot),]
+        .height(Length::Fill)
+        .into()
 }
 
 // ── Side panel ─────────────────────────────────────────────────────────────
@@ -48,7 +85,11 @@ fn side_panel<'a>(lf: &'a LiveFieldState, domains: &'a [DomainSnapshot]) -> Elem
             let selected = lf.selected_domain == Some(d.id);
             button(text(d.name.as_str()).size(12))
                 .on_press(Message::LiveFieldDomainSelected(d.id))
-                .style(if selected { button::primary } else { button::secondary })
+                .style(if selected {
+                    button::primary
+                } else {
+                    button::secondary
+                })
                 .width(Length::Fill)
                 .into()
         })
@@ -77,26 +118,50 @@ fn side_panel<'a>(lf: &'a LiveFieldState, domains: &'a [DomainSnapshot]) -> Elem
     };
 
     let opt_btns: Vec<Element<Message>> = [
-        (LiveFieldOption::ShowConnections, "Connections", lf.display.show_connections),
-        (LiveFieldOption::ShowAnchors, "Anchors", lf.display.show_anchors),
-        (LiveFieldOption::LayerColorCoding, "Layer colors", lf.display.layer_color_coding),
-        (LiveFieldOption::HighlightRecent, "Highlight active", lf.display.highlight_recent),
+        (
+            LiveFieldOption::ShowConnections,
+            "Connections",
+            lf.display.show_connections,
+        ),
+        (
+            LiveFieldOption::ShowAnchors,
+            "Anchors",
+            lf.display.show_anchors,
+        ),
+        (
+            LiveFieldOption::LayerColorCoding,
+            "Layer colors",
+            lf.display.layer_color_coding,
+        ),
+        (
+            LiveFieldOption::HighlightRecent,
+            "Highlight active",
+            lf.display.highlight_recent,
+        ),
     ]
     .iter()
     .map(|&(opt, label, active)| {
         button(text(label).size(11))
             .on_press(Message::LiveFieldToggleOption(opt))
-            .style(if active { button::primary } else { button::secondary })
+            .style(if active {
+                button::primary
+            } else {
+                button::secondary
+            })
             .width(Length::Fill)
             .into()
     })
     .collect();
 
     column![
-        text("Domains").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+        text("Domains")
+            .size(11)
+            .color(Color::from_rgb(0.5, 0.5, 0.5)),
         column(domain_btns).spacing(3),
         stats,
-        text("Display").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+        text("Display")
+            .size(11)
+            .color(Color::from_rgb(0.5, 0.5, 0.5)),
         column(opt_btns).spacing(3),
         button(text("Reset camera").size(11))
             .on_press(Message::LiveFieldCameraReset)
@@ -150,7 +215,13 @@ impl<'a> canvas::Program<Message> for LiveFieldCanvas<'a> {
             .as_ref()
             .map(|s| s.domains.as_slice())
             .unwrap_or(&[]);
-        draw_scene(&mut frame, &self.lf.camera, &self.lf.display, self.lf.selected_domain, domains);
+        draw_scene(
+            &mut frame,
+            &self.lf.camera,
+            &self.lf.display,
+            self.lf.selected_domain,
+            domains,
+        );
         vec![frame.into_geometry()]
     }
 
@@ -232,7 +303,16 @@ fn draw_scene(
 ) {
     let size = frame.size();
 
-    frame.fill_rectangle(Point::ORIGIN, size, Color { r: 0.04, g: 0.04, b: 0.07, a: 1.0 });
+    frame.fill_rectangle(
+        Point::ORIGIN,
+        size,
+        Color {
+            r: 0.04,
+            g: 0.04,
+            b: 0.07,
+            a: 1.0,
+        },
+    );
 
     draw_axes(frame, camera, size);
 
@@ -262,34 +342,58 @@ fn draw_axes(frame: &mut Frame, camera: &OrbitCamera, size: Size) {
     let axis_color = Color::from_rgba(0.22, 0.22, 0.32, 0.45);
     let stroke = Stroke::default().with_color(axis_color).with_width(0.6);
 
-    let endpoints: [((f32, f32, f32), (f32, f32, f32)); 3] = [
-        ((-1.2, 0.0, 0.0), (1.2, 0.0, 0.0)),
+    let endpoints = [
+        ((-1.2_f32, 0.0_f32, 0.0_f32), (1.2_f32, 0.0_f32, 0.0_f32)),
         ((0.0, -1.2, 0.0), (0.0, 1.2, 0.0)),
         ((0.0, 0.0, -1.2), (0.0, 0.0, 1.2)),
     ];
     for (p0, p1) in &endpoints {
-        let Some(s0) = project(*p0, camera, size) else { continue };
-        let Some(s1) = project(*p1, camera, size) else { continue };
-        frame.stroke(&Path::line(s0, s1), stroke.clone());
+        let Some(s0) = project(*p0, camera, size) else {
+            continue;
+        };
+        let Some(s1) = project(*p1, camera, size) else {
+            continue;
+        };
+        frame.stroke(&Path::line(s0, s1), stroke);
     }
 }
 
 fn draw_anchor_marker(frame: &mut Frame, camera: &OrbitCamera, size: Size) {
     let r = 0.06;
     let verts: [(f32, f32, f32); 6] = [
-        (r, 0.0, 0.0), (-r, 0.0, 0.0),
-        (0.0, r, 0.0), (0.0, -r, 0.0),
-        (0.0, 0.0, r), (0.0, 0.0, -r),
+        (r, 0.0, 0.0),
+        (-r, 0.0, 0.0),
+        (0.0, r, 0.0),
+        (0.0, -r, 0.0),
+        (0.0, 0.0, r),
+        (0.0, 0.0, -r),
     ];
-    let edges = [(0, 2), (0, 3), (0, 4), (0, 5), (1, 2), (1, 3), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (3, 5)];
+    let edges = [
+        (0, 2),
+        (0, 3),
+        (0, 4),
+        (0, 5),
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (1, 5),
+        (2, 4),
+        (2, 5),
+        (3, 4),
+        (3, 5),
+    ];
     let stroke = Stroke::default()
         .with_color(Color::from_rgba(0.8, 0.8, 0.9, 0.6))
         .with_width(0.8);
 
     for (a, b) in &edges {
-        let Some(sa) = project(verts[*a], camera, size) else { continue };
-        let Some(sb) = project(verts[*b], camera, size) else { continue };
-        frame.stroke(&Path::line(sa, sb), stroke.clone());
+        let Some(sa) = project(verts[*a], camera, size) else {
+            continue;
+        };
+        let Some(sb) = project(verts[*b], camera, size) else {
+            continue;
+        };
+        frame.stroke(&Path::line(sa, sb), stroke);
     }
 }
 
@@ -306,8 +410,7 @@ fn draw_domain_points(
         return;
     }
     let base_alpha: f32 = if active { 0.85 } else { 0.18 };
-    let dot_size_boost =
-        display.highlight_recent && domain.recent_activity > 50 && active;
+    let dot_size_boost = display.highlight_recent && domain.recent_activity > 50 && active;
 
     let conn_stroke = Stroke::default()
         .with_color(Color::from_rgba(0.4, 0.5, 0.8, base_alpha * 0.18))
@@ -324,18 +427,23 @@ fn draw_domain_points(
     for i in 0..n {
         let seed = hash_seed(domain.id as u64, i as u64);
         let pos = pseudo_pos(seed);
-        let Some(screen) = project(pos, camera, size) else { continue };
+        let Some(screen) = project(pos, camera, size) else {
+            continue;
+        };
 
         // Connection line to anchor point (skip self)
         if display.show_connections && i > 0 {
             if let Some(anchor) = anchor_screen {
-                frame.stroke(&Path::line(screen, anchor), conn_stroke.clone());
+                frame.stroke(&Path::line(screen, anchor), conn_stroke);
             }
         }
 
         let color = if display.layer_color_coding {
             let layer = pick_layer(&domain.layer_activations, lcg_next(seed));
-            Color { a: base_alpha, ..LAYER_COLORS[layer] }
+            Color {
+                a: base_alpha,
+                ..LAYER_COLORS[layer]
+            }
         } else {
             Color::from_rgba(0.6, 0.72, 1.0, base_alpha)
         };

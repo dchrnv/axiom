@@ -1,16 +1,14 @@
 use std::time::Duration;
 
-use futures_util::{SinkExt, StreamExt};
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::Message as WsMessage,
-    MaybeTlsStream, WebSocketStream,
-};
-use tokio::net::TcpStream;
 use axiom_protocol::{
     commands::EngineCommand,
     messages::{ClientKind, ClientMessage, EngineMessage},
     PROTOCOL_VERSION,
+};
+use futures_util::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
+use tokio_tungstenite::{
+    connect_async, tungstenite::Message as WsMessage, MaybeTlsStream, WebSocketStream,
 };
 
 use crate::app::{CommandSender, Message};
@@ -37,10 +35,13 @@ pub fn ws_subscription(address: String, key: u64) -> iced::Subscription<Message>
                         tracing::debug!("WS connect failed (attempt {}): {}", attempt + 1, e);
                         let secs = BACKOFF_SECS[(attempt as usize).min(BACKOFF_SECS.len() - 1)];
                         attempt += 1;
-                        output.send(Message::WsReconnecting {
-                            attempt,
-                            next_retry_secs: secs,
-                        }).await.ok();
+                        output
+                            .send(Message::WsReconnecting {
+                                attempt,
+                                next_retry_secs: secs,
+                            })
+                            .await
+                            .ok();
                         tokio::time::sleep(Duration::from_secs(secs)).await;
                     }
                 }
@@ -63,21 +64,22 @@ pub(crate) async fn run_session(
     let hello_bytes = postcard::to_stdvec(&ClientMessage::Hello {
         version: PROTOCOL_VERSION,
         client_kind: ClientKind::Workstation,
-    }).map_err(|e| e.to_string())?;
-    sink.send(WsMessage::Binary(hello_bytes)).await.map_err(|e| e.to_string())?;
+    })
+    .map_err(|e| e.to_string())?;
+    sink.send(WsMessage::Binary(hello_bytes))
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Ожидаем Hello от Engine
     let engine_version = loop {
         match stream.next().await {
-            Some(Ok(WsMessage::Binary(b))) => {
-                match postcard::from_bytes::<EngineMessage>(&b) {
-                    Ok(EngineMessage::Hello { version, .. }) => break version,
-                    Ok(EngineMessage::Bye { reason }) => {
-                        return Err(format!("Engine rejected: {:?}", reason));
-                    }
-                    _ => return Err("Unexpected handshake message".into()),
+            Some(Ok(WsMessage::Binary(b))) => match postcard::from_bytes::<EngineMessage>(&b) {
+                Ok(EngineMessage::Hello { version, .. }) => break version,
+                Ok(EngineMessage::Bye { reason }) => {
+                    return Err(format!("Engine rejected: {:?}", reason));
                 }
-            }
+                _ => return Err("Unexpected handshake message".into()),
+            },
             Some(Ok(WsMessage::Ping(data))) => {
                 let _ = sink.send(WsMessage::Pong(data)).await;
             }
@@ -87,13 +89,16 @@ pub(crate) async fn run_session(
     };
 
     // Создаём канал для команд App → Engine
-    let (cmd_tx, mut cmd_rx) =
-        iced::futures::channel::mpsc::channel::<(u64, EngineCommand)>(32);
+    let (cmd_tx, mut cmd_rx) = iced::futures::channel::mpsc::channel::<(u64, EngineCommand)>(32);
 
-    output.send(Message::WsConnected { engine_version }).await
+    output
+        .send(Message::WsConnected { engine_version })
+        .await
         .map_err(|_| "App closed".to_string())?;
 
-    output.send(Message::CommandSenderReady(CommandSender(cmd_tx))).await
+    output
+        .send(Message::CommandSenderReady(CommandSender(cmd_tx)))
+        .await
         .map_err(|_| "App closed".to_string())?;
 
     // Основной цикл: читаем WS и команды от App
@@ -141,8 +146,8 @@ pub(crate) async fn run_session(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::SocketAddr;
     use axiom_broadcasting::{BroadcastServer, BroadcastingConfig};
+    use std::net::SocketAddr;
 
     // Test 3.7.b — WebSocket handshake: Workstation подключается к BroadcastServer
     #[tokio::test]
@@ -152,7 +157,9 @@ mod tests {
         drop(listener);
 
         let (server, _handle) = BroadcastServer::new(addr, BroadcastingConfig::default());
-        tokio::spawn(async move { server.run().await.ok(); });
+        tokio::spawn(async move {
+            server.run().await.ok();
+        });
         tokio::time::sleep(Duration::from_millis(10)).await;
 
         let url = format!("ws://{}", addr);
@@ -167,7 +174,9 @@ mod tests {
         let deadline = tokio::time::Instant::now() + Duration::from_millis(500);
         loop {
             let msg = tokio::time::timeout_at(deadline, rx.next())
-                .await.expect("timeout").expect("channel closed");
+                .await
+                .expect("timeout")
+                .expect("channel closed");
             if matches!(msg, Message::WsConnected { .. }) {
                 return;
             }

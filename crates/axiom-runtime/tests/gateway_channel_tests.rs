@@ -1,11 +1,7 @@
 // Этап 8 — Gateway + Channel: интеграционные тесты
-use axiom_runtime::{
-    Gateway, Channel,
-    EventObserver, DirectAdapter,
-    AxiomEngine,
-};
-use axiom_ucl::{UclCommand, OpCode};
-use axiom_core::{Event, EventType, EventPriority};
+use axiom_core::{Event, EventPriority, EventType};
+use axiom_runtime::{AxiomEngine, Channel, DirectAdapter, EventObserver, Gateway};
+use axiom_ucl::{OpCode, UclCommand};
 use std::sync::{Arc, Mutex};
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -19,7 +15,16 @@ fn spawn_cmd() -> UclCommand {
 }
 
 fn make_event() -> Event {
-    Event::new(1, 1, EventType::TokenCreate, EventPriority::Normal, 0, 0, 0, 0)
+    Event::new(
+        1,
+        1,
+        EventType::TokenCreate,
+        EventPriority::Normal,
+        0,
+        0,
+        0,
+        0,
+    )
 }
 
 // Наблюдатель, собирающий события в Vec
@@ -30,7 +35,12 @@ struct RecordingObserver {
 impl RecordingObserver {
     fn new() -> (Self, Arc<Mutex<Vec<u16>>>) {
         let store = Arc::new(Mutex::new(Vec::new()));
-        (Self { events: store.clone() }, store)
+        (
+            Self {
+                events: store.clone(),
+            },
+            store,
+        )
     }
 }
 

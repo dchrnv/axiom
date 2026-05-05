@@ -32,14 +32,14 @@ pub const EMPTY_SHELL: ShellProfile = [0, 0, 0, 0, 0, 0, 0, 0];
 
 /// Имена слоёв для отладки
 pub const LAYER_NAMES: [&str; 8] = [
-    "Physical",   // L1
-    "Sensory",    // L2
-    "Motor",      // L3
-    "Emotional",  // L4
-    "Cognitive",  // L5
-    "Social",     // L6
-    "Temporal",   // L7
-    "Abstract",   // L8
+    "Physical",  // L1
+    "Sensory",   // L2
+    "Motor",     // L3
+    "Emotional", // L4
+    "Cognitive", // L5
+    "Social",    // L6
+    "Temporal",  // L7
+    "Abstract",  // L8
 ];
 
 /// Кэш Shell для домена
@@ -260,11 +260,14 @@ impl SemanticContributionTable {
         table.set_category(0x08, [0, 0, 0, 0, 10, 5, 0, 15]);
 
         // ADDRESSEE (0x0830) — сильный Social
-        table.set_override(link_types::SYNTACTIC_ADDRESSEE,   [0, 0, 0, 5, 5, 25, 0, 5]);
+        table.set_override(link_types::SYNTACTIC_ADDRESSEE, [0, 0, 0, 5, 5, 25, 0, 5]);
         // REASON (0x0862) — сильный Cognitive + Abstract
-        table.set_override(link_types::SYNTACTIC_REASON,      [0, 0, 0, 0, 20, 0, 0, 15]);
+        table.set_override(link_types::SYNTACTIC_REASON, [0, 0, 0, 0, 20, 0, 0, 15]);
         // EMBEDDED_FRAME (0x0870) — максимальный Abstract
-        table.set_override(link_types::SYNTACTIC_EMBEDDED_FRAME, [0, 0, 0, 0, 15, 0, 0, 25]);
+        table.set_override(
+            link_types::SYNTACTIC_EMBEDDED_FRAME,
+            [0, 0, 0, 0, 15, 0, 0, 25],
+        );
 
         table
     }
@@ -281,8 +284,8 @@ impl SemanticContributionTable {
     ///     contribution: [0, 0, 0, 0, 30, 0, 0, 20]
     /// ```
     pub fn from_yaml(path: &std::path::Path) -> Result<Self, ShellConfigError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ShellConfigError::IoError(e.to_string()))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| ShellConfigError::IoError(e.to_string()))?;
         let raw: SemanticContributionsYaml = serde_yaml::from_str(&content)
             .map_err(|e| ShellConfigError::ParseError(e.to_string()))?;
 
@@ -540,63 +543,62 @@ pub fn reconcile_shell_batch(
 /// Организованы по 8 слоям глубины (S1–S8). Полная таблица — FrameWeaver_V1_1.md раздел 3.2.
 pub mod link_types {
     // --- S1: Ядерные роли (Core Arguments) ---
-    pub const SYNTACTIC_SUBJECT:         u16 = 0x0801;
-    pub const SYNTACTIC_PREDICATE:       u16 = 0x0802;
-    pub const SYNTACTIC_DIRECT_OBJECT:   u16 = 0x0803;
+    pub const SYNTACTIC_SUBJECT: u16 = 0x0801;
+    pub const SYNTACTIC_PREDICATE: u16 = 0x0802;
+    pub const SYNTACTIC_DIRECT_OBJECT: u16 = 0x0803;
     pub const SYNTACTIC_INDIRECT_OBJECT: u16 = 0x0804;
-    pub const SYNTACTIC_COPULA_LINK:     u16 = 0x0805;
+    pub const SYNTACTIC_COPULA_LINK: u16 = 0x0805;
 
     // --- S2: Атрибутивные связи (Modification) ---
-    pub const SYNTACTIC_ATTRIBUTE:    u16 = 0x0810;
-    pub const SYNTACTIC_ADVERBIAL:    u16 = 0x0811;
-    pub const SYNTACTIC_QUANTIFIER:   u16 = 0x0812;
-    pub const SYNTACTIC_DETERMINER:   u16 = 0x0813;
-    pub const SYNTACTIC_INTENSIFIER:  u16 = 0x0814;
+    pub const SYNTACTIC_ATTRIBUTE: u16 = 0x0810;
+    pub const SYNTACTIC_ADVERBIAL: u16 = 0x0811;
+    pub const SYNTACTIC_QUANTIFIER: u16 = 0x0812;
+    pub const SYNTACTIC_DETERMINER: u16 = 0x0813;
+    pub const SYNTACTIC_INTENSIFIER: u16 = 0x0814;
 
     // --- S3: Структурные связи (Structural) ---
-    pub const SYNTACTIC_COORDINATOR:  u16 = 0x0820;
+    pub const SYNTACTIC_COORDINATOR: u16 = 0x0820;
     pub const SYNTACTIC_SUBORDINATOR: u16 = 0x0821;
-    pub const SYNTACTIC_APPOSITION:   u16 = 0x0822;
-    pub const SYNTACTIC_LIST_MEMBER:  u16 = 0x0823;
+    pub const SYNTACTIC_APPOSITION: u16 = 0x0822;
+    pub const SYNTACTIC_LIST_MEMBER: u16 = 0x0823;
 
     // --- S4: Прагматические связи (Pragmatic) ---
-    pub const SYNTACTIC_ADDRESSEE:    u16 = 0x0830;
+    pub const SYNTACTIC_ADDRESSEE: u16 = 0x0830;
     pub const SYNTACTIC_TOPIC_MARKER: u16 = 0x0831;
     pub const SYNTACTIC_FOCUS_MARKER: u16 = 0x0832;
-    pub const SYNTACTIC_EVIDENTIAL:   u16 = 0x0833;
-    pub const SYNTACTIC_MOOD_MARKER:  u16 = 0x0834;
+    pub const SYNTACTIC_EVIDENTIAL: u16 = 0x0833;
+    pub const SYNTACTIC_MOOD_MARKER: u16 = 0x0834;
 
     // --- S5: Темпоральные связи (Temporal Frame) ---
     pub const SYNTACTIC_TEMPORAL_ANCHOR: u16 = 0x0840;
-    pub const SYNTACTIC_DURATION:        u16 = 0x0841;
-    pub const SYNTACTIC_FREQUENCY:       u16 = 0x0842;
-    pub const SYNTACTIC_TENSE_CARRIER:   u16 = 0x0843;
-    pub const SYNTACTIC_ASPECT_CARRIER:  u16 = 0x0844;
+    pub const SYNTACTIC_DURATION: u16 = 0x0841;
+    pub const SYNTACTIC_FREQUENCY: u16 = 0x0842;
+    pub const SYNTACTIC_TENSE_CARRIER: u16 = 0x0843;
+    pub const SYNTACTIC_ASPECT_CARRIER: u16 = 0x0844;
 
     // --- S6: Пространственные связи (Spatial Frame) ---
-    pub const SYNTACTIC_LOCATION:    u16 = 0x0850;
-    pub const SYNTACTIC_SOURCE:      u16 = 0x0851;
-    pub const SYNTACTIC_GOAL:        u16 = 0x0852;
-    pub const SYNTACTIC_PATH:        u16 = 0x0853;
+    pub const SYNTACTIC_LOCATION: u16 = 0x0850;
+    pub const SYNTACTIC_SOURCE: u16 = 0x0851;
+    pub const SYNTACTIC_GOAL: u16 = 0x0852;
+    pub const SYNTACTIC_PATH: u16 = 0x0853;
     pub const SYNTACTIC_ORIENTATION: u16 = 0x0854;
 
     // --- S7: Каузальные связи внутри Frame (Causal Internal) ---
-    pub const SYNTACTIC_INSTRUMENT:  u16 = 0x0860;
-    pub const SYNTACTIC_PURPOSE:     u16 = 0x0861;
-    pub const SYNTACTIC_REASON:      u16 = 0x0862;
-    pub const SYNTACTIC_CONDITION:   u16 = 0x0863;
-    pub const SYNTACTIC_RESULT:      u16 = 0x0864;
-    pub const SYNTACTIC_CONCESSION:  u16 = 0x0865;
+    pub const SYNTACTIC_INSTRUMENT: u16 = 0x0860;
+    pub const SYNTACTIC_PURPOSE: u16 = 0x0861;
+    pub const SYNTACTIC_REASON: u16 = 0x0862;
+    pub const SYNTACTIC_CONDITION: u16 = 0x0863;
+    pub const SYNTACTIC_RESULT: u16 = 0x0864;
+    pub const SYNTACTIC_CONCESSION: u16 = 0x0865;
 
     // --- S8: Метасинтаксические связи (Meta) ---
-    pub const SYNTACTIC_EMBEDDED_FRAME:  u16 = 0x0870;
+    pub const SYNTACTIC_EMBEDDED_FRAME: u16 = 0x0870;
     pub const SYNTACTIC_FRAME_REFERENCE: u16 = 0x0871;
-    pub const SYNTACTIC_FRAME_NEGATION:  u16 = 0x0872;
-    pub const SYNTACTIC_FRAME_QUOTE:     u16 = 0x0873;
-    pub const SYNTACTIC_FRAME_HYPOTHESIS:u16 = 0x0874;
+    pub const SYNTACTIC_FRAME_NEGATION: u16 = 0x0872;
+    pub const SYNTACTIC_FRAME_QUOTE: u16 = 0x0873;
+    pub const SYNTACTIC_FRAME_HYPOTHESIS: u16 = 0x0874;
 }
 
 // ============================================================================
 // TESTS
 // ============================================================================
-

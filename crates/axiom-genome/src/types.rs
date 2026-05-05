@@ -7,23 +7,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ModuleId {
-    Sutra      = 0,
-    Execution  = 1,
-    Shadow     = 2,
-    Codex      = 3,
-    Map        = 4,
-    Probe      = 5,
-    Logic      = 6,
-    Dream      = 7,
-    Void       = 8,
+    Sutra = 0,
+    Execution = 1,
+    Shadow = 2,
+    Codex = 3,
+    Map = 4,
+    Probe = 5,
+    Logic = 6,
+    Dream = 7,
+    Void = 8,
     Experience = 9,
-    Maya       = 10,
-    Arbiter    = 11,
-    Guardian   = 12,
-    Heartbeat  = 13,
-    Shell      = 14,
-    Adapters     = 15,
-    FrameWeaver  = 16,
+    Maya = 10,
+    Arbiter = 11,
+    Guardian = 12,
+    Heartbeat = 13,
+    Shell = 14,
+    Adapters = 15,
+    FrameWeaver = 16,
 }
 
 pub const MAX_MODULES: usize = 17;
@@ -32,14 +32,14 @@ pub const MAX_MODULES: usize = 17;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ResourceId {
-    SutraTokens      = 0,
-    AshtiField       = 1,
+    SutraTokens = 0,
+    AshtiField = 1,
     ExperienceMemory = 2,
-    MayaOutput       = 3,
-    CodexRules       = 4,
-    GenomeConfig     = 5,
-    ArbiterState     = 6,
-    HeartbeatClock   = 7,
+    MayaOutput = 3,
+    CodexRules = 4,
+    GenomeConfig = 5,
+    ArbiterState = 6,
+    HeartbeatClock = 7,
 }
 
 pub const MAX_RESOURCES: usize = 8;
@@ -48,10 +48,10 @@ pub const MAX_RESOURCES: usize = 8;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Permission {
-    None      = 0,
-    Read      = 1,
-    Execute   = 2,
-    Control   = 3,
+    None = 0,
+    Read = 1,
+    Execute = 2,
+    Control = 3,
     ReadWrite = 4,
 }
 
@@ -59,12 +59,12 @@ pub enum Permission {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum DataType {
-    TokenReference    = 0,
+    TokenReference = 0,
     ResonanceResponse = 1,
-    Reflex            = 2,
-    PatternHint       = 3,
-    ProcessingResult  = 4,
-    NewExperience     = 5,
-    ComparisonResult  = 6,
-    Feedback          = 7,
+    Reflex = 2,
+    PatternHint = 3,
+    ProcessingResult = 4,
+    NewExperience = 5,
+    ComparisonResult = 6,
+    Feedback = 7,
 }

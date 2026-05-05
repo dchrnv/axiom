@@ -5,7 +5,7 @@
 // Целочисленная пространственная модель с детерминистичной физикой
 
 pub mod simd;
-pub use simd::{apply_gravity_batch, apply_accelerations_to_velocities, GravityBatchResult};
+pub use simd::{apply_accelerations_to_velocities, apply_gravity_batch, GravityBatchResult};
 
 use serde::{Deserialize, Serialize};
 
@@ -484,8 +484,8 @@ pub fn integer_sqrt(n: i64) -> i64 {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct CellEntry {
-    pub token_index: u32,  // Индекс токена в массиве
-    pub next: u32,         // Индекс следующей записи или u32::MAX (конец списка)
+    pub token_index: u32, // Индекс токена в массиве
+    pub next: u32,        // Индекс следующей записи или u32::MAX (конец списка)
 }
 
 impl CellEntry {
@@ -514,9 +514,9 @@ impl CellEntry {
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct SpatialHashGrid {
-    pub bucket_heads: Vec<u32>,      // Головы корзин (BUCKET_COUNT элементов)
-    pub entries: Vec<CellEntry>,     // Массив записей (растёт по мере добавления)
-    pub entry_count: usize,          // Количество активных записей
+    pub bucket_heads: Vec<u32>,  // Головы корзин (BUCKET_COUNT элементов)
+    pub entries: Vec<CellEntry>, // Массив записей (растёт по мере добавления)
+    pub entry_count: usize,      // Количество активных записей
 }
 
 impl Default for SpatialHashGrid {
@@ -563,7 +563,8 @@ impl SpatialHashGrid {
         const P2: u32 = 19349663;
         const P3: u32 = 83492791;
 
-        let hash = (cell_x as u32).wrapping_mul(P1)
+        let hash = (cell_x as u32)
+            .wrapping_mul(P1)
             .wrapping_add((cell_y as u32).wrapping_mul(P2))
             .wrapping_add((cell_z as u32).wrapping_mul(P3));
 
@@ -600,7 +601,11 @@ impl SpatialHashGrid {
 
         CellIterator {
             grid: self,
-            current: if head == CellEntry::NONE { None } else { Some(head) },
+            current: if head == CellEntry::NONE {
+                None
+            } else {
+                Some(head)
+            },
         }
     }
 
@@ -673,7 +678,8 @@ impl SpatialHashGrid {
                     let cell_center_z = ((cell_z << CELL_SHIFT) + (CELL_SIZE / 2)) as i16;
 
                     // Собрать токены из этой ячейки
-                    for token_index in self.query_cell(cell_center_x, cell_center_y, cell_center_z) {
+                    for token_index in self.query_cell(cell_center_x, cell_center_y, cell_center_z)
+                    {
                         let (tx, ty, tz) = get_position(token_index);
 
                         // Точная проверка расстояния
@@ -814,14 +820,16 @@ impl SpatialConfig {
     /// Проверить корректность параметров
     pub fn validate(&self) -> Result<(), SpatialConfigError> {
         if self.cell_shift == 0 || self.cell_shift > 15 {
-            return Err(SpatialConfigError::ValidationError(
-                format!("cell_shift must be 1..15, got {}", self.cell_shift),
-            ));
+            return Err(SpatialConfigError::ValidationError(format!(
+                "cell_shift must be 1..15, got {}",
+                self.cell_shift
+            )));
         }
         if self.bucket_count_log2 < 8 || self.bucket_count_log2 > 24 {
-            return Err(SpatialConfigError::ValidationError(
-                format!("bucket_count_log2 must be 8..24, got {}", self.bucket_count_log2),
-            ));
+            return Err(SpatialConfigError::ValidationError(format!(
+                "bucket_count_log2 must be 8..24, got {}",
+                self.bucket_count_log2
+            )));
         }
         if self.initial_capacity == 0 {
             return Err(SpatialConfigError::ValidationError(
@@ -855,4 +863,3 @@ impl SpatialHashGrid {
         }
     }
 }
-

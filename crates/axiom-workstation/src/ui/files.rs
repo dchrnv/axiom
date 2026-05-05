@@ -1,4 +1,6 @@
-use iced::widget::{button, column, container, horizontal_space, row, scrollable, text, text_input};
+use iced::widget::{
+    button, column, container, horizontal_space, row, scrollable, text, text_input,
+};
 use iced::{Color, Element, Length};
 
 use crate::app::{CompletedImport, FilesState, Message};
@@ -38,7 +40,8 @@ fn import_controls<'a>(state: &'a FilesState) -> Element<'a, Message> {
                     } else {
                         btn.style(button::secondary)
                     };
-                    btn.on_press(Message::FilesAdapterSelected(a.id.clone())).into()
+                    btn.on_press(Message::FilesAdapterSelected(a.id.clone()))
+                        .into()
                 })
                 .collect();
             row(buttons).spacing(6).into()
@@ -69,10 +72,16 @@ fn import_controls<'a>(state: &'a FilesState) -> Element<'a, Message> {
 
     container(
         column![
-            text("Knowledge import").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
-            text("Adapter").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+            text("Knowledge import")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text("Adapter")
+                .size(11)
+                .color(Color::from_rgb(0.5, 0.5, 0.5)),
             adapter_row,
-            text("Source path").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+            text("Source path")
+                .size(11)
+                .color(Color::from_rgb(0.5, 0.5, 0.5)),
             path_input,
             start_btn,
         ]
@@ -124,7 +133,11 @@ fn progress_section<'a>(state: &'a FilesState) -> Element<'a, Message> {
         column![
             row![
                 text("●").size(13).color(Color::from_rgb(0.4, 0.65, 0.9)),
-                text(format!(" Importing via {}  —  {}", ri.adapter_id, ri.source)).size(13),
+                text(format!(
+                    " Importing via {}  —  {}",
+                    ri.adapter_id, ri.source
+                ))
+                .size(13),
             ],
             row![
                 text(progress_label)
@@ -154,11 +167,7 @@ fn history_section<'a>(state: &'a FilesState) -> Element<'a, Message> {
         .into();
     }
 
-    let cards: Vec<Element<Message>> = state
-        .completed_imports
-        .iter()
-        .map(import_card)
-        .collect();
+    let cards: Vec<Element<Message>> = state.completed_imports.iter().map(import_card).collect();
 
     container(
         column![

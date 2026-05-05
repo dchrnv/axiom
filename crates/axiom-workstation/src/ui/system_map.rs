@@ -1,20 +1,40 @@
 use std::f32::consts::PI;
 
 use iced::alignment;
-use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Stroke};
-use iced::widget::canvas::path::Arc;
-use iced::{Color, Element, Length, Point, Radians, Rectangle};
 use iced::mouse;
+use iced::widget::canvas::path::Arc;
+use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Stroke};
+use iced::{Color, Element, Length, Point, Radians, Rectangle};
 
 use axiom_protocol::events::EngineState;
 use axiom_protocol::snapshot::SystemSnapshot;
 
 use crate::app::Message;
 
-const BG: Color = Color { r: 0.05, g: 0.05, b: 0.08, a: 1.0 };
-const CORE_COLOR: Color = Color { r: 0.12, g: 0.12, b: 0.16, a: 1.0 };
-const DOMAIN_IDLE: Color = Color { r: 0.3, g: 0.3, b: 0.38, a: 1.0 };
-const LABEL_COLOR: Color = Color { r: 0.75, g: 0.75, b: 0.8, a: 1.0 };
+const BG: Color = Color {
+    r: 0.05,
+    g: 0.05,
+    b: 0.08,
+    a: 1.0,
+};
+const CORE_COLOR: Color = Color {
+    r: 0.12,
+    g: 0.12,
+    b: 0.16,
+    a: 1.0,
+};
+const DOMAIN_IDLE: Color = Color {
+    r: 0.3,
+    g: 0.3,
+    b: 0.38,
+    a: 1.0,
+};
+const LABEL_COLOR: Color = Color {
+    r: 0.75,
+    g: 0.75,
+    b: 0.8,
+    a: 1.0,
+};
 
 pub fn system_map_view(snapshot: &Option<SystemSnapshot>, phase: f32) -> Element<'_, Message> {
     Canvas::new(SystemMapCanvas { snapshot, phase })
@@ -151,9 +171,15 @@ fn draw_domains(
             &line,
             Stroke::default()
                 .with_color(if is_active {
-                    Color { a: 0.25, ..state_color }
+                    Color {
+                        a: 0.25,
+                        ..state_color
+                    }
                 } else {
-                    Color { a: 0.1, ..DOMAIN_IDLE }
+                    Color {
+                        a: 0.1,
+                        ..DOMAIN_IDLE
+                    }
                 })
                 .with_width(1.0),
         );
@@ -221,10 +247,7 @@ fn draw_loading(frame: &mut Frame, center: Point, r: f32, phase: f32) {
     for i in 0..3 {
         let ring_r = r * (0.35 + 0.33 * i as f32) * pulse;
         let ring = Path::circle(center, ring_r);
-        frame.stroke(
-            &ring,
-            Stroke::default().with_color(color).with_width(1.5),
-        );
+        frame.stroke(&ring, Stroke::default().with_color(color).with_width(1.5));
     }
 
     // Rotating arc

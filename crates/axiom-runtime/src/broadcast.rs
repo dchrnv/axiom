@@ -6,11 +6,9 @@
 // Намеренно не клонируют полные Token/Connection — только поля нужные
 // для визуализации и диагностики. Доступны только при feature "adapters".
 
-#![cfg(feature = "adapters")]
-
+use crate::over_domain::{CycleStage, DreamPhaseState, DreamPhaseStats, FrameWeaverStats};
 use axiom_core::STATE_LOCKED;
 use serde::Serialize;
-use crate::over_domain::{FrameWeaverStats, DreamPhaseState, DreamPhaseStats, CycleStage};
 
 /// Лёгкий snapshot состояния Engine для периодического broadcast.
 ///
@@ -37,17 +35,17 @@ pub struct BroadcastSnapshot {
 /// Snapshot состояния DREAM-фазы для BroadcastSnapshot.
 #[derive(Serialize, Clone)]
 pub struct DreamPhaseSnapshot {
-    pub state:           DreamPhaseState,
+    pub state: DreamPhaseState,
     pub current_fatigue: u8,
-    pub idle_ticks:      u32,
-    pub stats:           DreamPhaseStats,
-    pub current_cycle:   Option<ActiveCycleSnapshot>,
+    pub idle_ticks: u32,
+    pub stats: DreamPhaseStats,
+    pub current_cycle: Option<ActiveCycleSnapshot>,
 }
 
 /// Snapshot активного DreamCycle (только если state == Dreaming).
 #[derive(Serialize, Clone)]
 pub struct ActiveCycleSnapshot {
-    pub stage:      CycleStage,
+    pub stage: CycleStage,
     pub queue_size: usize,
 }
 
@@ -124,14 +122,14 @@ impl TokenSnapshot {
 
     fn from_token_with_shell(t: &axiom_core::Token, shell: axiom_shell::ShellProfile) -> Self {
         Self {
-            sutra_id:    t.sutra_id,
-            position:    t.position,
+            sutra_id: t.sutra_id,
+            position: t.position,
             shell,
-            mass:        t.mass,
+            mass: t.mass,
             temperature: t.temperature,
-            valence:     t.valence,
-            origin:      t.origin,
-            is_anchor:   t.state == STATE_LOCKED,
+            valence: t.valence,
+            origin: t.origin,
+            is_anchor: t.state == STATE_LOCKED,
         }
     }
 }
@@ -152,7 +150,7 @@ impl From<&axiom_core::Connection> for ConnectionSnapshot {
         Self {
             source_id: c.source_id,
             target_id: c.target_id,
-            weight:    c.strength,
+            weight: c.strength,
         }
     }
 }

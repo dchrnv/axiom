@@ -6,8 +6,8 @@
 // Этап 12A: Протокол 10→0
 // maya_output(level N) → sutra_input(level N+1)
 
-use axiom_core::{Token, Event};
 use crate::AshtiCore;
+use axiom_core::{Event, Token};
 
 /// Цепочка фрактальных уровней AshtiCore.
 ///
@@ -29,9 +29,7 @@ pub struct FractalChain {
 impl FractalChain {
     /// Создать цепочку из `depth` уровней (level_id: 0, 1, ..., depth-1).
     pub fn new(depth: usize) -> Self {
-        let levels = (0..depth)
-            .map(|i| AshtiCore::new(i as u16))
-            .collect();
+        let levels = (0..depth).map(|i| AshtiCore::new(i as u16)).collect();
         Self { levels }
     }
 
@@ -53,11 +51,12 @@ impl FractalChain {
     /// Один тик всей цепочки: тик каждого уровня + передача maya→sutra между уровнями.
     ///
     /// Порядок:
+    ///
     /// 1. Тик уровня 0
     /// 2. MAYA(0) → SUTRA(1)
     /// 3. Тик уровня 1
     /// 4. MAYA(1) → SUTRA(2)
-    /// ...
+    /// 5. и т.д.
     ///
     /// Возвращает все физические события всех уровней.
     pub fn tick(&mut self) -> Vec<Event> {
@@ -85,7 +84,9 @@ impl FractalChain {
     /// Возвращает общее число импортированных навыков.
     pub fn exchange_skills(&mut self) -> usize {
         // Собрать все навыки со всех уровней
-        let all_skills: Vec<_> = self.levels.iter()
+        let all_skills: Vec<_> = self
+            .levels
+            .iter()
             .flat_map(|lvl| lvl.export_skills())
             .collect();
 

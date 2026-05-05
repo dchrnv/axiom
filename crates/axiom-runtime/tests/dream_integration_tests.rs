@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Этап 4 — интеграционные тесты DREAM Phase в AxiomEngine.
 
-use axiom_runtime::{AxiomEngine, GatewayPriority, DreamPhaseState, DreamSchedulerConfig, DreamScheduler, FatigueWeights};
-use axiom_ucl::{UclCommand, OpCode, InjectTokenPayload};
+use axiom_runtime::{
+    AxiomEngine, DreamPhaseState, DreamScheduler, DreamSchedulerConfig, FatigueWeights,
+    GatewayPriority,
+};
+use axiom_ucl::{InjectTokenPayload, OpCode, UclCommand};
 
 /// Построить TickForward UCL-команду.
 fn tick_cmd() -> UclCommand {
@@ -24,7 +27,11 @@ fn engine_falls_asleep_when_idle() {
     let mut engine = AxiomEngine::new();
     // Scheduler с min_wake=0, idle_threshold=5 — засыпает после 5 тиков без ввода
     engine.dream_scheduler = DreamScheduler::new(
-        DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 5, fatigue_threshold: 255 },
+        DreamSchedulerConfig {
+            min_wake_ticks: 0,
+            idle_threshold: 5,
+            fatigue_threshold: 255,
+        },
         FatigueWeights::default(),
     );
 
@@ -32,10 +39,17 @@ fn engine_falls_asleep_when_idle() {
     run_ticks(&mut engine, 7);
 
     // После 7 тиков система должна быть в DREAMING (или как минимум не WAKE)
-    assert_ne!(engine.dream_phase_state, DreamPhaseState::Wake,
-        "state={:?} — expected non-Wake after idle threshold crossed", engine.dream_phase_state);
-    assert!(engine.dream_phase_stats.total_sleeps >= 1,
-        "total_sleeps={}", engine.dream_phase_stats.total_sleeps);
+    assert_ne!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
+        "state={:?} — expected non-Wake after idle threshold crossed",
+        engine.dream_phase_state
+    );
+    assert!(
+        engine.dream_phase_stats.total_sleeps >= 1,
+        "total_sleeps={}",
+        engine.dream_phase_stats.total_sleeps
+    );
 }
 
 // ── 4.8.b — critical_signal_wakes_system ─────────────────────────────────────
@@ -44,14 +58,22 @@ fn engine_falls_asleep_when_idle() {
 fn critical_signal_wakes_system() {
     let mut engine = AxiomEngine::new();
     engine.dream_scheduler = DreamScheduler::new(
-        DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 3, fatigue_threshold: 255 },
+        DreamSchedulerConfig {
+            min_wake_ticks: 0,
+            idle_threshold: 3,
+            fatigue_threshold: 255,
+        },
         FatigueWeights::default(),
     );
 
     // Засыпаем: 3 idle → FallingAsleep, +1 тик → Dreaming
     run_ticks(&mut engine, 5);
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Dreaming,
-        "expected Dreaming, got {:?}", engine.dream_phase_state);
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Dreaming,
+        "expected Dreaming, got {:?}",
+        engine.dream_phase_state
+    );
 
     // Подаём Critical-команду
     let critical_cmd = UclCommand::new(OpCode::TickForward, 0, 255, 0); // любая команда
@@ -63,8 +85,12 @@ fn critical_signal_wakes_system() {
     // Waking → Wake (ещё один тик)
     run_ticks(&mut engine, 1);
 
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Wake,
-        "expected Wake after critical signal, got {:?}", engine.dream_phase_state);
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
+        "expected Wake after critical signal, got {:?}",
+        engine.dream_phase_state
+    );
     assert_eq!(engine.dream_phase_stats.interrupted_dreams, 1);
 }
 
@@ -76,8 +102,10 @@ fn normal_command_not_buffered_when_awake() {
     // В состоянии Wake Normal-команды не попадают в priority buffer
     let cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
     engine.submit_priority_command(cmd, GatewayPriority::Normal);
-    assert!(!engine.has_critical_pending(),
-        "Normal command should not be in priority buffer in Wake state");
+    assert!(
+        !engine.has_critical_pending(),
+        "Normal command should not be in priority buffer in Wake state"
+    );
 }
 
 // ── 4.8.d — dream_report_token_submitted_on_complete ─────────────────────────
@@ -86,7 +114,11 @@ fn normal_command_not_buffered_when_awake() {
 fn dream_cycle_completes_naturally_on_empty_queue() {
     let mut engine = AxiomEngine::new();
     engine.dream_scheduler = DreamScheduler::new(
-        DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 2, fatigue_threshold: 255 },
+        DreamSchedulerConfig {
+            min_wake_ticks: 0,
+            idle_threshold: 2,
+            fatigue_threshold: 255,
+        },
         FatigueWeights::default(),
     );
 
@@ -106,7 +138,11 @@ fn dream_cycle_completes_naturally_on_empty_queue() {
 fn dream_stats_update_through_full_cycle() {
     let mut engine = AxiomEngine::new();
     engine.dream_scheduler = DreamScheduler::new(
-        DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 2, fatigue_threshold: 255 },
+        DreamSchedulerConfig {
+            min_wake_ticks: 0,
+            idle_threshold: 2,
+            fatigue_threshold: 255,
+        },
         FatigueWeights::default(),
     );
 
@@ -115,9 +151,11 @@ fn dream_stats_update_through_full_cycle() {
     // total_dream_ticks должны быть > 0 если система спала
     if engine.dream_phase_stats.total_sleeps > 0 {
         // Либо ещё в DREAMING, либо уже проснулась — в любом случае тики считались
-        assert!(engine.dream_phase_stats.total_dream_ticks > 0
-            || engine.dream_phase_state == DreamPhaseState::Wake,
-            "dream_ticks=0 but total_sleeps>0");
+        assert!(
+            engine.dream_phase_stats.total_dream_ticks > 0
+                || engine.dream_phase_state == DreamPhaseState::Wake,
+            "dream_ticks=0 but total_sleeps>0"
+        );
     }
 }
 
@@ -133,13 +171,20 @@ fn state_machine_starts_in_wake() {
 fn state_machine_transitions_wake_to_falling_asleep() {
     let mut engine = AxiomEngine::new();
     engine.dream_scheduler = DreamScheduler::new(
-        DreamSchedulerConfig { min_wake_ticks: 0, idle_threshold: 1, fatigue_threshold: 255 },
+        DreamSchedulerConfig {
+            min_wake_ticks: 0,
+            idle_threshold: 1,
+            fatigue_threshold: 255,
+        },
         FatigueWeights::default(),
     );
 
     run_ticks(&mut engine, 2); // тик 1: idle=1 → GoToSleep → FallingAsleep; тик 2: → Dreaming
-    assert_ne!(engine.dream_phase_state, DreamPhaseState::Wake,
-        "should have left Wake after idle trigger");
+    assert_ne!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
+        "should have left Wake after idle trigger"
+    );
 }
 
 // ── 4.8.g — had_intake_this_tick_set_by_process_and_observe ──────────────────
@@ -167,8 +212,10 @@ fn had_intake_set_by_process_and_observe() {
     // process_and_observe с InjectToken → true
     let inject_cmd = make_inject_cmd();
     engine.process_and_observe(&inject_cmd);
-    assert!(engine.had_intake_this_tick(),
-        "had_intake_this_tick should be true after process_and_observe with InjectToken");
+    assert!(
+        engine.had_intake_this_tick(),
+        "had_intake_this_tick should be true after process_and_observe with InjectToken"
+    );
 }
 
 // ── 4.8.h — had_intake_resets_on_tick_forward ────────────────────────────────
@@ -182,6 +229,8 @@ fn had_intake_resets_on_tick_forward() {
 
     // TickForward должен сбросить флаг
     run_ticks(&mut engine, 1);
-    assert!(!engine.had_intake_this_tick(),
-        "had_intake_this_tick should be reset after TickForward");
+    assert!(
+        !engine.had_intake_this_tick(),
+        "had_intake_this_tick should be reset after TickForward"
+    );
 }

@@ -1,8 +1,8 @@
 // Тесты автосохранения — Фаза 3 Memory Persistence V1.0
 
-use axiom_persist::{AutoSaver, PersistenceConfig, load};
+use axiom_persist::{load, AutoSaver, PersistenceConfig};
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 use std::path::PathBuf;
 
 fn temp_dir(name: &str) -> PathBuf {
@@ -30,7 +30,10 @@ fn test_autosave_disabled_never_saves() {
     tick_engine(&mut engine, 10000);
 
     for _ in 0..5 {
-        assert!(!saver.tick(&engine, &dir), "disabled autosaver must never trigger");
+        assert!(
+            !saver.tick(&engine, &dir),
+            "disabled autosaver must never trigger"
+        );
     }
     assert!(!dir.join("manifest.yaml").exists());
 }
@@ -118,8 +121,14 @@ fn test_autosave_file_created_automatically() {
     tick_engine(&mut engine, 50);
     saver.tick(&engine, &dir);
 
-    assert!(dir.join("manifest.yaml").exists(),   "manifest должен появиться");
-    assert!(dir.join("engine_state.bin").exists(), "engine_state должен появиться");
+    assert!(
+        dir.join("manifest.yaml").exists(),
+        "manifest должен появиться"
+    );
+    assert!(
+        dir.join("engine_state.bin").exists(),
+        "engine_state должен появиться"
+    );
 }
 
 // ─── Тест 7: После autosave — load восстанавливает состояние ─────────────────
@@ -157,8 +166,10 @@ fn test_interrupted_write_old_state_survives() {
     std::fs::write(&tmp_path, b"garbage corrupted data").unwrap();
 
     let result = load(&dir).expect("load should succeed with orphaned .tmp file");
-    assert_eq!(result.engine.tick_count, tick_before,
-        "должен загрузить старое состояние, .tmp проигнорирован");
+    assert_eq!(
+        result.engine.tick_count, tick_before,
+        "должен загрузить старое состояние, .tmp проигнорирован"
+    );
 }
 
 // ─── Тест 9: force_save работает ─────────────────────────────────────────────
@@ -173,7 +184,9 @@ fn test_force_save() {
     tick_engine(&mut engine, 5);
 
     assert!(!saver.should_save(&engine));
-    saver.force_save(&engine, &dir).expect("force_save должен работать");
+    saver
+        .force_save(&engine, &dir)
+        .expect("force_save должен работать");
     assert!(dir.join("manifest.yaml").exists());
     assert_eq!(saver.save_count, 1);
 }
@@ -191,7 +204,10 @@ fn test_set_interval_toggles() {
     assert!(!saver.should_save(&engine), "disabled → no save");
 
     saver.set_interval(50);
-    assert!(saver.should_save(&engine), "enabled → should save at tick=100");
+    assert!(
+        saver.should_save(&engine),
+        "enabled → should save at tick=100"
+    );
 
     saver.tick(&engine, &dir);
     saver.set_interval(0);

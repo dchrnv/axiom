@@ -4,7 +4,7 @@
 // Event-Driven V1: docs/spec/time/Event-Driven_V1.md
 // Time Model V1.0: причинный возраст вместо wall-clock времени
 
-use axiom_core::{Token, Connection, Event, EventType, EventPriority};
+use axiom_core::{Connection, Event, EventPriority, EventType, Token};
 
 /// Порог затухания по умолчанию: 1/decay_rate событий причинного возраста.
 /// Decay_rate = 0.001 → порог = 1000 событий.
@@ -92,8 +92,12 @@ impl EventGenerator {
     /// SPACE V6.0: используется после обнаружения столкновения через spatial hash.
     pub fn generate_collision(&self, token1: &Token, token2: &Token) -> Event {
         let dist2 = axiom_space::distance2(
-            token1.position[0], token1.position[1], token1.position[2],
-            token2.position[0], token2.position[1], token2.position[2],
+            token1.position[0],
+            token1.position[1],
+            token1.position[2],
+            token2.position[0],
+            token2.position[1],
+            token2.position[2],
         );
 
         Event::with_pulse(
@@ -167,9 +171,15 @@ impl EventGenerator {
 
     fn compute_stress_hash(&self, connection: &Connection) -> u64 {
         let mut hash = connection.source_id as u64;
-        hash = hash.wrapping_mul(31).wrapping_add(connection.target_id as u64);
-        hash = hash.wrapping_mul(31).wrapping_add(connection.current_stress.to_bits() as u64);
-        hash = hash.wrapping_mul(31).wrapping_add(connection.strength.to_bits() as u64);
+        hash = hash
+            .wrapping_mul(31)
+            .wrapping_add(connection.target_id as u64);
+        hash = hash
+            .wrapping_mul(31)
+            .wrapping_add(connection.current_stress.to_bits() as u64);
+        hash = hash
+            .wrapping_mul(31)
+            .wrapping_add(connection.strength.to_bits() as u64);
         hash
     }
 }

@@ -1,10 +1,10 @@
 // Этап 7 Шаг 2 — Event Log Pruning тесты
-use axiom_runtime::AxiomEngine;
 use axiom_core::Token;
+use axiom_runtime::AxiomEngine;
 
 fn inject_token_with_event(engine: &mut AxiomEngine, domain_idx: usize, event_id: u64) {
     let domain_id = engine.ashti.domain_id_at(domain_idx).unwrap();
-    let mut tok = Token::new(1, domain_id as u16, [0, 0, 0], event_id);
+    let mut tok = Token::new(1, domain_id, [0, 0, 0], event_id);
     tok.last_event_id = event_id;
     let _ = engine.ashti.inject_token(domain_id, tok);
 }
@@ -132,7 +132,7 @@ fn test_snapshot_and_prune_combined() {
 fn test_snapshot_and_prune_captures_tokens() {
     let mut engine = AxiomEngine::new();
     let domain_id = engine.ashti.domain_id_at(1).unwrap();
-    let mut tok = Token::new(1, domain_id as u16, [10, 20, 30], 42);
+    let mut tok = Token::new(1, domain_id, [10, 20, 30], 42);
     tok.last_event_id = 42;
     let _ = engine.ashti.inject_token(domain_id, tok);
 

@@ -31,9 +31,9 @@ pub struct TelegramConfig {
 #[derive(Debug, Clone)]
 pub struct TelegramUpdate {
     pub update_id: u64,
-    pub chat_id:   i64,
-    pub user_id:   i64,
-    pub text:      String,
+    pub chat_id: i64,
+    pub user_id: i64,
+    pub text: String,
 }
 
 /// Разобрать JSON-ответ getUpdates в список апдейтов.
@@ -49,11 +49,16 @@ pub fn parse_updates(json: &str) -> Vec<TelegramUpdate> {
     arr.iter()
         .filter_map(|u| {
             let update_id = u.get("update_id")?.as_u64()?;
-            let msg       = u.get("message")?;
-            let text      = msg.get("text")?.as_str()?.to_string();
-            let chat_id   = msg.get("chat")?.get("id")?.as_i64()?;
-            let user_id   = msg.get("from")?.get("id")?.as_i64()?;
-            Some(TelegramUpdate { update_id, chat_id, user_id, text })
+            let msg = u.get("message")?;
+            let text = msg.get("text")?.as_str()?.to_string();
+            let chat_id = msg.get("chat")?.get("id")?.as_i64()?;
+            let user_id = msg.get("from")?.get("id")?.as_i64()?;
+            Some(TelegramUpdate {
+                update_id,
+                chat_id,
+                user_id,
+                text,
+            })
         })
         .collect()
 }
@@ -67,13 +72,19 @@ pub fn route_message(text: &str) -> Option<AdapterPayload> {
         return None; // handled specially — send welcome, no engine command
     }
     if t == "/status" || t == "/state" {
-        return Some(AdapterPayload::MetaRead { cmd: ":status".to_string() });
+        return Some(AdapterPayload::MetaRead {
+            cmd: ":status".to_string(),
+        });
     }
     if t == "/domains" {
-        return Some(AdapterPayload::MetaRead { cmd: ":domains".to_string() });
+        return Some(AdapterPayload::MetaRead {
+            cmd: ":domains".to_string(),
+        });
     }
     if t == "/traces" {
-        return Some(AdapterPayload::MetaRead { cmd: ":traces".to_string() });
+        return Some(AdapterPayload::MetaRead {
+            cmd: ":traces".to_string(),
+        });
     }
     if t.starts_with('/') {
         // Unknown bot command — ignore
@@ -81,8 +92,9 @@ pub fn route_message(text: &str) -> Option<AdapterPayload> {
     }
     if t.starts_with(':') {
         let cmd = t.splitn(2, ' ').next().unwrap_or(t);
-        let is_mutate = matches!(cmd,
-            ":save"|":load"|":autosave"|":tick"|":export"|":import"|":quit"|":q"
+        let is_mutate = matches!(
+            cmd,
+            ":save" | ":load" | ":autosave" | ":tick" | ":export" | ":import" | ":quit" | ":q"
         );
         return Some(if is_mutate {
             AdapterPayload::MetaMutate { cmd: t.to_string() }
@@ -90,16 +102,18 @@ pub fn route_message(text: &str) -> Option<AdapterPayload> {
             AdapterPayload::MetaRead { cmd: t.to_string() }
         });
     }
-    Some(AdapterPayload::Inject { text: t.to_string() })
+    Some(AdapterPayload::Inject {
+        text: t.to_string(),
+    })
 }
 
 /// Telegram External Adapter.
 pub struct TelegramAdapter {
-    config:  TelegramConfig,
+    config: TelegramConfig,
     /// command_id → chat_id (ожидание ответа)
     pending: Arc<Mutex<HashMap<String, i64>>>,
     /// Монотонный счётчик для уникальных command_id
-    seq:     u64,
+    seq: u64,
 }
 
 impl TelegramAdapter {
@@ -107,17 +121,21 @@ impl TelegramAdapter {
         Self {
             config,
             pending: Arc::new(Mutex::new(HashMap::new())),
-            seq:     0,
+            seq: 0,
         }
     }
 
     /// Запустить адаптер: создаёт два async-таска, возвращает немедленно.
     pub fn run(
         self,
-        command_tx:   mpsc::Sender<AdapterCommand>,
+        command_tx: mpsc::Sender<AdapterCommand>,
         broadcast_tx: broadcast::Sender<ServerMessage>,
     ) {
-        let TelegramAdapter { config, pending, seq: _ } = self;
+        let TelegramAdapter {
+            config,
+            pending,
+            seq: _,
+        } = self;
         let config = Arc::new(config);
         let broadcast_rx = broadcast_tx.subscribe();
 
@@ -140,25 +158,29 @@ impl TelegramAdapter {
 // ─── Task 1: polling ──────────────────────────────────────────────────────────
 
 async fn poll_task(
-    config:     Arc<TelegramConfig>,
+    config: Arc<TelegramConfig>,
     command_tx: mpsc::Sender<AdapterCommand>,
-    pending:    Arc<Mutex<HashMap<String, i64>>>,
+    pending: Arc<Mutex<HashMap<String, i64>>>,
 ) {
     let client = reqwest::Client::new();
     let mut offset: u64 = 0;
-    let mut seq:    u64 = 0;
+    let mut seq: u64 = 0;
 
     loop {
         let url = format!(
             "https://api.telegram.org/bot{}/getUpdates?offset={}&timeout=30",
-            config.token,
-            offset,
+            config.token, offset,
         );
-        let body = match client.get(&url)
+        let body = match client
+            .get(&url)
             .timeout(Duration::from_secs(40))
-            .send().await
+            .send()
+            .await
         {
-            Ok(r)  => match r.text().await { Ok(t) => t, Err(_) => continue },
+            Ok(r) => match r.text().await {
+                Ok(t) => t,
+                Err(_) => continue,
+            },
             Err(_) => {
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 continue;
@@ -172,26 +194,26 @@ async fn poll_task(
             }
 
             // Access control
-            if !config.allowed_users.is_empty()
-                && !config.allowed_users.contains(&upd.user_id)
-            {
-                let _ = send_message(
-                    &client, &config.token, upd.chat_id,
-                    "Access denied."
-                ).await;
+            if !config.allowed_users.is_empty() && !config.allowed_users.contains(&upd.user_id) {
+                let _ = send_message(&client, &config.token, upd.chat_id, "Access denied.").await;
                 continue;
             }
 
             // /start — welcome message, no engine command
             if upd.text.trim() == "/start" {
                 let _ = send_message(
-                    &client, &config.token, upd.chat_id,
-                    "AXIOM Agent ready. Send text to inject, or /status /domains /traces."
-                ).await;
+                    &client,
+                    &config.token,
+                    upd.chat_id,
+                    "AXIOM Agent ready. Send text to inject, or /status /domains /traces.",
+                )
+                .await;
                 continue;
             }
 
-            let Some(payload) = route_message(&upd.text) else { continue };
+            let Some(payload) = route_message(&upd.text) else {
+                continue;
+            };
 
             seq += 1;
             let id = format!("tg{seq}");
@@ -199,7 +221,7 @@ async fn poll_task(
 
             let cmd = AdapterCommand {
                 id,
-                source:  AdapterSource::Telegram(upd.chat_id),
+                source: AdapterSource::Telegram(upd.chat_id),
                 payload,
             };
             if command_tx.send(cmd).await.is_err() {
@@ -212,9 +234,9 @@ async fn poll_task(
 // ─── Task 2: notify ───────────────────────────────────────────────────────────
 
 async fn notify_task(
-    config:      Arc<TelegramConfig>,
-    mut rx:      broadcast::Receiver<ServerMessage>,
-    pending:     Arc<Mutex<HashMap<String, i64>>>,
+    config: Arc<TelegramConfig>,
+    mut rx: broadcast::Receiver<ServerMessage>,
+    pending: Arc<Mutex<HashMap<String, i64>>>,
 ) {
     let client = reqwest::Client::new();
     loop {
@@ -228,7 +250,7 @@ async fn notify_task(
                 }
             }
             Err(broadcast::error::RecvError::Lagged(_)) => {}
-            Err(broadcast::error::RecvError::Closed)    => return,
+            Err(broadcast::error::RecvError::Closed) => return,
         }
     }
 }
@@ -240,7 +262,14 @@ fn extract_response(msg: &ServerMessage) -> Option<(String, String)> {
             Some((command_id.clone(), output.trim().to_string()))
         }
         ServerMessage::Result {
-            command_id, domain_name, coherence, traces_matched, position, path, reflex_hit, ..
+            command_id,
+            domain_name,
+            coherence,
+            traces_matched,
+            position,
+            path,
+            reflex_hit,
+            ..
         } => {
             let [x, y, z] = position;
             let reflex = if *reflex_hit { " ⚡" } else { "" };
@@ -250,21 +279,23 @@ fn extract_response(msg: &ServerMessage) -> Option<(String, String)> {
             );
             Some((command_id.clone(), text))
         }
-        ServerMessage::Error { command_id: Some(id), message } => {
-            Some((id.clone(), format!("error: {message}")))
-        }
+        ServerMessage::Error {
+            command_id: Some(id),
+            message,
+        } => Some((id.clone(), format!("error: {message}"))),
         _ => None,
     }
 }
 
 async fn send_message(
-    client:  &reqwest::Client,
-    token:   &str,
+    client: &reqwest::Client,
+    token: &str,
     chat_id: i64,
-    text:    &str,
+    text: &str,
 ) -> Result<(), reqwest::Error> {
     let url = format!("https://api.telegram.org/bot{token}/sendMessage");
-    client.post(&url)
+    client
+        .post(&url)
         .json(&serde_json::json!({ "chat_id": chat_id, "text": text }))
         .timeout(Duration::from_secs(10))
         .send()
@@ -348,7 +379,7 @@ mod tests {
     fn extract_command_result() {
         let msg = ServerMessage::CommandResult {
             command_id: "tg1".to_string(),
-            output:     "ok\n".to_string(),
+            output: "ok\n".to_string(),
         };
         let (id, text) = extract_response(&msg).unwrap();
         assert_eq!(id, "tg1");
@@ -358,16 +389,16 @@ mod tests {
     #[test]
     fn extract_result_message() {
         let msg = ServerMessage::Result {
-            command_id:     "tg2".to_string(),
-            path:           "Direct".to_string(),
-            domain_id:      100,
-            domain_name:    "SUTRA".to_string(),
-            coherence:      0.85,
-            reflex_hit:     false,
+            command_id: "tg2".to_string(),
+            path: "Direct".to_string(),
+            domain_id: 100,
+            domain_name: "SUTRA".to_string(),
+            coherence: 0.85,
+            reflex_hit: false,
             traces_matched: 3,
-            position:       [1, 2, 3],
-            shell:          [0; 8],
-            event_id:       0,
+            position: [1, 2, 3],
+            shell: [0; 8],
+            event_id: 0,
         };
         let (id, text) = extract_response(&msg).unwrap();
         assert_eq!(id, "tg2");
@@ -378,7 +409,10 @@ mod tests {
     #[test]
     fn extract_ignores_tick_state() {
         let tick = ServerMessage::Tick {
-            tick_count: 1, traces: 0, tension: 0, last_matched: 0,
+            tick_count: 1,
+            traces: 0,
+            tension: 0,
+            last_matched: 0,
         };
         assert!(extract_response(&tick).is_none());
     }

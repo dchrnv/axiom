@@ -1,6 +1,6 @@
 // Integration tests for axiom-domain physics: EventGenerator
+use axiom_core::{Connection, EventType, Token};
 use axiom_domain::EventGenerator;
-use axiom_core::{Token, Connection, EventType};
 
 // ============================================================
 // check_decay
@@ -87,7 +87,10 @@ fn test_gravity_update_deterministic_hash() {
 
     let e1 = gen.generate_gravity_update(&token);
     let e2 = gen.generate_gravity_update(&token);
-    assert_eq!(e1.payload_hash, e2.payload_hash, "Hash must be deterministic");
+    assert_eq!(
+        e1.payload_hash, e2.payload_hash,
+        "Hash must be deterministic"
+    );
 }
 
 // ============================================================
@@ -129,11 +132,13 @@ fn test_collision_deterministic_hash() {
 #[test]
 fn test_connection_stress_weakened() {
     let gen = EventGenerator::new();
-    let mut conn = Connection::default();
-    conn.source_id = 1;
-    conn.target_id = 2;
-    conn.domain_id = 6;
-    conn.current_stress = 0.9; // > 0.8 but < 0.8 * 2.0 = 1.6
+    let conn = Connection {
+        source_id: 1,
+        target_id: 2,
+        domain_id: 6,
+        current_stress: 0.9, // > 0.8 but < 0.8 * 2.0 = 1.6
+        ..Connection::default()
+    };
 
     let event = gen.check_connection_stress(&conn, 0.8);
     assert!(event.is_some());
@@ -144,11 +149,13 @@ fn test_connection_stress_weakened() {
 #[test]
 fn test_connection_stress_broken() {
     let gen = EventGenerator::new();
-    let mut conn = Connection::default();
-    conn.source_id = 1;
-    conn.target_id = 2;
-    conn.domain_id = 6;
-    conn.current_stress = 2.0; // > 0.8 * 2.0 = 1.6
+    let conn = Connection {
+        source_id: 1,
+        target_id: 2,
+        domain_id: 6,
+        current_stress: 2.0, // > 0.8 * 2.0 = 1.6
+        ..Connection::default()
+    };
 
     let event = gen.check_connection_stress(&conn, 0.8);
     assert!(event.is_some());
@@ -159,8 +166,10 @@ fn test_connection_stress_broken() {
 #[test]
 fn test_connection_stress_below_threshold() {
     let gen = EventGenerator::new();
-    let mut conn = Connection::default();
-    conn.current_stress = 0.5; // < 0.8
+    let conn = Connection {
+        current_stress: 0.5, // < 0.8
+        ..Connection::default()
+    };
 
     let event = gen.check_connection_stress(&conn, 0.8);
     assert!(event.is_none(), "Low stress should produce no event");
@@ -169,15 +178,20 @@ fn test_connection_stress_below_threshold() {
 #[test]
 fn test_connection_stress_deterministic_hash() {
     let gen = EventGenerator::new();
-    let mut conn = Connection::default();
-    conn.source_id = 5;
-    conn.target_id = 10;
-    conn.current_stress = 1.0;
-    conn.strength = 0.5;
+    let conn = Connection {
+        source_id: 5,
+        target_id: 10,
+        current_stress: 1.0,
+        strength: 0.5,
+        ..Connection::default()
+    };
 
     let e1 = gen.check_connection_stress(&conn, 0.8).unwrap();
     let e2 = gen.check_connection_stress(&conn, 0.8).unwrap();
-    assert_eq!(e1.payload_hash, e2.payload_hash, "Hash must be deterministic");
+    assert_eq!(
+        e1.payload_hash, e2.payload_hash,
+        "Hash must be deterministic"
+    );
 }
 
 // ============================================================

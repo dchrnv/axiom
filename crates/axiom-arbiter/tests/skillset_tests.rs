@@ -1,4 +1,4 @@
-use axiom_arbiter::{Skill, SkillSet, ExperienceModule};
+use axiom_arbiter::{ExperienceModule, Skill, SkillSet};
 use axiom_core::Token;
 
 fn token_at(x: i16, y: i16, z: i16) -> Token {

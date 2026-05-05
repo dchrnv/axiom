@@ -4,7 +4,7 @@
 // Heartbeat V2.0: docs/spec/time/Heartbeat_V2_0.md
 // Периодическая активация фоновых процессов через причинный порядок
 
-use axiom_core::event::{Event, EventType, EventPriority};
+use axiom_core::event::{Event, EventPriority, EventType};
 use axiom_frontier::CausalFrontier;
 
 /// Конфигурация Heartbeat для домена
@@ -185,8 +185,8 @@ impl HeartbeatGenerator {
             EventType::Heartbeat,
             EventPriority::Low,
             self.compute_pulse_hash(pulse_number),
-            0, // target_id не используется для Heartbeat
-            0, // source_id не используется для Heartbeat
+            0,                          // target_id не используется для Heartbeat
+            0,                          // source_id не используется для Heartbeat
             event_id.saturating_sub(1), // parent_event_id
             pulse_number,
         )
@@ -232,9 +232,13 @@ pub fn handle_heartbeat(
     }
 
     // Добавляем связи если включено обслуживание
-    if config.enable_connection_maintenance && config.connection_batch_size > 0 && total_connections > 0 {
+    if config.enable_connection_maintenance
+        && config.connection_batch_size > 0
+        && total_connections > 0
+    {
         for i in 0..config.connection_batch_size {
-            let conn_idx = ((pulse_number as usize) * config.connection_batch_size + i) % total_connections;
+            let conn_idx =
+                ((pulse_number as usize) * config.connection_batch_size + i) % total_connections;
             frontier.push_connection(conn_idx as u32);
         }
     }

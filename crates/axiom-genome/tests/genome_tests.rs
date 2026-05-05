@@ -1,8 +1,5 @@
+use axiom_genome::{DataType, Genome, GenomeError, GenomeIndex, ModuleId, Permission, ResourceId};
 use std::path::Path;
-use axiom_genome::{
-    Genome, GenomeError, GenomeIndex,
-    ModuleId, ResourceId, Permission, DataType,
-};
 
 // ============================================================================
 // default_ashti_core + validate
@@ -78,9 +75,9 @@ fn test_invalid_event_size_fails_validation() {
 #[test]
 fn test_missing_guardian_codex_access_fails() {
     let mut genome = Genome::default_ashti_core();
-    genome.access_rules.retain(|r|
-        !(r.module == ModuleId::Guardian && r.resource == ResourceId::CodexRules)
-    );
+    genome
+        .access_rules
+        .retain(|r| !(r.module == ModuleId::Guardian && r.resource == ResourceId::CodexRules));
     assert_eq!(genome.validate(), Err(GenomeError::MissingGuardianAccess));
 }
 
@@ -88,9 +85,9 @@ fn test_missing_guardian_codex_access_fails() {
 fn test_missing_mandatory_protocol_fails() {
     let mut genome = Genome::default_ashti_core();
     // Удаляем обязательный маршрут SUTRA→EXPERIENCE
-    genome.protocol_rules.retain(|r|
+    genome.protocol_rules.retain(|r| {
         !(r.source == ModuleId::Sutra && r.target == ModuleId::Experience && r.mandatory)
-    );
+    });
     assert!(matches!(
         genome.validate(),
         Err(GenomeError::MissingMandatoryProtocol(_))
@@ -119,21 +116,33 @@ fn test_zero_heartbeat_interval_fails() {
 fn test_index_guardian_has_readwrite_on_codex() {
     let genome = Genome::default_ashti_core();
     let index = GenomeIndex::build(&genome);
-    assert!(index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite));
+    assert!(index.check_access(
+        ModuleId::Guardian,
+        ResourceId::CodexRules,
+        Permission::ReadWrite
+    ));
 }
 
 #[test]
 fn test_index_guardian_can_read_genome() {
     let genome = Genome::default_ashti_core();
     let index = GenomeIndex::build(&genome);
-    assert!(index.check_access(ModuleId::Guardian, ResourceId::GenomeConfig, Permission::Read));
+    assert!(index.check_access(
+        ModuleId::Guardian,
+        ResourceId::GenomeConfig,
+        Permission::Read
+    ));
 }
 
 #[test]
 fn test_index_adapters_cannot_write_codex() {
     let genome = Genome::default_ashti_core();
     let index = GenomeIndex::build(&genome);
-    assert!(!index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite));
+    assert!(!index.check_access(
+        ModuleId::Adapters,
+        ResourceId::CodexRules,
+        Permission::ReadWrite
+    ));
 }
 
 #[test]
@@ -141,7 +150,11 @@ fn test_index_arbiter_cannot_control_experience() {
     let genome = Genome::default_ashti_core();
     let index = GenomeIndex::build(&genome);
     // Arbiter имеет только Read на ExperienceMemory — Control запрещён
-    assert!(!index.check_access(ModuleId::Arbiter, ResourceId::ExperienceMemory, Permission::Control));
+    assert!(!index.check_access(
+        ModuleId::Arbiter,
+        ResourceId::ExperienceMemory,
+        Permission::Control
+    ));
 }
 
 #[test]
@@ -219,17 +232,38 @@ fn test_from_yaml_matches_default() {
     let default_genome = Genome::default_ashti_core();
 
     // Инварианты совпадают
-    assert_eq!(yaml_genome.invariants.token_size, default_genome.invariants.token_size);
-    assert_eq!(yaml_genome.invariants.max_domains, default_genome.invariants.max_domains);
-    assert_eq!(yaml_genome.invariants.no_wall_clock_in_core, default_genome.invariants.no_wall_clock_in_core);
+    assert_eq!(
+        yaml_genome.invariants.token_size,
+        default_genome.invariants.token_size
+    );
+    assert_eq!(
+        yaml_genome.invariants.max_domains,
+        default_genome.invariants.max_domains
+    );
+    assert_eq!(
+        yaml_genome.invariants.no_wall_clock_in_core,
+        default_genome.invariants.no_wall_clock_in_core
+    );
 
     // Количество правил совпадает
-    assert_eq!(yaml_genome.access_rules.len(), default_genome.access_rules.len());
-    assert_eq!(yaml_genome.protocol_rules.len(), default_genome.protocol_rules.len());
+    assert_eq!(
+        yaml_genome.access_rules.len(),
+        default_genome.access_rules.len()
+    );
+    assert_eq!(
+        yaml_genome.protocol_rules.len(),
+        default_genome.protocol_rules.len()
+    );
 
     // Config совпадает
-    assert_eq!(yaml_genome.config.ashti_domain_count, default_genome.config.ashti_domain_count);
-    assert_eq!(yaml_genome.config.default_heartbeat_interval, default_genome.config.default_heartbeat_interval);
+    assert_eq!(
+        yaml_genome.config.ashti_domain_count,
+        default_genome.config.ashti_domain_count
+    );
+    assert_eq!(
+        yaml_genome.config.default_heartbeat_interval,
+        default_genome.config.default_heartbeat_interval
+    );
 }
 
 #[test]
@@ -243,16 +277,32 @@ fn test_from_yaml_index_same_behavior() {
 
     // O(1) lookup должны давать одинаковые результаты
     assert_eq!(
-        yaml_index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite),
-        default_index.check_access(ModuleId::Guardian, ResourceId::CodexRules, Permission::ReadWrite),
+        yaml_index.check_access(
+            ModuleId::Guardian,
+            ResourceId::CodexRules,
+            Permission::ReadWrite
+        ),
+        default_index.check_access(
+            ModuleId::Guardian,
+            ResourceId::CodexRules,
+            Permission::ReadWrite
+        ),
     );
     assert_eq!(
         yaml_index.check_protocol(ModuleId::Sutra, ModuleId::Experience),
         default_index.check_protocol(ModuleId::Sutra, ModuleId::Experience),
     );
     assert_eq!(
-        yaml_index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite),
-        default_index.check_access(ModuleId::Adapters, ResourceId::CodexRules, Permission::ReadWrite),
+        yaml_index.check_access(
+            ModuleId::Adapters,
+            ResourceId::CodexRules,
+            Permission::ReadWrite
+        ),
+        default_index.check_access(
+            ModuleId::Adapters,
+            ResourceId::CodexRules,
+            Permission::ReadWrite
+        ),
     );
 }
 

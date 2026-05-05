@@ -22,11 +22,11 @@ use crate::ws::AppState;
 /// Вернуть Router со всеми REST-маршрутами для монтирования в общий axum router.
 pub fn rest_routes() -> Router<AppState> {
     Router::new()
-        .route("/api/status",      get(get_status))
-        .route("/api/domains",     get(get_domains))
+        .route("/api/status", get(get_status))
+        .route("/api/domains", get(get_domains))
         .route("/api/domain/{id}", get(get_domain))
-        .route("/api/inject",      post(post_inject))
-        .route("/api/command",     post(post_command))
+        .route("/api/inject", post(post_inject))
+        .route("/api/command", post(post_command))
 }
 
 // ── GET /api/status ───────────────────────────────────────────────────────────
@@ -45,19 +45,21 @@ async fn get_domains(State(state): State<AppState>) -> impl IntoResponse {
 
 // ── GET /api/domain/:id ───────────────────────────────────────────────────────
 
-async fn get_domain(
-    Path(id):     Path<u16>,
-    State(state): State<AppState>,
-) -> Response {
+async fn get_domain(Path(id): Path<u16>, State(state): State<AppState>) -> Response {
     let req_id = format!("rest{}", state.next_conn_id.fetch_add(1, Ordering::Relaxed));
     let mut rx = state.broadcast_tx.subscribe();
 
-    if state.command_tx.send(AdapterCommand {
-        id:       req_id.clone(),
-        source:   AdapterSource::Rest,
-        payload:  AdapterPayload::DomainSnapshot { domain_id: id },
-        priority: axiom_runtime::GatewayPriority::Normal,
-    }).await.is_err() {
+    if state
+        .command_tx
+        .send(AdapterCommand {
+            id: req_id.clone(),
+            source: AdapterSource::Rest,
+            payload: AdapterPayload::DomainSnapshot { domain_id: id },
+            priority: axiom_runtime::GatewayPriority::Normal,
+        })
+        .await
+        .is_err()
+    {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
 
@@ -70,42 +72,54 @@ async fn get_domain(
                     // следует добавить command_id в DomainDetail.
                     return Some(msg);
                 }
-                Ok(ServerMessage::Error { command_id: Some(ref cid), .. }) if *cid == req_id => {
+                Ok(ServerMessage::Error {
+                    command_id: Some(ref cid),
+                    ..
+                }) if *cid == req_id => {
                     return None; // domain not found
                 }
                 Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(broadcast::error::RecvError::Closed) => return None,
             }
         }
-    }).await {
+    })
+    .await
+    {
         Some(msg) => (StatusCode::OK, Json(msg)).into_response(),
-        None      => StatusCode::NOT_FOUND.into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
 // ── POST /api/inject ──────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-struct InjectBody { text: String }
+struct InjectBody {
+    text: String,
+}
 
 async fn post_inject(
     State(state): State<AppState>,
     body: Result<Json<InjectBody>, axum::extract::rejection::JsonRejection>,
 ) -> Response {
     let Json(body) = match body {
-        Ok(b)  => b,
+        Ok(b) => b,
         Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
     };
 
     let req_id = format!("rest{}", state.next_conn_id.fetch_add(1, Ordering::Relaxed));
     let mut rx = state.broadcast_tx.subscribe();
 
-    if state.command_tx.send(AdapterCommand {
-        id:       req_id.clone(),
-        source:   AdapterSource::Rest,
-        payload:  AdapterPayload::Inject { text: body.text },
-        priority: axiom_runtime::GatewayPriority::Normal,
-    }).await.is_err() {
+    if state
+        .command_tx
+        .send(AdapterCommand {
+            id: req_id.clone(),
+            source: AdapterSource::Rest,
+            payload: AdapterPayload::Inject { text: body.text },
+            priority: axiom_runtime::GatewayPriority::Normal,
+        })
+        .await
+        .is_err()
+    {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
 
@@ -114,16 +128,20 @@ async fn post_inject(
             match rx.recv().await {
                 Ok(msg) => {
                     if let ServerMessage::Result { ref command_id, .. } = msg {
-                        if *command_id == req_id { return Some(msg); }
+                        if *command_id == req_id {
+                            return Some(msg);
+                        }
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {}
                 Err(broadcast::error::RecvError::Closed) => return None,
             }
         }
-    }).await {
+    })
+    .await
+    {
         Some(msg) => (StatusCode::OK, Json(msg)).into_response(),
-        None      => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
 
@@ -131,7 +149,7 @@ async fn post_inject(
 
 #[derive(Deserialize)]
 struct CommandBody {
-    cmd:              String,
+    cmd: String,
     #[serde(rename = "type", default)]
     cmd_type: String, // "read" | "mutate" (default: "read")
 }
@@ -141,7 +159,7 @@ async fn post_command(
     body: Result<Json<CommandBody>, axum::extract::rejection::JsonRejection>,
 ) -> Response {
     let Json(body) = match body {
-        Ok(b)  => b,
+        Ok(b) => b,
         Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
     };
 
@@ -154,12 +172,17 @@ async fn post_command(
         AdapterPayload::MetaRead { cmd: body.cmd }
     };
 
-    if state.command_tx.send(AdapterCommand {
-        id:       req_id.clone(),
-        source:   AdapterSource::Rest,
-        payload,
-        priority: axiom_runtime::GatewayPriority::Normal,
-    }).await.is_err() {
+    if state
+        .command_tx
+        .send(AdapterCommand {
+            id: req_id.clone(),
+            source: AdapterSource::Rest,
+            payload,
+            priority: axiom_runtime::GatewayPriority::Normal,
+        })
+        .await
+        .is_err()
+    {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
 
@@ -168,16 +191,20 @@ async fn post_command(
             match rx.recv().await {
                 Ok(msg) => {
                     if let ServerMessage::CommandResult { ref command_id, .. } = msg {
-                        if *command_id == req_id { return Some(msg); }
+                        if *command_id == req_id {
+                            return Some(msg);
+                        }
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {}
                 Err(broadcast::error::RecvError::Closed) => return None,
             }
         }
-    }).await {
+    })
+    .await
+    {
         Some(msg) => (StatusCode::OK, Json(msg)).into_response(),
-        None      => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
 

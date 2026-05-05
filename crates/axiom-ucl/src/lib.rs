@@ -22,23 +22,23 @@ pub enum CommandStatus {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpCode {
     // --- Генезис и Пространство (1000+) ---
-    SpawnDomain = 1000,      // Рождение домена
-    CollapseDomain = 1001,   // Уничтожение домена
-    LockMembrane = 1002,     // Изменение мембраны
-    ReshapeDomain = 1003,    // Изменение формы домена
-    
+    SpawnDomain = 1000,    // Рождение домена
+    CollapseDomain = 1001, // Уничтожение домена
+    LockMembrane = 1002,   // Изменение мембраны
+    ReshapeDomain = 1003,  // Изменение формы домена
+
     // --- Токены и Кинематика (2000+) ---
-    InjectToken = 2000,      // Вброс нового смысла
-    ApplyForce = 2001,       // Векторный толчок токена
-    AnnihilateToken = 2002,  // Уничтожение токена
-    BondTokens = 2003,       // Связать токены
-    SplitToken = 2004,        // Разделить токен
-    
+    InjectToken = 2000,     // Вброс нового смысла
+    ApplyForce = 2001,      // Векторный толчок токена
+    AnnihilateToken = 2002, // Уничтожение токена
+    BondTokens = 2003,      // Связать токены
+    SplitToken = 2004,      // Разделить токен
+
     // --- Хронодинамика и Система (3000+) ---
-    TickForward = 3000,      // Шаг симуляции
-    ChangeTemperature = 3001,// Изменение термодинамики
-    ApplyGravity = 3002,     // Изменение гравитации
-    PhaseTransition = 3003,  // Фазовый переход
+    TickForward = 3000,       // Шаг симуляции
+    ChangeTemperature = 3001, // Изменение термодинамики
+    ApplyGravity = 3002,      // Изменение гравитации
+    PhaseTransition = 3003,   // Фазовый переход
 
     // --- Dual-Path Processing (4000+) ---
     ProcessTokenDualPath = 4000, // Обработка токена через Arbiter (reflex + ASHTI)
@@ -47,20 +47,20 @@ pub enum OpCode {
     ReinforceFrame = 4003,       // Усилить существующий Frame-анкер по lineage_hash
 
     // --- Администрирование (9000+) ---
-    CoreShutdown = 9000,     // Остановка реактора
-    CoreReset = 9001,        // Сброс состояния
-    BackupState = 9002,      // Резервное копирование
-    RestoreState = 9003,     // Восстановление состояния
+    CoreShutdown = 9000, // Остановка реактора
+    CoreReset = 9001,    // Сброс состояния
+    BackupState = 9002,  // Резервное копирование
+    RestoreState = 9003, // Восстановление состояния
 }
 
 /// Флаги команд
 pub mod flags {
-    pub const SYNC: u8 = 0x01;             // Синхронное выполнение
-    pub const FORCE: u8 = 0x02;            // Принудительное выполнение
-    pub const BYPASS_MEMBRANE: u8 = 0x04;  // Обойти мембрану
-    pub const NO_EVENTS: u8 = 0x08;        // Не генерировать события
-    pub const CRITICAL: u8 = 0x10;         // Критический приоритет
-    pub const FRAME_ANCHOR: u8 = 0x20;     // InjectToken использует InjectFrameAnchorPayload
+    pub const SYNC: u8 = 0x01; // Синхронное выполнение
+    pub const FORCE: u8 = 0x02; // Принудительное выполнение
+    pub const BYPASS_MEMBRANE: u8 = 0x04; // Обойти мембрану
+    pub const NO_EVENTS: u8 = 0x08; // Не генерировать события
+    pub const CRITICAL: u8 = 0x10; // Критический приоритет
+    pub const FRAME_ANCHOR: u8 = 0x20; // InjectToken использует InjectFrameAnchorPayload
 }
 
 /// Основная структура команды - 64 байта
@@ -68,14 +68,14 @@ pub mod flags {
 #[derive(Debug, Clone, Copy)]
 pub struct UclCommand {
     // --- ПОЛЕЗНАЯ НАГРУЗКА (PAYLOAD) [48 байт] ---
-    pub payload: [u8; 48],      // 48b | Raw данные для разных команд
+    pub payload: [u8; 48], // 48b | Raw данные для разных команд
 
     // --- ЗАГОЛОВОК [16 байт] ---
-    pub command_id: u64,        // 8b | Уникальный ID транзакции (COM)
-    pub target_id: u32,         // 4b | Цель (Domain ID или Token ID)
-    pub opcode: u16,            // 2b | Тип команды (OpCode)
-    pub priority: u8,           // 1b | 0 (Low) - 255 (Critical)
-    pub flags: u8,              // 1b | Битовая маска (Sync, Force, Bypass_Membrane)
+    pub command_id: u64, // 8b | Уникальный ID транзакции (COM)
+    pub target_id: u32,  // 4b | Цель (Domain ID или Token ID)
+    pub opcode: u16,     // 2b | Тип команды (OpCode)
+    pub priority: u8,    // 1b | 0 (Low) - 255 (Critical)
+    pub flags: u8,       // 1b | Битовая маска (Sync, Force, Bypass_Membrane)
 }
 
 /// Ответ ядра - 32 байта
@@ -95,12 +95,12 @@ pub struct UclResult {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct SpawnDomainPayload {
-    pub parent_domain_id: u16,  // 2b | Родительский домен
-    pub factory_preset: u8,     // 1b | 0=Void, 1=Sutra, 6=Logic, 7=Dream, 10=Maya
-    pub structural_role: u8,    // 1b | Для валидации
-    pub initial_energy: f32,    // 4b | Начальная энергия
-    pub seed: u32,              // 4b | Сид генерации для детерминизма
-    pub reserved: [u8; 36],     // 36b | Резерв
+    pub parent_domain_id: u16, // 2b | Родительский домен
+    pub factory_preset: u8,    // 1b | 0=Void, 1=Sutra, 6=Logic, 7=Dream, 10=Maya
+    pub structural_role: u8,   // 1b | Для валидации
+    pub initial_energy: f32,   // 4b | Начальная энергия
+    pub seed: u32,             // 4b | Сид генерации для детерминизма
+    pub reserved: [u8; 36],    // 36b | Резерв
 }
 
 /// Payload для ApplyForce
@@ -120,24 +120,24 @@ pub struct ApplyForcePayload {
 #[derive(Debug, Clone, Copy)]
 pub struct InjectTokenPayload {
     pub target_domain_id: u16, // 2b | Целевой домен
-    pub token_type: u8,         // 1b | Тип токена
-    pub mass: f32,              // 4b | Масса токена
-    pub position: [f32; 3],     // 12b | Позиция X, Y, Z
-    pub velocity: [f32; 3],     // 12b | Скорость X, Y, Z
-    pub semantic_weight: f32,   // 4b | Семантический вес
-    pub temperature: f32,       // 4b | Температура токена
-    pub reserved: [u8; 6],      // 6b | Резерв
+    pub token_type: u8,        // 1b | Тип токена
+    pub mass: f32,             // 4b | Масса токена
+    pub position: [f32; 3],    // 12b | Позиция X, Y, Z
+    pub velocity: [f32; 3],    // 12b | Скорость X, Y, Z
+    pub semantic_weight: f32,  // 4b | Семантический вес
+    pub temperature: f32,      // 4b | Температура токена
+    pub reserved: [u8; 6],     // 6b | Резерв
 }
 
 /// Payload для ChangeTemperature
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct ChangeTemperaturePayload {
-    pub target_domain_id: u16, // 2b | Целевой домен
+    pub target_domain_id: u16,  // 2b | Целевой домен
     pub delta_temperature: f32, // 4b | Изменение температуры
     pub transfer_rate: f32,     // 4b | Скорость передачи тепла
-    pub source_point: [f32; 3],// 12b | Точка источника тепла
-    pub radius: f32,           // 4b | Радиус воздействия
+    pub source_point: [f32; 3], // 12b | Точка источника тепла
+    pub radius: f32,            // 4b | Радиус воздействия
     pub duration_ticks: u32,    // 4b | Длительность воздействия
     pub reserved: [u8; 14],     // 14b | Резерв
 }
@@ -146,18 +146,18 @@ pub struct ChangeTemperaturePayload {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct ProcessTokenPayload {
-    pub token_id: u32,          // 4b | ID токена для обработки
-    pub source_domain: u8,      // 1b | Домен-источник
-    pub enable_learning: u8,    // 1b | 1=включить обучение, 0=только inference
-    pub reserved: [u8; 42],     // 42b | Резерв
+    pub token_id: u32,       // 4b | ID токена для обработки
+    pub source_domain: u8,   // 1b | Домен-источник
+    pub enable_learning: u8, // 1b | 1=включить обучение, 0=только inference
+    pub reserved: [u8; 42],  // 42b | Резерв
 }
 
 /// Payload для FinalizeComparison (4001)
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct FinalizeComparisonPayload {
-    pub event_id: u64,          // 8b | ID события для финализации
-    pub reserved: [u8; 40],     // 40b | Резерв
+    pub event_id: u64,      // 8b | ID события для финализации
+    pub reserved: [u8; 40], // 40b | Резерв
 }
 
 /// Payload для UnfoldFrame (4002)
@@ -167,10 +167,10 @@ pub struct FinalizeComparisonPayload {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct UnfoldFramePayload {
-    pub frame_anchor_id: u32,   // 4b | sutra_id анкер-токена Frame в EXPERIENCE
-    pub target_domain_id: u16,  // 2b | домен назначения для развёртывания
-    pub unfold_depth: u8,       // 1b | глубина развёртывания (0 = default из конфига)
-    pub reserved: [u8; 41],     // 41b | Резерв
+    pub frame_anchor_id: u32,  // 4b | sutra_id анкер-токена Frame в EXPERIENCE
+    pub target_domain_id: u16, // 2b | домен назначения для развёртывания
+    pub unfold_depth: u8,      // 1b | глубина развёртывания (0 = default из конфига)
+    pub reserved: [u8; 41],    // 41b | Резерв
 }
 
 /// Payload для InjectToken с флагом FRAME_ANCHOR (flags::FRAME_ANCHOR = 0x20).
@@ -185,16 +185,16 @@ pub struct UnfoldFramePayload {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct InjectFrameAnchorPayload {
-    pub lineage_hash: u64,       // 8b | FNV-1a хэш sutra_id участников (для дедупликации)
-    pub proposed_sutra_id: u32,  // 4b | предлагаемый sutra_id (0 = движок назначит сам)
-    pub target_domain_id: u16,   // 2b | 109=EXPERIENCE, 100=SUTRA
-    pub type_flags: u16,         // 2b | TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_*
-    pub position: [i16; 3],      // 6b | центр масс позиций участников
-    pub state: u8,               // 1b | STATE_ACTIVE (EXPERIENCE) или STATE_LOCKED (SUTRA)
-    pub mass: u8,                // 1b | начальная масса
-    pub temperature: u8,         // 1b | начальная температура
-    pub valence: i8,             // 1b | валентность (обычно 0)
-    pub reserved: [u8; 22],      // 22b | резерв
+    pub lineage_hash: u64, // 8b | FNV-1a хэш sutra_id участников (для дедупликации)
+    pub proposed_sutra_id: u32, // 4b | предлагаемый sutra_id (0 = движок назначит сам)
+    pub target_domain_id: u16, // 2b | 109=EXPERIENCE, 100=SUTRA
+    pub type_flags: u16,   // 2b | TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_*
+    pub position: [i16; 3], // 6b | центр масс позиций участников
+    pub state: u8,         // 1b | STATE_ACTIVE (EXPERIENCE) или STATE_LOCKED (SUTRA)
+    pub mass: u8,          // 1b | начальная масса
+    pub temperature: u8,   // 1b | начальная температура
+    pub valence: i8,       // 1b | валентность (обычно 0)
+    pub reserved: [u8; 22], // 22b | резерв
 }
 
 /// Payload для BondTokens (2003) — создать Connection между двумя токенами.
@@ -206,15 +206,15 @@ pub struct InjectFrameAnchorPayload {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct BondTokensPayload {
-    pub source_id: u32,         // 4b | sutra_id источника (Frame-анкер)
-    pub target_id: u32,         // 4b | sutra_id цели (участник)
-    pub domain_id: u16,         // 2b | домен связи (109=EXPERIENCE)
-    pub link_type: u16,         // 2b | синтаксическая роль (0x08XX)
-    pub strength: f32,          // 4b | сила связи (обычно 1.0)
-    pub conn_flags: u32,        // 4b | FLAG_ACTIVE=1, ...
-    pub origin_domain: u16,     // 2b | исходный домен участника (→ reserved_gate[0..2])
-    pub role_id: u16,           // 2b | роль участника (→ reserved_gate[2..4])
-    pub reserved: [u8; 24],     // 24b | резерв
+    pub source_id: u32,     // 4b | sutra_id источника (Frame-анкер)
+    pub target_id: u32,     // 4b | sutra_id цели (участник)
+    pub domain_id: u16,     // 2b | домен связи (109=EXPERIENCE)
+    pub link_type: u16,     // 2b | синтаксическая роль (0x08XX)
+    pub strength: f32,      // 4b | сила связи (обычно 1.0)
+    pub conn_flags: u32,    // 4b | FLAG_ACTIVE=1, ...
+    pub origin_domain: u16, // 2b | исходный домен участника (→ reserved_gate[0..2])
+    pub role_id: u16,       // 2b | роль участника (→ reserved_gate[2..4])
+    pub reserved: [u8; 24], // 24b | резерв
 }
 
 /// Payload для ReinforceFrame (4003)
@@ -225,10 +225,10 @@ pub struct BondTokensPayload {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct ReinforceFramePayload {
-    pub anchor_id: u32,         // 4b | sutra_id Frame-анкера в EXPERIENCE
-    pub delta_mass: u8,         // 1b | приращение mass
-    pub delta_temperature: u8,  // 1b | приращение temperature
-    pub reserved: [u8; 42],     // 42b | Резерв
+    pub anchor_id: u32,        // 4b | sutra_id Frame-анкера в EXPERIENCE
+    pub delta_mass: u8,        // 1b | приращение mass
+    pub delta_temperature: u8, // 1b | приращение temperature
+    pub reserved: [u8; 42],    // 42b | Резерв
 }
 
 impl UclCommand {
@@ -243,7 +243,7 @@ impl UclCommand {
             payload: [0; 48],
         }
     }
-    
+
     /// Установить payload для команды
     pub fn with_payload<T>(mut self, payload: &T) -> Self {
         unsafe {
@@ -253,26 +253,24 @@ impl UclCommand {
         }
         self
     }
-    
+
     /// Получить payload как конкретный тип
-    pub fn get_payload<T>(&self) -> T 
-    where 
+    pub fn get_payload<T>(&self) -> T
+    where
         T: Copy + Clone,
     {
-        unsafe {
-            std::ptr::read_unaligned(self.payload.as_ptr() as *const T)
-        }
+        unsafe { std::ptr::read_unaligned(self.payload.as_ptr() as *const T) }
     }
-    
+
     /// Проверить валидность команды
     pub fn is_valid(&self) -> bool {
         match self.opcode {
-            1000 => true,                   // SpawnDomain - создает новый домен, target_id может быть 0
-            1001 => self.target_id != 0,    // CollapseDomain требует target_id
-            2001 => self.target_id != 0,    // ApplyForce требует target_id
-            2000 => self.target_id != 0,    // InjectToken требует target_id
-            3001 => self.target_id != 0,    // ChangeTemperature требует target_id
-            _ => true,                       // Остальные команды валидны
+            1000 => true, // SpawnDomain - создает новый домен, target_id может быть 0
+            1001 => self.target_id != 0, // CollapseDomain требует target_id
+            2001 => self.target_id != 0, // ApplyForce требует target_id
+            2000 => self.target_id != 0, // InjectToken требует target_id
+            3001 => self.target_id != 0, // ChangeTemperature требует target_id
+            _ => true,    // Остальные команды валидны
         }
     }
 }
@@ -290,7 +288,7 @@ impl UclResult {
             reserved: [0; 7],
         }
     }
-    
+
     /// Создать результат с ошибкой
     pub fn error(command_id: u64, status: CommandStatus, error_code: u16) -> Self {
         Self {
@@ -303,7 +301,7 @@ impl UclResult {
             reserved: [0; 7],
         }
     }
-    
+
     /// Проверить успешность выполнения
     pub fn is_success(&self) -> bool {
         self.status == CommandStatus::Success as u8
@@ -350,11 +348,10 @@ impl UclBuilder {
             seed: target_id,
             reserved: [0; 36],
         };
-        
-        UclCommand::new(OpCode::SpawnDomain, target_id, 100, 0)
-            .with_payload(&payload)
+
+        UclCommand::new(OpCode::SpawnDomain, target_id, 100, 0).with_payload(&payload)
     }
-    
+
     /// Создать команду ApplyForce
     pub fn apply_force(target_id: u32, force: [f32; 3], magnitude: f32) -> UclCommand {
         let payload = ApplyForcePayload {
@@ -365,13 +362,17 @@ impl UclBuilder {
             force_type: 1, // Гравитационная
             reserved: [0; 23],
         };
-        
-        UclCommand::new(OpCode::ApplyForce, target_id, 100, 0)
-            .with_payload(&payload)
+
+        UclCommand::new(OpCode::ApplyForce, target_id, 100, 0).with_payload(&payload)
     }
-    
+
     /// Создать команду InjectToken
-    pub fn inject_token(target_id: u32, token_type: u8, mass: f32, position: [f32; 3]) -> UclCommand {
+    pub fn inject_token(
+        target_id: u32,
+        token_type: u8,
+        mass: f32,
+        position: [f32; 3],
+    ) -> UclCommand {
         let payload = InjectTokenPayload {
             target_domain_id: target_id as u16,
             token_type,
@@ -382,9 +383,7 @@ impl UclBuilder {
             temperature: 273.0,
             reserved: [0; 6],
         };
-        
-        UclCommand::new(OpCode::InjectToken, target_id, 100, 0)
-            .with_payload(&payload)
+
+        UclCommand::new(OpCode::InjectToken, target_id, 100, 0).with_payload(&payload)
     }
 }
-

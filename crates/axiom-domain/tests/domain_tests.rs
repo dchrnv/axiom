@@ -1,9 +1,9 @@
 // Integration tests for axiom-domain: Domain, DomainState
-use axiom_domain::{Domain, DomainState, CapacityExceeded, EventGenerator};
 use axiom_config::DomainConfig;
-use axiom_core::{Token, Connection, EventType};
-use axiom_heartbeat::HeartbeatConfig;
+use axiom_core::{Connection, EventType, Token};
+use axiom_domain::{CapacityExceeded, Domain, DomainState, EventGenerator};
 use axiom_frontier::FrontierState;
+use axiom_heartbeat::HeartbeatConfig;
 
 // --- Helper ---
 
@@ -444,7 +444,7 @@ fn test_process_frontier_decay() {
 
     let mut token = make_token(1, 6);
     token.valence = 10; // ненулевой valence → должен затухать
-    // last_event_id = 0, event_generator.current_event_id = 10000 → age = 10000 > 1000
+                        // last_event_id = 0, event_generator.current_event_id = 10000 → age = 10000 > 1000
 
     let tokens = vec![token];
     let connections = vec![];
@@ -499,11 +499,13 @@ fn test_process_frontier_connection_stress() {
     };
     let mut domain = Domain::with_heartbeat(config, heartbeat_config);
 
-    let mut connection = Connection::default();
-    connection.source_id = 1;
-    connection.target_id = 2;
-    connection.domain_id = 6;
-    connection.current_stress = 1.0; // > 0.8 порога
+    let connection = Connection {
+        source_id: 1,
+        target_id: 2,
+        domain_id: 6,
+        current_stress: 1.0, // > 0.8 порога
+        ..Connection::default()
+    };
 
     let tokens = vec![];
     let connections = vec![connection];
@@ -625,7 +627,10 @@ fn test_full_heartbeat_to_event_flow() {
             event_generator.set_pulse_id(pulse);
             let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
 
-            assert!(!events.is_empty(), "Expected events from frontier processing");
+            assert!(
+                !events.is_empty(),
+                "Expected events from frontier processing"
+            );
             for event in &events {
                 assert_eq!(event.pulse_id, pulse);
             }
@@ -666,7 +671,6 @@ fn test_full_flow_multiple_cycles() {
 
             let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
             total_events += events.len();
-
         }
 
         event_generator.set_event_id(1000 + cycle * 10);
@@ -887,8 +891,7 @@ fn test_process_frontier_with_spatial_collision_detection() {
 
     let c = collision_events[0];
     assert!(
-        (c.source_id == 100 && c.target_id == 101)
-            || (c.source_id == 101 && c.target_id == 100),
+        (c.source_id == 100 && c.target_id == 101) || (c.source_id == 101 && c.target_id == 100),
         "Collision should be between token 100 and 101"
     );
 }

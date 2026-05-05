@@ -30,7 +30,7 @@ fn test_grid_hash_coarsening_same_cell() {
     // Токены в одной ячейке (shift=8 → cell_size=256): позиции 0..255 дают одинаковый ключ
     let t1 = token_at(0, 0, 0, 100, 50);
     let t2 = token_at(100, 150, 200, 100, 50); // та же ячейка, те же поля
-    // При shift=8 позиции [0..255, 0..255, 0..255] попадают в одну ячейку
+                                               // При shift=8 позиции [0..255, 0..255, 0..255] попадают в одну ячейку
     assert_eq!(grid_hash(&t1, 8), grid_hash(&t2, 8));
 }
 
@@ -66,7 +66,7 @@ fn test_grid_hash_shift_separates_distant_tokens() {
 fn test_grid_hash_with_shell_differs_from_without() {
     let t = token_at(100, 200, 50, 128, 64);
     let shell: [u8; 8] = [100, 50, 0, 200, 0, 0, 30, 0];
-    let h_no_shell  = grid_hash(&t, 4);
+    let h_no_shell = grid_hash(&t, 4);
     let h_with_shell = grid_hash_with_shell(&t, &shell, 4);
     assert_ne!(h_no_shell, h_with_shell);
 }
@@ -209,7 +209,7 @@ fn test_experience_phase1_miss_falls_through_to_phase2() {
 
     // Токен в другой ячейке (shift=4 → другой grid ключ) — Phase 1 промахнётся
     let other = token_at(32, 32, 0, 100, 50); // >= 16 по X, разные ячейки
-    let key_near  = grid_hash(&near, 4);
+    let key_near = grid_hash(&near, 4);
     let key_other = grid_hash(&other, 4);
     // Убеждаемся что ключи разные — Phase 1 промахнётся для `other`
     assert_ne!(key_near, key_other, "test requires different grid cells");
@@ -248,5 +248,9 @@ fn test_grid_hash_collision_rate() {
         keys.insert(grid_hash(&t, 4));
     }
     // Должно быть больше 50% уникальных ключей (нет катастрофических коллизий)
-    assert!(keys.len() > 50, "Too many collisions: only {} unique keys", keys.len());
+    assert!(
+        keys.len() > 50,
+        "Too many collisions: only {} unique keys",
+        keys.len()
+    );
 }

@@ -34,8 +34,9 @@ impl std::fmt::Display for MLError {
         match self {
             MLError::ModelNotFound(p) => write!(f, "model not found: {p}"),
             MLError::LoadFailed(e) => write!(f, "load failed: {e}"),
-            MLError::ShapeMismatch { expected, got } =>
-                write!(f, "shape mismatch: expected {expected}, got {got}"),
+            MLError::ShapeMismatch { expected, got } => {
+                write!(f, "shape mismatch: expected {expected}, got {got}")
+            }
             MLError::InferenceFailed(e) => write!(f, "inference failed: {e}"),
             MLError::NotEnabled => write!(f, "ONNX not enabled (compile with --features onnx)"),
         }
@@ -95,7 +96,10 @@ impl MLEngine {
     ///
     /// `input_shape` — произведение элементов = ожидаемый размер входного среза.
     pub fn mock(input_shape: Vec<usize>, output: Vec<f32>) -> Self {
-        MLEngine::Mock { input_shape, output }
+        MLEngine::Mock {
+            input_shape,
+            output,
+        }
     }
 
     /// Загрузить ONNX модель из файла.
@@ -136,7 +140,10 @@ impl MLEngine {
     /// `input` должен соответствовать `input_size()`.
     pub fn infer(&self, input: &[f32]) -> Result<Vec<f32>, MLError> {
         match self {
-            MLEngine::Mock { input_shape, output } => {
+            MLEngine::Mock {
+                input_shape,
+                output,
+            } => {
                 let expected: usize = input_shape.iter().product();
                 if expected > 0 && input.len() != expected {
                     return Err(MLError::ShapeMismatch {
@@ -148,7 +155,9 @@ impl MLEngine {
             }
 
             #[cfg(feature = "onnx")]
-            MLEngine::Real { model, input_size, .. } => {
+            MLEngine::Real {
+                model, input_size, ..
+            } => {
                 use tract_onnx::prelude::*;
                 if *input_size > 0 && input.len() != *input_size {
                     return Err(MLError::ShapeMismatch {
@@ -159,9 +168,11 @@ impl MLEngine {
                 let tensor = tract_ndarray::Array::from_shape_vec(
                     tract_ndarray::IxDyn(&[1, input.len()]),
                     input.to_vec(),
-                ).map_err(|e| MLError::InferenceFailed(e.to_string()))?
-                    .into();
-                let result = model.run(tvec!(TValue::from(tensor)))
+                )
+                .map_err(|e| MLError::InferenceFailed(e.to_string()))?
+                .into();
+                let result = model
+                    .run(tvec!(TValue::from(tensor)))
                     .map_err(|e| MLError::InferenceFailed(e.to_string()))?;
                 let arr = result[0]
                     .to_array_view::<f32>()

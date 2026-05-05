@@ -2,8 +2,8 @@
 //!
 //! Heartbeat V2.0: Периодическая активация фоновых процессов через причинный порядок
 
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 /// Конфигурация Heartbeat для домена
 ///

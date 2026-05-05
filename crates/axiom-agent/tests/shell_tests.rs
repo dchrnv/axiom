@@ -1,19 +1,24 @@
 // Этап 10D — Shell Effector: whitelist allow/deny
 use axiom_agent::channels::shell::ShellEffector;
-use axiom_core::{Event, EventType, EventPriority};
+use axiom_core::{Event, EventPriority, EventType};
 use axiom_runtime::Effector;
 use std::path::Path;
 
 fn make_effector() -> ShellEffector {
-    ShellEffector::new(vec![
-        "echo hello".into(),
-        "date".into(),
-        "uptime".into(),
-    ])
+    ShellEffector::new(vec!["echo hello".into(), "date".into(), "uptime".into()])
 }
 
 fn make_shell_event() -> Event {
-    Event::new(1, 100, EventType::ShellExec, EventPriority::Normal, 0, 0, 0, 0)
+    Event::new(
+        1,
+        100,
+        EventType::ShellExec,
+        EventPriority::Normal,
+        0,
+        0,
+        0,
+        0,
+    )
 }
 
 // ─── whitelist check ─────────────────────────────────────────────────────────
@@ -31,7 +36,7 @@ fn test_is_not_allowed_unknown_command() {
     let e = make_effector();
     assert!(!e.is_allowed("rm -rf /"));
     assert!(!e.is_allowed("curl http://evil.com"));
-    assert!(!e.is_allowed("echo"));   // partial match not allowed
+    assert!(!e.is_allowed("echo")); // partial match not allowed
     assert!(!e.is_allowed("echo hello && rm -rf"));
 }
 
@@ -85,7 +90,16 @@ fn test_effector_name() {
 #[test]
 fn test_effector_emit_non_shell_event_ignored() {
     let mut e = make_effector();
-    let event = Event::new(1, 100, EventType::TokenCreate, EventPriority::Normal, 0, 0, 0, 0);
+    let event = Event::new(
+        1,
+        100,
+        EventType::TokenCreate,
+        EventPriority::Normal,
+        0,
+        0,
+        0,
+        0,
+    );
     e.emit(&event); // должен быть проигнорирован без паники
     assert!(e.executed.is_empty());
     assert!(e.denied.is_empty());
@@ -95,8 +109,8 @@ fn test_effector_emit_non_shell_event_ignored() {
 fn test_effector_emit_shell_event_no_panic() {
     let mut e = make_effector();
     e.emit(&make_shell_event()); // ShellExec без payload — no-op в текущем MVP
-    // В текущей архитектуре Event не несёт строкового payload
-    // команды передаются через execute_command() напрямую
+                                 // В текущей архитектуре Event не несёт строкового payload
+                                 // команды передаются через execute_command() напрямую
     assert!(e.executed.is_empty()); // no payload = no execution
 }
 
@@ -104,8 +118,7 @@ fn test_effector_emit_shell_event_no_panic() {
 
 #[test]
 fn test_load_from_file() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config/shell_whitelist.yaml");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/shell_whitelist.yaml");
     let e = ShellEffector::from_whitelist_file(&path).unwrap();
     assert!(e.is_allowed("echo hello"));
     assert!(e.is_allowed("date"));

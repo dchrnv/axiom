@@ -22,7 +22,7 @@
 | 8    | Files + Benchmarks tabs                         | ✅ DONE     | 2026-05-03  |
 | 9    | Welcome + общие компоненты                      | ✅ DONE     | 2026-05-03  |
 | 10   | Live Field (3D)                                 | ✅ DONE     | 2026-05-03  |
-| 11   | Финальная валидация и release prep              | TODO        | —           |
+| 11   | Финальная валидация и release prep              | ✅ DONE     | 2026-05-05  |
 
 ---
 
@@ -594,19 +594,51 @@ _Нет расхождений со спекой._
 
 ---
 
-## Этапы 11 (TODO)
+## Этап 11 — Финальная валидация и release prep ✅ DONE
 
-_Детализируется поэтапно по мере продвижения._
+**Дата:** 2026-05-05
+
+### Что сделано
+
+**Clippy:**
+- `cargo clippy --workspace --all-targets -- -D warnings` → 0 ошибок
+- Устранены предупреждения во всех crate-ах: axiom-core, axiom-domain, axiom-runtime, axiom-arbiter, axiom-agent, axiom-bench, tools/axiom-dashboard
+- Применены `#[allow(...)]` там, где правка логики нецелесообразна (`missing_docs`, `too_many_arguments`, `large_enum_variant`, `should_implement_trait`, `new_without_default`)
+- Исправлены lint-ошибки: `is_multiple_of`, `field_reassign_with_default`, `items_after_test_module`, `splitn` → `split`, `useless_format`, `while let` loop, `approx_constant`, `shift by 0`
+
+**Тесты:**
+- `cargo test --workspace` → 0 ошибок, все test-suite проходят
+
+**Форматирование:**
+- `cargo fmt --all` применён ко всему workspace
+
+**Документация:**
+- `crates/axiom-workstation/README.md` написан
+- `docs/spec/Workstation/erratas/Workstation_V1_0_errata.md` создан (9 пунктов)
+- WORKPLAN обновлён (Stage 11)
+
+### Критерии готовности
+
+- [x] `cargo clippy --workspace --all-targets -- -D warnings` — 0 ошибок
+- [x] `cargo test --workspace` — 0 ошибок
+- [x] `cargo fmt --all` — workspace отформатирован
+- [x] README для axiom-workstation
+- [x] Errata файл создан
 
 ---
 
 ## Журнал расхождений (Errata)
 
-_Заполняется по ходу реализации. Переносится в `Workstation_V1_0_errata.md` на этапе 11._
+Перенесено в [`erratas/Workstation_V1_0_errata.md`](erratas/Workstation_V1_0_errata.md) (9 пунктов, Этап 11).
 
-| # | Этап | Расхождение | Решение |
-|---|------|-------------|---------|
-| 1 | 8    | `text()` в условном `if` не выводит параметр `Theme` | Явная аннотация `let adapter_row: Element<'a, Message> = ...` |
-| 2 | 9    | `on_key_press` принимает `fn` pointer, не замыкание | Вынести в module-level `fn keyboard_shortcut(...)` |
-| 3 | 9    | `run_with_id(address)` не перезапускается при той же строке | ID изменён на кортеж `(address, key)` + поле `subscription_key: u64` |
-| 4 | 10   | `DomainSnapshot` не содержит индивидуальных позиций токенов | Процедурная визуализация через детерминированный LCG; реальные данные — WS10-TD-01 |
+| # | Этап | Расхождение | Статус |
+|---|------|-------------|--------|
+| E1 | 3 | `subscription::channel` → `stream::channel + run_with_id` | Закрыто |
+| E2 | 4 | `application` → `daemon` для multi-window | Закрыто |
+| E3 | 4,5 | `Padding` — struct literal вместо массива | Закрыто |
+| E4 | 9 | `on_key_press` — module-level fn вместо замыкания | Закрыто |
+| E5 | 9 | subscription ID кортеж `(address, key)` | Закрыто |
+| E6 | 7 | `container(elem).width(N)` вместо `.width()` | Закрыто |
+| E7 | 8 | явная аннотация `Element<'a, Message>` в `if` | Закрыто |
+| E8 | 10 | `DomainSnapshot` без токенов — LCG (WS10-TD-01) | Открыто |
+| E9 | 4 | iced features: canvas, tokio | Закрыто |

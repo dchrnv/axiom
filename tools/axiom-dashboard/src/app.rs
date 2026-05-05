@@ -1,20 +1,21 @@
-use std::sync::{Arc, Mutex};
-use eframe::egui;
-use crate::state::AppData;
 use crate::panels::{input, space_view, status, traces};
+use crate::state::AppData;
+use eframe::egui;
+use std::sync::{Arc, Mutex};
 
 pub struct DashboardApp {
-    data:       Arc<Mutex<AppData>>,
-    cmd_tx:     std::sync::mpsc::Sender<String>,
+    data: Arc<Mutex<AppData>>,
+    cmd_tx: std::sync::mpsc::Sender<String>,
     input_text: String,
 }
 
 impl DashboardApp {
-    pub fn new(
-        data:   Arc<Mutex<AppData>>,
-        cmd_tx: std::sync::mpsc::Sender<String>,
-    ) -> Self {
-        Self { data, cmd_tx, input_text: String::new() }
+    pub fn new(data: Arc<Mutex<AppData>>, cmd_tx: std::sync::mpsc::Sender<String>) -> Self {
+        Self {
+            data,
+            cmd_tx,
+            input_text: String::new(),
+        }
     }
 }
 
@@ -29,16 +30,22 @@ impl eframe::App for DashboardApp {
             ui.horizontal(|ui| {
                 ui.heading("AXIOM Dashboard");
                 ui.separator();
-                let status = if data.connected { "🟢 connected" } else { "🔴 disconnected" };
+                let status = if data.connected {
+                    "🟢 connected"
+                } else {
+                    "🔴 disconnected"
+                };
                 ui.label(status);
             });
         });
 
-        egui::SidePanel::left("left_panel").min_width(200.0).show(ctx, |ui| {
-            status::show(ui, &data);
-            ui.add_space(12.0);
-            traces::show(ui, &data);
-        });
+        egui::SidePanel::left("left_panel")
+            .min_width(200.0)
+            .show(ctx, |ui| {
+                status::show(ui, &data);
+                ui.add_space(12.0);
+                traces::show(ui, &data);
+            });
 
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             drop(data); // освобождаем лок до передачи в input::show

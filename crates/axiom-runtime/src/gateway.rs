@@ -7,12 +7,12 @@
 // 1. Наблюдатели событий (EventObserver) — получают уведомления после каждой команды
 // 2. Подключение произвольных адаптеров (RuntimeAdapter) через единый интерфейс
 
+use crate::adapters::{EventBus, EventObserver, RuntimeAdapter};
+use crate::channel::{Channel, ChannelBatchResult};
+use crate::engine::AxiomEngine;
+use axiom_config::{ConfigWatcher, LoadedAxiomConfig};
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult};
-use axiom_config::{ConfigWatcher, LoadedAxiomConfig};
-use crate::engine::AxiomEngine;
-use crate::adapters::{RuntimeAdapter, EventObserver, EventBus};
-use crate::channel::{Channel, ChannelBatchResult};
 
 /// Gateway — единая точка входа для всех внешних взаимодействий с AXIOM.
 ///
@@ -94,7 +94,11 @@ impl Gateway {
     ///
     /// Адаптер может трансформировать команду перед передачей в Engine
     /// (валидация, логирование, rate limiting и т.д.).
-    pub fn process_with(&mut self, adapter: &mut dyn RuntimeAdapter, cmd: &UclCommand) -> UclResult {
+    pub fn process_with(
+        &mut self,
+        adapter: &mut dyn RuntimeAdapter,
+        cmd: &UclCommand,
+    ) -> UclResult {
         let result = adapter.process(&mut self.engine, cmd);
         self.drain_and_notify();
         self.processed_count += 1;

@@ -237,11 +237,32 @@ impl Token {
         let dx = self.position[0] - other.position[0];
         let dy = self.position[1] - other.position[1];
         let dz = self.position[2] - other.position[2];
-        let dist_sq = (dx as i32 * dx as i32 + dy as i32 * dy as i32 + dz as i32 * dz as i32) as u32;
-        let dist_factor = if dist_sq > 10000 { 0 } else { 100 - (dist_sq / 100) };
+        let dist_sq =
+            (dx as i32 * dx as i32 + dy as i32 * dy as i32 + dz as i32 * dz as i32) as u32;
+        let dist_factor = if dist_sq > 10000 {
+            0
+        } else {
+            100 - (dist_sq / 100)
+        };
 
         // Итоговый резонанс (взвешенное среднее)
         (temp_factor * 2 + valence_factor + dist_factor) / 4
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Token[sutra={}, domain={}, pos=({},{},{}), state={:04x}, event={}]",
+            self.sutra_id,
+            self.domain_id,
+            self.position[0],
+            self.position[1],
+            self.position[2],
+            self.state,
+            self.last_event_id
+        )
     }
 }
 
@@ -273,21 +294,5 @@ mod tests {
         let mut t = Token::new(1, 1, [0, 0, 0], 1);
         t.origin = TOKEN_ORIGIN_PERSISTED;
         assert_eq!(t.origin, 0xFE00);
-    }
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Token[sutra={}, domain={}, pos=({},{},{}), state={:04x}, event={}]",
-            self.sutra_id,
-            self.domain_id,
-            self.position[0],
-            self.position[1],
-            self.position[2],
-            self.state,
-            self.last_event_id
-        )
     }
 }

@@ -9,12 +9,11 @@
 //
 // Топология: level_id(1)*100 + role → SUTRA=100 .. MAYA=110, LOGIC=106
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use axiom_runtime::{AxiomEngine, Gateway, Channel};
 use axiom_core::Token;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_runtime::{AxiomEngine, Channel, Gateway};
+use axiom_ucl::{OpCode, UclCommand};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
-use axiom_domain;
 
 const LOGIC_ID: u32 = 106;
 
@@ -41,7 +40,10 @@ fn engine_with_experience(trace_count: usize) -> AxiomEngine {
         let mut t = Token::new(i as u32 + 1, 100, [0, 0, 0], 1);
         t.temperature = (i % 256) as u8;
         t.mass = ((i * 3) % 256) as u8;
-        engine.ashti.experience_mut().add_trace(t, 0.9, i as u64 + 1);
+        engine
+            .ashti
+            .experience_mut()
+            .add_trace(t, 0.9, i as u64 + 1);
     }
     engine
 }
@@ -54,9 +56,7 @@ fn bench_engine_creation(c: &mut Criterion) {
     group.sample_size(50);
 
     // Полная стоимость
-    group.bench_function("full", |b| {
-        b.iter(|| black_box(AxiomEngine::new()))
-    });
+    group.bench_function("full", |b| b.iter(|| black_box(AxiomEngine::new())));
 
     // AshtiCore без rayon — изолируем стоимость thread pool
     group.bench_function("AshtiCore::new only", |b| {
@@ -105,11 +105,9 @@ fn bench_snapshot(c: &mut Criterion) {
 
     for tokens in [0, 10, 100] {
         let engine = engine_with_tokens(tokens);
-        group.bench_with_input(
-            BenchmarkId::new("tokens", tokens),
-            &tokens,
-            |b, _| b.iter(|| black_box(engine.snapshot())),
-        );
+        group.bench_with_input(BenchmarkId::new("tokens", tokens), &tokens, |b, _| {
+            b.iter(|| black_box(engine.snapshot()))
+        });
     }
     group.finish();
 }
@@ -121,11 +119,9 @@ fn bench_restore(c: &mut Criterion) {
 
     for tokens in [0, 10, 100] {
         let snap = engine_with_tokens(tokens).snapshot();
-        group.bench_with_input(
-            BenchmarkId::new("tokens", tokens),
-            &tokens,
-            |b, _| b.iter(|| black_box(AxiomEngine::restore_from(black_box(&snap)))),
-        );
+        group.bench_with_input(BenchmarkId::new("tokens", tokens), &tokens, |b, _| {
+            b.iter(|| black_box(AxiomEngine::restore_from(black_box(&snap))))
+        });
     }
     group.finish();
 }
@@ -288,7 +284,9 @@ fn bench_gateway_process_channel(c: &mut Criterion) {
                 b.iter_batched(
                     || {
                         let mut ch = Channel::new();
-                        for _ in 0..n { ch.send(tick); }
+                        for _ in 0..n {
+                            ch.send(tick);
+                        }
                         (Gateway::with_default_engine(), ch)
                     },
                     |(mut gw, mut ch)| black_box(gw.process_channel(black_box(&mut ch))),
@@ -311,10 +309,12 @@ fn engine_with_tokens_and_connections(tokens: usize, conns_per_token: usize) -> 
         for j in 0..conns_per_token {
             let src = (i + 1) as u32;
             let tgt = ((i + j + 1) % tokens + 1) as u32;
-            let mut conn = Connection::default();
-            conn.source_id = src;
-            conn.target_id = tgt;
-            conn.strength = 0.5 + (j as f32) * 0.1;
+            let conn = Connection {
+                source_id: src,
+                target_id: tgt,
+                strength: 0.5 + (j as f32) * 0.1,
+                ..Connection::default()
+            };
             let _ = state.add_connection(conn);
         }
     }
@@ -347,14 +347,8 @@ criterion_group!(
     bench_snapshot,
     bench_restore,
 );
-criterion_group!(
-    benches_ashti,
-    bench_ashti_pipeline,
-);
-criterion_group!(
-    benches_etap6,
-    bench_run_adaptation,
-);
+criterion_group!(benches_ashti, bench_ashti_pipeline,);
+criterion_group!(benches_etap6, bench_run_adaptation,);
 criterion_group!(
     benches_etap7,
     bench_snapshot_and_prune,
@@ -368,10 +362,7 @@ criterion_group!(
     bench_gateway_process,
     bench_gateway_process_channel,
 );
-criterion_group!(
-    benches_adapters,
-    bench_domain_detail_snapshot,
-);
+criterion_group!(benches_adapters, bench_domain_detail_snapshot,);
 
 criterion_main!(
     benches_core,

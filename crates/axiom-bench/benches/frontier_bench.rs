@@ -4,8 +4,8 @@
 //   - Overhead state machine transitions: минимальный
 //   - TickForward с 1000+ токенами под Storm Control: без зависания
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use axiom_frontier::{CausalFrontier, FrontierConfig};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,34 +53,30 @@ fn bench_storm_control(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(5));
 
     for n_tokens in [500u32, 1000, 5000] {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(n_tokens),
-            &n_tokens,
-            |b, &n| {
-                let config = FrontierConfig {
-                    max_frontier_size: n + 100,
-                    max_events_per_cycle: 200, // budget — не даём обработать всё за цикл
-                    storm_threshold: n / 2,
-                    enable_batch_events: true,
-                    batch_size: 20,
-                    token_capacity: n + 100,
-                    connection_capacity: 100,
-                };
+        group.bench_with_input(BenchmarkId::from_parameter(n_tokens), &n_tokens, |b, &n| {
+            let config = FrontierConfig {
+                max_frontier_size: n + 100,
+                max_events_per_cycle: 200, // budget — не даём обработать всё за цикл
+                storm_threshold: n / 2,
+                enable_batch_events: true,
+                batch_size: 20,
+                token_capacity: n + 100,
+                connection_capacity: 100,
+            };
 
-                b.iter(|| {
-                    let mut f = CausalFrontier::new(config);
-                    // Загружаем frontier выше storm_threshold
-                    for i in 0..n {
-                        f.push_token(black_box(i));
-                    }
-                    // Один цикл с budget
-                    f.begin_cycle();
-                    while f.pop().is_some() {}
-                    f.end_cycle();
-                    black_box(f.state());
-                });
-            },
-        );
+            b.iter(|| {
+                let mut f = CausalFrontier::new(config);
+                // Загружаем frontier выше storm_threshold
+                for i in 0..n {
+                    f.push_token(black_box(i));
+                }
+                // Один цикл с budget
+                f.begin_cycle();
+                while f.pop().is_some() {}
+                f.end_cycle();
+                black_box(f.state());
+            });
+        });
     }
     group.finish();
 }

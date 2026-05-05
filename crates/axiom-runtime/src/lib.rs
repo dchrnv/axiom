@@ -9,50 +9,56 @@
 //! AXIOM Runtime — оркестрация всей системы: Engine, Guardian, Snapshot, Adapters.
 
 #![deny(unsafe_code)]
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 
-/// Engine — центральный оркестратор
-pub mod engine;
-/// Guardian — надоменный контроль CODEX-правил
-pub mod guardian;
-/// Snapshot — сохранение и восстановление состояния
-pub mod snapshot;
 /// Adapters — trait-границы для внешних адаптеров
 pub mod adapters;
-/// Gateway — единая точка входа для внешних запросов
-pub mod gateway;
-/// Channel — in-process очередь команд и событий
-pub mod channel;
-mod orchestrator;
-/// ProcessingResult — диагностический результат process_and_observe()
-pub mod result;
 /// AdaptiveTickRate — Variable Tick Rate (Axiom Sentinel V1.0, Фаза 3)
 pub mod adaptive;
-/// Over-Domain Layer: Guardians + Weavers (Over_Domain_Layer_V1_1.md)
-pub mod over_domain;
 /// Broadcast-типы для внешних адаптеров (WebSocket, REST, egui).
 /// Доступны только при feature "adapters".
 #[cfg(feature = "adapters")]
 pub mod broadcast;
+/// Channel — in-process очередь команд и событий
+pub mod channel;
+/// Engine — центральный оркестратор
+pub mod engine;
+/// Gateway — единая точка входа для внешних запросов
+pub mod gateway;
+/// Guardian — надоменный контроль CODEX-правил
+pub mod guardian;
+mod orchestrator;
+/// Over-Domain Layer: Guardians + Weavers (Over_Domain_Layer_V1_1.md)
+pub mod over_domain;
+/// ProcessingResult — диагностический результат process_and_observe()
+pub mod result;
+/// Snapshot — сохранение и восстановление состояния
+pub mod snapshot;
 
-pub use engine::{AxiomEngine, AxiomError, TickSchedule, domain_name};
-#[cfg(feature = "adapters")]
-pub use broadcast::{BroadcastSnapshot, DomainSummary, DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot};
-pub use result::{ProcessingResult, ProcessingPath};
-pub use guardian::{
-    Guardian, GuardianConfig, ReflexDecision, VetoReason,
-    InhibitAction, InhibitReason,
-    CodexAction, GuardianError, GuardianStats,
-    RoleStats,
-};
-pub use snapshot::{EngineSnapshot, DomainSnapshot};
-pub use adapters::{RuntimeAdapter, EventObserver, DirectAdapter, EventBus, Perceptor, Effector};
-pub use gateway::Gateway;
-pub use channel::{Channel, ChannelBatchResult};
+pub use adapters::{DirectAdapter, Effector, EventBus, EventObserver, Perceptor, RuntimeAdapter};
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
-pub use over_domain::{WeaverId, OverDomainError, OverDomainComponent, Weaver, CrystallizationProposal, PromotionProposal};
-pub use over_domain::{FrameWeaver, FrameWeaverStats, FrameWeaverConfig};
-pub use over_domain::{DreamPhaseState, DreamPhaseStats, GatewayPriority,
-    SleepTrigger, WakeReason, DreamPhaseEvent};
-pub use over_domain::{FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker};
-pub use over_domain::{DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind};
+#[cfg(feature = "adapters")]
+pub use broadcast::{
+    BroadcastSnapshot, ConnectionSnapshot, DomainDetailSnapshot, DomainSummary, TokenSnapshot,
+};
+pub use channel::{Channel, ChannelBatchResult};
+pub use engine::{domain_name, AxiomEngine, AxiomError, TickSchedule};
+pub use gateway::Gateway;
+pub use guardian::{
+    CodexAction, Guardian, GuardianConfig, GuardianError, GuardianStats, InhibitAction,
+    InhibitReason, ReflexDecision, RoleStats, VetoReason,
+};
+pub use over_domain::{
+    CrystallizationProposal, OverDomainComponent, OverDomainError, PromotionProposal, Weaver,
+    WeaverId,
+};
+pub use over_domain::{
+    DreamPhaseEvent, DreamPhaseState, DreamPhaseStats, GatewayPriority, SleepTrigger, WakeReason,
+};
+pub use over_domain::{
+    DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
+};
+pub use over_domain::{FatigueSnapshot, FatigueTracker, FatigueWeights, IdleTracker};
+pub use over_domain::{FrameWeaver, FrameWeaverConfig, FrameWeaverStats};
+pub use result::{ProcessingPath, ProcessingResult};
+pub use snapshot::{DomainSnapshot, EngineSnapshot};

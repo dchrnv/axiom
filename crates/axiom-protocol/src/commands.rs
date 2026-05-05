@@ -16,20 +16,42 @@ pub enum EngineCommand {
 
     // Configuration — C2: GetConfig removed, replaced by schema-aware commands
     GetConfigSchema,
-    GetConfigSection { id: String },
-    UpdateConfigField { section_id: String, field_id: String, value: ConfigValue },
+    GetConfigSection {
+        id: String,
+    },
+    UpdateConfigField {
+        section_id: String,
+        field_id: String,
+        value: ConfigValue,
+    },
 
     // Knowledge import
     ListAdapters,
-    StartImport { adapter_id: String, source_path: String, options: ImportOptions },
-    CancelImport { import_id: String },
+    StartImport {
+        adapter_id: String,
+        source_path: String,
+        options: ImportOptions,
+    },
+    CancelImport {
+        import_id: String,
+    },
 
     // Conversation
-    SubmitText { text: String, target_domain: u16 },
+    SubmitText {
+        text: String,
+        target_domain: u16,
+    },
 
     // Debug injection
-    InjectToken { domain_id: u16, layer: u8, content: String },
-    InjectConnection { from_domain: u16, to_domain: u16 },
+    InjectToken {
+        domain_id: u16,
+        layer: u8,
+        content: String,
+    },
+    InjectConnection {
+        from_domain: u16,
+        to_domain: u16,
+    },
 
     // Lifecycle
     GracefulShutdown,
@@ -37,5 +59,7 @@ pub enum EngineCommand {
 
     // Queries
     RequestFullSnapshot,
-    RequestFrameDetails { anchor_id: u32 },
+    RequestFrameDetails {
+        anchor_id: u32,
+    },
 }

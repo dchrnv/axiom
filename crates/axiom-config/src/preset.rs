@@ -59,10 +59,18 @@ pub struct TokenPreset {
     pub description: String,
 }
 
-fn default_mass() -> u8 { 128 }
-fn default_temperature() -> u8 { 64 }
-fn default_state() -> u8 { 1 }
-fn default_resonance() -> u32 { 440 }
+fn default_mass() -> u8 {
+    128
+}
+fn default_temperature() -> u8 {
+    64
+}
+fn default_state() -> u8 {
+    1
+}
+fn default_resonance() -> u32 {
+    440
+}
 
 /// Пресет связи — готовая конфигурация для инициализации Connection.
 ///
@@ -101,5 +109,9 @@ pub struct ConnectionPreset {
     pub description: String,
 }
 
-fn default_gate_complexity() -> u32 { 1 }
-fn default_flags() -> u16 { 1 }
+fn default_gate_complexity() -> u32 {
+    1
+}
+fn default_flags() -> u16 {
+    1
+}

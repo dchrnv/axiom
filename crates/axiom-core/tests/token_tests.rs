@@ -1,4 +1,4 @@
-use axiom_core::{Token, STATE_ACTIVE, STATE_SLEEPING, STATE_LOCKED};
+use axiom_core::{Token, STATE_ACTIVE, STATE_LOCKED, STATE_SLEEPING};
 
 #[test]
 fn test_token_size() {

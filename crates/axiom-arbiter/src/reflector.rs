@@ -42,7 +42,7 @@ impl ReflexStats {
 ///
 /// При каждом рефлексе фиксируется, какие слои Shell были активны (> 0)
 /// и был ли рефлекс успешным. Это даёт основу для адаптации порогов в Этапе 6.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DomainProfile {
     /// Число успехов, когда слой i был активен
     pub layer_success: [u32; 8],
@@ -50,20 +50,11 @@ pub struct DomainProfile {
     pub layer_total: [u32; 8],
 }
 
-impl Default for DomainProfile {
-    fn default() -> Self {
-        Self {
-            layer_success: [0; 8],
-            layer_total: [0; 8],
-        }
-    }
-}
-
 impl DomainProfile {
     /// Обновить профиль по Shell-профилю токена и результату рефлекса
     pub fn record(&mut self, shell_profile: &[u8; 8], success: bool) {
-        for i in 0..8 {
-            if shell_profile[i] > 0 {
+        for (i, &sp) in shell_profile.iter().enumerate() {
+            if sp > 0 {
                 self.layer_total[i] += 1;
                 if success {
                     self.layer_success[i] += 1;
@@ -135,7 +126,7 @@ impl Reflector {
     ///
     /// `shell_profile`: Shell-профиль входного токена [L1..L8]
     pub fn record_domain(&mut self, role: u8, shell_profile: &[u8; 8], success: bool) {
-        if role >= 1 && role <= 8 {
+        if (1..=8).contains(&role) {
             self.domain_profiles[(role - 1) as usize].record(shell_profile, success);
         }
     }
@@ -147,7 +138,7 @@ impl Reflector {
 
     /// Профиль домена по его роли (1..8)
     pub fn domain_profile(&self, role: u8) -> Option<&DomainProfile> {
-        if role >= 1 && role <= 8 {
+        if (1..=8).contains(&role) {
             Some(&self.domain_profiles[(role - 1) as usize])
         } else {
             None

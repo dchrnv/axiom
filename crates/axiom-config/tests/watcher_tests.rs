@@ -49,7 +49,11 @@ fn test_watcher_new_on_existing_file() {
     std::fs::write(&path, AXIOM_YAML_TEMPLATE).unwrap();
 
     let watcher = ConfigWatcher::new(&path);
-    assert!(watcher.is_ok(), "ConfigWatcher::new failed: {:?}", watcher.err());
+    assert!(
+        watcher.is_ok(),
+        "ConfigWatcher::new failed: {:?}",
+        watcher.err()
+    );
     std::fs::remove_dir_all(dir).ok();
 }
 
@@ -99,7 +103,10 @@ fn test_watcher_poll_detects_file_change() {
     std::thread::sleep(Duration::from_millis(150)); // ждём inotify
 
     let result = watcher.poll();
-    assert!(result.is_some(), "poll() должен вернуть новую конфигурацию после изменения файла");
+    assert!(
+        result.is_some(),
+        "poll() должен вернуть новую конфигурацию после изменения файла"
+    );
 
     std::fs::remove_dir_all(dir).ok();
 }
@@ -120,8 +127,14 @@ fn test_watcher_reload_reflects_new_values() {
     std::thread::sleep(Duration::from_millis(150));
 
     let cfg = watcher.poll().expect("expected new config");
-    assert!(cfg.root.loader.cache_enabled, "cache_enabled должен стать true");
-    assert_eq!(cfg.root.loader.validation, "relaxed", "validation должен обновиться");
+    assert!(
+        cfg.root.loader.cache_enabled,
+        "cache_enabled должен стать true"
+    );
+    assert_eq!(
+        cfg.root.loader.validation, "relaxed",
+        "validation должен обновиться"
+    );
 
     std::fs::remove_dir_all(dir).ok();
 }
@@ -182,4 +195,3 @@ fn test_loaded_config_has_no_genome() {
 
     std::fs::remove_dir_all(dir).ok();
 }
-

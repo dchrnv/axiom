@@ -13,27 +13,30 @@
 // - docs/spec/Arbiter_V1_0.md (каноническая)
 // - docs/spec/Ashti_Core_v2_0.md
 
-pub mod experience;
 mod ashti_processor;
-mod maya_processor;
 mod com;
+pub mod experience;
+mod gridhash;
+mod maya_processor;
 mod reflector;
 mod skillset;
-mod gridhash;
 
-use axiom_core::Token;
-use axiom_config::DomainConfig;
-use experience::{Experience, ResonanceLevel};
 use ashti_processor::AshtiProcessor;
+use axiom_config::DomainConfig;
+use axiom_core::Token;
+use experience::{Experience, ResonanceLevel};
 use maya_processor::MayaProcessor;
 use std::collections::HashMap;
 
 // Re-export for tests and axiom-persist
-pub use experience::{Experience as ExperienceModule, ExperienceTrace, ResonanceLevel as ResonanceLevelEnum, TensionTrace};
 pub use com::COM;
-pub use reflector::{Reflector, ReflexStats, DomainProfile};
-pub use skillset::{Skill, SkillSet};
+pub use experience::{
+    Experience as ExperienceModule, ExperienceTrace, ResonanceLevel as ResonanceLevelEnum,
+    TensionTrace,
+};
 pub use gridhash::{grid_hash, grid_hash_with_shell, AssociativeIndex};
+pub use reflector::{DomainProfile, Reflector, ReflexStats};
+pub use skillset::{Skill, SkillSet};
 
 // ── Cognitive Depth V1.0 — 13D: Goal & Curiosity ─────────────────────────────
 
@@ -144,7 +147,7 @@ pub struct PendingComparison {
 pub struct DomainRegistry {
     sutra: Option<u16>,
     experience: Option<u16>,
-    ashti: [Option<u16>; 8],  // Indexed by role 1-8
+    ashti: [Option<u16>; 8], // Indexed by role 1-8
     maya: Option<u16>,
 }
 
@@ -159,10 +162,10 @@ impl DomainRegistry {
     }
 
     fn is_complete(&self) -> bool {
-        self.sutra.is_some() &&
-        self.experience.is_some() &&
-        self.maya.is_some() &&
-        self.ashti.iter().all(|d| d.is_some())
+        self.sutra.is_some()
+            && self.experience.is_some()
+            && self.maya.is_some()
+            && self.ashti.iter().all(|d| d.is_some())
     }
 }
 
@@ -204,20 +207,20 @@ impl Arbiter {
             0 => {
                 self.registry.sutra = Some(domain_id);
                 Ok(())
-            },
+            }
             9 => {
                 self.registry.experience = Some(domain_id);
                 Ok(())
-            },
+            }
             1..=8 => {
                 self.registry.ashti[(role - 1) as usize] = Some(domain_id);
                 Ok(())
-            },
+            }
             10 => {
                 self.registry.maya = Some(domain_id);
                 Ok(())
-            },
-            _ => Err(format!("Invalid structural_role: {}", role))
+            }
+            _ => Err(format!("Invalid structural_role: {}", role)),
         }
     }
 
@@ -245,7 +248,12 @@ impl Arbiter {
     ///
     /// Для domain 0 (SUTRA) использует параллельный resonance search.
     /// Для остальных доменов делегирует в `route_token` (параллелизм там не нужен).
-    pub fn route_token_parallel(&mut self, token: Token, source_domain: u8, pool: &rayon::ThreadPool) -> RoutingResult {
+    pub fn route_token_parallel(
+        &mut self,
+        token: Token,
+        source_domain: u8,
+        pool: &rayon::ThreadPool,
+    ) -> RoutingResult {
         if !self.is_ready() {
             return RoutingResult::error("Not all domains registered");
         }
@@ -262,7 +270,11 @@ impl Arbiter {
     }
 
     /// SUTRA (0) → EXPERIENCE (9) [параллельный, Sentinel Фаза 2]
-    fn route_from_sutra_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult {
+    fn route_from_sutra_parallel(
+        &mut self,
+        token: Token,
+        pool: &rayon::ThreadPool,
+    ) -> RoutingResult {
         let _event_id = self.com.next_event_id(0);
         self.route_from_experience_core(token, Some(pool))
     }
@@ -273,7 +285,11 @@ impl Arbiter {
     }
 
     /// EXPERIENCE (9) → Dual Path [параллельный, Sentinel Фаза 2]
-    pub fn route_from_experience_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult {
+    pub fn route_from_experience_parallel(
+        &mut self,
+        token: Token,
+        pool: &rayon::ThreadPool,
+    ) -> RoutingResult {
         self.route_from_experience_core(token, Some(pool))
     }
 
@@ -282,7 +298,11 @@ impl Arbiter {
     /// При `pool = Some(p)` Phase 2 resonance search выполняется параллельно через rayon.
     /// При `pool = None` — обычный последовательный поиск.
     /// Если traces < PARALLEL_THRESHOLD, pool игнорируется.
-    fn route_from_experience_core(&mut self, token: Token, pool: Option<&rayon::ThreadPool>) -> RoutingResult {
+    fn route_from_experience_core(
+        &mut self,
+        token: Token,
+        pool: Option<&rayon::ThreadPool>,
+    ) -> RoutingResult {
         let event_id = self.com.next_event_id(9);
 
         // 0. SKILLSET: мгновенный ответ если паттерн кристаллизован
@@ -293,14 +313,17 @@ impl Arbiter {
             let ashti_results = self.route_to_ashti(token, None);
             let consolidated = self.route_to_maya(ashti_results.clone());
 
-            self.pending_comparisons.insert(event_id, PendingComparison {
-                input_pattern: token,
-                reflex_prediction: Some(reflex_token),
-                ashti_results: ashti_results.clone(),
-                consolidated_result: consolidated,
-                created_at: event_id,
-                trace_index: None,
-            });
+            self.pending_comparisons.insert(
+                event_id,
+                PendingComparison {
+                    input_pattern: token,
+                    reflex_prediction: Some(reflex_token),
+                    ashti_results: ashti_results.clone(),
+                    consolidated_result: consolidated,
+                    created_at: event_id,
+                    trace_index: None,
+                },
+            );
 
             return RoutingResult {
                 event_id,
@@ -316,7 +339,7 @@ impl Arbiter {
         // 1. Резонансный поиск (последовательный или параллельный)
         let resonance = match pool {
             Some(p) => self.experience.resonance_search_parallel(&token, p),
-            None    => self.experience.resonance_search(&token),
+            None => self.experience.resonance_search(&token),
         };
 
         // 2. Fast path (conditional) - рефлекс
@@ -337,7 +360,8 @@ impl Arbiter {
 
         // 4. Консолидация через MAYA с confidence + multi-pass (Cognitive Depth 13A)
         let (max_passes, min_coherence_f) = self.maya_multipass_params();
-        let (mut consolidated, mut confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+        let (mut consolidated, mut confidence) =
+            self.route_to_maya_with_confidence(ashti_results.clone());
         let mut final_ashti = ashti_results;
         let mut passes = 1u8;
 
@@ -348,14 +372,17 @@ impl Arbiter {
                     cur_pat.temperature = cur_pat.temperature.saturating_add(cons.temperature / 2);
                 }
                 let extra_ashti = self.route_to_ashti(cur_pat, None);
-                let (extra_cons, extra_conf) = self.route_to_maya_with_confidence(extra_ashti.clone());
+                let (extra_cons, extra_conf) =
+                    self.route_to_maya_with_confidence(extra_ashti.clone());
                 if extra_conf > confidence {
-                    confidence  = extra_conf;
+                    confidence = extra_conf;
                     final_ashti = extra_ashti;
                     consolidated = extra_cons;
                 }
                 passes = pass + 1;
-                if confidence >= min_coherence_f { break; }
+                if confidence >= min_coherence_f {
+                    break;
+                }
             }
         }
 
@@ -364,18 +391,22 @@ impl Arbiter {
         let is_impulse = token.type_flags & axiom_core::TOKEN_FLAG_IMPULSE != 0;
         if !is_impulse && max_passes > 0 && confidence < min_coherence_f {
             let tension_temp = ((1.0 - confidence) * 255.0) as u8;
-            self.experience.add_tension_trace(token, tension_temp, event_id);
+            self.experience
+                .add_tension_trace(token, tension_temp, event_id);
         }
 
         // 5. Сохранить для сравнения
-        self.pending_comparisons.insert(event_id, PendingComparison {
-            input_pattern: token,
-            reflex_prediction: reflex,
-            ashti_results: final_ashti.clone(),
-            consolidated_result: consolidated,
-            created_at: event_id,
-            trace_index: None,
-        });
+        self.pending_comparisons.insert(
+            event_id,
+            PendingComparison {
+                input_pattern: token,
+                reflex_prediction: reflex,
+                ashti_results: final_ashti.clone(),
+                consolidated_result: consolidated,
+                created_at: event_id,
+                trace_index: None,
+            },
+        );
 
         RoutingResult {
             event_id,
@@ -413,7 +444,10 @@ impl Arbiter {
         let maya_id = self.registry.maya?;
         let maya_domain = self.domains.get(&maya_id)?;
 
-        Some(MayaProcessor::consolidate_results(ashti_results, maya_domain))
+        Some(MayaProcessor::consolidate_results(
+            ashti_results,
+            maya_domain,
+        ))
     }
 
     /// Консолидация результатов ASHTI через MAYA с оценкой coherence.
@@ -431,7 +465,8 @@ impl Arbiter {
             None => return (None, 1.0),
         };
 
-        let (token, confidence) = MayaProcessor::consolidate_with_confidence(ashti_results, maya_domain);
+        let (token, confidence) =
+            MayaProcessor::consolidate_with_confidence(ashti_results, maya_domain);
         (Some(token), confidence)
     }
 
@@ -477,7 +512,8 @@ impl Arbiter {
             passes = pass + 1;
             let hint_this_pass = if pass == 0 { hint } else { None };
             let ashti_results = self.route_to_ashti(current_pattern, hint_this_pass);
-            let (consolidated, confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+            let (consolidated, confidence) =
+                self.route_to_maya_with_confidence(ashti_results.clone());
 
             final_confidence = confidence;
             final_ashti = ashti_results;
@@ -489,7 +525,8 @@ impl Arbiter {
 
             // Обогащаем паттерн для следующего прохода
             if let Some(ref cons) = final_consolidated {
-                current_pattern.temperature = current_pattern.temperature
+                current_pattern.temperature = current_pattern
+                    .temperature
                     .saturating_add(cons.temperature / 2);
             }
         }
@@ -497,17 +534,21 @@ impl Arbiter {
         // Если итоговый confidence низкий — создаём tension trace
         if final_confidence < min_coherence_f {
             let tension_temp = ((1.0 - final_confidence) * 255.0) as u8;
-            self.experience.add_tension_trace(token, tension_temp, event_id);
+            self.experience
+                .add_tension_trace(token, tension_temp, event_id);
         }
 
-        self.pending_comparisons.insert(event_id, PendingComparison {
-            input_pattern: token,
-            reflex_prediction: reflex,
-            ashti_results: final_ashti.clone(),
-            consolidated_result: final_consolidated,
-            created_at: event_id,
-            trace_index: None,
-        });
+        self.pending_comparisons.insert(
+            event_id,
+            PendingComparison {
+                input_pattern: token,
+                reflex_prediction: reflex,
+                ashti_results: final_ashti.clone(),
+                consolidated_result: final_consolidated,
+                created_at: event_id,
+                trace_index: None,
+            },
+        );
 
         RoutingResult {
             event_id,
@@ -531,7 +572,10 @@ impl Arbiter {
             Some(d) => d,
             None => return (0, 0.6),
         };
-        (maya_domain.max_passes, maya_domain.min_coherence as f32 / 255.0)
+        (
+            maya_domain.max_passes,
+            maya_domain.min_coherence as f32 / 255.0,
+        )
     }
 
     /// ASHTI (1-8) → MAYA (уже обработано в route_from_experience)
@@ -568,11 +612,15 @@ impl Arbiter {
 
     /// Финализация сравнения и обучение
     pub fn finalize_comparison(&mut self, event_id: u64) -> Result<(), String> {
-        let comparison = self.pending_comparisons.remove(&event_id)
+        let comparison = self
+            .pending_comparisons
+            .remove(&event_id)
             .ok_or("Comparison not found")?;
 
         // Сравнить reflex с консолидированным результатом
-        if let (Some(reflex), Some(consolidated)) = (comparison.reflex_prediction, comparison.consolidated_result) {
+        if let (Some(reflex), Some(consolidated)) =
+            (comparison.reflex_prediction, comparison.consolidated_result)
+        {
             let match_result = self.compare_tokens(&reflex, &consolidated);
 
             // REFLECTOR: фиксируем результат рефлекса
@@ -580,7 +628,8 @@ impl Arbiter {
             self.reflector.record_reflex(input_hash, match_result);
 
             let weight = if match_result { 0.7 } else { 0.3 };
-            self.experience.strengthen_or_add(consolidated, weight, event_id);
+            self.experience
+                .strengthen_or_add(consolidated, weight, event_id);
 
             // Усиливаем след если рефлекс был успешен
             if match_result {
@@ -589,14 +638,17 @@ impl Arbiter {
         } else {
             // Если не было рефлекса — усиляем существующий паттерн или добавляем новый
             if let Some(consolidated) = comparison.consolidated_result {
-                self.experience.strengthen_or_add(consolidated, 0.5, event_id);
+                self.experience
+                    .strengthen_or_add(consolidated, 0.5, event_id);
             }
         }
 
         // SKILLSET: проверяем кристаллизацию
         let weight_threshold = self.skillset.crystallization_threshold;
         let min_success = self.skillset.min_success_count;
-        let candidates = self.experience.find_crystallizable(weight_threshold, min_success);
+        let candidates = self
+            .experience
+            .find_crystallizable(weight_threshold, min_success);
         for trace in candidates {
             self.skillset.try_crystallize(&trace);
         }
@@ -608,14 +660,20 @@ impl Arbiter {
     pub fn compare_tokens(&self, reflex: &Token, ashti: &Token) -> bool {
         // Берём пороги из конфига домена-источника рефлекса, fallback → модульные константы
         let cfg = self.domains.get(&reflex.domain_id);
-        let temp_tol    = cfg.map(|c| c.token_compare_temp_tolerance)   .unwrap_or(TOKEN_COMPARE_TEMP_TOLERANCE);
-        let mass_tol    = cfg.map(|c| c.token_compare_mass_tolerance)   .unwrap_or(TOKEN_COMPARE_MASS_TOLERANCE);
-        let valence_tol = cfg.map(|c| c.token_compare_valence_tolerance).unwrap_or(TOKEN_COMPARE_VALENCE_TOLERANCE);
+        let temp_tol = cfg
+            .map(|c| c.token_compare_temp_tolerance)
+            .unwrap_or(TOKEN_COMPARE_TEMP_TOLERANCE);
+        let mass_tol = cfg
+            .map(|c| c.token_compare_mass_tolerance)
+            .unwrap_or(TOKEN_COMPARE_MASS_TOLERANCE);
+        let valence_tol = cfg
+            .map(|c| c.token_compare_valence_tolerance)
+            .unwrap_or(TOKEN_COMPARE_VALENCE_TOLERANCE);
 
         // Проверяем ключевые свойства
-        let temp_match    = (reflex.temperature as i16 - ashti.temperature as i16).abs() < temp_tol;
-        let mass_match    = (reflex.mass as i16 - ashti.mass as i16).abs()           < mass_tol;
-        let valence_match = (reflex.valence - ashti.valence).abs()                   < valence_tol as i8;
+        let temp_match = (reflex.temperature as i16 - ashti.temperature as i16).abs() < temp_tol;
+        let mass_match = (reflex.mass as i16 - ashti.mass as i16).abs() < mass_tol;
+        let valence_match = (reflex.valence - ashti.valence).abs() < valence_tol as i8;
 
         // Позиция: Евклидово расстояние
         let pos_dist = self.euclidean_distance(&reflex.position, &ashti.position);
@@ -650,9 +708,8 @@ impl Arbiter {
 
     /// Очистка старых сравнений (cleanup)
     pub fn cleanup_old_comparisons(&mut self, current_event_id: u64, max_age: u64) {
-        self.pending_comparisons.retain(|_, comp| {
-            current_event_id.saturating_sub(comp.created_at) <= max_age
-        });
+        self.pending_comparisons
+            .retain(|_, comp| current_event_id.saturating_sub(comp.created_at) <= max_age);
     }
 
     /// Добавить или обновить конфигурацию домена (для динамического добавления доменов из Engine)
@@ -674,7 +731,8 @@ impl Arbiter {
             None => return,
         };
         if let Some(config) = self.domains.get(&exp_domain_id) {
-            self.experience.set_thresholds(config.reflex_threshold, config.association_threshold);
+            self.experience
+                .set_thresholds(config.reflex_threshold, config.association_threshold);
         }
     }
 
@@ -688,7 +746,11 @@ impl Arbiter {
     ///
     /// Возвращает Vec<Token> с горячими импульсами (пустой если Internal Drive отключён
     /// или нет горячих следов).
-    pub fn on_heartbeat_pulse(&mut self, _pulse_number: u64, enable_internal_drive: bool) -> Vec<Token> {
+    pub fn on_heartbeat_pulse(
+        &mut self,
+        _pulse_number: u64,
+        enable_internal_drive: bool,
+    ) -> Vec<Token> {
         if !enable_internal_drive {
             return Vec::new();
         }
@@ -740,8 +802,12 @@ impl Arbiter {
     /// Возвращает `InternalImpulse` для каждого следа с GOAL-флагом и weight < GOAL_ACHIEVED_WEIGHT.
     ///
     /// Вес импульса = насколько далеко от достижения: 1.0 = только создана, ~0 = почти достигнута.
-    pub fn generate_goal_impulses(&self, pulse_number: u64, check_interval: u64) -> Vec<InternalImpulse> {
-        if check_interval == 0 || pulse_number % check_interval != 0 {
+    pub fn generate_goal_impulses(
+        &self,
+        pulse_number: u64,
+        check_interval: u64,
+    ) -> Vec<InternalImpulse> {
+        if check_interval == 0 || !pulse_number.is_multiple_of(check_interval) {
             return Vec::new();
         }
 
@@ -779,7 +845,8 @@ impl Arbiter {
             Some(id) => id,
             None => return 0,
         };
-        self.domains.get(&maya_id)
+        self.domains
+            .get(&maya_id)
             .map(|d| d.internal_dominance_factor)
             .unwrap_or(0)
     }
@@ -792,4 +859,3 @@ const TENSION_DECAY: u8 = 10;
 /// Порог temperature для считывания следа как "горячего" импульса.
 /// 128/255 ≈ 0.5 — половина шкалы активности.
 const TENSION_DRAIN_THRESHOLD: u8 = 128;
-

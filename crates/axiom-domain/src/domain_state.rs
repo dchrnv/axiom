@@ -3,8 +3,8 @@
 //
 // Domain V1.3: DomainState — предвыделённые буферы токенов и связей
 
-use axiom_core::{Token, Connection};
 use axiom_config::DomainConfig;
+use axiom_core::{Connection, Token};
 
 /// Ошибка превышения ёмкости домена.
 #[derive(Debug, PartialEq)]

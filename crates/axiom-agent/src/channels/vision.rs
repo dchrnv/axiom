@@ -8,10 +8,10 @@
 //   temperature = (confidence * 255) as u8
 //   position[0] = bbox x_center, position[1] = bbox y_center
 
-use std::path::Path;
-use axiom_ucl::{UclCommand, OpCode};
+use crate::ml::engine::{MLDetection, MLEngine, MLError};
 use axiom_runtime::Perceptor;
-use crate::ml::engine::{MLEngine, MLDetection, MLError};
+use axiom_ucl::{OpCode, UclCommand};
+use std::path::Path;
 
 /// Домен по умолчанию для визуальных токенов (LOGIC=106)
 pub const VISION_DEFAULT_DOMAIN: u32 = 106;
@@ -94,8 +94,7 @@ impl VisionPerceptor {
 
     /// Обработать файл изображения: декодировать → инференс → детекции → команды.
     pub fn process_image(&mut self, path: &Path) -> Result<usize, MLError> {
-        let img = image::open(path)
-            .map_err(|e| MLError::LoadFailed(format!("image: {e}")))?;
+        let img = image::open(path).map_err(|e| MLError::LoadFailed(format!("image: {e}")))?;
 
         // Изменяем размер до входного тензора движка
         let input_size = self.engine.input_size();

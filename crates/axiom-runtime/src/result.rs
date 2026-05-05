@@ -45,7 +45,6 @@ pub struct ProcessingResult {
     pub traces_matched: u32,
 
     // --- Расширенная диагностика (Фаза 1) ---
-
     /// Число выполненных проходов (1 = обычный, >1 = multi-pass)
     pub passes: u8,
     /// Максимальное число проходов из конфига MAYA

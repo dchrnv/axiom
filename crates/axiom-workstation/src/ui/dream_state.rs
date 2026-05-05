@@ -1,7 +1,10 @@
 use iced::widget::{button, column, container, horizontal_space, row, scrollable, text};
 use iced::{Color, Element, Length};
 
-use axiom_protocol::{events::EngineState, snapshot::{DreamReport, SystemSnapshot}};
+use axiom_protocol::{
+    events::EngineState,
+    snapshot::{DreamReport, SystemSnapshot},
+};
 
 use crate::app::{DreamWindowState, Message};
 
@@ -15,11 +18,7 @@ pub fn dream_state_view<'a>(
     ]
     .height(200);
 
-    column![
-        top,
-        recent_dreams_panel(&state.recent_dreams),
-    ]
-    .into()
+    column![top, recent_dreams_panel(&state.recent_dreams),].into()
 }
 
 // ── Current state ──────────────────────────────────────────────────────────
@@ -30,7 +29,8 @@ fn current_state_panel<'a>(
 ) -> Element<'a, Message> {
     let (state_label, state_color, since_ticks) = match snapshot {
         Some(snap) => {
-            let since = snap.current_tick
+            let since = snap
+                .current_tick
                 .saturating_sub(snap.dream_phase_stats.last_transition_tick);
             let (label, color) = engine_state_display(snap.engine_state);
             (label, color, since)
@@ -66,7 +66,8 @@ fn current_state_panel<'a>(
                 .on_press(Message::ForceWakeRequest)
                 .style(button::secondary)
                 .into(),
-            _ => text("transitioning...").size(11)
+            _ => text("transitioning...")
+                .size(11)
                 .color(Color::from_rgb(0.5, 0.5, 0.5))
                 .into(),
         }
@@ -76,7 +77,8 @@ fn current_state_panel<'a>(
         column![
             text(state_label).size(22).color(state_color),
             text(format!("{} ticks since transition", since_ticks))
-                .size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+                .size(11)
+                .color(Color::from_rgb(0.5, 0.5, 0.5)),
             action_widget,
         ]
         .spacing(10),
@@ -99,7 +101,9 @@ fn engine_state_display(state: EngineState) -> (&'static str, Color) {
 fn fatigue_panel<'a>(snapshot: &'a Option<SystemSnapshot>) -> Element<'a, Message> {
     let Some(snap) = snapshot else {
         return container(
-            text("No data").size(13).color(Color::from_rgb(0.45, 0.45, 0.45)),
+            text("No data")
+                .size(13)
+                .color(Color::from_rgb(0.45, 0.45, 0.45)),
         )
         .padding(16)
         .into();
@@ -112,19 +116,24 @@ fn fatigue_panel<'a>(snapshot: &'a Option<SystemSnapshot>) -> Element<'a, Messag
 
     container(
         column![
-            text("Fatigue").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text("Fatigue")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
             row![
                 text(format!("Total: {}%", pct)).size(13),
                 horizontal_space(),
                 text(format!("threshold: {}%", threshold_pct))
-                    .size(11).color(Color::from_rgb(0.5, 0.5, 0.5)),
+                    .size(11)
+                    .color(Color::from_rgb(0.5, 0.5, 0.5)),
             ],
             text(spark).size(12).font(iced::Font::MONOSPACE),
             column![
                 text(format!("Token rate: {:.2}/tick", f.token_rate))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
+                    .size(11)
+                    .color(Color::from_rgb(0.55, 0.55, 0.55)),
                 text(format!("Ticks since dream: {}", f.ticks_since_dream))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
+                    .size(11)
+                    .color(Color::from_rgb(0.55, 0.55, 0.55)),
             ]
             .spacing(3),
         ]
@@ -153,13 +162,18 @@ fn fatigue_sparkline(history: &[f32]) -> String {
 
 // ── Recent dreams ──────────────────────────────────────────────────────────
 
-fn recent_dreams_panel<'a>(dreams: &'a std::collections::VecDeque<DreamReport>) -> Element<'a, Message> {
+fn recent_dreams_panel<'a>(
+    dreams: &'a std::collections::VecDeque<DreamReport>,
+) -> Element<'a, Message> {
     if dreams.is_empty() {
         return container(
             column![
-                text("Recent dreams").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
+                text("Recent dreams")
+                    .size(13)
+                    .color(Color::from_rgb(0.6, 0.6, 0.6)),
                 text("No dream cycles recorded yet.")
-                    .size(13).color(Color::from_rgb(0.45, 0.45, 0.45)),
+                    .size(13)
+                    .color(Color::from_rgb(0.45, 0.45, 0.45)),
             ]
             .spacing(8),
         )
@@ -171,7 +185,9 @@ fn recent_dreams_panel<'a>(dreams: &'a std::collections::VecDeque<DreamReport>) 
 
     container(
         column![
-            text("Recent dreams").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text("Recent dreams")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
             scrollable(column(cards).spacing(4)).height(Length::Fill),
         ]
         .spacing(8),
@@ -183,8 +199,8 @@ fn recent_dreams_panel<'a>(dreams: &'a std::collections::VecDeque<DreamReport>) 
 
 fn dream_card<'a>(report: &'a DreamReport) -> Element<'a, Message> {
     let duration_ticks = report.ended_at_tick.saturating_sub(report.started_at_tick);
-    let completed = report.proposals_accepted + report.proposals_rejected > 0
-        || duration_ticks > 10;
+    let completed =
+        report.proposals_accepted + report.proposals_rejected > 0 || duration_ticks > 10;
     let icon = if completed { "●" } else { "⊘" };
     let icon_color = if completed {
         Color::from_rgb(0.45, 0.25, 0.7)
@@ -202,18 +218,21 @@ fn dream_card<'a>(report: &'a DreamReport) -> Element<'a, Message> {
                 report.fatigue_before * 100.0,
                 report.fatigue_after * 100.0,
                 fatigue_delta * 100.0,
-            )).size(13),
+            ))
+            .size(13),
         ],
         text(format!(
             "  ticks {}-{}  duration: {}",
             report.started_at_tick, report.ended_at_tick, duration_ticks
         ))
-        .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
+        .size(11)
+        .color(Color::from_rgb(0.55, 0.55, 0.55)),
         text(format!(
             "  proposals: {} accepted, {} rejected  promotions: {}",
             report.proposals_accepted, report.proposals_rejected, report.sutra_written
         ))
-        .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
+        .size(11)
+        .color(Color::from_rgb(0.55, 0.55, 0.55)),
     ]
     .spacing(1)
     .padding([4u16, 8u16])

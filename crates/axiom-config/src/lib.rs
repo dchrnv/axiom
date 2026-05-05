@@ -38,19 +38,17 @@ pub mod schema;
 /// Горячая перезагрузка конфигурации
 pub mod watcher;
 
+pub use anchor::{Anchor, AnchorMatch, AnchorSet, MatchType};
 pub use domain_config::{
-    DomainConfig, DomainType, StructuralRole,
-    DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
+    DomainConfig, DomainType, StructuralRole, DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
+    GUARDIAN_CHECK_REQUIRED, MEMBRANE_ADAPTIVE, MEMBRANE_CLOSED, MEMBRANE_OPEN, MEMBRANE_SEMI,
     PROCESSING_ACTIVE, PROCESSING_FROZEN, PROCESSING_IDLE,
-    MEMBRANE_OPEN, MEMBRANE_SEMI, MEMBRANE_CLOSED, MEMBRANE_ADAPTIVE,
-    GUARDIAN_CHECK_REQUIRED,
 };
-pub use dream_config::{DreamConfig, SchedulerConfig, FatigueWeightsConfig, CycleConfig};
+pub use dream_config::{CycleConfig, DreamConfig, FatigueWeightsConfig, SchedulerConfig};
 pub use heartbeat_config::HeartbeatConfig;
 pub use loader::{
-    AxiomConfig, ConfigError, ConfigLoader, LoaderConfig, LoadedAxiomConfig,
-    PresetsConfig, RuntimeConfig, SchemaConfig,
+    AxiomConfig, ConfigError, ConfigLoader, LoadedAxiomConfig, LoaderConfig, PresetsConfig,
+    RuntimeConfig, SchemaConfig,
 };
-pub use anchor::{Anchor, AnchorSet, AnchorMatch, MatchType};
-pub use preset::{TokenPreset, ConnectionPreset};
+pub use preset::{ConnectionPreset, TokenPreset};
 pub use watcher::ConfigWatcher;

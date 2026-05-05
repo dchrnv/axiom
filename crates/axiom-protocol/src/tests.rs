@@ -5,13 +5,17 @@ use crate::config::{
     ConfigCategory, ConfigField, ConfigFieldType, ConfigSchema, ConfigSection, ConfigValue,
 };
 use crate::events::{AlertLevel, EngineEvent, EngineState, SleepTrigger};
-use crate::messages::{ClientKind, ClientMessage, CommandResultData, EngineMessage, ShutdownReason};
+use crate::messages::{
+    ClientKind, ClientMessage, CommandResultData, EngineMessage, ShutdownReason,
+};
 use crate::snapshot::{
     DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport, FatigueSnapshot,
     FrameDetails, FrameWeaverStats, GuardianStats, OverDomainSnapshot, SystemSnapshot,
 };
 
-fn round_trip<T: serde::Serialize + for<'de> serde::Deserialize<'de> + std::fmt::Debug + PartialEq>(
+fn round_trip<
+    T: serde::Serialize + for<'de> serde::Deserialize<'de> + std::fmt::Debug + PartialEq,
+>(
     value: &T,
 ) {
     let bytes = postcard::to_stdvec(value).expect("serialize");
@@ -27,7 +31,10 @@ fn make_snapshot() -> SystemSnapshot {
         domains: vec![DomainSnapshot {
             id: 100,
             name: "LOGIC".into(),
-            config_summary: DomainConfigSummary { capacity: 1000, temperature_decay: 5 },
+            config_summary: DomainConfigSummary {
+                capacity: 1000,
+                temperature_decay: 5,
+            },
             token_count: 10,
             connection_count: 3,
             temperature_avg: 128,
@@ -71,7 +78,10 @@ fn make_snapshot() -> SystemSnapshot {
 
 #[test]
 fn engine_message_hello() {
-    round_trip(&EngineMessage::Hello { version: 1, capabilities: 0 });
+    round_trip(&EngineMessage::Hello {
+        version: 1,
+        capabilities: 0,
+    });
 }
 
 #[test]
@@ -106,14 +116,19 @@ fn engine_message_command_result_err() {
 
 #[test]
 fn engine_message_bye() {
-    round_trip(&EngineMessage::Bye { reason: ShutdownReason::Normal });
+    round_trip(&EngineMessage::Bye {
+        reason: ShutdownReason::Normal,
+    });
 }
 
 // ClientMessage variants
 
 #[test]
 fn client_message_hello() {
-    round_trip(&ClientMessage::Hello { version: 1, client_kind: ClientKind::Workstation });
+    round_trip(&ClientMessage::Hello {
+        version: 1,
+        client_kind: ClientKind::Workstation,
+    });
 }
 
 #[test]
@@ -123,7 +138,9 @@ fn client_message_request_snapshot() {
 
 #[test]
 fn client_message_subscribe() {
-    round_trip(&ClientMessage::Subscribe { event_categories: crate::event_category::DEFAULT });
+    round_trip(&ClientMessage::Subscribe {
+        event_categories: crate::event_category::DEFAULT,
+    });
 }
 
 #[test]
@@ -170,12 +187,18 @@ fn event_frame_crystallized() {
 
 #[test]
 fn event_frame_reactivated() {
-    round_trip(&EngineEvent::FrameReactivated { anchor_id: 42, new_temperature: 200 });
+    round_trip(&EngineEvent::FrameReactivated {
+        anchor_id: 42,
+        new_temperature: 200,
+    });
 }
 
 #[test]
 fn event_frame_promoted() {
-    round_trip(&EngineEvent::FramePromoted { source_anchor_id: 42, sutra_anchor_id: 99 });
+    round_trip(&EngineEvent::FramePromoted {
+        source_anchor_id: 42,
+        sutra_anchor_id: 99,
+    });
 }
 
 #[test]
@@ -214,12 +237,19 @@ fn event_adapter_finished() {
 
 #[test]
 fn event_bench_started() {
-    round_trip(&EngineEvent::BenchStarted { bench_id: "hot_path_tick".into(), run_id: 1 });
+    round_trip(&EngineEvent::BenchStarted {
+        bench_id: "hot_path_tick".into(),
+        run_id: 1,
+    });
 }
 
 #[test]
 fn event_bench_progress() {
-    round_trip(&EngineEvent::BenchProgress { run_id: 1, completed: 500, total: 10000 });
+    round_trip(&EngineEvent::BenchProgress {
+        run_id: 1,
+        completed: 500,
+        total: 10000,
+    });
 }
 
 #[test]
@@ -260,7 +290,9 @@ fn command_get_config_schema() {
 
 #[test]
 fn command_get_config_section() {
-    round_trip(&EngineCommand::GetConfigSection { id: "engine.dream_phase".into() });
+    round_trip(&EngineCommand::GetConfigSection {
+        id: "engine.dream_phase".into(),
+    });
 }
 
 #[test]
@@ -277,7 +309,10 @@ fn command_start_import() {
     round_trip(&EngineCommand::StartImport {
         adapter_id: "pdf".into(),
         source_path: "/tmp/doc.pdf".into(),
-        options: ImportOptions { params: vec![], target_domain: None },
+        options: ImportOptions {
+            params: vec![],
+            target_domain: None,
+        },
     });
 }
 
@@ -303,7 +338,11 @@ fn config_schema_round_trip() {
                     id: "fatigue_threshold".into(),
                     label: "Fatigue threshold".into(),
                     description: Some("Trigger dream when fatigue exceeds this value".into()),
-                    field_type: ConfigFieldType::Float { min: 0.0, max: 1.0, step: Some(0.01) },
+                    field_type: ConfigFieldType::Float {
+                        min: 0.0,
+                        max: 1.0,
+                        step: Some(0.01),
+                    },
                     current_value: ConfigValue::Float(0.8),
                     default_value: ConfigValue::Float(0.8),
                     hot_reloadable: true,
@@ -331,7 +370,7 @@ fn config_value_variants() {
     round_trip(&ConfigValue::Bool(true));
     round_trip(&ConfigValue::Integer(-42));
     round_trip(&ConfigValue::UInt(1000));
-    round_trip(&ConfigValue::Float(3.14));
+    round_trip(&ConfigValue::Float(3.15));
     round_trip(&ConfigValue::EnumVariant("FifoDropOldest".into()));
     round_trip(&ConfigValue::Duration(10000));
     round_trip(&ConfigValue::Domain(100));
@@ -416,7 +455,9 @@ fn bench_spec_round_trip() {
     round_trip(&BenchSpec {
         bench_id: "hot_path_tick".into(),
         iterations: 10000,
-        options: BenchOptions { params: vec![("warmup".into(), "true".into())] },
+        options: BenchOptions {
+            params: vec![("warmup".into(), "true".into())],
+        },
     });
 }
 

@@ -10,16 +10,16 @@ use axiom_protocol::{
         GuardianStats, OverDomainSnapshot, SystemSnapshot,
     },
 };
-use axiom_runtime::{BroadcastSnapshot, AxiomEngine};
+use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
 
 pub fn engine_state_from(s: &BroadcastSnapshot) -> EngineState {
     use axiom_runtime::over_domain::DreamPhaseState;
     if let Some(dp) = &s.dream_phase {
         match dp.state {
-            DreamPhaseState::Wake         => EngineState::Wake,
+            DreamPhaseState::Wake => EngineState::Wake,
             DreamPhaseState::FallingAsleep => EngineState::FallingAsleep,
-            DreamPhaseState::Dreaming     => EngineState::Dreaming,
-            DreamPhaseState::Waking       => EngineState::Waking,
+            DreamPhaseState::Dreaming => EngineState::Dreaming,
+            DreamPhaseState::Waking => EngineState::Waking,
         }
     } else {
         EngineState::Wake
@@ -31,18 +31,23 @@ pub fn build_system_snapshot(engine: &AxiomEngine) -> SystemSnapshot {
 
     let engine_state = engine_state_from(&bs);
 
-    let domains: Vec<DomainSnapshot> = bs.domain_summaries.iter().map(|d| {
-        DomainSnapshot {
+    let domains: Vec<DomainSnapshot> = bs
+        .domain_summaries
+        .iter()
+        .map(|d| DomainSnapshot {
             id: d.domain_id,
             name: d.name.clone(),
-            config_summary: DomainConfigSummary { capacity: 0, temperature_decay: 0 },
+            config_summary: DomainConfigSummary {
+                capacity: 0,
+                temperature_decay: 0,
+            },
             token_count: d.token_count as u32,
             connection_count: d.connection_count as u32,
             temperature_avg: 0,
             recent_activity: 0,
             layer_activations: [0u8; 8],
-        }
-    }).collect();
+        })
+        .collect();
 
     let total_tokens: u32 = domains.iter().map(|d| d.token_count).sum();
     let total_connections: u32 = domains.iter().map(|d| d.connection_count).sum();
@@ -65,13 +70,11 @@ pub fn build_system_snapshot(engine: &AxiomEngine) -> SystemSnapshot {
         }
     };
 
-    let frame_weaver_stats = bs.frame_weaver_stats.as_ref().map(|fw| {
-        FrameWeaverStats {
-            total_frames: fw.crystallizations_approved as u32,
-            frames_in_sutra: fw.frames_in_sutra as u32,
-            promotions_since_wake: fw.promotions_approved as u32,
-            last_crystallization_tick: 0,
-        }
+    let frame_weaver_stats = bs.frame_weaver_stats.as_ref().map(|fw| FrameWeaverStats {
+        total_frames: fw.crystallizations_approved as u32,
+        frames_in_sutra: fw.frames_in_sutra as u32,
+        promotions_since_wake: fw.promotions_approved as u32,
+        last_crystallization_tick: 0,
     });
 
     let dream_phase_stats = if let Some(dp) = &bs.dream_phase {
@@ -80,7 +83,10 @@ pub fn build_system_snapshot(engine: &AxiomEngine) -> SystemSnapshot {
             last_transition_tick: 0,
         }
     } else {
-        DreamPhaseStats { cycles_completed: 0, last_transition_tick: 0 }
+        DreamPhaseStats {
+            cycles_completed: 0,
+            last_transition_tick: 0,
+        }
     };
 
     SystemSnapshot {

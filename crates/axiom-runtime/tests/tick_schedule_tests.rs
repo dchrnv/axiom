@@ -1,7 +1,7 @@
 // Tests for TickSchedule and tick_count (Phase 6)
 
 use axiom_runtime::{AxiomEngine, TickSchedule};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 
 fn tick_cmd() -> UclCommand {
     UclCommand::new(OpCode::TickForward, 0, 100, 0)
@@ -44,13 +44,13 @@ fn test_tick_count_after_many_ticks() {
 #[test]
 fn test_tick_schedule_defaults() {
     let s = TickSchedule::default();
-    assert_eq!(s.adaptation_interval,    50);
-    assert_eq!(s.horizon_gc_interval,    500);
-    assert_eq!(s.snapshot_interval,      5000);
-    assert_eq!(s.dream_interval,         100);
+    assert_eq!(s.adaptation_interval, 50);
+    assert_eq!(s.horizon_gc_interval, 500);
+    assert_eq!(s.snapshot_interval, 5000);
+    assert_eq!(s.dream_interval, 100);
     assert_eq!(s.tension_check_interval, 10);
-    assert_eq!(s.goal_check_interval,    10);
-    assert_eq!(s.reconcile_interval,     200);
+    assert_eq!(s.goal_check_interval, 10);
+    assert_eq!(s.reconcile_interval, 200);
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn test_adaptation_fires_at_interval() {
 fn test_disabled_interval_does_not_panic() {
     let mut engine = AxiomEngine::new();
     engine.tick_schedule.tension_check_interval = 0;
-    engine.tick_schedule.goal_check_interval    = 0;
+    engine.tick_schedule.goal_check_interval = 0;
     for _ in 0..20 {
         let r = engine.process_command(&tick_cmd());
         assert!(r.is_success());
@@ -90,10 +90,10 @@ fn test_disabled_interval_does_not_panic() {
 fn test_custom_schedule_is_respected() {
     let mut engine = AxiomEngine::new();
     // Ставим очень маленький интервал — всё должно работать без паники
-    engine.tick_schedule.adaptation_interval    = 1;
-    engine.tick_schedule.dream_interval         = 1;
+    engine.tick_schedule.adaptation_interval = 1;
+    engine.tick_schedule.dream_interval = 1;
     engine.tick_schedule.tension_check_interval = 1;
-    engine.tick_schedule.goal_check_interval    = 1;
+    engine.tick_schedule.goal_check_interval = 1;
 
     for _ in 0..10 {
         let r = engine.process_command(&tick_cmd());

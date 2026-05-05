@@ -7,13 +7,13 @@ use axiom_runtime::{
     AxiomEngine, DreamPhaseState, DreamScheduler, DreamSchedulerConfig, FatigueWeights,
     GatewayPriority,
 };
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 
 fn fast_idle_engine(idle_threshold: u32) -> AxiomEngine {
     let mut engine = AxiomEngine::new();
     engine.dream_scheduler = DreamScheduler::new(
         DreamSchedulerConfig {
-            min_wake_ticks:    0,
+            min_wake_ticks: 0,
             idle_threshold,
             fatigue_threshold: 255,
         },
@@ -28,7 +28,9 @@ fn tick(engine: &mut AxiomEngine) {
 }
 
 fn run_ticks(engine: &mut AxiomEngine, n: u64) {
-    for _ in 0..n { tick(engine); }
+    for _ in 0..n {
+        tick(engine);
+    }
 }
 
 // ── 7.1.a — полный цикл без паник ────────────────────────────────────────────
@@ -51,14 +53,23 @@ fn full_cycle_state_and_stats() {
     // За 50 тиков должно завершиться ≥1 цикла и накопиться статистика.
     run_ticks(&mut engine, 50);
 
-    assert!(engine.dream_phase_stats.total_sleeps >= 1,
-        "total_sleeps должен быть ≥1, got {}", engine.dream_phase_stats.total_sleeps);
-    assert!(engine.dream_phase_stats.total_dream_ticks > 0,
-        "total_dream_ticks должен быть >0");
-    assert!(engine.dream_cycle.stats.total_cycles >= 1,
-        "DreamCycle должен зафиксировать ≥1 цикл");
-    assert!(engine.dream_cycle.stats.completed_cycles >= 1,
-        "completed_cycles должен быть ≥1");
+    assert!(
+        engine.dream_phase_stats.total_sleeps >= 1,
+        "total_sleeps должен быть ≥1, got {}",
+        engine.dream_phase_stats.total_sleeps
+    );
+    assert!(
+        engine.dream_phase_stats.total_dream_ticks > 0,
+        "total_dream_ticks должен быть >0"
+    );
+    assert!(
+        engine.dream_cycle.stats.total_cycles >= 1,
+        "DreamCycle должен зафиксировать ≥1 цикл"
+    );
+    assert!(
+        engine.dream_cycle.stats.completed_cycles >= 1,
+        "completed_cycles должен быть ≥1"
+    );
 }
 
 // ── 7.1.c — несколько циклов подряд ──────────────────────────────────────────
@@ -71,12 +82,15 @@ fn multiple_cycles_accumulate_stats() {
     run_ticks(&mut engine, 200);
 
     let sleeps = engine.dream_phase_stats.total_sleeps;
-    assert!(sleeps >= 2,
-        "ожидали ≥2 цикла за 200 тиков, got {}", sleeps);
+    assert!(sleeps >= 2, "ожидали ≥2 цикла за 200 тиков, got {}", sleeps);
     // completed_cycles может быть на 1 меньше total_sleeps если последний цикл ещё в процессе
     let completed = engine.dream_cycle.stats.completed_cycles;
-    assert!(completed >= sleeps.saturating_sub(1),
-        "completed_cycles={} должен быть ≥ total_sleeps-1={}", completed, sleeps - 1);
+    assert!(
+        completed >= sleeps.saturating_sub(1),
+        "completed_cycles={} должен быть ≥ total_sleeps-1={}",
+        completed,
+        sleeps - 1
+    );
 }
 
 // ── 7.1.d — прерванный цикл увеличивает interrupted_dreams ───────────────────
@@ -87,8 +101,12 @@ fn interrupted_cycle_increments_counter() {
 
     // Доводим до Dreaming
     run_ticks(&mut engine, 4);
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Dreaming,
-        "expected Dreaming, got {:?}", engine.dream_phase_state);
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Dreaming,
+        "expected Dreaming, got {:?}",
+        engine.dream_phase_state
+    );
 
     // Прерываем Critical-сигналом
     let wake_cmd = UclCommand::new(OpCode::TickForward, 0, 255, 0);
@@ -97,10 +115,16 @@ fn interrupted_cycle_increments_counter() {
     // Тик Dreaming→Waking, затем Waking→Wake
     run_ticks(&mut engine, 2);
 
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Wake,
-        "expected Wake after interrupt, got {:?}", engine.dream_phase_state);
-    assert_eq!(engine.dream_phase_stats.interrupted_dreams, 1,
-        "interrupted_dreams должен быть 1");
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
+        "expected Wake after interrupt, got {:?}",
+        engine.dream_phase_state
+    );
+    assert_eq!(
+        engine.dream_phase_stats.interrupted_dreams, 1,
+        "interrupted_dreams должен быть 1"
+    );
 }
 
 // ── 7.1.e — Wake-тик не меняет состояние без порога ─────────────────────────
@@ -111,11 +135,16 @@ fn wake_tick_stays_awake_below_threshold() {
 
     run_ticks(&mut engine, 50);
 
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Wake,
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
         "должны остаться в Wake при high idle_threshold, got {:?}",
-        engine.dream_phase_state);
-    assert_eq!(engine.dream_phase_stats.total_sleeps, 0,
-        "total_sleeps должен быть 0");
+        engine.dream_phase_state
+    );
+    assert_eq!(
+        engine.dream_phase_stats.total_sleeps, 0,
+        "total_sleeps должен быть 0"
+    );
 }
 
 // ── 7.1.f — состояние Dreaming не меняется без сигнала ───────────────────────
@@ -128,8 +157,12 @@ fn dreaming_stays_dreaming_without_signal() {
 
     // Доводим до Dreaming: 2 idle + 1 FA + 1 → Dreaming
     run_ticks(&mut engine, 4);
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Dreaming,
-        "expected Dreaming, got {:?}", engine.dream_phase_state);
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Dreaming,
+        "expected Dreaming, got {:?}",
+        engine.dream_phase_state
+    );
 
     // Сохраняем текущий счётчик total_sleeps
     let sleeps_before = engine.dream_phase_stats.total_sleeps;
@@ -137,8 +170,10 @@ fn dreaming_stays_dreaming_without_signal() {
     // 1 тик в Dreaming без Critical → остаёмся в Dreaming (или Waking если Processing завершён)
     tick(&mut engine);
     // total_sleeps не должен вырасти (мы ещё спим)
-    assert_eq!(engine.dream_phase_stats.total_sleeps, sleeps_before,
-        "total_sleeps не должен вырасти пока мы в Dreaming");
+    assert_eq!(
+        engine.dream_phase_stats.total_sleeps, sleeps_before,
+        "total_sleeps не должен вырасти пока мы в Dreaming"
+    );
 }
 
 // ── 7.1.g — scheduler.stats отражает решения о сне ───────────────────────────
@@ -149,8 +184,10 @@ fn scheduler_stats_reflect_sleep_decisions() {
     run_ticks(&mut engine, 50);
 
     let sched_stats = &engine.dream_scheduler.stats;
-    assert!(sched_stats.sleep_decisions > 0,
-        "scheduler должен зафиксировать решения о сне");
+    assert!(
+        sched_stats.sleep_decisions > 0,
+        "scheduler должен зафиксировать решения о сне"
+    );
 }
 
 // ── 7.1.h — dream_cycle.stats.total_processed растёт при наличии proposals ───

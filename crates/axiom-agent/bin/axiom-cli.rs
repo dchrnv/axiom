@@ -18,13 +18,16 @@ use std::path::{Path, PathBuf};
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let config = CliConfig::from_args_or_default();
-    let boot   = BootArgs::from_env();
+    let boot = BootArgs::from_env();
 
     let (engine, boot_status) = boot_engine(&boot);
 
     println!("AXIOM — Cognitive Architecture");
     println!("───────────────────────────────");
-    println!("tick_hz: {} Hz  |  domains: 11  |  :help for commands", config.tick_hz);
+    println!(
+        "tick_hz: {} Hz  |  domains: 11  |  :help for commands",
+        config.tick_hz
+    );
     println!("{}", boot_status);
     println!();
 
@@ -45,7 +48,8 @@ impl BootArgs {
     fn from_env() -> Self {
         let args: Vec<String> = std::env::args().collect();
 
-        let data_dir = args.windows(2)
+        let data_dir = args
+            .windows(2)
             .find(|w| w[0] == "--data-dir")
             .map(|w| PathBuf::from(&w[1]))
             .unwrap_or_else(|| PathBuf::from("axiom-data"));
@@ -71,22 +75,26 @@ fn boot_engine(boot: &BootArgs) -> (AxiomEngine, String) {
         Ok((engine, tick, traces, tension)) => {
             let status = format!(
                 "  mode: restored from {} (tick={}, traces={}, tension={})",
-                boot.data_dir.display(), tick, traces, tension
+                boot.data_dir.display(),
+                tick,
+                traces,
+                tension
             );
             (engine, status)
         }
-        Err(LoadOutcome::NotFound) => {
-            (
-                AxiomEngine::new(),
-                format!("  mode: fresh start (no data at {})", boot.data_dir.display()),
-            )
-        }
+        Err(LoadOutcome::NotFound) => (
+            AxiomEngine::new(),
+            format!(
+                "  mode: fresh start (no data at {})",
+                boot.data_dir.display()
+            ),
+        ),
         Err(LoadOutcome::Failed(msg)) => {
             eprintln!("[axiom-cli] WARNING: load failed — {msg}");
             eprintln!("[axiom-cli] Starting fresh.");
             (
                 AxiomEngine::new(),
-                format!("  mode: fresh start (load error — see stderr)"),
+                "  mode: fresh start (load error — see stderr)".to_string(),
             )
         }
     }
@@ -105,7 +113,12 @@ fn try_load(dir: &Path) -> Result<(AxiomEngine, u64, u32, u32), LoadOutcome> {
     }
 
     match persist_load(dir) {
-        Ok(r) => Ok((r.engine, r.manifest.tick_count, r.traces_imported, r.tension_imported)),
+        Ok(r) => Ok((
+            r.engine,
+            r.manifest.tick_count,
+            r.traces_imported,
+            r.tension_imported,
+        )),
         Err(PersistError::NotFound(_)) => Err(LoadOutcome::NotFound),
         Err(e) => Err(LoadOutcome::Failed(e.to_string())),
     }

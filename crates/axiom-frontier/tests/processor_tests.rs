@@ -1,4 +1,6 @@
-use axiom_frontier::{CausalFrontier, EvaluationResult, FrontierConfig, FrontierEntity, FrontierProcessor, LocalRules};
+use axiom_frontier::{
+    CausalFrontier, EvaluationResult, FrontierConfig, FrontierEntity, FrontierProcessor, LocalRules,
+};
 
 /// Mock LocalRules for testing
 struct MockRules {

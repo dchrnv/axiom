@@ -1,6 +1,6 @@
 // Этап 12B — SIMD batch-обработка гравитации
 
-use axiom_space::{GravityModel, apply_gravity_batch, apply_accelerations_to_velocities};
+use axiom_space::{apply_accelerations_to_velocities, apply_gravity_batch, GravityModel};
 
 // ─── apply_gravity_batch ──────────────────────────────────────────────────────
 
@@ -18,7 +18,10 @@ fn test_batch_single_token() {
     assert_eq!(result.accelerations.len(), 1);
     // Токен справа от якоря → ускорение по X отрицательное (к якорю)
     let (ax, _, _) = result.accelerations[0];
-    assert!(ax <= 0, "ускорение должно быть в сторону якоря (≤ 0), got {ax}");
+    assert!(
+        ax <= 0,
+        "ускорение должно быть в сторону якоря (≤ 0), got {ax}"
+    );
 }
 
 #[test]
@@ -39,10 +42,7 @@ fn test_batch_matches_scalar() {
 
     for (i, ([x, y, z], &mass)) in positions.iter().zip(masses.iter()).enumerate() {
         let expected = compute_gravity(*x, *y, *z, mass, scale_shift, model);
-        assert_eq!(
-            batch.accelerations[i], expected,
-            "mismatch at index {i}"
-        );
+        assert_eq!(batch.accelerations[i], expected, "mismatch at index {i}");
     }
 }
 

@@ -2,8 +2,8 @@
 //!
 //! Реализует единую систему загрузки и валидации конфигураций для Axiom
 
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -11,7 +11,7 @@ use std::path::Path;
 use crate::domain_config::DomainConfig;
 use crate::dream_config::DreamConfig;
 use crate::heartbeat_config::HeartbeatConfig;
-use crate::preset::{TokenPreset, ConnectionPreset};
+use crate::preset::{ConnectionPreset, TokenPreset};
 
 /// Корневая конфигурация Axiom
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -215,7 +215,10 @@ impl ConfigLoader {
     ///
     /// Читает все `*.yaml` файлы из `dir`. Имя файла (без расширения) становится
     /// полем `ConnectionPreset::name`. Возвращает пустой вектор если директория не существует.
-    pub fn load_connection_presets(&mut self, dir: &Path) -> Result<Vec<ConnectionPreset>, ConfigError> {
+    pub fn load_connection_presets(
+        &mut self,
+        dir: &Path,
+    ) -> Result<Vec<ConnectionPreset>, ConfigError> {
         self.load_presets_from_dir(dir, |name, content| {
             let mut preset: ConnectionPreset =
                 serde_yaml::from_str(content).map_err(ConfigError::ParseError)?;
@@ -225,7 +228,11 @@ impl ConfigLoader {
     }
 
     /// Вспомогательный метод: читает все *.yaml из директории и применяет `parse_fn`.
-    fn load_presets_from_dir<T, F>(&mut self, dir: &Path, parse_fn: F) -> Result<Vec<T>, ConfigError>
+    fn load_presets_from_dir<T, F>(
+        &mut self,
+        dir: &Path,
+        parse_fn: F,
+    ) -> Result<Vec<T>, ConfigError>
     where
         F: Fn(&str, &str) -> Result<T, ConfigError>,
     {
@@ -236,9 +243,7 @@ impl ConfigLoader {
         let mut entries: Vec<_> = fs::read_dir(dir)
             .map_err(ConfigError::IoError)?
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path().extension().and_then(|x| x.to_str()) == Some("yaml")
-            })
+            .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("yaml"))
             .collect();
         entries.sort_by_key(|e| e.file_name());
 
@@ -289,7 +294,9 @@ impl ConfigLoader {
             if let Some(properties) = schema_obj.get("properties") {
                 if let Some(props_obj) = properties.as_mapping() {
                     for (key, schema_value) in props_obj {
-                        let Some(key_str) = key.as_str() else { continue; };
+                        let Some(key_str) = key.as_str() else {
+                            continue;
+                        };
                         if let Some(config_value) = config_obj.get(key) {
                             self.validate_field(key_str, config_value, schema_value)?;
                         }
@@ -298,7 +305,9 @@ impl ConfigLoader {
             } else {
                 // Прямая валидация для плоских схем
                 for (key, schema_value) in schema_obj {
-                    let Some(key_str) = key.as_str() else { continue; };
+                    let Some(key_str) = key.as_str() else {
+                        continue;
+                    };
                     if let Some(config_value) = config_obj.get(key) {
                         self.validate_field(key_str, config_value, schema_value)?;
                     }
@@ -469,26 +478,21 @@ impl ConfigLoader {
     /// Получить путь к spatial конфигурации из LoadedAxiomConfig
     ///
     /// Возвращает абсолютный путь для последующей загрузки через `SpatialConfig::from_yaml`.
-    pub fn spatial_config_path<'a>(
+    pub fn spatial_config_path(
         &self,
-        loaded: &'a LoadedAxiomConfig,
+        loaded: &LoadedAxiomConfig,
         base: &Path,
     ) -> Option<std::path::PathBuf> {
-        loaded
-            .root
-            .presets
-            .spatial
-            .as_ref()
-            .map(|p| base.join(p))
+        loaded.root.presets.spatial.as_ref().map(|p| base.join(p))
     }
 
     /// Получить путь к semantic_contributions конфигурации из LoadedAxiomConfig
     ///
     /// Возвращает абсолютный путь для последующей загрузки через
     /// `SemanticContributionTable::from_yaml`.
-    pub fn semantic_contributions_path<'a>(
+    pub fn semantic_contributions_path(
         &self,
-        loaded: &'a LoadedAxiomConfig,
+        loaded: &LoadedAxiomConfig,
         base: &Path,
     ) -> Option<std::path::PathBuf> {
         loaded

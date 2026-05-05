@@ -6,9 +6,11 @@
 //
 // Если токенов нет — показывает домены в кольцевом расположении.
 
-use egui::Ui;
-use egui_plot::{Plot, Points, PlotPoints, MarkerShape};
 use crate::state::AppData;
+use egui::Ui;
+use egui_plot::{MarkerShape, Plot, PlotPoints, Points};
+
+type DomainBuckets = std::collections::HashMap<u16, (Vec<[f64; 2]>, Vec<[f64; 2]>)>;
 
 /// Фиксированная палитра для 11 доменов (domain_id → цвет)
 fn domain_color(domain_id: u16) -> egui::Color32 {
@@ -45,15 +47,17 @@ fn show_tokens(ui: &mut Ui, data: &AppData) {
         .data_aspect(1.0)
         .show(ui, |plot_ui| {
             // Группируем по domain_id для разных цветов
-            let mut by_domain: std::collections::HashMap<u16, (Vec<[f64; 2]>, Vec<[f64; 2]>)>
-                = std::collections::HashMap::new();
+            let mut by_domain: DomainBuckets = DomainBuckets::new();
 
             for (did, tok) in &data.tokens {
                 let x = tok.position[0] as f64;
                 let y = tok.position[1] as f64;
                 let (normal, anchors) = by_domain.entry(*did).or_default();
-                if tok.is_anchor { anchors.push([x, y]); }
-                else             { normal.push([x, y]); }
+                if tok.is_anchor {
+                    anchors.push([x, y]);
+                } else {
+                    normal.push([x, y]);
+                }
             }
 
             for (did, (normal, anchors)) in &by_domain {

@@ -42,12 +42,26 @@ pub struct ConfigField {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ConfigFieldType {
     Bool,
-    Integer { min: i64, max: i64 },
-    UInt { min: u64, max: u64 },
+    Integer {
+        min: i64,
+        max: i64,
+    },
+    UInt {
+        min: u64,
+        max: u64,
+    },
     /// `step` is optional; if None, UI uses a plain numeric input field.
-    Float { min: f64, max: f64, step: Option<f64> },
-    String { max_length: u32 },
-    Enum { variants: Vec<String> },
+    Float {
+        min: f64,
+        max: f64,
+        step: Option<f64>,
+    },
+    String {
+        max_length: u32,
+    },
+    Enum {
+        variants: Vec<String>,
+    },
     /// Value is stored as tick count or nanoseconds depending on context.
     Duration,
     /// Domain id selector in range 100-110.

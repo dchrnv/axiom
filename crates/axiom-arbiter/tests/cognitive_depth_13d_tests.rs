@@ -107,7 +107,10 @@ fn test_goal_traces_achieved_not_returned() {
     exp.add_trace(goal_token, 0.95, 1); // weight=0.95 >= GOAL_ACHIEVED_WEIGHT=0.9
 
     let goals = exp.check_goal_traces(GOAL_ACHIEVED_WEIGHT);
-    assert!(goals.is_empty(), "Достигнутая цель не должна генерировать импульс");
+    assert!(
+        goals.is_empty(),
+        "Достигнутая цель не должна генерировать импульс"
+    );
 }
 
 #[test]
@@ -145,7 +148,11 @@ fn test_curiosity_candidates_near_threshold() {
     exp.add_trace(make_token(1, 100), low + 0.01, 1); // в зоне
 
     let candidates = exp.check_curiosity_candidates(threshold);
-    assert_eq!(candidates.len(), 1, "Следы в зоне любопытства должны быть возвращены");
+    assert_eq!(
+        candidates.len(),
+        1,
+        "Следы в зоне любопытства должны быть возвращены"
+    );
 }
 
 #[test]
@@ -156,7 +163,10 @@ fn test_curiosity_candidates_above_threshold_excluded() {
     exp.add_trace(make_token(1, 100), threshold + 0.01, 1); // выше threshold → кристаллизован
 
     let candidates = exp.check_curiosity_candidates(threshold);
-    assert!(candidates.is_empty(), "Кристаллизованные следы не являются кандидатами");
+    assert!(
+        candidates.is_empty(),
+        "Кристаллизованные следы не являются кандидатами"
+    );
 }
 
 #[test]
@@ -168,7 +178,10 @@ fn test_curiosity_candidates_below_band_excluded() {
     exp.add_trace(make_token(1, 100), low - 0.01, 1); // ниже зоны
 
     let candidates = exp.check_curiosity_candidates(threshold);
-    assert!(candidates.is_empty(), "Следы ниже зоны любопытства не являются кандидатами");
+    assert!(
+        candidates.is_empty(),
+        "Следы ниже зоны любопытства не являются кандидатами"
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -182,7 +195,10 @@ fn test_generate_goal_impulses_on_interval() {
     arbiter.experience_mut().add_trace(goal_token, 0.3, 1);
 
     let impulses = arbiter.generate_goal_impulses(10, 5); // pulse=10, interval=5 → 10%5==0
-    assert!(!impulses.is_empty(), "Goal-импульсы должны генерироваться на кратном пульсе");
+    assert!(
+        !impulses.is_empty(),
+        "Goal-импульсы должны генерироваться на кратном пульсе"
+    );
     assert_eq!(impulses[0].source, ImpulseSource::Goal);
     assert!(impulses[0].weight > 0.0);
 }
@@ -194,7 +210,10 @@ fn test_generate_goal_impulses_off_interval() {
     arbiter.experience_mut().add_trace(goal_token, 0.3, 1);
 
     let impulses = arbiter.generate_goal_impulses(11, 5); // 11%5 != 0 → пропуск
-    assert!(impulses.is_empty(), "Goal-импульсы не генерируются вне интервала");
+    assert!(
+        impulses.is_empty(),
+        "Goal-импульсы не генерируются вне интервала"
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -205,10 +224,15 @@ fn test_generate_goal_impulses_off_interval() {
 fn test_generate_curiosity_impulses_near_threshold() {
     let mut arbiter = make_full_arbiter();
     let threshold = 0.85_f32;
-    arbiter.experience_mut().add_trace(make_token(1, 100), 0.72, 1); // в зоне
+    arbiter
+        .experience_mut()
+        .add_trace(make_token(1, 100), 0.72, 1); // в зоне
 
     let impulses = arbiter.generate_curiosity_impulses(threshold);
-    assert!(!impulses.is_empty(), "Curiosity-импульсы генерируются для near-threshold следов");
+    assert!(
+        !impulses.is_empty(),
+        "Curiosity-импульсы генерируются для near-threshold следов"
+    );
     assert_eq!(impulses[0].source, ImpulseSource::Curiosity);
 }
 

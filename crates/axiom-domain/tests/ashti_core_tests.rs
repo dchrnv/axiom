@@ -1,7 +1,7 @@
 // Тесты AshtiCore — 11-доменный фрактальный уровень Ashti_Core v2.0
 
+use axiom_core::{Connection, Token};
 use axiom_domain::AshtiCore;
-use axiom_core::{Token, Connection};
 
 fn make_token(sutra_id: u32, mass: u8, temp: u8) -> Token {
     let mut t = Token::new(sutra_id, 1, [0, 0, 0], 1);
@@ -15,7 +15,10 @@ fn make_token(sutra_id: u32, mass: u8, temp: u8) -> Token {
 #[test]
 fn test_new_creates_ready_core() {
     let core = AshtiCore::new(1);
-    assert!(core.is_ready(), "все 11 доменов должны быть зарегистрированы");
+    assert!(
+        core.is_ready(),
+        "все 11 доменов должны быть зарегистрированы"
+    );
 }
 
 #[test]
@@ -47,7 +50,11 @@ fn test_slow_path_always_runs() {
     let token = make_token(1, 50, 100);
     let result = core.process(token);
     // ASHTI 1-8: ровно 8 результатов
-    assert_eq!(result.slow_path.len(), 8, "медленный путь должен вернуть результаты всех 8 ASHTI");
+    assert_eq!(
+        result.slow_path.len(),
+        8,
+        "медленный путь должен вернуть результаты всех 8 ASHTI"
+    );
 }
 
 #[test]
@@ -55,7 +62,10 @@ fn test_silence_no_reflex_on_empty_experience() {
     let mut core = AshtiCore::new(1);
     let token = make_token(7, 80, 120);
     let result = core.process(token);
-    assert!(result.reflex.is_none(), "при пустой памяти рефлекса быть не должно");
+    assert!(
+        result.reflex.is_none(),
+        "при пустой памяти рефлекса быть не должно"
+    );
 }
 
 #[test]
@@ -63,7 +73,10 @@ fn test_consolidated_result_present() {
     let mut core = AshtiCore::new(1);
     let token = make_token(5, 60, 90);
     let result = core.process(token);
-    assert!(result.consolidated.is_some(), "MAYA должна вернуть консолидированный результат");
+    assert!(
+        result.consolidated.is_some(),
+        "MAYA должна вернуть консолидированный результат"
+    );
 }
 
 // --- Рефлекс после обучения ---
@@ -77,7 +90,10 @@ fn test_reflex_after_training() {
     core.experience_mut().add_trace(token, 0.95, 1);
 
     let result = core.process(token);
-    assert!(result.reflex.is_some(), "высокий weight должен дать рефлекс");
+    assert!(
+        result.reflex.is_some(),
+        "высокий weight должен дать рефлекс"
+    );
 }
 
 #[test]
@@ -89,7 +105,10 @@ fn test_no_reflex_with_low_weight() {
     core.experience_mut().add_trace(token, 0.1, 1);
 
     let result = core.process(token);
-    assert!(result.reflex.is_none(), "низкий weight не должен давать рефлекс");
+    assert!(
+        result.reflex.is_none(),
+        "низкий weight не должен давать рефлекс"
+    );
 }
 
 // --- apply_feedback ---
@@ -102,14 +121,20 @@ fn test_apply_feedback_ok_for_existing_event() {
 
     // finalize_comparison для события, которое было создано при process
     let res = core.apply_feedback(result.event_id);
-    assert!(res.is_ok(), "apply_feedback должен успешно завершиться для существующего event_id");
+    assert!(
+        res.is_ok(),
+        "apply_feedback должен успешно завершиться для существующего event_id"
+    );
 }
 
 #[test]
 fn test_apply_feedback_err_for_unknown_event() {
     let mut core = AshtiCore::new(1);
     let res = core.apply_feedback(9999);
-    assert!(res.is_err(), "apply_feedback для несуществующего event_id должен вернуть Err");
+    assert!(
+        res.is_err(),
+        "apply_feedback для несуществующего event_id должен вернуть Err"
+    );
 }
 
 // --- tick ---
@@ -157,7 +182,7 @@ fn test_reconcile_prunes_orphaned_connections() {
 
     // Добавляем связь где target_id=999 не существует
     let idx = core.index_of(LOGIC_DOMAIN).unwrap();
-    let orphan = Connection::new(1, 999, LOGIC_DOMAIN as u16, 1);
+    let orphan = Connection::new(1, 999, LOGIC_DOMAIN, 1);
     let _ = core.state_mut(idx).unwrap().add_connection(orphan);
     assert_eq!(core.state(idx).unwrap().connections.len(), 1);
 
@@ -173,7 +198,7 @@ fn test_reconcile_keeps_valid_connections() {
     inject(&mut core, LOGIC_DOMAIN, 20);
 
     let idx = core.index_of(LOGIC_DOMAIN).unwrap();
-    let valid = Connection::new(10, 20, LOGIC_DOMAIN as u16, 1);
+    let valid = Connection::new(10, 20, LOGIC_DOMAIN, 1);
     let _ = core.state_mut(idx).unwrap().add_connection(valid);
 
     let pruned = core.reconcile_all();
@@ -194,8 +219,10 @@ fn test_reconcile_fixes_wrong_domain_id() {
 
     // После reconcile domain_id должен совпадать с реальным доменом
     let fixed = core.state(idx).unwrap().tokens.last().unwrap();
-    assert_eq!(fixed.domain_id, LOGIC_DOMAIN as u16,
-        "domain_id токена должен быть исправлен на реальный");
+    assert_eq!(
+        fixed.domain_id, LOGIC_DOMAIN,
+        "domain_id токена должен быть исправлен на реальный"
+    );
 }
 
 #[test]
@@ -206,5 +233,9 @@ fn test_reconcile_does_not_remove_tokens() {
 
     core.reconcile_all();
 
-    assert_eq!(core.token_count(LOGIC_DOMAIN), 2, "reconcile не должен удалять живые токены");
+    assert_eq!(
+        core.token_count(LOGIC_DOMAIN),
+        2,
+        "reconcile не должен удалять живые токены"
+    );
 }

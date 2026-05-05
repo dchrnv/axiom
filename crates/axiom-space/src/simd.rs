@@ -9,7 +9,7 @@
 //
 // Этап 12B.
 
-use crate::{GravityModel, compute_gravity};
+use crate::{compute_gravity, GravityModel};
 
 /// Результат batch-вычисления: ускорение для каждого токена.
 #[derive(Debug, Clone, PartialEq)]
@@ -63,10 +63,7 @@ pub fn apply_gravity_batch(
 /// Применить batch-ускорения к скоростям токенов in-place.
 ///
 /// `velocities[i]` += `accelerations[i]` (saturating).
-pub fn apply_accelerations_to_velocities(
-    velocities: &mut [[i16; 3]],
-    result: &GravityBatchResult,
-) {
+pub fn apply_accelerations_to_velocities(velocities: &mut [[i16; 3]], result: &GravityBatchResult) {
     assert_eq!(velocities.len(), result.accelerations.len());
 
     for (vel, &(ax, ay, az)) in velocities.iter_mut().zip(result.accelerations.iter()) {

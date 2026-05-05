@@ -10,11 +10,11 @@
 //   - docs/spec/Ashti_Core_v2_0.md (каноническая)
 //   - docs/spec/Arbiter_V1_0.md
 
-use std::collections::HashMap;
-use axiom_core::{Token, Event};
+use crate::{CausalHorizon, Domain, DomainState};
+use axiom_arbiter::{Arbiter, RoutingResult, COM};
 use axiom_config::DomainConfig;
-use axiom_arbiter::{Arbiter, COM, RoutingResult};
-use crate::{Domain, DomainState, CausalHorizon};
+use axiom_core::{Event, Token};
+use std::collections::HashMap;
 
 /// Один фрактальный уровень Ashti_Core: 11 доменов + маршрутизатор.
 ///
@@ -54,22 +54,28 @@ impl AshtiCore {
 
         // Конфиги всех 11 доменов в порядке structural_role
         let role_configs: [(u8, DomainConfig); 11] = [
-            (0,  DomainConfig::factory_sutra(sutra_id)),
-            (1,  DomainConfig::factory_execution(base as u16 + 1,  sutra_id)),
-            (2,  DomainConfig::factory_shadow   (base as u16 + 2,  sutra_id)),
-            (3,  DomainConfig::factory_codex    (base as u16 + 3,  sutra_id)),
-            (4,  DomainConfig::factory_map      (base as u16 + 4,  sutra_id)),
-            (5,  DomainConfig::factory_probe    (base as u16 + 5,  sutra_id)),
-            (6,  DomainConfig::factory_logic    (base as u16 + 6,  sutra_id)),
-            (7,  DomainConfig::factory_dream    (base as u16 + 7,  sutra_id)),
-            (8,  DomainConfig::factory_void     (base as u16 + 8,  sutra_id)),
-            (9,  DomainConfig::factory_experience(base as u16 + 9, sutra_id)),
-            (10, DomainConfig::factory_maya     (base as u16 + 10, sutra_id)),
+            (0, DomainConfig::factory_sutra(sutra_id)),
+            (
+                1,
+                DomainConfig::factory_execution(base as u16 + 1, sutra_id),
+            ),
+            (2, DomainConfig::factory_shadow(base as u16 + 2, sutra_id)),
+            (3, DomainConfig::factory_codex(base as u16 + 3, sutra_id)),
+            (4, DomainConfig::factory_map(base as u16 + 4, sutra_id)),
+            (5, DomainConfig::factory_probe(base as u16 + 5, sutra_id)),
+            (6, DomainConfig::factory_logic(base as u16 + 6, sutra_id)),
+            (7, DomainConfig::factory_dream(base as u16 + 7, sutra_id)),
+            (8, DomainConfig::factory_void(base as u16 + 8, sutra_id)),
+            (
+                9,
+                DomainConfig::factory_experience(base as u16 + 9, sutra_id),
+            ),
+            (10, DomainConfig::factory_maya(base as u16 + 10, sutra_id)),
         ];
 
         let mut domain_map: HashMap<u16, DomainConfig> = HashMap::with_capacity(11);
-        let mut domains: Vec<Domain>      = Vec::with_capacity(11);
-        let mut states:  Vec<DomainState> = Vec::with_capacity(11);
+        let mut domains: Vec<Domain> = Vec::with_capacity(11);
+        let mut states: Vec<DomainState> = Vec::with_capacity(11);
 
         for (_, config) in &role_configs {
             states.push(DomainState::new(config));
@@ -83,7 +89,13 @@ impl AshtiCore {
             let _ = arbiter.register_domain(*role, config.domain_id);
         }
 
-        Self { domains, states, arbiter, level_id, pulse: 0 }
+        Self {
+            domains,
+            states,
+            arbiter,
+            level_id,
+            pulse: 0,
+        }
     }
 
     /// Обработать входящий токен — полный dual-path цикл.
@@ -122,7 +134,7 @@ impl AshtiCore {
             if let Some(pulse) = self.domains[i].on_event() {
                 self.domains[i].handle_heartbeat(pulse);
                 let tokens = &self.states[i].tokens;
-                let conns  = &self.states[i].connections;
+                let conns = &self.states[i].connections;
                 let mut gen = crate::physics::EventGenerator::new();
                 gen.set_pulse_id(pulse);
                 let events = self.domains[i].process_frontier(tokens, conns, &mut gen);
@@ -171,7 +183,9 @@ impl AshtiCore {
     ///
     /// Формула: `level_id * 100 + index`.
     pub fn domain_id_at(&self, index: usize) -> Option<u16> {
-        if index > 10 { return None; }
+        if index > 10 {
+            return None;
+        }
         Some((self.level_id as u32 * 100 + index as u32) as u16)
     }
 
@@ -179,7 +193,9 @@ impl AshtiCore {
     pub fn index_of(&self, domain_id: u16) -> Option<usize> {
         let base = self.level_id as u32 * 100;
         let id = domain_id as u32;
-        if id < base || id > base + 10 { return None; }
+        if id < base || id > base + 10 {
+            return None;
+        }
         Some((id - base) as usize)
     }
 
@@ -194,7 +210,11 @@ impl AshtiCore {
     ///
     /// Добавляет токен в DomainState и синхронизирует счётчик active_tokens домена,
     /// чтобы следующий тик heartbeat учитывал реальное число токенов.
-    pub fn inject_token(&mut self, domain_id: u16, token: axiom_core::Token) -> Result<usize, crate::CapacityExceeded> {
+    pub fn inject_token(
+        &mut self,
+        domain_id: u16,
+        token: axiom_core::Token,
+    ) -> Result<usize, crate::CapacityExceeded> {
         let idx = self.index_of(domain_id).ok_or(crate::CapacityExceeded)?;
         let result = self.states[idx].add_token(token)?;
         self.domains[idx].active_tokens = self.states[idx].token_count();
@@ -205,7 +225,11 @@ impl AshtiCore {
     ///
     /// Используется Over-Domain компонентами (FrameWeaver) для кристаллизации
     /// реляционных структур. Аналог inject_token для связей.
-    pub fn inject_connection(&mut self, domain_id: u16, conn: axiom_core::Connection) -> Result<usize, crate::CapacityExceeded> {
+    pub fn inject_connection(
+        &mut self,
+        domain_id: u16,
+        conn: axiom_core::Connection,
+    ) -> Result<usize, crate::CapacityExceeded> {
         let idx = self.index_of(domain_id).ok_or(crate::CapacityExceeded)?;
         let result = self.states[idx].add_connection(conn)?;
         self.domains[idx].active_connections = self.states[idx].connection_count();
@@ -215,13 +239,23 @@ impl AshtiCore {
     /// Найти токен по sutra_id в указанном домене. Возвращает копию токена если найден.
     pub fn find_token_by_sutra_id(&self, domain_id: u16, sutra_id: u32) -> Option<Token> {
         let idx = self.index_of(domain_id)?;
-        self.states[idx].tokens.iter().find(|t| t.sutra_id == sutra_id).copied()
+        self.states[idx]
+            .tokens
+            .iter()
+            .find(|t| t.sutra_id == sutra_id)
+            .copied()
     }
 
     /// Обновить mass и temperature токена по sutra_id в указанном домене.
     ///
     /// Используется ReinforceFrame: повышает активность существующего Frame-анкера.
-    pub fn reinforce_token(&mut self, domain_id: u16, sutra_id: u32, delta_mass: u8, delta_temperature: u8) -> bool {
+    pub fn reinforce_token(
+        &mut self,
+        domain_id: u16,
+        sutra_id: u32,
+        delta_mass: u8,
+        delta_temperature: u8,
+    ) -> bool {
         let idx = match self.index_of(domain_id) {
             Some(i) => i,
             None => return false,
@@ -244,7 +278,9 @@ impl AshtiCore {
     /// Mutable доступ к HashMap конфигураций доменов в Arbiter.
     ///
     /// Используется Guardian для адаптации порогов без раскрытия всего Arbiter.
-    pub fn arbiter_domain_configs_mut(&mut self) -> &mut std::collections::HashMap<u16, axiom_config::DomainConfig> {
+    pub fn arbiter_domain_configs_mut(
+        &mut self,
+    ) -> &mut std::collections::HashMap<u16, axiom_config::DomainConfig> {
         self.arbiter.domain_configs_mut()
     }
 
@@ -267,8 +303,14 @@ impl AshtiCore {
     /// Импортировать навык с явным weight factor (для knowledge exchange).
     ///
     /// Возвращает true если навык был добавлен (не дубликат).
-    pub fn import_skill_exchange(&mut self, skill: axiom_arbiter::Skill, weight_factor: f32) -> bool {
-        self.arbiter.skillset.import_skill_exchange(skill, weight_factor)
+    pub fn import_skill_exchange(
+        &mut self,
+        skill: axiom_arbiter::Skill,
+        weight_factor: f32,
+    ) -> bool {
+        self.arbiter
+            .skillset
+            .import_skill_exchange(skill, weight_factor)
     }
 
     /// Применить пороги EXPERIENCE-домена к модулю Experience.
@@ -293,7 +335,9 @@ impl AshtiCore {
     /// Возвращает число удалённых следов.
     pub fn run_horizon_gc(&mut self) -> usize {
         let horizon = self.compute_horizon();
-        self.arbiter.experience_mut().archive_behind_horizon(horizon)
+        self.arbiter
+            .experience_mut()
+            .archive_behind_horizon(horizon)
     }
 
     /// Конфигурации всех доменов (domain_id, DomainConfig) — для snapshot.
@@ -304,30 +348,36 @@ impl AshtiCore {
     }
 
     pub fn all_configs(&self) -> Vec<(u16, axiom_config::DomainConfig)> {
-        (0..11).filter_map(|i| {
-            let id = self.domain_id_at(i)?;
-            Some((id, self.domains[i].config))
-        }).collect()
+        (0..11)
+            .filter_map(|i| {
+                let id = self.domain_id_at(i)?;
+                Some((id, self.domains[i].config))
+            })
+            .collect()
     }
 
     /// Состояния всех доменов (domain_id, tokens, connections) — для snapshot.
     pub fn all_states(&self) -> Vec<(u16, &DomainState)> {
-        (0..11).filter_map(|i| {
-            let id = self.domain_id_at(i)?;
-            Some((id, &self.states[i]))
-        }).collect()
+        (0..11)
+            .filter_map(|i| {
+                let id = self.domain_id_at(i)?;
+                Some((id, &self.states[i]))
+            })
+            .collect()
     }
 
     /// Статистика Causal Frontier по всем доменам.
     ///
     /// Возвращает `(domain_id, frontier_size, memory_usage_pct)`.
     pub fn frontier_stats(&self) -> Vec<(u16, usize, f32)> {
-        (0..11).filter_map(|i| {
-            let id = self.domain_id_at(i)?;
-            let size = self.domains[i].frontier.size();
-            let mem  = self.domains[i].frontier_memory_usage();
-            Some((id, size, mem))
-        }).collect()
+        (0..11)
+            .filter_map(|i| {
+                let id = self.domain_id_at(i)?;
+                let size = self.domains[i].frontier.size();
+                let mem = self.domains[i].frontier_memory_usage();
+                Some((id, size, mem))
+            })
+            .collect()
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -357,13 +407,23 @@ impl AshtiCore {
     ///
     /// Охлаждает следы напряжения, возвращает список внутренних импульсов
     /// готовых к обработке. `enable_internal_drive = false` — система реактивна.
-    pub fn arbiter_heartbeat_pulse(&mut self, pulse_number: u64, enable_internal_drive: bool) -> Vec<axiom_core::Token> {
-        self.arbiter.on_heartbeat_pulse(pulse_number, enable_internal_drive)
+    pub fn arbiter_heartbeat_pulse(
+        &mut self,
+        pulse_number: u64,
+        enable_internal_drive: bool,
+    ) -> Vec<axiom_core::Token> {
+        self.arbiter
+            .on_heartbeat_pulse(pulse_number, enable_internal_drive)
     }
 
     /// Сгенерировать goal-импульсы (Cognitive Depth — цели из CODEX).
-    pub fn generate_goal_impulses(&self, pulse_number: u64, check_interval: u64) -> Vec<axiom_arbiter::InternalImpulse> {
-        self.arbiter.generate_goal_impulses(pulse_number, check_interval)
+    pub fn generate_goal_impulses(
+        &self,
+        pulse_number: u64,
+        check_interval: u64,
+    ) -> Vec<axiom_arbiter::InternalImpulse> {
+        self.arbiter
+            .generate_goal_impulses(pulse_number, check_interval)
     }
 
     /// Согласование семантического пространства всех 11 доменов.
@@ -390,14 +450,12 @@ impl AshtiCore {
             }
 
             // 2. Удалить осиротевшие связи
-            let live: std::collections::HashSet<u32> = self.states[i].tokens
-                .iter()
-                .map(|t| t.sutra_id)
-                .collect();
+            let live: std::collections::HashSet<u32> =
+                self.states[i].tokens.iter().map(|t| t.sutra_id).collect();
             let before = self.states[i].connections.len();
-            self.states[i].connections.retain(|c| {
-                live.contains(&c.source_id) && live.contains(&c.target_id)
-            });
+            self.states[i]
+                .connections
+                .retain(|c| live.contains(&c.source_id) && live.contains(&c.target_id));
             pruned_total += before - self.states[i].connections.len();
 
             // 3. Исправить domain_id токенов

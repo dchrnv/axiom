@@ -21,9 +21,9 @@ impl Default for FatigueWeights {
     fn default() -> Self {
         // Экспериментальные дефолты V1.0 — подлежат настройке на live-данных.
         Self {
-            uncrystallized_candidates:  80,
-            experience_pressure:       100,
-            pending_heavy_proposals:    60,
+            uncrystallized_candidates: 80,
+            experience_pressure: 100,
+            pending_heavy_proposals: 60,
             causal_horizon_growth_rate: 30,
         }
     }
@@ -31,10 +31,10 @@ impl Default for FatigueWeights {
 
 impl FatigueWeights {
     pub fn total(&self) -> u32 {
-        self.uncrystallized_candidates  as u32
-        + self.experience_pressure      as u32
-        + self.pending_heavy_proposals  as u32
-        + self.causal_horizon_growth_rate as u32
+        self.uncrystallized_candidates as u32
+            + self.experience_pressure as u32
+            + self.pending_heavy_proposals as u32
+            + self.causal_horizon_growth_rate as u32
     }
 }
 
@@ -42,25 +42,29 @@ impl FatigueWeights {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct FatigueSnapshot {
     pub uncrystallized_candidates: u32,
-    pub experience_token_count:    u32,
-    pub experience_capacity:       u32,
-    pub pending_heavy_proposals:   u32,
+    pub experience_token_count: u32,
+    pub experience_capacity: u32,
+    pub pending_heavy_proposals: u32,
     /// Абсолютный прирост causal horizon с прошлого снимка.
-    pub causal_horizon_delta:      u64,
+    pub causal_horizon_delta: u64,
     /// Тиков прошло с прошлого снимка (для нормировки скорости роста).
-    pub ticks_since_last_check:    u32,
+    pub ticks_since_last_check: u32,
 }
 
 /// Вычисляет композитную оценку усталости 0..=255.
 pub struct FatigueTracker {
-    weights:       FatigueWeights,
+    weights: FatigueWeights,
     last_snapshot: FatigueSnapshot,
-    last_score:    u8,
+    last_score: u8,
 }
 
 impl FatigueTracker {
     pub fn new(weights: FatigueWeights) -> Self {
-        Self { weights, last_snapshot: FatigueSnapshot::default(), last_score: 0 }
+        Self {
+            weights,
+            last_snapshot: FatigueSnapshot::default(),
+            last_score: 0,
+        }
     }
 
     pub fn update(&mut self, snapshot: FatigueSnapshot) {
@@ -74,12 +78,14 @@ impl FatigueTracker {
 
     fn compute_score(&self) -> u8 {
         let total = self.weights.total();
-        if total == 0 { return 0; }
+        if total == 0 {
+            return 0;
+        }
 
-        let raw = self.candidates_factor()  * self.weights.uncrystallized_candidates  as u32
-                + self.pressure_factor()    * self.weights.experience_pressure         as u32
-                + self.proposals_factor()   * self.weights.pending_heavy_proposals     as u32
-                + self.horizon_factor()     * self.weights.causal_horizon_growth_rate  as u32;
+        let raw = self.candidates_factor() * self.weights.uncrystallized_candidates as u32
+            + self.pressure_factor() * self.weights.experience_pressure as u32
+            + self.proposals_factor() * self.weights.pending_heavy_proposals as u32
+            + self.horizon_factor() * self.weights.causal_horizon_growth_rate as u32;
 
         ((raw / total).min(255)) as u8
     }
@@ -88,21 +94,33 @@ impl FatigueTracker {
 
     fn candidates_factor(&self) -> u32 {
         // каждые 10 кандидатов = +25, потолок 255
-        (self.last_snapshot.uncrystallized_candidates
-            .saturating_mul(25) / 10).min(255)
+        (self
+            .last_snapshot
+            .uncrystallized_candidates
+            .saturating_mul(25)
+            / 10)
+            .min(255)
     }
 
     fn pressure_factor(&self) -> u32 {
         let cap = self.last_snapshot.experience_capacity;
-        if cap == 0 { return 0; }
-        (self.last_snapshot.experience_token_count
-            .saturating_mul(255) / cap).min(255)
+        if cap == 0 {
+            return 0;
+        }
+        (self
+            .last_snapshot
+            .experience_token_count
+            .saturating_mul(255)
+            / cap)
+            .min(255)
     }
 
     fn proposals_factor(&self) -> u32 {
         // каждое предложение = +30, потолок 255
-        self.last_snapshot.pending_heavy_proposals
-            .saturating_mul(30).min(255)
+        self.last_snapshot
+            .pending_heavy_proposals
+            .saturating_mul(30)
+            .min(255)
     }
 
     fn horizon_factor(&self) -> u32 {
@@ -151,7 +169,9 @@ mod tests {
     #[test]
     fn idle_tracker_resets_on_intake() {
         let mut t = IdleTracker::default();
-        for _ in 0..30 { t.update(false); }
+        for _ in 0..30 {
+            t.update(false);
+        }
         t.update(true);
         assert_eq!(t.idle_ticks(), 0);
     }
@@ -177,7 +197,7 @@ mod tests {
         // EXPERIENCE заполнен наполовину
         ft.update(FatigueSnapshot {
             experience_token_count: 500,
-            experience_capacity:    1000,
+            experience_capacity: 1000,
             ..FatigueSnapshot::default()
         });
         // pressure_factor = 500*255/1000 = 127; score = 127*255/255 = 127
@@ -186,8 +206,12 @@ mod tests {
 
     #[test]
     fn fatigue_weights_total() {
-        let w = FatigueWeights { uncrystallized_candidates: 80, experience_pressure: 100,
-            pending_heavy_proposals: 60, causal_horizon_growth_rate: 30 };
+        let w = FatigueWeights {
+            uncrystallized_candidates: 80,
+            experience_pressure: 100,
+            pending_heavy_proposals: 60,
+            causal_horizon_growth_rate: 30,
+        };
         assert_eq!(w.total(), 270);
     }
 }

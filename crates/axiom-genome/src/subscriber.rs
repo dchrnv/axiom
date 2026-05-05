@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
-use crate::types::ResourceId;
 use crate::genome::Genome;
+use crate::types::ResourceId;
 
 /// Forward-compatibility trait для будущей эволюции GENOME.
 ///

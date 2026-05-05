@@ -7,8 +7,8 @@
 //! 4. Мембрана и Arbiter [32 байта]
 //! 5. Метаданные [32 байта]
 
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 /// Домен активен и принимает токены
 pub const DOMAIN_ACTIVE: u32 = 1;
@@ -91,9 +91,9 @@ pub enum DomainType {
 pub struct DomainConfig {
     // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
     /// Допуск по temperature при сравнении рефлекса с результатом ASHTI (default: 10)
-    pub token_compare_temp_tolerance:    i16,
+    pub token_compare_temp_tolerance: i16,
     /// Допуск по mass при сравнении рефлекса с результатом ASHTI (default: 5)
-    pub token_compare_mass_tolerance:    i16,
+    pub token_compare_mass_tolerance: i16,
     /// Допуск по valence при сравнении рефлекса с результатом ASHTI (default: 2)
     pub token_compare_valence_tolerance: i16,
     /// Резерв (бывший reserved_id, остаток)
@@ -211,8 +211,8 @@ impl Default for DomainConfig {
     fn default() -> Self {
         Self {
             // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-            token_compare_temp_tolerance:    10,
-            token_compare_mass_tolerance:    5,
+            token_compare_temp_tolerance: 10,
+            token_compare_mass_tolerance: 5,
             token_compare_valence_tolerance: 2,
             _reserved_id_tail: 0,
             domain_id: 1,
@@ -290,8 +290,8 @@ impl DomainConfig {
     pub fn default_void() -> Self {
         Self {
             // --- 1. ИДЕНТИФИКАЦИЯ [16 Байт] ---
-            token_compare_temp_tolerance:    10,
-            token_compare_mass_tolerance:    5,
+            token_compare_temp_tolerance: 10,
+            token_compare_mass_tolerance: 5,
             token_compare_valence_tolerance: 2,
             _reserved_id_tail: 0,
             domain_id: 0,
@@ -382,9 +382,9 @@ impl DomainConfig {
 
         config.field_size = [2000.0, 2000.0, 2000.0];
         config.gravity_strength = 9.81;
-        config.temperature = 310.0;         // ~37°C — активная среда
-        config.elasticity = 180;            // ~0.7 — умеренная упругость
-        config.friction_coeff = 30;         // ~0.12 — низкое трение
+        config.temperature = 310.0; // ~37°C — активная среда
+        config.elasticity = 180; // ~0.7 — умеренная упругость
+        config.friction_coeff = 30; // ~0.12 — низкое трение
 
         config.permeability = 180;
         config.membrane_state = MEMBRANE_SEMI;
@@ -413,8 +413,8 @@ impl DomainConfig {
 
         config.field_size = [2000.0, 2000.0, 2000.0];
         config.gravity_strength = 5.0;
-        config.temperature = 250.0;         // Прохладная среда для стабильности
-        config.viscosity = 180;             // ~0.7 — замедленное движение
+        config.temperature = 250.0; // Прохладная среда для стабильности
+        config.viscosity = 180; // ~0.7 — замедленное движение
         config.friction_coeff = 50;
 
         config.permeability = 150;
@@ -444,8 +444,8 @@ impl DomainConfig {
 
         config.field_size = [2000.0, 2000.0, 2000.0];
         config.gravity_strength = 1000.0;
-        config.temperature = 10.0;          // Почти ноль — минимальные колебания
-        config.viscosity = 250;             // ~0.98 — токены вязнут и фиксируются
+        config.temperature = 10.0; // Почти ноль — минимальные колебания
+        config.viscosity = 250; // ~0.98 — токены вязнут и фиксируются
         config.friction_coeff = 200;
 
         config.permeability = 25;
@@ -571,7 +571,7 @@ impl DomainConfig {
         config.gravity_strength = 0.0;
         config.temperature = 500.0;
         config.quantum_noise = 200;
-        config.time_dilation = 50;          // x0.5 — время течёт быстрее
+        config.time_dilation = 50; // x0.5 — время течёт быстрее
 
         config.permeability = 200;
         config.membrane_state = MEMBRANE_OPEN;
@@ -632,21 +632,21 @@ impl DomainConfig {
         config.field_size = [5000.0, 5000.0, 5000.0]; // Большое поле для множества следов
         config.gravity_strength = 0.5;
         config.temperature = 300.0;
-        config.resonance_freq = 1000;       // Высокий резонанс — лёгкий поиск
+        config.resonance_freq = 1000; // Высокий резонанс — лёгкий поиск
         config.friction_coeff = 20;
         config.viscosity = 200;
 
         config.permeability = 200;
         config.membrane_state = MEMBRANE_SEMI;
 
-        config.reflex_threshold = 0;        // Сам источник рефлексов, не получатель
+        config.reflex_threshold = 0; // Сам источник рефлексов, не получатель
         config.association_threshold = 0;
-        config.arbiter_flags = 0b00000100;  // Только FEEDBACK_ENABLED
+        config.arbiter_flags = 0b00000100; // Только FEEDBACK_ENABLED
         config.reflex_cooldown = 0;
         config.max_concurrent_hints = 0;
-        config.feedback_weight_delta = 0;   // Управляется внутренней логикой домена 9
+        config.feedback_weight_delta = 0; // Управляется внутренней логикой домена 9
 
-        config.token_capacity = 100000;     // Много следов (опыт накапливается)
+        config.token_capacity = 100000; // Много следов (опыт накапливается)
         config.connection_capacity = 50000;
         config
     }
@@ -675,8 +675,8 @@ impl DomainConfig {
         config.reflex_cooldown = 0;
         config.max_concurrent_hints = 0;
         config.feedback_weight_delta = 0;
-        config.max_passes = 3;       // до 3 повторных проходов (Cognitive Depth V1.0)
-        config.min_coherence = 153;  // 153/255 ≈ 0.6 — порог повторного прохода
+        config.max_passes = 3; // до 3 повторных проходов (Cognitive Depth V1.0)
+        config.min_coherence = 153; // 153/255 ≈ 0.6 — порог повторного прохода
 
         config.token_capacity = 5000;
         config.connection_capacity = 500;
@@ -728,10 +728,7 @@ impl DomainConfig {
         }
 
         // Проверка field_size
-        if self.field_size[0] < 0.0
-            || self.field_size[1] < 0.0
-            || self.field_size[2] < 0.0
-        {
+        if self.field_size[0] < 0.0 || self.field_size[1] < 0.0 || self.field_size[2] < 0.0 {
             return Err("field_size components must be non-negative".to_string());
         }
 
@@ -756,11 +753,11 @@ impl DomainConfig {
     ///
     /// После загрузки автоматически вызывается `validate()`.
     pub fn from_yaml(path: &std::path::Path) -> Result<Self, crate::ConfigError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(crate::ConfigError::IoError)?;
-        let config: Self = serde_yaml::from_str(&content)
-            .map_err(crate::ConfigError::ParseError)?;
-        config.validate()
+        let content = std::fs::read_to_string(path).map_err(crate::ConfigError::IoError)?;
+        let config: Self =
+            serde_yaml::from_str(&content).map_err(crate::ConfigError::ParseError)?;
+        config
+            .validate()
             .map_err(crate::ConfigError::ValidationError)?;
         Ok(config)
     }

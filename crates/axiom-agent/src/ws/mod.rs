@@ -9,4 +9,4 @@
 mod handler;
 mod server;
 
-pub use server::{AppState, bind, serve_ws};
+pub use server::{bind, serve_ws, AppState};

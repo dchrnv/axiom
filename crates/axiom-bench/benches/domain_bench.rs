@@ -1,9 +1,9 @@
 // Бенчмарки axiom-domain: EventGenerator, resonance_search, Arbiter route
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use axiom_arbiter::{Arbiter, ExperienceModule as Experience, COM};
+use axiom_config::DomainConfig;
 use axiom_core::Token;
 use axiom_domain::EventGenerator;
-use axiom_arbiter::{Arbiter, COM, ExperienceModule as Experience};
-use axiom_config::DomainConfig;
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -64,9 +64,7 @@ fn bench_resonance_search(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(trace_count),
             &trace_count,
-            |b, _| {
-                b.iter(|| black_box(exp.resonance_search(black_box(&query))))
-            },
+            |b, _| b.iter(|| black_box(exp.resonance_search(black_box(&query)))),
         );
     }
     group.finish();
@@ -122,10 +120,7 @@ fn bench_arbiter_route(c: &mut Criterion) {
     let token = Token::new(1, 100, [10, 20, 30], 1);
 
     // (label, reflex_threshold, assoc_threshold)
-    let configs: &[(&str, u8, u8)] = &[
-        ("strict_200_180", 200, 180),
-        ("loose_50_30",    50,  30),
-    ];
+    let configs: &[(&str, u8, u8)] = &[("strict_200_180", 200, 180), ("loose_50_30", 50, 30)];
 
     for &(label, reflex_t, assoc_t) in configs {
         group.bench_with_input(

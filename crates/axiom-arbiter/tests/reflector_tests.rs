@@ -1,4 +1,4 @@
-use axiom_arbiter::{Reflector, ReflexStats, DomainProfile};
+use axiom_arbiter::{DomainProfile, Reflector, ReflexStats};
 
 // ─── ReflexStats ─────────────────────────────────────────────────────────────
 
@@ -23,8 +23,12 @@ fn test_reflex_stats_record_success() {
 #[test]
 fn test_reflex_stats_success_rate() {
     let mut stats = ReflexStats::default();
-    for _ in 0..7 { stats.record(true); }
-    for _ in 0..3 { stats.record(false); }
+    for _ in 0..7 {
+        stats.record(true);
+    }
+    for _ in 0..3 {
+        stats.record(false);
+    }
     let rate = stats.success_rate();
     assert!((rate - 0.7).abs() < 0.01);
 }
@@ -32,14 +36,18 @@ fn test_reflex_stats_success_rate() {
 #[test]
 fn test_reflex_stats_all_success() {
     let mut stats = ReflexStats::default();
-    for _ in 0..10 { stats.record(true); }
+    for _ in 0..10 {
+        stats.record(true);
+    }
     assert!((stats.success_rate() - 1.0).abs() < 0.001);
 }
 
 #[test]
 fn test_reflex_stats_all_fail() {
     let mut stats = ReflexStats::default();
-    for _ in 0..5 { stats.record(false); }
+    for _ in 0..5 {
+        stats.record(false);
+    }
     assert_eq!(stats.success_rate(), 0.0);
 }
 

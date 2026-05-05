@@ -8,20 +8,20 @@ use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use tokio::sync::broadcast;
 
+use super::server::AppState;
 use crate::adapter_command::{AdapterCommand, AdapterPayload, AdapterSource};
 use crate::protocol::ServerMessage;
-use super::server::AppState;
 
 /// Входящее сообщение от WebSocket-клиента.
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
-    Inject          { text: String },
-    ReadCommand     { cmd: String },
-    MutateCommand   { cmd: String },
-    Subscribe       { channels: Vec<String> },
-    Unsubscribe     { channels: Vec<String> },
-    DomainSnapshot  { domain_id: u16 },
+    Inject { text: String },
+    ReadCommand { cmd: String },
+    MutateCommand { cmd: String },
+    Subscribe { channels: Vec<String> },
+    Unsubscribe { channels: Vec<String> },
+    DomainSnapshot { domain_id: u16 },
 }
 
 /// Обработать одно WebSocket-соединение.
@@ -86,20 +86,24 @@ pub async fn handle_socket(socket: WebSocket, state: AppState) {
 /// Отправить AdapterCommand или обновить подписки.
 /// Возвращает false если нужно закрыть соединение.
 async fn dispatch(
-    msg:           ClientMessage,
-    conn_id:       u64,
-    seq:           u64,
+    msg: ClientMessage,
+    conn_id: u64,
+    seq: u64,
     subscriptions: &mut Option<HashSet<String>>,
-    state:         &AppState,
-    ws_tx:         &mut (impl SinkExt<Message, Error = axum::Error> + Unpin),
+    state: &AppState,
+    ws_tx: &mut (impl SinkExt<Message, Error = axum::Error> + Unpin),
 ) -> bool {
     match msg {
         ClientMessage::Subscribe { channels } => {
-            subscriptions.get_or_insert_with(HashSet::new).extend(channels);
+            subscriptions
+                .get_or_insert_with(HashSet::new)
+                .extend(channels);
         }
         ClientMessage::Unsubscribe { channels } => {
             if let Some(set) = subscriptions.as_mut() {
-                for ch in channels { set.remove(&ch); }
+                for ch in channels {
+                    set.remove(&ch);
+                }
             }
         }
         other => {
@@ -123,12 +127,12 @@ async fn dispatch(
 
 fn to_payload(msg: ClientMessage) -> AdapterPayload {
     match msg {
-        ClientMessage::Inject         { text }      => AdapterPayload::Inject { text },
-        ClientMessage::ReadCommand    { cmd }        => AdapterPayload::MetaRead { cmd },
-        ClientMessage::MutateCommand  { cmd }        => AdapterPayload::MetaMutate { cmd },
-        ClientMessage::DomainSnapshot { domain_id }  => AdapterPayload::DomainSnapshot { domain_id },
-        ClientMessage::Subscribe      { channels }   => AdapterPayload::Subscribe { channels },
-        ClientMessage::Unsubscribe    { channels }   => AdapterPayload::Unsubscribe { channels },
+        ClientMessage::Inject { text } => AdapterPayload::Inject { text },
+        ClientMessage::ReadCommand { cmd } => AdapterPayload::MetaRead { cmd },
+        ClientMessage::MutateCommand { cmd } => AdapterPayload::MetaMutate { cmd },
+        ClientMessage::DomainSnapshot { domain_id } => AdapterPayload::DomainSnapshot { domain_id },
+        ClientMessage::Subscribe { channels } => AdapterPayload::Subscribe { channels },
+        ClientMessage::Unsubscribe { channels } => AdapterPayload::Unsubscribe { channels },
     }
 }
 
@@ -141,19 +145,22 @@ fn should_send(msg: &ServerMessage, subs: &Option<HashSet<String>>) -> bool {
     match subs {
         None => true,
         Some(set) => match msg {
-            ServerMessage::Tick { .. }  => set.contains("ticks"),
+            ServerMessage::Tick { .. } => set.contains("ticks"),
             ServerMessage::State { .. } => set.contains("state"),
             // Прямые ответы доставляются независимо от подписок
             ServerMessage::Result { .. }
             | ServerMessage::CommandResult { .. }
             | ServerMessage::DomainDetail(_)
             | ServerMessage::Error { .. } => true,
-        }
+        },
     }
 }
 
 fn error_msg(command_id: Option<String>, message: String) -> Message {
-    let json = serde_json::to_string(&ServerMessage::Error { command_id, message })
-        .unwrap_or_default();
+    let json = serde_json::to_string(&ServerMessage::Error {
+        command_id,
+        message,
+    })
+    .unwrap_or_default();
     Message::Text(json.into())
 }

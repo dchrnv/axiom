@@ -11,14 +11,14 @@
 //   - docs/spec/GUARDIAN_V1_0.md
 //   - docs/spec/Ashti_Core_V2_1.md
 
-pub mod types;
-pub mod rules;
 pub mod genome;
 pub mod index;
+pub mod rules;
 pub mod subscriber;
+pub mod types;
 
-pub use types::{ModuleId, ResourceId, Permission, DataType, MAX_MODULES, MAX_RESOURCES};
-pub use rules::{AccessRule, ProtocolRule, GenomeInvariants, GenomeConfig};
 pub use genome::{Genome, GenomeError};
 pub use index::GenomeIndex;
+pub use rules::{AccessRule, GenomeConfig, GenomeInvariants, ProtocolRule};
 pub use subscriber::GenomeSubscriber;
+pub use types::{DataType, ModuleId, Permission, ResourceId, MAX_MODULES, MAX_RESOURCES};

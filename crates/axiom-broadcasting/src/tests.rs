@@ -1,13 +1,13 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 use futures_util::{SinkExt, StreamExt};
+use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
 use axiom_protocol::messages::{ClientKind, ClientMessage, EngineMessage, ShutdownReason};
 use axiom_protocol::PROTOCOL_VERSION;
 
-use crate::{BroadcastingConfig, BroadcastServer};
+use crate::{BroadcastServer, BroadcastingConfig};
 
 async fn spawn_test_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -15,12 +15,16 @@ async fn spawn_test_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
     drop(listener);
 
     let (server, _handle) = BroadcastServer::new(actual_addr, BroadcastingConfig::default());
-    let jh = tokio::spawn(async move { server.run().await.ok(); });
+    let jh = tokio::spawn(async move {
+        server.run().await.ok();
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
     (actual_addr, jh)
 }
 
-async fn ws_connect(addr: SocketAddr) -> (
+async fn ws_connect(
+    addr: SocketAddr,
+) -> (
     impl SinkExt<WsMessage, Error = tokio_tungstenite::tungstenite::Error>,
     impl StreamExt<Item = Result<WsMessage, tokio_tungstenite::tungstenite::Error>>,
 ) {
@@ -49,12 +53,20 @@ async fn test_handshake_ok() {
     sink.send(encode(&ClientMessage::Hello {
         version: PROTOCOL_VERSION,
         client_kind: ClientKind::Workstation,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
 
     let reply = source.next().await.unwrap().unwrap();
     let msg = decode_engine(reply);
 
-    assert!(matches!(msg, EngineMessage::Hello { version: PROTOCOL_VERSION, .. }));
+    assert!(matches!(
+        msg,
+        EngineMessage::Hello {
+            version: PROTOCOL_VERSION,
+            ..
+        }
+    ));
 }
 
 // Test 2.7.b — version mismatch
@@ -66,11 +78,18 @@ async fn test_handshake_version_mismatch() {
     sink.send(encode(&ClientMessage::Hello {
         version: 0x02_00_00_00, // major version 2, server is 1
         client_kind: ClientKind::Workstation,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
 
     let reply = source.next().await.unwrap().unwrap();
     let msg = decode_engine(reply);
-    assert!(matches!(msg, EngineMessage::Bye { reason: ShutdownReason::VersionMismatch }));
+    assert!(matches!(
+        msg,
+        EngineMessage::Bye {
+            reason: ShutdownReason::VersionMismatch
+        }
+    ));
 }
 
 // Test 2.7.c — multiple clients all receive broadcast
@@ -81,7 +100,9 @@ async fn test_multiple_clients_receive_broadcast() {
     drop(listener);
 
     let (server, handle) = BroadcastServer::new(actual_addr, BroadcastingConfig::default());
-    tokio::spawn(async move { server.run().await.ok(); });
+    tokio::spawn(async move {
+        server.run().await.ok();
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     let mut clients = vec![];
@@ -90,7 +111,9 @@ async fn test_multiple_clients_receive_broadcast() {
         sink.send(encode(&ClientMessage::Hello {
             version: PROTOCOL_VERSION,
             client_kind: ClientKind::Workstation,
-        })).await.unwrap();
+        }))
+        .await
+        .unwrap();
         let _ = source.next().await; // consume Hello reply
         clients.push((sink, source));
     }
@@ -109,7 +132,10 @@ async fn test_multiple_clients_receive_broadcast() {
             .unwrap()
             .unwrap();
         let decoded = decode_engine(msg);
-        assert!(matches!(decoded, EngineMessage::Event(EngineEvent::Alert { .. })));
+        assert!(matches!(
+            decoded,
+            EngineMessage::Event(EngineEvent::Alert { .. })
+        ));
     }
 }
 
@@ -121,20 +147,26 @@ async fn test_subscription_filter() {
     drop(listener);
 
     let (server, handle) = BroadcastServer::new(addr, BroadcastingConfig::default());
-    tokio::spawn(async move { server.run().await.ok(); });
+    tokio::spawn(async move {
+        server.run().await.ok();
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     let (mut sink, mut source) = ws_connect(addr).await;
     sink.send(encode(&ClientMessage::Hello {
         version: PROTOCOL_VERSION,
         client_kind: ClientKind::Workstation,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
     let _ = source.next().await; // consume Hello reply
 
     use axiom_protocol::event_category;
     sink.send(encode(&ClientMessage::Subscribe {
         event_categories: event_category::DEFAULT,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
 
     use axiom_protocol::events::EngineEvent;
     handle.publish(EngineMessage::Event(EngineEvent::Tick {
@@ -156,7 +188,10 @@ async fn test_subscription_filter() {
         .unwrap()
         .unwrap();
     let decoded = decode_engine(msg);
-    assert!(matches!(decoded, EngineMessage::Event(EngineEvent::Alert { .. })));
+    assert!(matches!(
+        decoded,
+        EngineMessage::Event(EngineEvent::Alert { .. })
+    ));
 }
 
 // Test 2.7.e — server sends heartbeat pings at configured interval.
@@ -174,14 +209,18 @@ async fn test_heartbeat() {
         ..BroadcastingConfig::default()
     };
     let (server, _handle) = BroadcastServer::new(addr, config);
-    tokio::spawn(async move { server.run().await.ok(); });
+    tokio::spawn(async move {
+        server.run().await.ok();
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     let (mut sink, mut source) = ws_connect(addr).await;
     sink.send(encode(&ClientMessage::Hello {
         version: PROTOCOL_VERSION,
         client_kind: ClientKind::Workstation,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
     let _ = source.next().await; // consume Hello reply
 
     // Server must send a Ping within heartbeat_interval (50ms) + 150ms margin
@@ -194,8 +233,12 @@ async fn test_heartbeat() {
             }
         }
         false
-    }).await;
-    assert!(matches!(found, Ok(true)), "server must send heartbeat Ping within 200ms");
+    })
+    .await;
+    assert!(
+        matches!(found, Ok(true)),
+        "server must send heartbeat Ping within 200ms"
+    );
 }
 
 // Test 2.7.f — server survives message flood (handles RecvError::Lagged gracefully)
@@ -210,14 +253,18 @@ async fn test_dropping_under_load() {
         ..BroadcastingConfig::default()
     };
     let (server, handle) = BroadcastServer::new(addr, config);
-    tokio::spawn(async move { server.run().await.ok(); });
+    tokio::spawn(async move {
+        server.run().await.ok();
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
 
     let (mut sink, mut source) = ws_connect(addr).await;
     sink.send(encode(&ClientMessage::Hello {
         version: PROTOCOL_VERSION,
         client_kind: ClientKind::Workstation,
-    })).await.unwrap();
+    }))
+    .await
+    .unwrap();
     let _ = source.next().await; // consume Hello reply
 
     // Flood with 50 events (queue = 4 → Lagged guaranteed)
@@ -257,5 +304,8 @@ async fn test_dropping_under_load() {
             _ => break,
         }
     }
-    assert!(found_sentinel, "server must survive message flood and still deliver messages");
+    assert!(
+        found_sentinel,
+        "server must survive message flood and still deliver messages"
+    );
 }

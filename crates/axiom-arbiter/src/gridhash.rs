@@ -6,8 +6,8 @@
 // 3. Двухфазный поиск: Phase 1 (O(1) GridHash lookup) → Phase 2 (O(N) физика) при промахе
 // 4. Обучение: insert при add_trace, remove при затухании
 
-use std::collections::HashMap;
 use axiom_core::Token;
+use std::collections::HashMap;
 
 /// Вычислить GridHash токена
 ///

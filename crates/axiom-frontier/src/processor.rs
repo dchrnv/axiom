@@ -62,8 +62,12 @@ impl<'a, R: LocalRules> FrontierProcessor<'a, R> {
         if let EvaluationResult::Transform { affected_neighbors } = result {
             for neighbor in affected_neighbors {
                 match neighbor {
-                    FrontierEntity::Token(id) => { self.frontier.push_token(id); }
-                    FrontierEntity::Connection(id) => { self.frontier.push_connection(id); }
+                    FrontierEntity::Token(id) => {
+                        self.frontier.push_token(id);
+                    }
+                    FrontierEntity::Connection(id) => {
+                        self.frontier.push_connection(id);
+                    }
                     FrontierEntity::BatchToken(_) | FrontierEntity::BatchConnection(_) => {}
                 }
             }

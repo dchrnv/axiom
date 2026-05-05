@@ -95,7 +95,11 @@ fn test_impulse_source_variants() {
     // Все варианты существуют и уникальны
     for (i, s) in sources.iter().enumerate() {
         for (j, t) in sources.iter().enumerate() {
-            if i == j { assert_eq!(s, t); } else { assert_ne!(s, t); }
+            if i == j {
+                assert_eq!(s, t);
+            } else {
+                assert_ne!(s, t);
+            }
         }
     }
 }
@@ -139,9 +143,13 @@ fn test_select_next_factor_zero_external_always_wins() {
     // factor=0 → internal_priority = weight * 0.0 = 0 < любой ext_urgency > 0
     let ext = make_token(1, 1); // минимальная urgency
     let imp = make_impulse(ImpulseSource::Tension, 1.0, 100); // максимальный вес
-    let (_, source) = Arbiter::select_next(Some(ext), Some(imp), 0)
-        .expect("Должен вернуть результат");
-    assert_eq!(source, ImpulseSource::External, "factor=0 → external всегда побеждает");
+    let (_, source) =
+        Arbiter::select_next(Some(ext), Some(imp), 0).expect("Должен вернуть результат");
+    assert_eq!(
+        source,
+        ImpulseSource::External,
+        "factor=0 → external всегда побеждает"
+    );
 }
 
 #[test]
@@ -149,9 +157,13 @@ fn test_select_next_factor_max_internal_wins_over_weak_external() {
     // factor=255 ≈ 2.0 → internal_priority = 1.0 * 2.0 = 2.0 > ext_urgency (макс 1.0)
     let ext = make_token(1, 255); // максимальная urgency = 1.0
     let imp = make_impulse(ImpulseSource::Tension, 1.0, 100);
-    let (_, source) = Arbiter::select_next(Some(ext), Some(imp), 255)
-        .expect("Должен вернуть результат");
-    assert_eq!(source, ImpulseSource::Tension, "factor=255 → internal побеждает при weight=1.0");
+    let (_, source) =
+        Arbiter::select_next(Some(ext), Some(imp), 255).expect("Должен вернуть результат");
+    assert_eq!(
+        source,
+        ImpulseSource::Tension,
+        "factor=255 → internal побеждает при weight=1.0"
+    );
 }
 
 #[test]
@@ -161,9 +173,13 @@ fn test_select_next_equilibrium_strong_external_wins() {
     // imp weight=0.5 → priority=0.5 < 0.78 → external wins
     let ext = make_token(1, 200);
     let imp = make_impulse(ImpulseSource::Curiosity, 0.5, 100);
-    let (_, source) = Arbiter::select_next(Some(ext), Some(imp), 128)
-        .expect("Должен вернуть результат");
-    assert_eq!(source, ImpulseSource::External, "Сильный external побеждает при равновесии");
+    let (_, source) =
+        Arbiter::select_next(Some(ext), Some(imp), 128).expect("Должен вернуть результат");
+    assert_eq!(
+        source,
+        ImpulseSource::External,
+        "Сильный external побеждает при равновесии"
+    );
 }
 
 #[test]
@@ -173,9 +189,13 @@ fn test_select_next_equilibrium_strong_internal_wins() {
     // imp weight=0.9 → priority=0.9 > 0.196 → internal wins
     let ext = make_token(1, 50);
     let imp = make_impulse(ImpulseSource::Goal, 0.9, 100);
-    let (_, source) = Arbiter::select_next(Some(ext), Some(imp), 128)
-        .expect("Должен вернуть результат");
-    assert_eq!(source, ImpulseSource::Goal, "Сильный internal побеждает при равновесии");
+    let (_, source) =
+        Arbiter::select_next(Some(ext), Some(imp), 128).expect("Должен вернуть результат");
+    assert_eq!(
+        source,
+        ImpulseSource::Goal,
+        "Сильный internal побеждает при равновесии"
+    );
 }
 
 // ─────────────────────────────────────────────

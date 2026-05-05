@@ -10,17 +10,17 @@
 #[repr(u8)]
 pub enum DreamPhaseState {
     #[default]
-    Wake          = 0,
+    Wake = 0,
     FallingAsleep = 1,
-    Dreaming      = 2,
-    Waking        = 3,
+    Dreaming = 2,
+    Waking = 3,
 }
 
 /// Причина засыпания — фиксируется в DreamPhaseEvent и DreamReport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SleepTrigger {
-    Idle     { idle_ticks: u32 },
-    Fatigue  { fatigue_score: u8 },
+    Idle { idle_ticks: u32 },
+    Fatigue { fatigue_score: u8 },
     ExplicitCommand { source: u16 },
 }
 
@@ -36,10 +36,20 @@ pub enum WakeReason {
 /// События машины состояний DREAM-фазы — отправляются в COM.
 #[derive(Debug, Clone)]
 pub enum DreamPhaseEvent {
-    WakeToFallingAsleep      { trigger: SleepTrigger, fatigue: u8 },
-    FallingAsleepToDreaming  { drained_operations: u32 },
-    DreamingToWaking         { cycle_complete: bool, reason: WakeReason },
-    WakingToWake             { resumed_at_event: u64 },
+    WakeToFallingAsleep {
+        trigger: SleepTrigger,
+        fatigue: u8,
+    },
+    FallingAsleepToDreaming {
+        drained_operations: u32,
+    },
+    DreamingToWaking {
+        cycle_complete: bool,
+        reason: WakeReason,
+    },
+    WakingToWake {
+        resumed_at_event: u64,
+    },
 }
 
 /// Приоритет входящей команды — определяет поведение во время DREAMING.
@@ -49,9 +59,9 @@ pub enum DreamPhaseEvent {
 #[repr(u8)]
 pub enum GatewayPriority {
     #[default]
-    Normal    = 0,
+    Normal = 0,
     /// Вызывает пробуждение системы из DREAMING.
-    Critical  = 1,
+    Critical = 1,
     /// V2.0: немедленное прерывание DreamCycle. В V1.0 — ведёт себя как Critical.
     Emergency = 2,
 }
@@ -61,8 +71,8 @@ pub enum GatewayPriority {
 #[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "adapters", derive(serde::Serialize))]
 pub struct DreamPhaseStats {
-    pub total_sleeps:          u64,
-    pub total_dream_ticks:     u64,
-    pub interrupted_dreams:    u64,
+    pub total_sleeps: u64,
+    pub total_dream_ticks: u64,
+    pub interrupted_dreams: u64,
     // расширяется в этапах 2–4
 }

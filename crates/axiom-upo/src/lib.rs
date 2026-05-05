@@ -27,30 +27,33 @@ pub const TRACE_ETERNAL: u8 = 8;
 #[derive(Clone, Copy, Debug)]
 pub struct DynamicTrace {
     // --- ВРЕМЯ [8 байт] ---
-    pub last_update: u64,       // 8b  | COM event_id последнего обновления
+    pub last_update: u64, // 8b  | COM event_id последнего обновления
 
     // --- ХАРАКТЕРИСТИКИ [8 байт] ---
-    pub weight: f32,            // 4b  | Вес/интенсивность точки
-    pub frequency: f32,         // 4b  | Частота колебаний
+    pub weight: f32,    // 4b  | Вес/интенсивность точки
+    pub frequency: f32, // 4b  | Частота колебаний
 
     // --- ИСТОЧНИК [8 байт] ---
-    pub source_id: u32,         // 4b  | ID источника (Token/Connection)
-    pub x: i16,                 // 2b  | Координата X на экране
-    pub y: i16,                 // 2b  | Координата Y на экране
+    pub source_id: u32, // 4b  | ID источника (Token/Connection)
+    pub x: i16,         // 2b  | Координата X на экране
+    pub y: i16,         // 2b  | Координата Y на экране
 
     // --- МЕТАДАННЫЕ [8 байт] ---
-    pub z: i16,                 // 2b  | Координата Z на экране
-    pub source_type: u8,        // 1b  | Источник (Token/Connection/Field)
-    pub flags: u8,              // 1b  | ACTIVE/FADING/LOCKED/ETERNAL
-    pub resonance_class: u8,    // 1b  | Класс резонанса
-    pub _pad: [u8; 3],          // 3b  | Явный padding (можно использовать в будущем)
+    pub z: i16,              // 2b  | Координата Z на экране
+    pub source_type: u8,     // 1b  | Источник (Token/Connection/Field)
+    pub flags: u8,           // 1b  | ACTIVE/FADING/LOCKED/ETERNAL
+    pub resonance_class: u8, // 1b  | Класс резонанса
+    pub _pad: [u8; 3],       // 3b  | Явный padding (можно использовать в будущем)
 }
 
 impl DynamicTrace {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        x: i16, y: i16, z: i16,
-        weight: f32, frequency: f32,
+        x: i16,
+        y: i16,
+        z: i16,
+        weight: f32,
+        frequency: f32,
         last_update: u64,
         source_type: TraceSourceType,
         source_id: u32,
@@ -90,10 +93,13 @@ impl DynamicTrace {
         let z_i32 = i32::from(self.z);
 
         self.weight >= screen.min_intensity
-        && self.last_update > 0
-        && x_i32 >= -screen.size[0]/2 && x_i32 <= screen.size[0]/2
-        && y_i32 >= -screen.size[1]/2 && y_i32 <= screen.size[1]/2
-        && z_i32 >= -screen.size[2]/2 && z_i32 <= screen.size[2]/2
+            && self.last_update > 0
+            && x_i32 >= -screen.size[0] / 2
+            && x_i32 <= screen.size[0] / 2
+            && y_i32 >= -screen.size[1] / 2
+            && y_i32 <= screen.size[1] / 2
+            && z_i32 >= -screen.size[2] / 2
+            && z_i32 <= screen.size[2] / 2
     }
 }
 
@@ -101,9 +107,9 @@ impl DynamicTrace {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct OctantStats {
-    pub trace_count: u32,       // Количество следов в октанте
+    pub trace_count: u32,        // Количество следов в октанте
     pub total_energy: f32,       // Общая энергия
-    pub dominant_frequency: f32,  // Доминирующая частота
+    pub dominant_frequency: f32, // Доминирующая частота
     pub last_event_id: u64,      // Последний event_id
 }
 
@@ -111,13 +117,13 @@ pub struct OctantStats {
 pub struct Screen {
     // --- ПАРАМЕТРЫ (32 Байта) ---
     pub size: [i32; 3],        // Размеры экрана (X, Y, Z)
-    pub resolution: f32,        // Разрешение (единица на пиксель)
-    pub min_intensity: f32,     // Минимальная интенсивность (> 0)
-    pub decay_rate: f32,        // Скорость затухания
-    pub current_event_id: u64,  // Текущий COM event_id
-    pub trace_count: u32,       // Количество следов
-    pub total_energy: f32,       // Общая энергия экрана
-    pub octant_mask: u8,        // Маска активных октантов
+    pub resolution: f32,       // Разрешение (единица на пиксель)
+    pub min_intensity: f32,    // Минимальная интенсивность (> 0)
+    pub decay_rate: f32,       // Скорость затухания
+    pub current_event_id: u64, // Текущий COM event_id
+    pub trace_count: u32,      // Количество следов
+    pub total_energy: f32,     // Общая энергия экрана
+    pub octant_mask: u8,       // Маска активных октантов
 
     // --- ДАННЫЕ (динамические) ---
     pub traces: Vec<DynamicTrace>, // Массив следов
@@ -173,14 +179,14 @@ impl Screen {
         for trace in &mut self.traces {
             let event_age = self.current_event_id - trace.last_update;
             let decay_factor = (-(event_age as f32) * self.decay_rate).exp();
-            
+
             trace.weight = (trace.weight * decay_factor).max(self.min_intensity);
-            
+
             // Вечная память - если вес достиг минимума
             if trace.weight == self.min_intensity {
                 trace.flags |= TRACE_ETERNAL;
             }
-            
+
             // Флаг затухания - если вес уменьшился
             if event_age > 0 {
                 trace.flags |= TRACE_FADING;
@@ -219,11 +225,11 @@ pub struct UPOConfig {
     pub domain_id: u16,
     pub update_mode: UpdateMode,
     pub screen_size: [i32; 3],    // Размеры экрана
-    pub min_intensity: f32,        // Минимальная интенсивность
-    pub decay_rate: f32,           // Скорость затухания
-    pub use_connections: bool,      // Использовать Connection
-    pub min_tokens: usize,         // Минимальное количество токенов
-    pub resonance_threshold: f32,   // Порог резонанса
+    pub min_intensity: f32,       // Минимальная интенсивность
+    pub decay_rate: f32,          // Скорость затухания
+    pub use_connections: bool,    // Использовать Connection
+    pub min_tokens: usize,        // Минимальное количество токенов
+    pub resonance_threshold: f32, // Порог резонанса
 }
 
 impl Default for UPOConfig {
@@ -248,9 +254,7 @@ pub struct UPO {
 
 impl UPO {
     pub fn new(config: UPOConfig) -> Self {
-        Self {
-            config,
-        }
+        Self { config }
     }
 
     /// Вычисляет DynamicTrace по срезам Token и Connection.
@@ -271,7 +275,7 @@ impl UPO {
 
         // Вычисление Token динамики
         let token_trace = self.compute_token_dynamics(&active_tokens, event_id)?;
-        
+
         // Вычисление Connection стресса если включено
         let connection_stress = if self.config.use_connections {
             self.compute_connection_stress(connections)
@@ -311,12 +315,15 @@ impl UPO {
 
         // Вес и частота
         let total_mass: f32 = tokens.iter().map(|t| t.mass as f32).sum();
-        let avg_temperature: f32 = tokens.iter().map(|t| t.temperature as f32).sum::<f32>() / tokens.len() as f32;
+        let avg_temperature: f32 =
+            tokens.iter().map(|t| t.temperature as f32).sum::<f32>() / tokens.len() as f32;
         let weight = total_mass * (avg_temperature / 255.0);
         let frequency = self.compute_average_frequency(tokens);
 
         Some(DynamicTrace::new(
-            x, y, z,
+            x,
+            y,
+            z,
             weight,
             frequency,
             event_id,
@@ -330,7 +337,7 @@ impl UPO {
     fn compute_average_velocity(&self, tokens: &[&Token]) -> [f32; 3] {
         let mut sum = [0.0; 3];
         let total_mass: f32 = tokens.iter().map(|t| t.mass as f32).sum();
-        
+
         for token in tokens {
             let mass = token.mass as f32;
             for (s, v) in sum.iter_mut().zip(token.velocity.iter()) {
@@ -341,7 +348,7 @@ impl UPO {
         for s in &mut sum {
             *s /= total_mass;
         }
-        
+
         sum
     }
 
@@ -362,7 +369,8 @@ impl UPO {
             return 0.0;
         }
 
-        let total_stress: f32 = active_conns.iter()
+        let total_stress: f32 = active_conns
+            .iter()
             .map(|c| c.current_stress / c.strength)
             .sum();
 
@@ -375,9 +383,7 @@ impl UPO {
             return 0;
         }
 
-        let avg_resonance = tokens.iter()
-            .map(|t| t.resonance)
-            .sum::<u32>() / tokens.len() as u32;
+        let avg_resonance = tokens.iter().map(|t| t.resonance).sum::<u32>() / tokens.len() as u32;
 
         // Классификация резонанса (0-255)
         (avg_resonance / 1000).min(255) as u8

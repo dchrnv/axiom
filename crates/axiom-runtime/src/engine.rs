@@ -8,37 +8,42 @@
 //     ├── AshtiCore (11 доменов + Arbiter + Experience)
 //     └── Guardian  (CODEX-валидация рефлексов)
 
-use std::sync::Arc;
-use axiom_core::{Token, Connection, Event, FLAG_ACTIVE};
+use crate::adaptive::AdaptiveTickRate;
+use crate::guardian::{Guardian, GuardianConfig, RoleStats};
+use crate::orchestrator;
+use crate::over_domain::{
+    restore_frame_from_anchor, DreamCycle, DreamPhaseState, DreamPhaseStats, DreamScheduler,
+    FatigueSnapshot, FrameWeaver, GatewayPriority, OverDomainComponent, SleepDecision,
+    SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
+};
+use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
+use axiom_core::{Connection, Event, Token, FLAG_ACTIVE};
 use axiom_domain::AshtiCore;
 use axiom_genome::Genome;
-use axiom_ucl::{UclCommand, UclResult, OpCode, CommandStatus, SpawnDomainPayload, InjectTokenPayload, InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload, UnfoldFramePayload, ucl_preset_to_structural_role, flags as ucl_flags};
+use axiom_ucl::{
+    flags as ucl_flags, ucl_preset_to_structural_role, BondTokensPayload, CommandStatus,
+    InjectFrameAnchorPayload, InjectTokenPayload, OpCode, ReinforceFramePayload,
+    SpawnDomainPayload, UclCommand, UclResult, UnfoldFramePayload,
+};
 use std::collections::{HashMap, VecDeque};
-use crate::guardian::{Guardian, GuardianConfig, RoleStats};
-use crate::over_domain::{WeaverId, OverDomainComponent, FrameWeaver, restore_frame_from_anchor,
-    DreamPhaseState, DreamPhaseStats, DreamScheduler, DreamSchedulerConfig, FatigueWeights, FatigueSnapshot,
-    DreamCycle, DreamCycleConfig, SleepTrigger, WakeReason, DreamPhaseEvent, SleepDecision, GatewayPriority,
-    SleepTriggerKind};
-use crate::snapshot::{EngineSnapshot, DomainSnapshot};
-use crate::orchestrator;
-use crate::adaptive::AdaptiveTickRate;
+use std::sync::Arc;
 
 /// Имя домена по domain_id (используется в диагностике и broadcast-типах).
 pub fn domain_name(id: u16) -> &'static str {
     match id % 100 {
-        0  => "SUTRA",
-        1  => "EXECUTION",
-        2  => "SHADOW",
-        3  => "CODEX",
-        4  => "MAP",
-        5  => "PROBE",
-        6  => "LOGIC",
-        7  => "DREAM",
-        8  => "ETHICS",
-        9  => "EXPERIENCE",
+        0 => "SUTRA",
+        1 => "EXECUTION",
+        2 => "SHADOW",
+        3 => "CODEX",
+        4 => "MAP",
+        5 => "PROBE",
+        6 => "LOGIC",
+        7 => "DREAM",
+        8 => "ETHICS",
+        9 => "EXPERIENCE",
         10 => "MAYA",
-        _  => "UNKNOWN",
+        _ => "UNKNOWN",
     }
 }
 
@@ -82,19 +87,19 @@ pub mod error_codes {
 #[derive(Debug, Clone)]
 pub struct TickSchedule {
     /// Адаптация порогов Guardian (default: 50)
-    pub adaptation_interval:    u32,
+    pub adaptation_interval: u32,
     /// GC следов Experience по causal horizon (default: 500)
-    pub horizon_gc_interval:    u32,
+    pub horizon_gc_interval: u32,
     /// Snapshot + pruning (default: 5000)
-    pub snapshot_interval:      u32,
+    pub snapshot_interval: u32,
     /// DREAM-предложения CODEX (default: 100)
-    pub dream_interval:         u32,
+    pub dream_interval: u32,
     /// Проверка TensionTrace (Cognitive Depth) (default: 10)
     pub tension_check_interval: u32,
     /// Проверка GoalPersistence (Cognitive Depth) (default: 10)
-    pub goal_check_interval:    u32,
+    pub goal_check_interval: u32,
     /// Shell reconcile (default: 200)
-    pub reconcile_interval:     u32,
+    pub reconcile_interval: u32,
     /// Автосохранение состояния на диск (default: 0 = отключено).
     /// При ненулевом значении — сохраняет каждые N тиков.
     pub persist_check_interval: u32,
@@ -112,16 +117,16 @@ pub struct TickSchedule {
 impl Default for TickSchedule {
     fn default() -> Self {
         Self {
-            adaptation_interval:        50,
-            horizon_gc_interval:        500,
-            snapshot_interval:          5000,
-            dream_interval:             100,
-            tension_check_interval:     10,
-            goal_check_interval:        10,
-            reconcile_interval:         200,
-            persist_check_interval:     0,
-            adaptive_tick:              AdaptiveTickRate::default(),
-            weaver_scan_intervals:      HashMap::new(),
+            adaptation_interval: 50,
+            horizon_gc_interval: 500,
+            snapshot_interval: 5000,
+            dream_interval: 100,
+            tension_check_interval: 10,
+            goal_check_interval: 10,
+            reconcile_interval: 200,
+            persist_check_interval: 0,
+            adaptive_tick: AdaptiveTickRate::default(),
+            weaver_scan_intervals: HashMap::new(),
             weaver_promotion_intervals: HashMap::new(),
         }
     }
@@ -195,7 +200,9 @@ impl AxiomEngine {
     /// Это единственный путь boot sequence: Genome создаётся первым, замораживается в `Arc`,
     /// затем передаётся в Guardian (и далее по цепочке в Шаге 4).
     pub fn try_new(genome: Arc<Genome>) -> Result<Self, AxiomError> {
-        genome.validate().map_err(|e| AxiomError::InvalidGenome(e.to_string()))?;
+        genome
+            .validate()
+            .map_err(|e| AxiomError::InvalidGenome(e.to_string()))?;
         let worker_count = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
@@ -278,20 +285,22 @@ impl AxiomEngine {
         let ticks_since = (self.tick_count.saturating_sub(self.last_horizon_tick)) as u32;
 
         self.last_horizon_value = current_horizon;
-        self.last_horizon_tick  = self.tick_count;
+        self.last_horizon_tick = self.tick_count;
 
         // EXPERIENCE domain: index 9 (level_id*100 + 9)
-        let (exp_token_count, exp_capacity) = self.ashti.state(9)
+        let (exp_token_count, exp_capacity) = self
+            .ashti
+            .state(9)
             .map(|s| (s.token_count() as u32, s.token_capacity() as u32))
             .unwrap_or((0, 1));
 
         FatigueSnapshot {
             uncrystallized_candidates: self.frame_weaver.candidates_count() as u32,
-            experience_token_count:    exp_token_count,
-            experience_capacity:       exp_capacity,
-            pending_heavy_proposals:   0, // Этап 3: DreamCycle proposals — пока 0
-            causal_horizon_delta:      horizon_delta,
-            ticks_since_last_check:    ticks_since.max(1),
+            experience_token_count: exp_token_count,
+            experience_capacity: exp_capacity,
+            pending_heavy_proposals: 0, // Этап 3: DreamCycle proposals — пока 0
+            causal_horizon_delta: horizon_delta,
+            ticks_since_last_check: ticks_since.max(1),
         }
     }
 
@@ -318,54 +327,71 @@ impl AxiomEngine {
     /// Лёгкий snapshot для broadcast (только числа, без клонирования токенов).
     #[cfg(feature = "adapters")]
     pub fn snapshot_for_broadcast(&self) -> crate::broadcast::BroadcastSnapshot {
-        use crate::broadcast::{DreamPhaseSnapshot, ActiveCycleSnapshot};
+        use crate::broadcast::{ActiveCycleSnapshot, DreamPhaseSnapshot};
         use crate::over_domain::DreamPhaseState;
 
         let cycle_snap = if self.dream_phase_state == DreamPhaseState::Dreaming {
-            self.dream_cycle.current_stage().map(|stage| ActiveCycleSnapshot {
-                stage,
-                queue_size: self.dream_cycle.queue_len(),
-            })
+            self.dream_cycle
+                .current_stage()
+                .map(|stage| ActiveCycleSnapshot {
+                    stage,
+                    queue_size: self.dream_cycle.queue_len(),
+                })
         } else {
             None
         };
 
         let dream_snap = DreamPhaseSnapshot {
-            state:           self.dream_phase_state,
+            state: self.dream_phase_state,
             current_fatigue: self.dream_scheduler.current_fatigue(),
-            idle_ticks:      self.dream_scheduler.current_idle_ticks(),
-            stats:           self.dream_phase_stats.clone(),
-            current_cycle:   cycle_snap,
+            idle_ticks: self.dream_scheduler.current_idle_ticks(),
+            stats: self.dream_phase_stats.clone(),
+            current_cycle: cycle_snap,
         };
 
         crate::broadcast::BroadcastSnapshot {
-            tick_count:           self.tick_count,
-            com_next_id:          self.com_next_id,
-            trace_count:          self.trace_count(),
-            tension_count:        self.tension_count(),
-            domain_summaries:     self.domain_summaries(),
-            frame_weaver_stats:   Some(self.frame_weaver.stats.clone()),
-            dream_phase:          Some(dream_snap),
+            tick_count: self.tick_count,
+            com_next_id: self.com_next_id,
+            trace_count: self.trace_count(),
+            tension_count: self.tension_count(),
+            domain_summaries: self.domain_summaries(),
+            frame_weaver_stats: Some(self.frame_weaver.stats.clone()),
+            dream_phase: Some(dream_snap),
         }
     }
 
     /// Детальный snapshot одного домена — по явному запросу (dashboard, REST GET /domain/:id).
     #[cfg(feature = "adapters")]
-    pub fn domain_detail_snapshot(&self, domain_id: u16) -> Option<crate::broadcast::DomainDetailSnapshot> {
+    pub fn domain_detail_snapshot(
+        &self,
+        domain_id: u16,
+    ) -> Option<crate::broadcast::DomainDetailSnapshot> {
         let idx = self.ashti.index_of(domain_id)?;
         let state = self.ashti.state(idx)?;
         let table = self.ashti.domain(idx).map(|d| &d.semantic_table);
-        let tokens = state.tokens.iter().map(|t| {
-            if let Some(tbl) = table {
-                crate::broadcast::TokenSnapshot::from_token_with_connections(t, &state.connections, tbl)
-            } else {
-                crate::broadcast::TokenSnapshot::from(t)
-            }
-        }).collect();
+        let tokens = state
+            .tokens
+            .iter()
+            .map(|t| {
+                if let Some(tbl) = table {
+                    crate::broadcast::TokenSnapshot::from_token_with_connections(
+                        t,
+                        &state.connections,
+                        tbl,
+                    )
+                } else {
+                    crate::broadcast::TokenSnapshot::from(t)
+                }
+            })
+            .collect();
         Some(crate::broadcast::DomainDetailSnapshot {
             domain_id,
             tokens,
-            connections: state.connections.iter().map(crate::broadcast::ConnectionSnapshot::from).collect(),
+            connections: state
+                .connections
+                .iter()
+                .map(crate::broadcast::ConnectionSnapshot::from)
+                .collect(),
         })
     }
 
@@ -373,18 +399,22 @@ impl AxiomEngine {
     #[cfg(feature = "adapters")]
     fn domain_summaries(&self) -> Vec<crate::broadcast::DomainSummary> {
         use crate::broadcast::DomainSummary;
-        (0u16..=10).map(|offset| {
-            let id = 100 + offset;
-            let conn_count = self.ashti.index_of(id)
-                .and_then(|i| self.ashti.state(i))
-                .map_or(0, |s| s.connections.len());
-            DomainSummary {
-                domain_id:        id,
-                name:             domain_name(id).to_string(),
-                token_count:      self.ashti.token_count(id),
-                connection_count: conn_count,
-            }
-        }).collect()
+        (0u16..=10)
+            .map(|offset| {
+                let id = 100 + offset;
+                let conn_count = self
+                    .ashti
+                    .index_of(id)
+                    .and_then(|i| self.ashti.state(i))
+                    .map_or(0, |s| s.connections.len());
+                DomainSummary {
+                    domain_id: id,
+                    name: domain_name(id).to_string(),
+                    token_count: self.ashti.token_count(id),
+                    connection_count: conn_count,
+                }
+            })
+            .collect()
     }
 
     /// Взять накопленные события (очищает буфер)
@@ -394,9 +424,14 @@ impl AxiomEngine {
 
     /// Создать snapshot текущего состояния Engine
     pub fn snapshot(&self) -> EngineSnapshot {
-        let domains: Vec<DomainSnapshot> = self.ashti.all_states().into_iter()
+        let domains: Vec<DomainSnapshot> = self
+            .ashti
+            .all_states()
+            .into_iter()
             .map(|(id, state)| {
-                let config = self.ashti.all_configs()
+                let config = self
+                    .ashti
+                    .all_configs()
                     .into_iter()
                     .find(|(cid, _)| *cid == id)
                     .map(|(_, c)| c)
@@ -470,23 +505,32 @@ impl AxiomEngine {
     pub fn process_command(&mut self, cmd: &UclCommand) -> UclResult {
         let opcode = match opcode_from_u16(cmd.opcode) {
             Some(op) => op,
-            None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
+            None => {
+                return make_result(
+                    cmd.command_id,
+                    CommandStatus::SystemError,
+                    error_codes::UNKNOWN_OPCODE,
+                    0,
+                )
+            }
         };
 
         match opcode {
-            OpCode::SpawnDomain    => self.handle_spawn_domain(cmd),
+            OpCode::SpawnDomain => self.handle_spawn_domain(cmd),
             OpCode::CollapseDomain => self.handle_collapse_domain(cmd),
-            OpCode::InjectToken    => self.handle_inject_token(cmd),
-            OpCode::TickForward    => self.handle_tick_forward(cmd),
+            OpCode::InjectToken => self.handle_inject_token(cmd),
+            OpCode::TickForward => self.handle_tick_forward(cmd),
             OpCode::ProcessTokenDualPath => self.handle_dual_path(cmd),
-            OpCode::FinalizeComparison   => self.handle_finalize(cmd),
-            OpCode::BackupState    => self.handle_backup(cmd),
-            OpCode::RestoreState   => self.handle_restore(cmd),
-            OpCode::CoreReset      => self.handle_reset(cmd),
-            OpCode::CoreShutdown   => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
-            OpCode::BondTokens        => self.handle_bond_tokens(cmd),
-            OpCode::ReinforceFrame    => self.handle_reinforce_frame(cmd),
-            OpCode::UnfoldFrame       => self.handle_unfold_frame(cmd),
+            OpCode::FinalizeComparison => self.handle_finalize(cmd),
+            OpCode::BackupState => self.handle_backup(cmd),
+            OpCode::RestoreState => self.handle_restore(cmd),
+            OpCode::CoreReset => self.handle_reset(cmd),
+            OpCode::CoreShutdown => {
+                make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+            }
+            OpCode::BondTokens => self.handle_bond_tokens(cmd),
+            OpCode::ReinforceFrame => self.handle_reinforce_frame(cmd),
+            OpCode::UnfoldFrame => self.handle_unfold_frame(cmd),
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
             OpCode::LockMembrane
             | OpCode::ReshapeDomain
@@ -495,9 +539,16 @@ impl AxiomEngine {
             | OpCode::SplitToken
             | OpCode::ChangeTemperature
             | OpCode::ApplyGravity
-            | OpCode::PhaseTransition  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            | OpCode::PhaseTransition => {
+                make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+            }
             #[allow(unreachable_patterns)]
-            _ => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::UNKNOWN_OPCODE, 0),
+            _ => make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::UNKNOWN_OPCODE,
+                0,
+            ),
         }
     }
 
@@ -512,13 +563,10 @@ impl AxiomEngine {
     /// **Не заменяет `process_command()`** — это отдельный путь для CLI/адаптеров.
     /// Overhead ≈ 10 ns (чтение полей RoutingResult и Experience).
     pub fn process_and_observe(&mut self, cmd: &UclCommand) -> crate::result::ProcessingResult {
-        use crate::result::{ProcessingResult, ProcessingPath};
+        use crate::result::{ProcessingPath, ProcessingResult};
         use axiom_ucl::OpCode;
 
-        let is_inject = matches!(
-            opcode_from_u16(cmd.opcode),
-            Some(OpCode::InjectToken)
-        );
+        let is_inject = matches!(opcode_from_u16(cmd.opcode), Some(OpCode::InjectToken));
 
         if is_inject && self.arbiter_ready() {
             self.had_intake_this_tick = true;
@@ -527,20 +575,30 @@ impl AxiomEngine {
             let token = build_token_from_inject(&p, p.target_domain_id, event_id);
 
             // Захватываем состояние до маршрутизации
-            let tension_before   = self.ashti.experience().tension_count();
-            let total_traces     = self.ashti.experience().trace_count() as u32;
-            let input_position   = token.position;
-            let input_shell: [u8; 8] = [0, 0, 0, token.valence.unsigned_abs(), token.temperature, token.mass, 0, 0];
-            let input_hash       = fnv1a_token_hash(&token);
+            let tension_before = self.ashti.experience().tension_count();
+            let total_traces = self.ashti.experience().trace_count() as u32;
+            let input_position = token.position;
+            let input_shell: [u8; 8] = [
+                0,
+                0,
+                0,
+                token.valence.unsigned_abs(),
+                token.temperature,
+                token.mass,
+                0,
+                0,
+            ];
+            let input_hash = fnv1a_token_hash(&token);
             let (max_passes, min_coherence) = self.maya_multipass_params();
 
-            let ucl_result = make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
+            let ucl_result =
+                make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
             let routing = orchestrator::route_token(self, token);
 
-            let tension_created  = self.ashti.experience().tension_count() > tension_before;
-            let reflex_hit       = routing.reflex.is_some();
-            let confidence       = routing.confidence;
-            let passes           = routing.passes;
+            let tension_created = self.ashti.experience().tension_count() > tension_before;
+            let reflex_hit = routing.reflex.is_some();
+            let confidence = routing.confidence;
+            let passes = routing.passes;
 
             let path = if passes > 1 {
                 ProcessingPath::MultiPass(passes)
@@ -550,24 +608,32 @@ impl AxiomEngine {
                 ProcessingPath::SlowPath
             };
 
-            let dominant_domain_id = routing.consolidated
-                .map(|t| t.domain_id)
-                .unwrap_or(110); // MAYA
+            let dominant_domain_id = routing.consolidated.map(|t| t.domain_id).unwrap_or(110); // MAYA
 
-            let output_position = routing.consolidated
+            let output_position = routing
+                .consolidated
                 .map(|t| t.position)
                 .unwrap_or([0, 0, 0]);
 
             // output_shell: диагностическое приближение из полей выходного токена.
             // L4=эмоциональное(valence), L5=когнитивное(temperature), L6=социальное(mass).
             let output_shell: [u8; 8] = if let Some(t) = routing.consolidated {
-                [0, 0, 0, t.valence.unsigned_abs(), t.temperature, t.mass, 0, 0]
+                [
+                    0,
+                    0,
+                    0,
+                    t.valence.unsigned_abs(),
+                    t.temperature,
+                    t.mass,
+                    0,
+                    0,
+                ]
             } else {
                 [0u8; 8]
             };
 
-            let tension_count    = self.ashti.experience().tension_count() as u32;
-            let traces_matched   = self.ashti.experience().last_traces_matched.get();
+            let tension_count = self.ashti.experience().tension_count() as u32;
+            let traces_matched = self.ashti.experience().last_traces_matched.get();
 
             return ProcessingResult {
                 ucl_result,
@@ -632,15 +698,25 @@ impl AxiomEngine {
         let domain_id = p.target_domain_id;
 
         if self.ashti.index_of(domain_id).is_none() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            );
         }
 
         let event_id = self.next_event_id();
         let token = build_token_from_inject(&p, p.target_domain_id, event_id);
 
         match self.ashti.inject_token(domain_id, token) {
-            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
-            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+            Ok(_) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::CAPACITY_EXCEEDED,
+                0,
+            ),
         }
     }
 
@@ -650,29 +726,50 @@ impl AxiomEngine {
 
         // GUARDIAN: FRAME_ANCHOR-записи в SUTRA только в состоянии DREAMING
         if let Some(_veto) = self.guardian.check_frame_anchor_sutra_write(
-            cmd.flags, domain_id, self.dream_phase_state
+            cmd.flags,
+            domain_id,
+            self.dream_phase_state,
         ) {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::GUARDIAN_VIOLATION, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::GUARDIAN_VIOLATION,
+                0,
+            );
         }
 
         if self.ashti.index_of(domain_id).is_none() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            );
         }
 
         let event_id = self.next_event_id();
-        let sutra_id = if p.proposed_sutra_id != 0 { p.proposed_sutra_id } else { event_id as u32 };
+        let sutra_id = if p.proposed_sutra_id != 0 {
+            p.proposed_sutra_id
+        } else {
+            event_id as u32
+        };
 
         let mut token = Token::new(sutra_id, domain_id, p.position, event_id);
-        token.type_flags    = p.type_flags;
-        token.state         = p.state;
-        token.mass          = p.mass;
-        token.temperature   = p.temperature;
-        token.valence       = p.valence;
-        token.lineage_hash  = p.lineage_hash;
+        token.type_flags = p.type_flags;
+        token.state = p.state;
+        token.mass = p.mass;
+        token.temperature = p.temperature;
+        token.valence = p.valence;
+        token.lineage_hash = p.lineage_hash;
 
         match self.ashti.inject_token(domain_id, token) {
-            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
-            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+            Ok(_) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::CAPACITY_EXCEEDED,
+                0,
+            ),
         }
     }
 
@@ -680,14 +777,19 @@ impl AxiomEngine {
         let p = read_bond_tokens_payload(&cmd.payload);
 
         if self.ashti.index_of(p.domain_id).is_none() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            );
         }
 
         let event_id = self.next_event_id();
         let mut conn = Connection::new(p.source_id, p.target_id, p.domain_id, event_id);
         conn.link_type = p.link_type;
-        conn.strength  = p.strength.max(0.001);
-        conn.flags     = p.conn_flags | FLAG_ACTIVE;
+        conn.strength = p.strength.max(0.001);
+        conn.flags = p.conn_flags | FLAG_ACTIVE;
         // Кодируем origin_domain и role_id участника в reserved_gate[0..4]
         conn.reserved_gate[0] = (p.origin_domain >> 8) as u8;
         conn.reserved_gate[1] = (p.origin_domain & 0xFF) as u8;
@@ -695,8 +797,13 @@ impl AxiomEngine {
         conn.reserved_gate[3] = (p.role_id & 0xFF) as u8;
 
         match self.ashti.inject_connection(p.domain_id, conn) {
-            Ok(_)  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
-            Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0),
+            Ok(_) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
+            Err(_) => make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::CAPACITY_EXCEEDED,
+                0,
+            ),
         }
     }
 
@@ -704,10 +811,20 @@ impl AxiomEngine {
         let p = read_reinforce_frame_payload(&cmd.payload);
         // Усиливаем Frame-анкер в EXPERIENCE (domain_id=109 для level_id=1)
         let experience_domain = self.ashti.level_id() * 100 + 9;
-        if self.ashti.reinforce_token(experience_domain, p.anchor_id, p.delta_mass, p.delta_temperature) {
+        if self.ashti.reinforce_token(
+            experience_domain,
+            p.anchor_id,
+            p.delta_mass,
+            p.delta_temperature,
+        ) {
             make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
         } else {
-            make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0)
+            make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            )
         }
     }
 
@@ -719,7 +836,12 @@ impl AxiomEngine {
         let target_domain = p.target_domain_id;
 
         if self.ashti.index_of(target_domain).is_none() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            );
         }
 
         // Найти Frame: сначала в EXPERIENCE, потом в SUTRA
@@ -740,23 +862,50 @@ impl AxiomEngine {
         let restored = {
             let idx = match self.ashti.index_of(source_domain) {
                 Some(i) => i,
-                None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+                None => {
+                    return make_result(
+                        cmd.command_id,
+                        CommandStatus::SystemError,
+                        error_codes::DOMAIN_NOT_FOUND,
+                        0,
+                    )
+                }
             };
             let state = match self.ashti.state(idx) {
                 Some(s) => s,
-                None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+                None => {
+                    return make_result(
+                        cmd.command_id,
+                        CommandStatus::SystemError,
+                        error_codes::DOMAIN_NOT_FOUND,
+                        0,
+                    )
+                }
             };
             match restore_frame_from_anchor(p.frame_anchor_id, state) {
-                Ok(r)  => r,
-                Err(_) => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::INVALID_PAYLOAD, 0),
+                Ok(r) => r,
+                Err(_) => {
+                    return make_result(
+                        cmd.command_id,
+                        CommandStatus::SystemError,
+                        error_codes::INVALID_PAYLOAD,
+                        0,
+                    )
+                }
             }
         };
 
         // Создать копию анкера в target_domain
         let event_id = self.next_event_id();
         let new_anchor_id = {
-            let low = (restored.anchor.lineage_hash ^ (target_domain as u64).wrapping_mul(0x9e3779b97f4a7c15)) as u32;
-            if low == 0 { 1 } else { low }
+            let low = (restored.anchor.lineage_hash
+                ^ (target_domain as u64).wrapping_mul(0x9e3779b97f4a7c15))
+                as u32;
+            if low == 0 {
+                1
+            } else {
+                low
+            }
         };
         let mut new_anchor = restored.anchor;
         new_anchor.sutra_id = new_anchor_id;
@@ -764,14 +913,24 @@ impl AxiomEngine {
         new_anchor.last_event_id = event_id;
 
         if self.ashti.inject_token(target_domain, new_anchor).is_err() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::CAPACITY_EXCEEDED, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::CAPACITY_EXCEEDED,
+                0,
+            );
         }
 
         // Создать BondTokens к каждому участнику
         let mut bonds_created = 0u16;
         for participant in &restored.participants {
             let bond_event_id = self.next_event_id();
-            let mut conn = Connection::new(new_anchor_id, participant.sutra_id, target_domain, bond_event_id);
+            let mut conn = Connection::new(
+                new_anchor_id,
+                participant.sutra_id,
+                target_domain,
+                bond_event_id,
+            );
             conn.link_type = participant.role_link_type;
             conn.flags = FLAG_ACTIVE;
             conn.reserved_gate[0] = (participant.origin_domain_id >> 8) as u8;
@@ -784,7 +943,12 @@ impl AxiomEngine {
         }
 
         self.frame_weaver.stats.unfold_requests += 1;
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, bonds_created + 1)
+        make_result(
+            cmd.command_id,
+            CommandStatus::Success,
+            error_codes::OK,
+            bonds_created + 1,
+        )
     }
 
     fn handle_tick_forward(&mut self, cmd: &UclCommand) -> UclResult {
@@ -793,13 +957,18 @@ impl AxiomEngine {
         self.had_intake_this_tick = false;
 
         let count = match self.dream_phase_state {
-            DreamPhaseState::Wake         => self.tick_wake(had_intake),
+            DreamPhaseState::Wake => self.tick_wake(had_intake),
             DreamPhaseState::FallingAsleep => self.tick_falling_asleep(),
-            DreamPhaseState::Dreaming      => self.tick_dreaming(),
-            DreamPhaseState::Waking        => self.tick_waking(),
+            DreamPhaseState::Dreaming => self.tick_dreaming(),
+            DreamPhaseState::Waking => self.tick_waking(),
         };
 
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, count)
+        make_result(
+            cmd.command_id,
+            CommandStatus::Success,
+            error_codes::OK,
+            count,
+        )
     }
 
     // ── DREAM state ticks ──────────────────────────────────────────────────────
@@ -814,7 +983,7 @@ impl AxiomEngine {
         self.pending_events.extend(events);
 
         // Warm path: tension traces
-        if s.tension_check_interval > 0 && t % s.tension_check_interval as u64 == 0 {
+        if s.tension_check_interval > 0 && t.is_multiple_of(s.tension_check_interval as u64) {
             let impulses = self.ashti.arbiter_heartbeat_pulse(t, true);
             for mut token in impulses {
                 token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
@@ -823,8 +992,10 @@ impl AxiomEngine {
         }
 
         // Warm path: goal impulses
-        if s.goal_check_interval > 0 && t % s.goal_check_interval as u64 == 0 {
-            let goals = self.ashti.generate_goal_impulses(t, s.goal_check_interval as u64);
+        if s.goal_check_interval > 0 && t.is_multiple_of(s.goal_check_interval as u64) {
+            let goals = self
+                .ashti
+                .generate_goal_impulses(t, s.goal_check_interval as u64);
             for impulse in goals {
                 let mut token = impulse.pattern;
                 token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
@@ -833,27 +1004,27 @@ impl AxiomEngine {
         }
 
         // Warm path: legacy DREAM proposals (CODEX)
-        if s.dream_interval > 0 && t % s.dream_interval as u64 == 0 {
+        if s.dream_interval > 0 && t.is_multiple_of(s.dream_interval as u64) {
             let _ = self.dream_propose();
         }
 
         // Cold path: адаптация порогов
-        if s.adaptation_interval > 0 && t % s.adaptation_interval as u64 == 0 {
+        if s.adaptation_interval > 0 && t.is_multiple_of(s.adaptation_interval as u64) {
             let _ = self.run_adaptation();
         }
 
         // Cold path: horizon GC
-        if s.horizon_gc_interval > 0 && t % s.horizon_gc_interval as u64 == 0 {
+        if s.horizon_gc_interval > 0 && t.is_multiple_of(s.horizon_gc_interval as u64) {
             let _ = self.run_horizon_gc();
         }
 
         // Cold path: reconcile
-        if s.reconcile_interval > 0 && t % s.reconcile_interval as u64 == 0 {
+        if s.reconcile_interval > 0 && t.is_multiple_of(s.reconcile_interval as u64) {
             let _ = self.ashti.reconcile_all();
         }
 
         // Cold path: snapshot + prune
-        if s.snapshot_interval > 0 && t % s.snapshot_interval as u64 == 0 {
+        if s.snapshot_interval > 0 && t.is_multiple_of(s.snapshot_interval as u64) {
             let _ = self.snapshot_and_prune();
         }
 
@@ -861,7 +1032,7 @@ impl AxiomEngine {
         let mut components = std::mem::take(&mut self.over_domain_components);
         for component in &mut components {
             let interval = component.on_tick_interval();
-            if interval > 0 && t % interval as u64 == 0 {
+            if interval > 0 && t.is_multiple_of(interval as u64) {
                 let _ = component.on_tick(t, &self.ashti);
             }
         }
@@ -869,7 +1040,7 @@ impl AxiomEngine {
 
         // FrameWeaver
         let fw_interval = self.frame_weaver.on_tick_interval();
-        if fw_interval > 0 && t % fw_interval as u64 == 0 {
+        if fw_interval > 0 && t.is_multiple_of(fw_interval as u64) {
             let _ = self.frame_weaver.on_tick(t, &self.ashti);
             let fw_commands = self.frame_weaver.drain_commands();
             for fw_cmd in fw_commands {
@@ -894,7 +1065,9 @@ impl AxiomEngine {
         let count = events.len() as u16;
         self.pending_events.extend(events);
 
-        let trigger = self.falling_asleep_trigger.take()
+        let trigger = self
+            .falling_asleep_trigger
+            .take()
             .unwrap_or(SleepTrigger::Idle { idle_ticks: 0 });
         let fatigue = self.falling_asleep_fatigue;
         let event_id = self.com_next_id;
@@ -905,7 +1078,8 @@ impl AxiomEngine {
             self.dream_cycle.submit(p);
         }
 
-        self.dream_cycle.start_cycle(self.tick_count, event_id, trigger, fatigue);
+        self.dream_cycle
+            .start_cycle(self.tick_count, event_id, trigger, fatigue);
         self.dream_phase_state = DreamPhaseState::Dreaming;
         // V1.0: DreamPhaseEvent::FallingAsleepToDreaming — событие зафиксировано в stats,
         // полная рассылка через EventBus добавляется в Этапе 6.
@@ -933,16 +1107,18 @@ impl AxiomEngine {
         let result = self.dream_cycle.advance(tick, &self.ashti, event_id);
 
         match result {
-            crate::over_domain::CycleAdvanceResult::InProgress  => {}
-            crate::over_domain::CycleAdvanceResult::Complete    => {
+            crate::over_domain::CycleAdvanceResult::InProgress => {}
+            crate::over_domain::CycleAdvanceResult::Complete => {
                 self.apply_dream_cycle_commands();
                 self.transition_to_waking(WakeReason::CycleComplete);
             }
-            crate::over_domain::CycleAdvanceResult::Timeout     => {
+            crate::over_domain::CycleAdvanceResult::Timeout => {
                 let max = 50_000; // default — cycle config не публичен в этой версии
-                self.transition_to_waking(WakeReason::Timeout { max_dream_duration: max });
+                self.transition_to_waking(WakeReason::Timeout {
+                    max_dream_duration: max,
+                });
             }
-            crate::over_domain::CycleAdvanceResult::NotActive   => {
+            crate::over_domain::CycleAdvanceResult::NotActive => {
                 self.transition_to_waking(WakeReason::CycleComplete);
             }
         }
@@ -979,7 +1155,10 @@ impl AxiomEngine {
     }
 
     fn transition_to_waking(&mut self, reason: WakeReason) {
-        let is_interrupted = !matches!(reason, WakeReason::CycleComplete | WakeReason::Timeout { .. });
+        let is_interrupted = !matches!(
+            reason,
+            WakeReason::CycleComplete | WakeReason::Timeout { .. }
+        );
         if is_interrupted {
             self.dream_phase_stats.interrupted_dreams += 1;
         }
@@ -1010,30 +1189,57 @@ impl AxiomEngine {
 
     fn handle_dual_path(&mut self, cmd: &UclCommand) -> UclResult {
         if !self.arbiter_ready() {
-            return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::ARBITER_NOT_READY, 0);
+            return make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::ARBITER_NOT_READY,
+                0,
+            );
         }
 
         let token_opt = self.find_token_by_sutra_id(cmd.target_id);
         let token = match token_opt {
             Some(t) => t,
-            None => return make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+            None => {
+                return make_result(
+                    cmd.command_id,
+                    CommandStatus::SystemError,
+                    error_codes::DOMAIN_NOT_FOUND,
+                    0,
+                )
+            }
         };
 
         let result = orchestrator::route_token(self, token);
         let events = result.routed_events.len() as u16;
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, events)
+        make_result(
+            cmd.command_id,
+            CommandStatus::Success,
+            error_codes::OK,
+            events,
+        )
     }
 
     fn handle_finalize(&mut self, cmd: &UclCommand) -> UclResult {
         match self.ashti.apply_feedback(cmd.command_id) {
-            Ok(())  => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
-            Err(_)  => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::DOMAIN_NOT_FOUND, 0),
+            Ok(()) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+            Err(_) => make_result(
+                cmd.command_id,
+                CommandStatus::SystemError,
+                error_codes::DOMAIN_NOT_FOUND,
+                0,
+            ),
         }
     }
 
     fn handle_backup(&mut self, cmd: &UclCommand) -> UclResult {
         let snap = self.snapshot();
-        make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, snap.domain_count() as u16)
+        make_result(
+            cmd.command_id,
+            CommandStatus::Success,
+            error_codes::OK,
+            snap.domain_count() as u16,
+        )
     }
 
     fn handle_restore(&mut self, cmd: &UclCommand) -> UclResult {
@@ -1053,16 +1259,20 @@ impl AxiomEngine {
     /// Возвращает список domain_id, чьи конфиги изменились.
     pub fn run_adaptation(&mut self) -> Vec<u16> {
         // Собираем статистику (иммутабельный заём завершается до мутабельного)
-        let role_stats: Vec<RoleStats> = (1u8..=8).filter_map(|role| {
-            let profile = self.ashti.reflector().domain_profile(role)?;
-            let total = profile.total_calls();
-            if total == 0 { return None; }
-            Some(RoleStats {
-                role,
-                success_rate: profile.overall_success_rate(),
-                total_calls: total,
+        let role_stats: Vec<RoleStats> = (1u8..=8)
+            .filter_map(|role| {
+                let profile = self.ashti.reflector().domain_profile(role)?;
+                let total = profile.total_calls();
+                if total == 0 {
+                    return None;
+                }
+                Some(RoleStats {
+                    role,
+                    success_rate: profile.overall_success_rate(),
+                    total_calls: total,
+                })
             })
-        }).collect();
+            .collect();
 
         if role_stats.is_empty() {
             return Vec::new();
@@ -1072,7 +1282,9 @@ impl AxiomEngine {
         let configs = self.ashti.arbiter_domain_configs_mut();
         let gcfg = &self.guardian_config.clone();
         let mut updated = self.guardian.adapt_thresholds(&role_stats, configs, gcfg);
-        let phys_updated = self.guardian.adapt_domain_physics(&role_stats, configs, gcfg);
+        let phys_updated = self
+            .guardian
+            .adapt_domain_physics(&role_stats, configs, gcfg);
         for id in phys_updated {
             if !updated.contains(&id) {
                 updated.push(id);
@@ -1126,7 +1338,8 @@ impl AxiomEngine {
     /// Извлекает высокоактивные паттерны из Experience (weight ≥ 0.9, success_count ≥ 5)
     /// и передаёт их Guardian для генерации CodexAction предложений.
     pub fn dream_propose(&mut self) -> Vec<crate::guardian::CodexAction> {
-        let candidates: Vec<_> = self.ashti
+        let candidates: Vec<_> = self
+            .ashti
             .experience_mut()
             .find_crystallizable(0.9, 5)
             .into_iter()
@@ -1161,9 +1374,9 @@ impl AxiomEngine {
         for anchor in axis_iter.chain(layer_iter) {
             let event_id = self.next_event_id();
             let mut token = Token::new(event_id as u32, sutra_id, anchor.position, event_id);
-            token.mass        = 255;
+            token.mass = 255;
             token.temperature = 0;
-            token.state       = axiom_core::STATE_LOCKED;
+            token.state = axiom_core::STATE_LOCKED;
             if self.ashti.inject_token(sutra_id, token).is_ok() {
                 injected += 1;
             }
@@ -1176,9 +1389,9 @@ impl AxiomEngine {
             for anchor in domain_anchors {
                 let event_id = self.next_event_id();
                 let mut token = Token::new(event_id as u32, domain_id, anchor.position, event_id);
-                token.mass        = 255;
+                token.mass = 255;
                 token.temperature = 0;
-                token.state       = axiom_core::STATE_LOCKED;
+                token.state = axiom_core::STATE_LOCKED;
                 if self.ashti.inject_token(domain_id, token).is_ok() {
                     injected += 1;
                 }
@@ -1193,28 +1406,28 @@ impl AxiomEngine {
     /// Безопасно вызывать в любом состоянии WAKE. Вызов в DREAMING/WAKING/FALLING_ASLEEP
     /// допустим, но изменения вступят в силу с начала следующего цикла.
     pub fn apply_dream_config(&mut self, cfg: &axiom_config::DreamConfig) {
-        use crate::over_domain::{DreamSchedulerConfig, FatigueWeights, DreamCycleConfig};
+        use crate::over_domain::{DreamCycleConfig, DreamSchedulerConfig, FatigueWeights};
 
         let sched_cfg = DreamSchedulerConfig {
-            min_wake_ticks:    cfg.scheduler.min_wake_ticks,
-            idle_threshold:    cfg.scheduler.idle_threshold,
+            min_wake_ticks: cfg.scheduler.min_wake_ticks,
+            idle_threshold: cfg.scheduler.idle_threshold,
             fatigue_threshold: cfg.scheduler.fatigue_threshold,
         };
         let weights = FatigueWeights {
-            uncrystallized_candidates:  cfg.fatigue_weights.uncrystallized_candidates,
-            experience_pressure:        cfg.fatigue_weights.experience_pressure,
-            pending_heavy_proposals:    cfg.fatigue_weights.pending_heavy_proposals,
+            uncrystallized_candidates: cfg.fatigue_weights.uncrystallized_candidates,
+            experience_pressure: cfg.fatigue_weights.experience_pressure,
+            pending_heavy_proposals: cfg.fatigue_weights.pending_heavy_proposals,
             causal_horizon_growth_rate: cfg.fatigue_weights.causal_horizon_growth_rate,
         };
         let cycle_cfg = DreamCycleConfig {
             max_dream_duration_ticks: cfg.cycle.max_dream_duration_ticks,
-            max_proposals_per_cycle:  cfg.cycle.max_proposals_per_cycle as usize,
-            enable_recombination:     false, // V2.0+
-            batch_size:               cfg.cycle.batch_size as usize,
+            max_proposals_per_cycle: cfg.cycle.max_proposals_per_cycle as usize,
+            enable_recombination: false, // V2.0+
+            batch_size: cfg.cycle.batch_size as usize,
         };
 
         self.dream_scheduler = DreamScheduler::new(sched_cfg, weights);
-        self.dream_cycle     = DreamCycle::new(cycle_cfg);
+        self.dream_cycle = DreamCycle::new(cycle_cfg);
     }
 
     /// Найти токен по sutra_id по всем доменам AshtiCore
@@ -1293,7 +1506,12 @@ fn read_u16_le(bytes: &[u8], offset: usize) -> u16 {
 }
 
 fn read_f32_le(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
+    f32::from_le_bytes([
+        bytes[offset],
+        bytes[offset + 1],
+        bytes[offset + 2],
+        bytes[offset + 3],
+    ])
 }
 
 /// SpawnDomainPayload из raw payload bytes
@@ -1345,19 +1563,19 @@ fn read_frame_anchor_payload(payload: &[u8; 48]) -> InjectFrameAnchorPayload {
         i16::from_le_bytes([payload[20], payload[21]]),
     ];
     InjectFrameAnchorPayload {
-        lineage_hash:      u64::from_le_bytes([
-            payload[0], payload[1], payload[2], payload[3],
-            payload[4], payload[5], payload[6], payload[7],
+        lineage_hash: u64::from_le_bytes([
+            payload[0], payload[1], payload[2], payload[3], payload[4], payload[5], payload[6],
+            payload[7],
         ]),
         proposed_sutra_id: u32::from_le_bytes([payload[8], payload[9], payload[10], payload[11]]),
-        target_domain_id:  read_u16_le(payload, 12),
-        type_flags:        read_u16_le(payload, 14),
+        target_domain_id: read_u16_le(payload, 12),
+        type_flags: read_u16_le(payload, 14),
         position,
-        state:             payload[22],
-        mass:              payload[23],
-        temperature:       payload[24],
-        valence:           payload[25] as i8,
-        reserved:          [0; 22],
+        state: payload[22],
+        mass: payload[23],
+        temperature: payload[24],
+        valence: payload[25] as i8,
+        reserved: [0; 22],
     }
 }
 
@@ -1367,15 +1585,15 @@ fn read_frame_anchor_payload(payload: &[u8; 48]) -> InjectFrameAnchorPayload {
 /// strength[12..16], conn_flags[16..20], origin_domain[20..22], role_id[22..24].
 fn read_bond_tokens_payload(payload: &[u8; 48]) -> BondTokensPayload {
     BondTokensPayload {
-        source_id:    u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
-        target_id:    u32::from_le_bytes([payload[4], payload[5], payload[6], payload[7]]),
-        domain_id:    read_u16_le(payload, 8),
-        link_type:    read_u16_le(payload, 10),
-        strength:     read_f32_le(payload, 12),
-        conn_flags:   u32::from_le_bytes([payload[16], payload[17], payload[18], payload[19]]),
+        source_id: u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        target_id: u32::from_le_bytes([payload[4], payload[5], payload[6], payload[7]]),
+        domain_id: read_u16_le(payload, 8),
+        link_type: read_u16_le(payload, 10),
+        strength: read_f32_le(payload, 12),
+        conn_flags: u32::from_le_bytes([payload[16], payload[17], payload[18], payload[19]]),
         origin_domain: read_u16_le(payload, 20),
-        role_id:       read_u16_le(payload, 22),
-        reserved:      [0; 24],
+        role_id: read_u16_le(payload, 22),
+        reserved: [0; 24],
     }
 }
 
@@ -1384,10 +1602,10 @@ fn read_bond_tokens_payload(payload: &[u8; 48]) -> BondTokensPayload {
 /// Layout: frame_anchor_id[0..4], target_domain_id[4..6], unfold_depth[6].
 fn read_unfold_frame_payload(payload: &[u8; 48]) -> UnfoldFramePayload {
     UnfoldFramePayload {
-        frame_anchor_id:  u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        frame_anchor_id: u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
         target_domain_id: read_u16_le(payload, 4),
-        unfold_depth:     payload[6],
-        reserved:         [0; 41],
+        unfold_depth: payload[6],
+        reserved: [0; 41],
     }
 }
 
@@ -1396,10 +1614,10 @@ fn read_unfold_frame_payload(payload: &[u8; 48]) -> UnfoldFramePayload {
 /// Layout: anchor_id[0..4], delta_mass[4], delta_temperature[5].
 fn read_reinforce_frame_payload(payload: &[u8; 48]) -> ReinforceFramePayload {
     ReinforceFramePayload {
-        anchor_id:         u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
-        delta_mass:        payload[4],
+        anchor_id: u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]),
+        delta_mass: payload[4],
         delta_temperature: payload[5],
-        reserved:          [0; 42],
+        reserved: [0; 42],
     }
 }
 
@@ -1407,12 +1625,18 @@ fn read_reinforce_frame_payload(payload: &[u8; 48]) -> ReinforceFramePayload {
 /// Тот же алгоритм что и pattern_hash в experience.rs.
 fn fnv1a_token_hash(token: &Token) -> u64 {
     let mut h: u64 = 0xcbf29ce484222325;
-    h ^= token.temperature as u64; h = h.wrapping_mul(0x100000001b3);
-    h ^= token.mass         as u64; h = h.wrapping_mul(0x100000001b3);
-    h ^= token.valence as u8 as u64; h = h.wrapping_mul(0x100000001b3);
-    h ^= token.position[0]  as u64; h = h.wrapping_mul(0x100000001b3);
-    h ^= token.position[1]  as u64; h = h.wrapping_mul(0x100000001b3);
-    h ^= token.position[2]  as u64; h = h.wrapping_mul(0x100000001b3);
+    h ^= token.temperature as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= token.mass as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= token.valence as u8 as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[0] as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[1] as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= token.position[2] as u64;
+    h = h.wrapping_mul(0x100000001b3);
     h
 }
 
@@ -1442,8 +1666,12 @@ fn build_token_from_inject(p: &InjectTokenPayload, domain_id: u16, event_id: u64
 /// Построить SleepTrigger из SleepTriggerKind и текущего состояния DreamScheduler.
 fn sleep_trigger_from_kind(kind: SleepTriggerKind, scheduler: &DreamScheduler) -> SleepTrigger {
     match kind {
-        SleepTriggerKind::Idle            => SleepTrigger::Idle { idle_ticks: scheduler.current_idle_ticks() },
-        SleepTriggerKind::Fatigue         => SleepTrigger::Fatigue { fatigue_score: scheduler.current_fatigue() },
+        SleepTriggerKind::Idle => SleepTrigger::Idle {
+            idle_ticks: scheduler.current_idle_ticks(),
+        },
+        SleepTriggerKind::Fatigue => SleepTrigger::Fatigue {
+            fatigue_score: scheduler.current_fatigue(),
+        },
         SleepTriggerKind::ExplicitCommand => SleepTrigger::ExplicitCommand { source: 0 },
     }
 }

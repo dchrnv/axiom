@@ -7,15 +7,12 @@
 //
 // Топология: level_id(1)*100 → SUTRA=100..MAYA=110, LOGIC=106
 
-use criterion::{
-    black_box, criterion_group, criterion_main,
-    Criterion, BenchmarkId, Throughput,
-};
-use axiom_runtime::{AxiomEngine, TickSchedule};
-use axiom_ucl::{UclCommand, OpCode};
-use axiom_core::Token;
-use axiom_config::DomainConfig;
 use axiom_arbiter::{Arbiter, COM};
+use axiom_config::DomainConfig;
+use axiom_core::Token;
+use axiom_runtime::{AxiomEngine, TickSchedule};
+use axiom_ucl::{OpCode, UclCommand};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -42,10 +39,13 @@ fn engine_loaded(tokens: usize, traces: usize) -> AxiomEngine {
         engine.process_command(&inject_cmd(LOGIC_ID, mass, temp));
     }
     for i in 0..traces {
-        let mut t = Token::new(i as u32 + 1, SUTRA_ID as u16, [0, 0, 0], 1);
+        let mut t = Token::new(i as u32 + 1, SUTRA_ID, [0, 0, 0], 1);
         t.temperature = (i % 256) as u8;
         t.mass = ((i * 3 + 50) % 256) as u8;
-        engine.ashti.experience_mut().add_trace(t, 0.6 + (i % 40) as f32 / 100.0, i as u64 + 1);
+        engine
+            .ashti
+            .experience_mut()
+            .add_trace(t, 0.6 + (i % 40) as f32 / 100.0, i as u64 + 1);
     }
     engine
 }
@@ -60,30 +60,34 @@ fn engine_with_schedule(tokens: usize, schedule: TickSchedule) -> AxiomEngine {
 /// TickSchedule: все периодические задачи отключены (только hot path)
 fn schedule_hot_only() -> TickSchedule {
     TickSchedule {
-        adaptation_interval:    0,
-        horizon_gc_interval:    0,
-        snapshot_interval:      0,
-        dream_interval:         0,
+        adaptation_interval: 0,
+        horizon_gc_interval: 0,
+        snapshot_interval: 0,
+        dream_interval: 0,
         tension_check_interval: 0,
-        goal_check_interval:    0,
-        reconcile_interval:     0,
+        goal_check_interval: 0,
+        reconcile_interval: 0,
         persist_check_interval: 0,
-        adaptive_tick:          axiom_runtime::AdaptiveTickRate::default(),
+        adaptive_tick: axiom_runtime::AdaptiveTickRate::default(),
+        weaver_scan_intervals: std::collections::HashMap::new(),
+        weaver_promotion_intervals: std::collections::HashMap::new(),
     }
 }
 
 /// TickSchedule: все задачи каждый тик (максимальная нагрузка)
 fn schedule_max_load() -> TickSchedule {
     TickSchedule {
-        adaptation_interval:    1,
-        horizon_gc_interval:    1,
-        snapshot_interval:      0, // snapshot дорог, оставим выключенным
-        dream_interval:         1,
+        adaptation_interval: 1,
+        horizon_gc_interval: 1,
+        snapshot_interval: 0, // snapshot дорог, оставим выключенным
+        dream_interval: 1,
         tension_check_interval: 1,
-        goal_check_interval:    1,
-        reconcile_interval:     1,
+        goal_check_interval: 1,
+        reconcile_interval: 1,
         persist_check_interval: 0,
-        adaptive_tick:          axiom_runtime::AdaptiveTickRate::default(),
+        adaptive_tick: axiom_runtime::AdaptiveTickRate::default(),
+        weaver_scan_intervals: std::collections::HashMap::new(),
+        weaver_promotion_intervals: std::collections::HashMap::new(),
     }
 }
 
@@ -277,7 +281,7 @@ fn bench_reconcile_all(c: &mut Criterion) {
                             let conn = axiom_core::Connection::new(
                                 i as u32 + 1,
                                 i as u32 + 2,
-                                LOGIC_ID as u16,
+                                LOGIC_ID,
                                 i as u64 + 1,
                             );
                             let _ = engine.ashti.state_mut(idx).unwrap().add_connection(conn);
@@ -327,7 +331,9 @@ fn bench_snapshot_restore_with_tick_count(c: &mut Criterion) {
             || {
                 let mut engine = engine_loaded(20, 20);
                 let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
-                for _ in 0..100 { engine.process_command(&tick); }
+                for _ in 0..100 {
+                    engine.process_command(&tick);
+                }
                 engine.snapshot()
             },
             |snap| {
@@ -356,20 +362,24 @@ fn bench_compare_tokens(c: &mut Criterion) {
 
     // Per-domain конфиг с tolerances
     let arbiter_with_cfg = {
-        let mut cfg = DomainConfig::default();
-        cfg.domain_id = LOGIC_ID as u16;
-        cfg.token_compare_temp_tolerance    = 15;
-        cfg.token_compare_mass_tolerance    = 8;
-        cfg.token_compare_valence_tolerance = 3;
+        let cfg = DomainConfig {
+            domain_id: LOGIC_ID,
+            token_compare_temp_tolerance: 15,
+            token_compare_mass_tolerance: 8,
+            token_compare_valence_tolerance: 3,
+            ..DomainConfig::default()
+        };
         let mut domains = HashMap::new();
-        domains.insert(LOGIC_ID as u16, cfg);
+        domains.insert(LOGIC_ID, cfg);
         Arbiter::new(domains, COM::new())
     };
 
-    let mut t1 = Token::new(1, LOGIC_ID as u16, [0, 0, 0], 1);
-    t1.temperature = 100; t1.mass = 100;
-    let mut t2 = Token::new(2, LOGIC_ID as u16, [5, 5, 0], 2);
-    t2.temperature = 108; t2.mass = 104;
+    let mut t1 = Token::new(1, LOGIC_ID, [0, 0, 0], 1);
+    t1.temperature = 100;
+    t1.mass = 100;
+    let mut t2 = Token::new(2, LOGIC_ID, [5, 5, 0], 2);
+    t2.temperature = 108;
+    t2.mass = 104;
 
     group.bench_function("fallback_constants", |b| {
         b.iter(|| black_box(arbiter_no_cfg.compare_tokens(&t1, &t2)))
@@ -508,9 +518,6 @@ criterion_group!(
     bench_snapshot_restore_with_tick_count,
     bench_compare_tokens,
 );
-criterion_group!(
-    benches_stress,
-    bench_stress_sustained,
-);
+criterion_group!(benches_stress, bench_stress_sustained,);
 
 criterion_main!(benches_normal, benches_periodic, benches_stress);

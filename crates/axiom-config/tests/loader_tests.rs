@@ -1,11 +1,9 @@
-use axiom_config::{ConfigError, ConfigLoader};
 use axiom_config::schema;
+use axiom_config::{ConfigError, ConfigLoader};
 
 fn axiom_yaml_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config/axiom.yaml")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/axiom.yaml")
 }
-
 
 #[test]
 fn test_config_loader_creation() {
@@ -105,7 +103,10 @@ fn test_load_all_heartbeat_none_by_default() {
     // axiom.yaml без heartbeat_file → loaded.heartbeat == None
     let mut loader = ConfigLoader::new();
     let loaded = loader.load_all(&axiom_yaml_path()).unwrap();
-    assert!(loaded.heartbeat.is_none(), "heartbeat должен быть None если heartbeat_file не задан");
+    assert!(
+        loaded.heartbeat.is_none(),
+        "heartbeat должен быть None если heartbeat_file не задан"
+    );
 }
 
 #[test]
@@ -127,16 +128,17 @@ enable_connection_maintenance: true\n\
 enable_thermodynamics: false\n\
 attach_pulse_id: true\n\
 enable_shell_reconciliation: false\n";
-    std::fs::File::create(&hb_path).unwrap().write_all(hb_yaml).unwrap();
+    std::fs::File::create(&hb_path)
+        .unwrap()
+        .write_all(hb_yaml)
+        .unwrap();
 
     // Создаём axiom.yaml с heartbeat_file
     let axiom_path = dir.join("axiom.yaml");
-    let axiom_yaml = format!(
-        "runtime:\n  file: x\n  schema: y\nschema:\n  domain: a\n  token: b\
+    let axiom_yaml = "runtime:\n  file: x\n  schema: y\nschema:\n  domain: a\n  token: b\
          \n  connection: c\n  grid: d\n  upo: e\nloader:\n  format: yaml\
          \n  validation: strict\n  cache_enabled: false\
-         \npresets:\n  heartbeat_file: \"heartbeat.yaml\"\n"
-    );
+         \npresets:\n  heartbeat_file: \"heartbeat.yaml\"\n";
     std::fs::write(&axiom_path, axiom_yaml).unwrap();
 
     let mut loader = ConfigLoader::new();
@@ -165,7 +167,10 @@ fn test_load_all_heartbeat_missing_file_is_none() {
 
     let mut loader = ConfigLoader::new();
     let loaded = loader.load_all(&axiom_path).unwrap();
-    assert!(loaded.heartbeat.is_none(), "несуществующий файл → None без ошибки");
+    assert!(
+        loaded.heartbeat.is_none(),
+        "несуществующий файл → None без ошибки"
+    );
 
     std::fs::remove_dir_all(&dir).ok();
 }
@@ -208,7 +213,8 @@ fn test_domain_schema_json_is_valid_json() {
 #[test]
 fn test_heartbeat_schema_json_is_valid_json() {
     let s = schema::heartbeat_schema_json();
-    let v: serde_json::Value = serde_json::from_str(&s).expect("heartbeat schema must be valid JSON");
+    let v: serde_json::Value =
+        serde_json::from_str(&s).expect("heartbeat schema must be valid JSON");
     assert!(v.is_object());
 }
 
@@ -219,7 +225,10 @@ fn test_validate_yaml_valid_axiom_config() {
         \n  connection: c\n  grid: d\n  upo: e\nloader:\n  format: yaml\
         \n  validation: strict\n  cache_enabled: false\n";
     let result = schema::validate_yaml::<AxiomConfig>(yaml);
-    assert!(result.is_ok(), "valid axiom config should pass schema validation");
+    assert!(
+        result.is_ok(),
+        "valid axiom config should pass schema validation"
+    );
 }
 
 #[test]
@@ -238,6 +247,12 @@ fn test_validate_yaml_invalid_type_returns_error() {
 fn test_schema_contains_expected_fields() {
     let s = schema::axiom_schema_json();
     // Схема должна содержать ключевые поля
-    assert!(s.contains("\"runtime\"") || s.contains("runtime"), "schema should reference runtime field");
-    assert!(s.contains("\"loader\"") || s.contains("loader"), "schema should reference loader field");
+    assert!(
+        s.contains("\"runtime\"") || s.contains("runtime"),
+        "schema should reference runtime field"
+    );
+    assert!(
+        s.contains("\"loader\"") || s.contains("loader"),
+        "schema should reference loader field"
+    );
 }

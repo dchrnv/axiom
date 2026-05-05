@@ -7,15 +7,14 @@
 //   schema::validate_yaml::<AxiomConfig>(yaml_str)?;   // при загрузке
 //   schema::axiom_schema_json()                         // для --dump-schema
 
-use serde::de::DeserializeOwned;
-use schemars::JsonSchema;
 use crate::loader::ConfigError;
+use schemars::JsonSchema;
+use serde::de::DeserializeOwned;
 
 /// Сгенерировать JSON-схему для типа `T` в виде строки.
 pub fn schema_json<T: JsonSchema>() -> String {
     let schema = schemars::schema_for!(T);
-    serde_json::to_string_pretty(&schema)
-        .unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
+    serde_json::to_string_pretty(&schema).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
 }
 
 /// JSON-схема корневого конфига axiom.yaml.
@@ -49,8 +48,8 @@ where
     T: JsonSchema + DeserializeOwned,
 {
     // 1. Парсим YAML → serde_yaml::Value (базовая структурная проверка)
-    let yaml_val: serde_yaml::Value = serde_yaml::from_str(content)
-        .map_err(ConfigError::ParseError)?;
+    let yaml_val: serde_yaml::Value =
+        serde_yaml::from_str(content).map_err(ConfigError::ParseError)?;
 
     // 2. Конвертируем в serde_json::Value для jsonschema-валидатора
     let json_val: serde_json::Value = serde_json::to_value(&yaml_val)

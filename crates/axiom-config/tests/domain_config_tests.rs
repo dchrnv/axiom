@@ -1,7 +1,6 @@
 use axiom_config::{
-    DomainConfig, DomainType, StructuralRole,
-    PROCESSING_IDLE, PROCESSING_ACTIVE, PROCESSING_FROZEN,
-    MEMBRANE_OPEN, MEMBRANE_SEMI, MEMBRANE_CLOSED, MEMBRANE_ADAPTIVE,
+    DomainConfig, DomainType, StructuralRole, MEMBRANE_ADAPTIVE, MEMBRANE_CLOSED, MEMBRANE_OPEN,
+    MEMBRANE_SEMI, PROCESSING_ACTIVE, PROCESSING_FROZEN, PROCESSING_IDLE,
 };
 
 fn preset_path(name: &str) -> std::path::PathBuf {
@@ -68,8 +67,10 @@ fn test_domain_config_validation_negative_field_size() {
 
 #[test]
 fn test_domain_config_validation_zero_capacity() {
-    let mut config = DomainConfig::default();
-    config.token_capacity = 0;
+    let config = DomainConfig {
+        token_capacity: 0,
+        ..Default::default()
+    };
     assert!(config.validate().is_err());
 }
 
@@ -223,8 +224,10 @@ fn test_factory_maya() {
 
 #[test]
 fn test_is_active_locked_temporary() {
-    let mut config = DomainConfig::default();
-    config.flags = 0;
+    let mut config = DomainConfig {
+        flags: 0,
+        ..Default::default()
+    };
     assert!(!config.is_active());
 
     config.flags = 1; // DOMAIN_ACTIVE
@@ -404,14 +407,26 @@ fn test_from_yaml_missing_file() {
 #[test]
 fn test_from_yaml_all_presets_valid() {
     let presets = [
-        "sutra.yaml", "execution.yaml", "shadow.yaml", "codex.yaml",
-        "map.yaml", "probe.yaml", "logic.yaml", "dream.yaml",
-        "void.yaml", "experience.yaml", "maya.yaml",
+        "sutra.yaml",
+        "execution.yaml",
+        "shadow.yaml",
+        "codex.yaml",
+        "map.yaml",
+        "probe.yaml",
+        "logic.yaml",
+        "dream.yaml",
+        "void.yaml",
+        "experience.yaml",
+        "maya.yaml",
     ];
     for name in &presets {
         let path = preset_path(name);
         let result = DomainConfig::from_yaml(&path);
         assert!(result.is_ok(), "preset {} failed: {:?}", name, result);
-        assert!(result.unwrap().validate().is_ok(), "preset {} invalid", name);
+        assert!(
+            result.unwrap().validate().is_ok(),
+            "preset {} invalid",
+            name
+        );
     }
 }

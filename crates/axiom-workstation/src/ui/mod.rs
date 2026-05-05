@@ -6,7 +6,6 @@ pub mod files;
 pub mod header;
 pub mod live_field;
 pub mod patterns;
-pub mod placeholder;
 pub mod system_map;
 pub mod tabs;
 pub mod welcome;

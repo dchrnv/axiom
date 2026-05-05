@@ -8,8 +8,8 @@
 // Логика парсинга отделена от HTTP — тестируется без сети.
 
 use axiom_core::Event;
+use axiom_runtime::{Effector, Perceptor};
 use axiom_ucl::{UclCommand, UclResult};
-use axiom_runtime::{Perceptor, Effector};
 
 /// Конфигурация Telegram-канала.
 #[derive(Debug, Clone)]
@@ -53,7 +53,11 @@ pub fn parse_updates(json: &str) -> Vec<TelegramUpdate> {
             let message = u.get("message")?;
             let text = message.get("text")?.as_str()?.to_string();
             let chat_id = message.get("chat")?.get("id")?.as_i64()?;
-            Some(TelegramUpdate { update_id, text, chat_id })
+            Some(TelegramUpdate {
+                update_id,
+                text,
+                chat_id,
+            })
         })
         .collect()
 }
@@ -61,8 +65,10 @@ pub fn parse_updates(json: &str) -> Vec<TelegramUpdate> {
 /// Преобразовать текст Telegram-сообщения в UclCommand.
 ///
 /// Синтаксис команд идентичен CLI:
+///
 /// - `tick` → `TickForward`
 /// - `inject <domain_id>` → `InjectToken`
+///
 /// Неизвестные тексты → `None`.
 pub fn message_to_command(text: &str) -> Option<UclCommand> {
     crate::channels::cli::parse_cli_command(text)

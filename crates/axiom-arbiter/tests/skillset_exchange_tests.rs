@@ -18,19 +18,27 @@ fn crystallize_skill(ss: &mut SkillSet, x: i16, temp: u8) -> bool {
     // Имитируем success_count через strengthen_by_hash
     let ph = {
         let mut h: u64 = 0xcbf29ce484222325;
-        h ^= t.temperature as u64; h = h.wrapping_mul(0x100000001b3);
-        h ^= t.mass as u64;        h = h.wrapping_mul(0x100000001b3);
-        h ^= (t.valence as u8) as u64; h = h.wrapping_mul(0x100000001b3);
-        h ^= t.position[0] as u64; h = h.wrapping_mul(0x100000001b3);
-        h ^= t.position[1] as u64; h = h.wrapping_mul(0x100000001b3);
-        h ^= t.position[2] as u64; h = h.wrapping_mul(0x100000001b3);
+        h ^= t.temperature as u64;
+        h = h.wrapping_mul(0x100000001b3);
+        h ^= t.mass as u64;
+        h = h.wrapping_mul(0x100000001b3);
+        h ^= (t.valence as u8) as u64;
+        h = h.wrapping_mul(0x100000001b3);
+        h ^= t.position[0] as u64;
+        h = h.wrapping_mul(0x100000001b3);
+        h ^= t.position[1] as u64;
+        h = h.wrapping_mul(0x100000001b3);
+        h ^= t.position[2] as u64;
+        h = h.wrapping_mul(0x100000001b3);
         h
     };
     for _ in 0..50 {
         exp.strengthen_by_hash(ph, 0.001);
     }
     let candidates = exp.find_crystallizable(0.8, 50);
-    if candidates.is_empty() { return false; }
+    if candidates.is_empty() {
+        return false;
+    }
     ss.try_crystallize(&candidates[0])
 }
 
@@ -80,7 +88,9 @@ fn test_import_batch_reduces_weight() {
     assert!(
         (imported_weight - original_weight * 0.3).abs() < 0.001,
         "imported weight = {} (expected {} × 0.3 = {})",
-        imported_weight, original_weight, original_weight * 0.3
+        imported_weight,
+        original_weight,
+        original_weight * 0.3
     );
 }
 
@@ -163,5 +173,8 @@ fn test_full_export_import_workflow() {
 
     // Импортированный навык должен работать (найтись)
     let query = make_token(0, 128, 100);
-    assert!(dst.find_skill(&query).is_some(), "импортированный навык находится");
+    assert!(
+        dst.find_skill(&query).is_some(),
+        "импортированный навык находится"
+    );
 }

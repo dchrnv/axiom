@@ -6,12 +6,9 @@ use axiom_protocol::bench::BenchResults;
 use crate::app::{BenchmarksState, Message};
 
 pub fn benchmarks_view<'a>(state: &'a BenchmarksState) -> Element<'a, Message> {
-    column![
-        running_panel(state),
-        history_panel(state),
-    ]
-    .spacing(0)
-    .into()
+    column![running_panel(state), history_panel(state),]
+        .spacing(0)
+        .into()
 }
 
 // ── Running bench ──────────────────────────────────────────────────────────

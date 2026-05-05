@@ -6,11 +6,11 @@
 // Безопасность: только команды из белого списка могут быть выполнены.
 // Guardian должен проверять доступ перед вызовом ShellEffector.
 
+use axiom_core::{Event, EventType};
+use axiom_runtime::Effector;
+use axiom_ucl::UclResult;
 use std::path::Path;
 use std::process::Command;
-use axiom_core::{Event, EventType};
-use axiom_ucl::UclResult;
-use axiom_runtime::Effector;
 
 /// ShellEffector — исходящий адаптер для выполнения shell-команд.
 ///
@@ -49,10 +49,9 @@ impl ShellEffector {
     ///   - "date"
     /// ```
     pub fn from_whitelist_file(path: &Path) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("read whitelist: {e}"))?;
-        let val: serde_yaml::Value = serde_yaml::from_str(&content)
-            .map_err(|e| format!("parse whitelist: {e}"))?;
+        let content = std::fs::read_to_string(path).map_err(|e| format!("read whitelist: {e}"))?;
+        let val: serde_yaml::Value =
+            serde_yaml::from_str(&content).map_err(|e| format!("parse whitelist: {e}"))?;
         let list = val
             .get("whitelist")
             .and_then(|v| v.as_sequence())
@@ -85,7 +84,11 @@ impl ShellEffector {
     /// Возвращает None если индекс равен 0 (не задан) или тип события не ShellExec.
     fn extract_command_index(event: &Event) -> Option<u16> {
         let idx = u16::from_le_bytes([event.payload[0], event.payload[1]]);
-        if idx > 0 { Some(idx) } else { None }
+        if idx > 0 {
+            Some(idx)
+        } else {
+            None
+        }
     }
 }
 

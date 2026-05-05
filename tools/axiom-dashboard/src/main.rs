@@ -13,16 +13,16 @@ mod protocol;
 mod state;
 mod ws_client;
 
-use std::sync::{Arc, Mutex};
 use app::DashboardApp;
 use state::AppData;
+use std::sync::{Arc, Mutex};
 use ws_client::run_ws_client;
 
 fn main() {
     let server_url = parse_server_url();
     println!("axiom-dashboard: connecting to {server_url}");
 
-    let data   = Arc::new(Mutex::new(AppData::default()));
+    let data = Arc::new(Mutex::new(AppData::default()));
     let (tx, rx) = std::sync::mpsc::channel::<String>();
 
     // WS-клиент в отдельном потоке
@@ -44,7 +44,8 @@ fn main() {
         "AXIOM Dashboard",
         options,
         Box::new(|_cc| Ok(Box::new(DashboardApp::new(data, tx)))),
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 fn parse_server_url() -> String {

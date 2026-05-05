@@ -20,9 +20,9 @@
 //   [32..36] semantic_weight   f32 LE
 //   [36..40] temperature       f32 LE
 
-use std::sync::Arc;
-use axiom_ucl::{UclCommand, OpCode};
 use axiom_config::AnchorSet;
+use axiom_ucl::{OpCode, UclCommand};
+use std::sync::Arc;
 
 /// SUTRA domain_id на уровне 1: level_id * 100 + 0 = 100
 const SUTRA_DOMAIN_ID: u16 = 100;
@@ -43,13 +43,15 @@ impl TextPerceptor {
 
     /// Создать TextPerceptor с набором якорей для семантического позиционирования.
     pub fn with_anchors(anchors: Arc<AnchorSet>) -> Self {
-        Self { anchor_set: Some(anchors) }
+        Self {
+            anchor_set: Some(anchors),
+        }
     }
 
     /// Преобразовать текст в UclCommand(InjectToken) для SUTRA(100).
     pub fn perceive(&self, text: &str) -> UclCommand {
         let bytes = text.as_bytes();
-        let len   = bytes.len();
+        let len = bytes.len();
 
         // Mass: зависит от длины текста (50..=250)
         let mass: f32 = (50.0 + (len.min(200) as f32)).min(250.0);
@@ -70,7 +72,9 @@ impl TextPerceptor {
                 let semantic_weight = anchors.compute_semantic_weight(&matches);
                 return build_inject_token_command(
                     SUTRA_DOMAIN_ID,
-                    pos[0], pos[1], pos[2],
+                    pos[0],
+                    pos[1],
+                    pos[2],
                     mass,
                     temperature,
                     semantic_weight,
@@ -80,18 +84,12 @@ impl TextPerceptor {
 
         // Fallback: FNV-1a hash → 3D координаты
         let hash = fnv1a_hash(bytes);
-        let x = ((hash >>  0) & 0x7FFF) as f32;
+        let x = (hash & 0x7FFF) as f32;
         let y = ((hash >> 16) & 0x7FFF) as f32;
         let z = ((hash >> 32) & 0x7FFF) as f32;
         let semantic_weight: f32 = 0.8;
 
-        build_inject_token_command(
-            SUTRA_DOMAIN_ID,
-            x, y, z,
-            mass,
-            temperature,
-            semantic_weight,
-        )
+        build_inject_token_command(SUTRA_DOMAIN_ID, x, y, z, mass, temperature, semantic_weight)
     }
 }
 
@@ -104,7 +102,9 @@ impl Default for TextPerceptor {
 /// Собрать UclCommand(InjectToken) — зеркало parse_inject_token_payload() в engine.rs.
 fn build_inject_token_command(
     target_domain_id: u16,
-    x: f32, y: f32, z: f32,
+    x: f32,
+    y: f32,
+    z: f32,
     mass: f32,
     temperature: f32,
     semantic_weight: f32,
@@ -192,7 +192,11 @@ mod tests {
         let p = TextPerceptor::new();
         let cmd = p.perceive("simple text");
         let temp = f32::from_le_bytes(cmd.payload[36..40].try_into().unwrap());
-        assert!(temp >= 150.0, "temperature should be at least 150.0, got {}", temp);
+        assert!(
+            temp >= 150.0,
+            "temperature should be at least 150.0, got {}",
+            temp
+        );
     }
 
     #[test]
@@ -231,7 +235,7 @@ mod tests {
         let cmd = p.perceive("порядок");
         let domain_id = u16::from_le_bytes([cmd.payload[0], cmd.payload[1]]);
         assert_eq!(domain_id, 100); // SUTRA
-        // С fallback позиции из хэша ≠ 30000
+                                    // С fallback позиции из хэша ≠ 30000
         let x = f32::from_le_bytes(cmd.payload[8..12].try_into().unwrap());
         assert!(x < 32768.0); // в диапазоне хэша
     }

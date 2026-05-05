@@ -1,7 +1,7 @@
 // Tests for Axiom Sentinel V1.0 — Фаза 2: Parallel Resonance Search
 
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 
 /// Собрать InjectToken команду с заданными mass/temperature для SUTRA(100).
 fn inject(mass: f32, temperature: f32) -> UclCommand {

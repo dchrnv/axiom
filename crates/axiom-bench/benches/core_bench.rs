@@ -1,6 +1,6 @@
 // Бенчмарки axiom-core: Token, Connection, Event
+use axiom_core::{Connection, Event, EventPriority, EventType, Token};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use axiom_core::{Token, Connection, Event, EventType, EventPriority};
 
 fn bench_token_new(c: &mut Criterion) {
     c.bench_function("Token::new", |b| {

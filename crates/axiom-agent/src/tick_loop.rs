@@ -7,44 +7,44 @@
 // через command_rx (входящие команды) и broadcast_tx (исходящие события).
 
 use std::collections::{HashSet, VecDeque};
-use std::sync::Arc;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Instant;
 
+use axiom_config::{AnchorSet, ConfigWatcher};
+use axiom_core::Event;
+use axiom_persist::AutoSaver;
+use axiom_runtime::{AxiomEngine, BroadcastSnapshot, TickRateReason};
+use axiom_ucl::{OpCode, UclCommand};
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::Duration;
-use axiom_core::Event;
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot, TickRateReason};
-use axiom_ucl::{UclCommand, OpCode};
-use axiom_config::{AnchorSet, ConfigWatcher};
-use axiom_persist::AutoSaver;
 
 use crate::adapter_command::{AdapterCommand, AdapterPayload, CommandResponse};
 use crate::adapters_config::AdaptersConfig;
-use crate::channels::cli::{CliConfig, PerfTracker, fmt_ns};
+use crate::channels::cli::{CliConfig, PerfTracker};
 use crate::effectors::message::domain_name;
-use crate::meta_commands::{handle_meta_read, handle_meta_mutate, MetaAction};
+use crate::meta_commands::{handle_meta_mutate, handle_meta_read, MetaAction};
 use crate::perceptors::text::TextPerceptor;
 use crate::protocol::ServerMessage;
 
 const EVENT_LOG_CAPACITY: usize = 256;
 
 /// CLI-специфичное состояние tick_loop: производительность, лог событий, watch-поля.
-struct CliState {
-    perf:             PerfTracker,
-    event_log:        VecDeque<Event>,
-    watch_fields:     HashSet<String>,
-    multipass_count:  u64,
+pub(crate) struct CliState {
+    perf: PerfTracker,
+    event_log: VecDeque<Event>,
+    watch_fields: HashSet<String>,
+    multipass_count: u64,
     last_multipass_n: u8,
 }
 
 impl CliState {
     fn new() -> Self {
         Self {
-            perf:             PerfTracker::new(200),
-            event_log:        VecDeque::with_capacity(EVENT_LOG_CAPACITY),
-            watch_fields:     HashSet::new(),
-            multipass_count:  0,
+            perf: PerfTracker::new(200),
+            event_log: VecDeque::with_capacity(EVENT_LOG_CAPACITY),
+            watch_fields: HashSet::new(),
+            multipass_count: 0,
             last_multipass_n: 0,
         }
     }
@@ -56,21 +56,22 @@ impl CliState {
 /// Завершается когда command_rx закрывается или получает :quit.
 ///
 /// `config_watcher` — опциональный наблюдатель за config/axiom.yaml.
+#[allow(clippy::too_many_arguments)]
 pub async fn tick_loop(
-    mut engine:          AxiomEngine,
-    mut command_rx:      mpsc::Receiver<AdapterCommand>,
-    broadcast_tx:        broadcast::Sender<ServerMessage>,
-    snapshot:            Arc<RwLock<BroadcastSnapshot>>,
-    mut auto_saver:      AutoSaver,
-    anchor_set:          Option<Arc<AnchorSet>>,
-    config:              AdaptersConfig,
-    config_watcher:      Option<ConfigWatcher>,
+    mut engine: AxiomEngine,
+    mut command_rx: mpsc::Receiver<AdapterCommand>,
+    broadcast_tx: broadcast::Sender<ServerMessage>,
+    snapshot: Arc<RwLock<BroadcastSnapshot>>,
+    mut auto_saver: AutoSaver,
+    anchor_set: Option<Arc<AnchorSet>>,
+    config: AdaptersConfig,
+    config_watcher: Option<ConfigWatcher>,
 ) {
     let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
     let base_tick_ms = 1000u64 / config.tick_hz.max(1) as u64;
     let mut perceptor = make_perceptor(&anchor_set);
     let mut cli_state = CliState::new();
-    let mut config_watcher = config_watcher;
+    let config_watcher = config_watcher;
 
     // Применяем TickSchedule из конфига
     engine.tick_schedule = config.tick_schedule.clone();
@@ -98,17 +99,21 @@ pub async fn tick_loop(
                 Ok(cmd) => {
                     had_commands = true;
                     match process_adapter_command(
-                        cmd.payload, cmd.id,
-                        &mut engine, &mut auto_saver,
-                        &mut perceptor, &anchor_set,
-                        &config, &mut cli_state,
+                        cmd.payload,
+                        cmd.id,
+                        &mut engine,
+                        &mut auto_saver,
+                        &mut perceptor,
+                        &anchor_set,
+                        &config,
+                        &mut cli_state,
                     ) {
-                        CommandResponse::Message(msg) => { let _ = broadcast_tx.send(msg); }
+                        CommandResponse::Message(msg) => {
+                            let _ = broadcast_tx.send(msg);
+                        }
                         CommandResponse::Quit => {
                             if auto_saver.config.enabled {
-                                let _ = auto_saver.force_save(
-                                    &engine, Path::new(&config.data_dir)
-                                );
+                                let _ = auto_saver.force_save(&engine, Path::new(&config.data_dir));
                             }
                             return;
                         }
@@ -149,24 +154,24 @@ pub async fn tick_loop(
 
         // 3. Tick-broadcast
         let bcast_interval = config.websocket.tick_broadcast_interval as u64;
-        if bcast_interval > 0 && t % bcast_interval == 0 {
+        if bcast_interval > 0 && t.is_multiple_of(bcast_interval) {
             let _ = broadcast_tx.send(ServerMessage::Tick {
-                tick_count:   t,
-                traces:       engine.trace_count()  as u32,
-                tension:      engine.tension_count() as u32,
+                tick_count: t,
+                traces: engine.trace_count() as u32,
+                tension: engine.tension_count() as u32,
                 last_matched: engine.last_matched(),
             });
         }
 
         // 4. State-snapshot broadcast
         let state_interval = config.websocket.state_broadcast_interval as u64;
-        if state_interval > 0 && t % state_interval == 0 {
+        if state_interval > 0 && t.is_multiple_of(state_interval) {
             let snap = engine.snapshot_for_broadcast();
             let for_bcast = snap.clone();
             *snapshot.write().await = snap;
             let _ = broadcast_tx.send(ServerMessage::State {
                 tick_count: t,
-                snapshot:   for_bcast,
+                snapshot: for_bcast,
             });
         }
 
@@ -176,21 +181,21 @@ pub async fn tick_loop(
 }
 
 /// Обработать одну команду адаптера. Возвращает ответ для broadcast.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn process_adapter_command(
-    payload:    AdapterPayload,
-    id:         String,
-    engine:     &mut AxiomEngine,
+    payload: AdapterPayload,
+    id: String,
+    engine: &mut AxiomEngine,
     auto_saver: &mut AutoSaver,
-    perceptor:  &mut TextPerceptor,
+    perceptor: &mut TextPerceptor,
     anchor_set: &Option<Arc<AnchorSet>>,
-    config:     &AdaptersConfig,
-    cli_state:  &mut CliState,
+    config: &AdaptersConfig,
+    cli_state: &mut CliState,
 ) -> CommandResponse {
     match payload {
-
         AdapterPayload::Inject { text } => {
             let ucl = perceptor.perceive(&text);
-            let r   = engine.process_and_observe(&ucl);
+            let r = engine.process_and_observe(&ucl);
 
             use axiom_runtime::ProcessingPath;
             if matches!(r.path, ProcessingPath::MultiPass(_)) {
@@ -201,27 +206,31 @@ pub(crate) fn process_adapter_command(
             }
 
             CommandResponse::Message(ServerMessage::Result {
-                command_id:     id,
-                path:           format!("{:?}", r.path),
-                domain_id:      r.dominant_domain_id,
-                domain_name:    domain_name(r.dominant_domain_id).to_string(),
-                coherence:      r.coherence_score.unwrap_or(0.0),
-                reflex_hit:     r.reflex_hit,
+                command_id: id,
+                path: format!("{:?}", r.path),
+                domain_id: r.dominant_domain_id,
+                domain_name: domain_name(r.dominant_domain_id).to_string(),
+                coherence: r.coherence_score.unwrap_or(0.0),
+                reflex_hit: r.reflex_hit,
                 traces_matched: r.traces_matched,
-                position:       r.output_position,
-                shell:          r.output_shell,
-                event_id:       r.event_id,
+                position: r.output_position,
+                shell: r.output_shell,
+                event_id: r.event_id,
             })
         }
 
         AdapterPayload::MetaRead { cmd } => {
             let cli_cfg = make_cli_config(config);
             let output = handle_meta_read(
-                &cmd, engine, anchor_set.as_deref(),
+                &cmd,
+                engine,
+                anchor_set.as_deref(),
                 &cli_cfg,
-                &cli_state.watch_fields, &cli_state.event_log,
+                &cli_state.watch_fields,
+                &cli_state.event_log,
                 &cli_state.perf,
-                cli_state.multipass_count, cli_state.last_multipass_n,
+                cli_state.multipass_count,
+                cli_state.last_multipass_n,
             );
 
             // Мутации CLI-состояния в ответ на :watch / :unwatch
@@ -230,8 +239,8 @@ pub(crate) fn process_adapter_command(
                 ":watch" => {
                     let arg = parts.get(1).copied().unwrap_or("");
                     match arg {
-                        "off"                          => cli_state.watch_fields.clear(),
-                        field if !field.is_empty()     => {
+                        "off" => cli_state.watch_fields.clear(),
+                        field if !field.is_empty() => {
                             cli_state.watch_fields.insert(field.to_string());
                         }
                         _ => {}
@@ -245,7 +254,10 @@ pub(crate) fn process_adapter_command(
                 _ => {}
             }
 
-            CommandResponse::Message(ServerMessage::CommandResult { command_id: id, output })
+            CommandResponse::Message(ServerMessage::CommandResult {
+                command_id: id,
+                output,
+            })
         }
 
         AdapterPayload::MetaMutate { cmd } => {
@@ -256,11 +268,13 @@ pub(crate) fn process_adapter_command(
                 MetaAction::EngineReplaced => {
                     *perceptor = make_perceptor(anchor_set);
                     CommandResponse::Message(ServerMessage::CommandResult {
-                        command_id: id, output: result.output,
+                        command_id: id,
+                        output: result.output,
                     })
                 }
                 _ => CommandResponse::Message(ServerMessage::CommandResult {
-                    command_id: id, output: result.output,
+                    command_id: id,
+                    output: result.output,
                 }),
             }
         }
@@ -270,7 +284,7 @@ pub(crate) fn process_adapter_command(
                 Some(snap) => CommandResponse::Message(ServerMessage::DomainDetail(snap)),
                 None => CommandResponse::Message(ServerMessage::Error {
                     command_id: Some(id),
-                    message:    format!("domain {} not found", domain_id),
+                    message: format!("domain {} not found", domain_id),
                 }),
             }
         }
@@ -286,17 +300,17 @@ pub(crate) fn process_adapter_command(
 fn make_perceptor(anchor_set: &Option<Arc<AnchorSet>>) -> TextPerceptor {
     match anchor_set {
         Some(a) => TextPerceptor::with_anchors(Arc::clone(a)),
-        None    => TextPerceptor::new(),
+        None => TextPerceptor::new(),
     }
 }
 
 /// Собрать минимальный CliConfig из AdaptersConfig для вызовов handle_meta_*.
 fn make_cli_config(config: &AdaptersConfig) -> CliConfig {
     CliConfig {
-        tick_hz:            config.tick_hz,
-        data_dir:           config.data_dir.clone(),
-        verbose:            config.verbose,
-        detail_level:       config.detail_level,
+        tick_hz: config.tick_hz,
+        data_dir: config.data_dir.clone(),
+        verbose: config.verbose,
+        detail_level: config.detail_level,
         adaptive_tick_rate: config.adaptive_tick_rate,
         ..CliConfig::default()
     }

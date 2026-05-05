@@ -1,13 +1,13 @@
 // Этап 11 — ML Inference: MLEngine, VisionPerceptor, AudioPerceptor, Guardian ML filters
-use axiom_agent::ml::engine::{MLEngine, MLDetection, MLError};
+use axiom_agent::channels::audio::{
+    analyze_frames, frame_rms, vad_frame_to_command, AudioPerceptor, VAD_FRAME_SIZE,
+};
 use axiom_agent::channels::vision::{
-    VisionPerceptor, detection_to_command, parse_detections, pixels_to_tensor,
+    detection_to_command, parse_detections, pixels_to_tensor, VisionPerceptor,
     VISION_DEFAULT_DOMAIN,
 };
-use axiom_agent::channels::audio::{
-    AudioPerceptor, frame_rms, analyze_frames, vad_frame_to_command, VAD_FRAME_SIZE,
-};
-use axiom_runtime::{Perceptor, Guardian};
+use axiom_agent::ml::engine::{MLDetection, MLEngine, MLError};
+use axiom_runtime::{Guardian, Perceptor};
 use axiom_ucl::OpCode;
 
 // ─── MLEngine mock ────────────────────────────────────────────────────────────
@@ -24,7 +24,13 @@ fn test_mlengine_mock_shape_mismatch() {
     let engine = MLEngine::mock(vec![4], vec![0.5, 0.5]);
     let err = engine.infer(&[0.1, 0.2]).unwrap_err();
     // shape mismatch: expected 4, got 2
-    assert!(matches!(err, MLError::ShapeMismatch { expected: 4, got: 2 }));
+    assert!(matches!(
+        err,
+        MLError::ShapeMismatch {
+            expected: 4,
+            got: 2
+        }
+    ));
 }
 
 #[test]
@@ -58,7 +64,10 @@ fn test_mlengine_load_missing_file() {
     let result = MLEngine::load(std::path::Path::new("/nonexistent.onnx"));
     assert!(result.is_err());
     let err = result.err().unwrap();
-    assert!(matches!(err, MLError::ModelNotFound(_) | MLError::NotEnabled));
+    assert!(matches!(
+        err,
+        MLError::ModelNotFound(_) | MLError::NotEnabled
+    ));
 }
 
 // ─── parse_detections ─────────────────────────────────────────────────────────
@@ -68,7 +77,7 @@ fn test_parse_detections_above_threshold() {
     // 2 детекции: [class, confidence, x, y, w, h]
     let output = vec![
         0.0, 0.9, 10.0, 20.0, 50.0, 60.0, // class 0, conf 0.9 ✓
-        1.0, 0.3, 5.0, 5.0, 10.0, 10.0,   // class 1, conf 0.3 ✗ (< 0.5)
+        1.0, 0.3, 5.0, 5.0, 10.0, 10.0, // class 1, conf 0.3 ✗ (< 0.5)
         2.0, 0.7, 100.0, 100.0, 30.0, 30.0, // class 2, conf 0.7 ✓
     ];
     let dets = parse_detections(&output, 0.5);
@@ -96,7 +105,11 @@ fn test_parse_detections_incomplete_chunk_ignored() {
 
 #[test]
 fn test_detection_to_command_inject_token() {
-    let det = MLDetection { class_id: 0, confidence: 0.8, bbox: [0.0; 4] };
+    let det = MLDetection {
+        class_id: 0,
+        confidence: 0.8,
+        bbox: [0.0; 4],
+    };
     let cmd = detection_to_command(&det, VISION_DEFAULT_DOMAIN);
     assert_eq!(cmd.opcode, OpCode::InjectToken as u16);
     assert_eq!(cmd.target_id, VISION_DEFAULT_DOMAIN);
@@ -105,7 +118,11 @@ fn test_detection_to_command_inject_token() {
 
 #[test]
 fn test_detection_confidence_clamp() {
-    let det = MLDetection { class_id: 0, confidence: 2.0, bbox: [0.0; 4] }; // > 1.0
+    let det = MLDetection {
+        class_id: 0,
+        confidence: 2.0,
+        bbox: [0.0; 4],
+    }; // > 1.0
     let cmd = detection_to_command(&det, 106);
     assert_eq!(cmd.priority, 255); // clamped
 }
@@ -128,8 +145,16 @@ fn test_vision_perceptor_feed_detections() {
     let engine = MLEngine::mock(vec![0], vec![]);
     let mut p = VisionPerceptor::new(engine);
     p.feed_detections(vec![
-        MLDetection { class_id: 0, confidence: 0.9, bbox: [0.0; 4] },
-        MLDetection { class_id: 1, confidence: 0.7, bbox: [0.0; 4] },
+        MLDetection {
+            class_id: 0,
+            confidence: 0.9,
+            bbox: [0.0; 4],
+        },
+        MLDetection {
+            class_id: 1,
+            confidence: 0.7,
+            bbox: [0.0; 4],
+        },
     ]);
     assert_eq!(p.pending_count(), 2);
     assert_eq!(p.receive().unwrap().opcode, OpCode::InjectToken as u16);
@@ -141,9 +166,11 @@ fn test_vision_perceptor_feed_detections() {
 fn test_vision_perceptor_domain() {
     let engine = MLEngine::mock(vec![0], vec![]);
     let mut p = VisionPerceptor::new(engine).with_domain(104); // MAP
-    p.feed_detections(vec![
-        MLDetection { class_id: 0, confidence: 0.9, bbox: [0.0; 4] },
-    ]);
+    p.feed_detections(vec![MLDetection {
+        class_id: 0,
+        confidence: 0.9,
+        bbox: [0.0; 4],
+    }]);
     let cmd = p.receive().unwrap();
     assert_eq!(cmd.target_id, 104);
 }
@@ -196,7 +223,7 @@ fn test_analyze_frames_detects_speech() {
     let frames = analyze_frames(&samples, 0.1);
     assert_eq!(frames.len(), 2);
     assert!(!frames[0].is_speech); // тишина
-    assert!(frames[1].is_speech);  // речь
+    assert!(frames[1].is_speech); // речь
 }
 
 #[test]
@@ -232,7 +259,9 @@ fn test_audio_perceptor_feed_silence() {
 #[test]
 fn test_audio_perceptor_feed_speech() {
     let mut p = AudioPerceptor::new().with_threshold(0.01);
-    let speech: Vec<i16> = (0..VAD_FRAME_SIZE).map(|i| ((i % 100) as i16) * 200).collect();
+    let speech: Vec<i16> = (0..VAD_FRAME_SIZE)
+        .map(|i| ((i % 100) as i16) * 200)
+        .collect();
     let count = p.feed_samples(&speech);
     assert!(count > 0);
     assert!(p.pending_count() > 0);

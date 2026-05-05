@@ -4,8 +4,8 @@
 // Протокол обмена между tick_loop и адаптерами (CLI, WebSocket, REST, Telegram).
 // Полный WebSocket protocol (ClientMessage, serde tag и пр.) — Phase 1.
 
-use serde::Serialize;
 use axiom_runtime::{BroadcastSnapshot, DomainDetailSnapshot};
+use serde::Serialize;
 
 /// Сообщение от tick_loop к любому адаптеру.
 ///
@@ -18,33 +18,33 @@ pub enum ServerMessage {
     #[serde(rename = "result")]
     Result {
         /// ID команды для корреляции ответа
-        command_id:     String,
+        command_id: String,
         /// Путь обработки (Direct / MultiPass / ...)
-        path:           String,
+        path: String,
         /// Доминирующий домен
-        domain_id:      u16,
+        domain_id: u16,
         /// Имя доминирующего домена
-        domain_name:    String,
+        domain_name: String,
         /// Когерентность обработки
-        coherence:      f32,
+        coherence: f32,
         /// Был ли рефлекторный ответ
-        reflex_hit:     bool,
+        reflex_hit: bool,
         /// Число совпавших опытных следов
         traces_matched: u32,
         /// Выходная позиция в семантическом пространстве
-        position:       [i16; 3],
+        position: [i16; 3],
         /// Выходной семантический профиль
-        shell:          [u8; 8],
+        shell: [u8; 8],
         /// COM event_id
-        event_id:       u64,
+        event_id: u64,
     },
 
     /// Периодический тик-пульс (каждые tick_broadcast_interval тиков).
     #[serde(rename = "tick")]
     Tick {
-        tick_count:   u64,
-        traces:       u32,
-        tension:      u32,
+        tick_count: u64,
+        traces: u32,
+        tension: u32,
         last_matched: u32,
     },
 
@@ -52,15 +52,12 @@ pub enum ServerMessage {
     #[serde(rename = "state")]
     State {
         tick_count: u64,
-        snapshot:   BroadcastSnapshot,
+        snapshot: BroadcastSnapshot,
     },
 
     /// Ответ на MetaRead/MetaMutate команду — уже отформатированный текст.
     #[serde(rename = "command_result")]
-    CommandResult {
-        command_id: String,
-        output:     String,
-    },
+    CommandResult { command_id: String, output: String },
 
     /// Детальный снапшот одного домена (по запросу DomainSnapshot).
     #[serde(rename = "domain_detail")]
@@ -70,6 +67,6 @@ pub enum ServerMessage {
     #[serde(rename = "error")]
     Error {
         command_id: Option<String>,
-        message:    String,
+        message: String,
     },
 }

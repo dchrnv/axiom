@@ -37,10 +37,7 @@ impl MayaProcessor {
     /// Confidence score (0.0–1.0) вычисляется как доля полей, согласующихся
     /// у большинства результатов. При низком confidence возвращается медианный
     /// результат вместо среднего.
-    pub fn consolidate_results(
-        ashti_results: Vec<Token>,
-        maya_domain: &DomainConfig,
-    ) -> Token {
+    pub fn consolidate_results(ashti_results: Vec<Token>, maya_domain: &DomainConfig) -> Token {
         match ashti_results.len() {
             0 => zero_token(),
             1 => ashti_results.into_iter().next().unwrap(),
@@ -128,9 +125,7 @@ fn median_token(tokens: &[Token]) -> Token {
     let mut best_score = f32::MAX;
 
     for (i, a) in tokens.iter().enumerate() {
-        let score: f32 = tokens.iter()
-            .map(|b| token_distance(a, b))
-            .sum();
+        let score: f32 = tokens.iter().map(|b| token_distance(a, b)).sum();
         if score < best_score {
             best_score = score;
             best_idx = i;
@@ -149,22 +144,39 @@ fn compute_confidence(tokens: &[Token]) -> f32 {
 
     // Temperature
     let avg_t = tokens.iter().map(|t| t.temperature as f32).sum::<f32>() / n;
-    if tokens.iter().all(|t| (t.temperature as f32 - avg_t).abs() < 20.0) { agreed += 1; }
+    if tokens
+        .iter()
+        .all(|t| (t.temperature as f32 - avg_t).abs() < 20.0)
+    {
+        agreed += 1;
+    }
     total += 1;
 
     // Mass
     let avg_m = tokens.iter().map(|t| t.mass as f32).sum::<f32>() / n;
-    if tokens.iter().all(|t| (t.mass as f32 - avg_m).abs() < 15.0) { agreed += 1; }
+    if tokens.iter().all(|t| (t.mass as f32 - avg_m).abs() < 15.0) {
+        agreed += 1;
+    }
     total += 1;
 
     // Valence
     let avg_v = tokens.iter().map(|t| t.valence as f32).sum::<f32>() / n;
-    if tokens.iter().all(|t| (t.valence as f32 - avg_v).abs() < 10.0) { agreed += 1; }
+    if tokens
+        .iter()
+        .all(|t| (t.valence as f32 - avg_v).abs() < 10.0)
+    {
+        agreed += 1;
+    }
     total += 1;
 
     // Position X
     let avg_px = tokens.iter().map(|t| t.position[0] as f32).sum::<f32>() / n;
-    if tokens.iter().all(|t| (t.position[0] as f32 - avg_px).abs() < 50.0) { agreed += 1; }
+    if tokens
+        .iter()
+        .all(|t| (t.position[0] as f32 - avg_px).abs() < 50.0)
+    {
+        agreed += 1;
+    }
     total += 1;
 
     agreed as f32 / total as f32

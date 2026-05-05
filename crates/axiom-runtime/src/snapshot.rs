@@ -3,9 +3,9 @@
 //
 // Snapshot — сохранение и восстановление состояния Engine
 
-use std::collections::HashMap;
-use axiom_core::{Token, Connection};
 use axiom_config::DomainConfig;
+use axiom_core::{Connection, Token};
+use std::collections::HashMap;
 
 /// Слепок состояния одного домена
 #[derive(Debug, Clone)]
@@ -71,7 +71,8 @@ impl EngineSnapshot {
 
     /// Получить конфигурации доменов для восстановления
     pub fn domain_configs(&self) -> HashMap<u16, DomainConfig> {
-        self.domains.iter()
+        self.domains
+            .iter()
             .map(|d| (d.domain_id, d.config))
             .collect()
     }

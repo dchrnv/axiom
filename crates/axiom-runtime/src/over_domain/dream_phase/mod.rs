@@ -10,23 +10,20 @@
 //   scheduler — DreamScheduler (Этап 2)
 //   cycle    — DreamCycle, DreamProposal, DreamReport (Этап 3)
 
-pub mod state;
+pub mod cycle;
 pub mod fatigue;
 pub mod scheduler;
-pub mod cycle;
+pub mod state;
 
 pub use state::{
-    DreamPhaseState,
-    SleepTrigger,
-    WakeReason,
-    DreamPhaseEvent,
-    GatewayPriority,
-    DreamPhaseStats,
+    DreamPhaseEvent, DreamPhaseState, DreamPhaseStats, GatewayPriority, SleepTrigger, WakeReason,
 };
 
-pub use fatigue::{FatigueWeights, FatigueSnapshot, FatigueTracker, IdleTracker};
-pub use scheduler::{DreamSchedulerConfig, DreamScheduler, DreamSchedulerStats, SleepDecision, SleepTriggerKind};
 pub use cycle::{
-    DreamCycleConfig, DreamCycle, DreamCycleStats, CycleStage, CycleAdvanceResult,
-    DreamProposal, DreamProposalKind, DreamReport,
+    CycleAdvanceResult, CycleStage, DreamCycle, DreamCycleConfig, DreamCycleStats, DreamProposal,
+    DreamProposalKind, DreamReport,
+};
+pub use fatigue::{FatigueSnapshot, FatigueTracker, FatigueWeights, IdleTracker};
+pub use scheduler::{
+    DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
 };

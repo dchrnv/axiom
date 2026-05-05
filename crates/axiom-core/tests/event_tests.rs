@@ -1,4 +1,6 @@
-use axiom_core::{Event, EventType, EventPriority, Snapshot, EVENT_REVERSIBLE, EVENT_CRITICAL, EVENT_BATCHED};
+use axiom_core::{
+    Event, EventPriority, EventType, Snapshot, EVENT_BATCHED, EVENT_CRITICAL, EVENT_REVERSIBLE,
+};
 
 #[test]
 fn test_event_size() {

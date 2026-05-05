@@ -4,11 +4,11 @@
 // Over-Domain Layer — базовые trait'ы
 // Спецификация: docs/spec/Weaver/Over_Domain_Layer_V1_1.md
 
-use std::sync::Arc;
 use axiom_core::Token;
 use axiom_domain::{AshtiCore, DomainState};
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::UclCommand;
+use std::sync::Arc;
 
 /// Идентификатор Weaver-компонента в TickSchedule.
 pub type WeaverId = u16;
@@ -29,7 +29,7 @@ impl std::fmt::Display for OverDomainError {
         match self {
             OverDomainError::BootFailed(s) => write!(f, "boot failed: {s}"),
             OverDomainError::TickFailed(s) => write!(f, "tick failed: {s}"),
-            OverDomainError::GenomeDenied   => write!(f, "genome denied access"),
+            OverDomainError::GenomeDenied => write!(f, "genome denied access"),
         }
     }
 }
@@ -141,7 +141,12 @@ pub trait Weaver: OverDomainComponent {
     ///
     /// `tick` — текущий tick_count; используется для проверки `min_age_ticks`.
     /// Вызывается значительно реже scan. Возвращает пустой Vec если нет кандидатов.
-    fn check_promotion(&self, tick: u64, experience_state: &DomainState, anchors: &[&Token]) -> Vec<PromotionProposal>;
+    fn check_promotion(
+        &self,
+        tick: u64,
+        experience_state: &DomainState,
+        anchors: &[&Token],
+    ) -> Vec<PromotionProposal>;
 
     /// Numeric ID компонента для TickSchedule
     fn weaver_id(&self) -> WeaverId;

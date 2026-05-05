@@ -4,7 +4,7 @@
 //   - unit: алгоритм trigger/on_idle_tick (без Engine)
 //   - integration: поле adaptive_tick в TickSchedule AxiomEngine
 
-use axiom_runtime::{AdaptiveTickRate, TickRateReason, AxiomEngine, TickSchedule};
+use axiom_runtime::{AdaptiveTickRate, AxiomEngine, TickRateReason, TickSchedule};
 
 // ─── Unit: trigger ────────────────────────────────────────────────────────────
 
@@ -23,7 +23,10 @@ fn test_trigger_clamps_at_max_hz() {
     for _ in 0..20 {
         a.trigger(TickRateReason::ExternalInput);
     }
-    assert_eq!(a.current_hz, a.max_hz, "current_hz не должен превышать max_hz");
+    assert_eq!(
+        a.current_hz, a.max_hz,
+        "current_hz не должен превышать max_hz"
+    );
 }
 
 #[test]
@@ -62,7 +65,8 @@ fn test_idle_decrements_after_cooldown() {
     }
     assert!(
         a.current_hz < after_trigger,
-        "hz должен снизиться после {} idle-тиков", a.cooldown
+        "hz должен снизиться после {} idle-тиков",
+        a.cooldown
     );
 }
 
@@ -73,7 +77,10 @@ fn test_idle_clamps_at_min_hz() {
     for _ in 0..10_000 {
         a.on_idle_tick();
     }
-    assert_eq!(a.current_hz, a.min_hz, "current_hz не должен быть ниже min_hz");
+    assert_eq!(
+        a.current_hz, a.min_hz,
+        "current_hz не должен быть ниже min_hz"
+    );
 }
 
 #[test]
@@ -83,7 +90,11 @@ fn test_idle_at_min_hz_sets_idle_reason() {
     for _ in 0..10_000 {
         a.on_idle_tick();
     }
-    assert_eq!(a.last_reason, TickRateReason::Idle, "при min_hz reason = Idle");
+    assert_eq!(
+        a.last_reason,
+        TickRateReason::Idle,
+        "при min_hz reason = Idle"
+    );
 }
 
 // ─── Unit: вспомогательные методы ────────────────────────────────────────────
@@ -103,7 +114,10 @@ fn test_interval_ms_math() {
 fn test_is_idle_at_min_hz() {
     let a = AdaptiveTickRate::default();
     // По умолчанию current_hz == min_hz → is_idle() = true
-    assert!(a.is_idle(), "default state должен быть idle (current_hz == min_hz)");
+    assert!(
+        a.is_idle(),
+        "default state должен быть idle (current_hz == min_hz)"
+    );
 }
 
 #[test]
@@ -139,9 +153,15 @@ fn test_engine_tick_schedule_has_adaptive() {
 #[test]
 fn test_adaptive_tick_mutable_via_engine() {
     let mut engine = AxiomEngine::new();
-    engine.tick_schedule.adaptive_tick.trigger(TickRateReason::TensionHigh);
+    engine
+        .tick_schedule
+        .adaptive_tick
+        .trigger(TickRateReason::TensionHigh);
     let a = &engine.tick_schedule.adaptive_tick;
-    assert!(a.current_hz > a.min_hz, "trigger через Engine должен повысить hz");
+    assert!(
+        a.current_hz > a.min_hz,
+        "trigger через Engine должен повысить hz"
+    );
     assert_eq!(a.last_reason, TickRateReason::TensionHigh);
 }
 
@@ -171,5 +191,9 @@ fn test_hz_decreases_after_idle_n_ticks() {
     for _ in 0..a.cooldown {
         a.on_idle_tick();
     }
-    assert!(a.current_hz < high_hz, "hz должен снизиться после {} idle тиков", a.cooldown);
+    assert!(
+        a.current_hz < high_hz,
+        "hz должен снизиться после {} idle тиков",
+        a.cooldown
+    );
 }

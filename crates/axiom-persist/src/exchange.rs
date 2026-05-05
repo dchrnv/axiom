@@ -9,13 +9,13 @@
 // Формат файла: ExchangePackage (bincode), один файл.
 // Manifest не требуется — exchange package самодостаточен.
 
-use serde::{Deserialize, Serialize};
-use std::path::Path;
-use axiom_arbiter::Skill;
-use axiom_runtime::{AxiomEngine, guardian::ReflexDecision};
 use crate::error::PersistError;
 use crate::format::StoredTrace;
 use crate::loader::IMPORT_WEIGHT_FACTOR;
+use axiom_arbiter::Skill;
+use axiom_runtime::{guardian::ReflexDecision, AxiomEngine};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 // ─── Формат файла ─────────────────────────────────────────────────────────────
 
@@ -54,21 +54,21 @@ pub struct TracePackage {
 /// Хранимый Skill для exchange (зеркало Skill с serde).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StoredSkill {
-    pub pattern:          axiom_core::Token,
+    pub pattern: axiom_core::Token,
     pub activation_weight: f32,
-    pub created_at:       u64,
-    pub success_count:    u32,
-    pub pattern_hash:     u64,
+    pub created_at: u64,
+    pub success_count: u32,
+    pub pattern_hash: u64,
 }
 
 impl From<&Skill> for StoredSkill {
     fn from(s: &Skill) -> Self {
         Self {
-            pattern:           s.pattern,
+            pattern: s.pattern,
             activation_weight: s.activation_weight,
-            created_at:        s.created_at,
-            success_count:     s.success_count,
-            pattern_hash:      s.pattern_hash,
+            created_at: s.created_at,
+            success_count: s.success_count,
+            pattern_hash: s.pattern_hash,
         }
     }
 }
@@ -76,11 +76,11 @@ impl From<&Skill> for StoredSkill {
 impl From<StoredSkill> for Skill {
     fn from(s: StoredSkill) -> Self {
         Self {
-            pattern:           s.pattern,
+            pattern: s.pattern,
             activation_weight: s.activation_weight,
-            created_at:        s.created_at,
-            success_count:     s.success_count,
-            pattern_hash:      s.pattern_hash,
+            created_at: s.created_at,
+            success_count: s.success_count,
+            pattern_hash: s.pattern_hash,
         }
     }
 }
@@ -132,7 +132,9 @@ pub fn export_traces(
     path: &Path,
     weight_threshold: f32,
 ) -> Result<ExportReport, PersistError> {
-    let traces: Vec<StoredTrace> = engine.ashti.experience()
+    let traces: Vec<StoredTrace> = engine
+        .ashti
+        .experience()
         .traces()
         .iter()
         .filter(|t| t.weight >= weight_threshold)
@@ -155,7 +157,9 @@ pub fn export_traces(
 
 /// Экспортировать Skills (кристаллизованные навыки) в бинарный файл.
 pub fn export_skills(engine: &AxiomEngine, path: &Path) -> Result<ExportReport, PersistError> {
-    let skills: Vec<StoredSkill> = engine.ashti.export_skills()
+    let skills: Vec<StoredSkill> = engine
+        .ashti
+        .export_skills()
         .iter()
         .map(StoredSkill::from)
         .collect();
@@ -182,16 +186,21 @@ pub fn export_skills(engine: &AxiomEngine, path: &Path) -> Result<ExportReport, 
 /// Принятые traces получают weight × IMPORT_WEIGHT_FACTOR (0.7).
 pub fn import_traces(engine: &mut AxiomEngine, path: &Path) -> Result<ImportReport, PersistError> {
     let bytes = std::fs::read(path)?;
-    let (pkg, _): (TracePackage, _) = bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
-        .map_err(|e| PersistError::Decode(e.to_string()))?;
+    let (pkg, _): (TracePackage, _) =
+        bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
+            .map_err(|e| PersistError::Decode(e.to_string()))?;
 
     if pkg.header.kind != ExchangeKind::Traces {
-        return Err(PersistError::Decode(
-            format!("expected traces package, got {:?}", pkg.header.kind)
-        ));
+        return Err(PersistError::Decode(format!(
+            "expected traces package, got {:?}",
+            pkg.header.kind
+        )));
     }
 
-    let mut report = ImportReport { total: pkg.header.count, ..Default::default() };
+    let mut report = ImportReport {
+        total: pkg.header.count,
+        ..Default::default()
+    };
 
     for stored in pkg.traces {
         // GUARDIAN валидация
@@ -217,16 +226,21 @@ pub fn import_traces(engine: &mut AxiomEngine, path: &Path) -> Result<ImportRepo
 /// Принятые skills получают activation_weight × IMPORT_WEIGHT_FACTOR (0.7).
 pub fn import_skills(engine: &mut AxiomEngine, path: &Path) -> Result<ImportReport, PersistError> {
     let bytes = std::fs::read(path)?;
-    let (pkg, _): (SkillPackage, _) = bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
-        .map_err(|e| PersistError::Decode(e.to_string()))?;
+    let (pkg, _): (SkillPackage, _) =
+        bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
+            .map_err(|e| PersistError::Decode(e.to_string()))?;
 
     if pkg.header.kind != ExchangeKind::Skills {
-        return Err(PersistError::Decode(
-            format!("expected skills package, got {:?}", pkg.header.kind)
-        ));
+        return Err(PersistError::Decode(format!(
+            "expected skills package, got {:?}",
+            pkg.header.kind
+        )));
     }
 
-    let mut report = ImportReport { total: pkg.header.count, ..Default::default() };
+    let mut report = ImportReport {
+        total: pkg.header.count,
+        ..Default::default()
+    };
 
     for stored in pkg.skills {
         // GUARDIAN валидация
@@ -239,7 +253,9 @@ pub fn import_skills(engine: &mut AxiomEngine, path: &Path) -> Result<ImportRepo
         }
 
         let skill: Skill = stored.into();
-        let added = engine.ashti.import_skill_exchange(skill, IMPORT_WEIGHT_FACTOR);
+        let added = engine
+            .ashti
+            .import_skill_exchange(skill, IMPORT_WEIGHT_FACTOR);
         if added {
             report.imported += 1;
         } else {
@@ -254,8 +270,10 @@ pub fn import_skills(engine: &mut AxiomEngine, path: &Path) -> Result<ImportRepo
 
 fn make_header(kind: ExchangeKind, source_tick: u64, count: u32) -> ExchangeHeader {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs()).unwrap_or(0);
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     ExchangeHeader {
         kind,
         version: "axiom-exchange-v1".to_string(),

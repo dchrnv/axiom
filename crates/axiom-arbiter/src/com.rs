@@ -39,7 +39,10 @@ impl COM {
 
     /// Получить число событий, выданных конкретному домену
     pub fn domain_event_count(&self, domain_id: u16) -> u64 {
-        self.domain_event_counts.get(&domain_id).copied().unwrap_or(0)
+        self.domain_event_counts
+            .get(&domain_id)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Получить текущее значение глобального счётчика (следующий ID)

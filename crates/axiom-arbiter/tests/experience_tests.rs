@@ -161,7 +161,7 @@ fn test_strengthen_clamps_to_one() {
     let mut exp = Experience::new();
     exp.add_trace(make_token(100, 100), 0.9, 1);
     exp.strengthen_trace(0, 100.0); // Large delta
-    // Should not panic, weight clamped to 1.0
+                                    // Should not panic, weight clamped to 1.0
     assert_eq!(exp.trace_count(), 1);
 }
 
@@ -170,6 +170,6 @@ fn test_weaken_clamps_to_zero() {
     let mut exp = Experience::new();
     exp.add_trace(make_token(100, 100), 0.5, 1);
     exp.weaken_trace(0, 100.0); // Large delta
-    // Should not panic, weight clamped to 0.0
+                                // Should not panic, weight clamped to 0.0
     assert_eq!(exp.trace_count(), 1);
 }

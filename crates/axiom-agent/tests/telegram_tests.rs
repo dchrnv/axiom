@@ -1,14 +1,17 @@
 // Этап 10C — Telegram Channel: mock JSON → команды
 use axiom_agent::channels::telegram::{
-    TelegramPerceptor, TelegramEffector, TelegramConfig, TelegramUpdate,
-    parse_updates, message_to_command,
+    message_to_command, parse_updates, TelegramConfig, TelegramEffector, TelegramPerceptor,
+    TelegramUpdate,
 };
-use axiom_core::{Event, EventType, EventPriority};
+use axiom_core::{Event, EventPriority, EventType};
+use axiom_runtime::{Effector, Perceptor};
 use axiom_ucl::OpCode;
-use axiom_runtime::{Perceptor, Effector};
 
 fn test_config() -> TelegramConfig {
-    TelegramConfig { token: "test_token".into(), chat_id: 12345 }
+    TelegramConfig {
+        token: "test_token".into(),
+        chat_id: 12345,
+    }
 }
 
 fn make_event(et: EventType) -> Event {
@@ -19,7 +22,8 @@ fn make_event(et: EventType) -> Event {
 
 #[test]
 fn test_parse_single_update() {
-    let json = r#"{"ok":true,"result":[{"update_id":42,"message":{"text":"tick","chat":{"id":123}}}]}"#;
+    let json =
+        r#"{"ok":true,"result":[{"update_id":42,"message":{"text":"tick","chat":{"id":123}}}]}"#;
     let updates = parse_updates(json);
     assert_eq!(updates.len(), 1);
     assert_eq!(updates[0].update_id, 42);
@@ -78,7 +82,11 @@ fn test_message_unknown_returns_none() {
 #[test]
 fn test_perceptor_feed_update_tick() {
     let mut p = TelegramPerceptor::new(test_config());
-    p.feed_update(TelegramUpdate { update_id: 1, text: "tick".into(), chat_id: 1 });
+    p.feed_update(TelegramUpdate {
+        update_id: 1,
+        text: "tick".into(),
+        chat_id: 1,
+    });
     assert_eq!(p.pending_count(), 1);
     let cmd = p.receive().unwrap();
     assert_eq!(cmd.opcode, OpCode::TickForward as u16);
@@ -87,15 +95,27 @@ fn test_perceptor_feed_update_tick() {
 #[test]
 fn test_perceptor_feed_unknown_not_queued() {
     let mut p = TelegramPerceptor::new(test_config());
-    p.feed_update(TelegramUpdate { update_id: 1, text: "/unknown".into(), chat_id: 1 });
+    p.feed_update(TelegramUpdate {
+        update_id: 1,
+        text: "/unknown".into(),
+        chat_id: 1,
+    });
     assert_eq!(p.pending_count(), 0);
 }
 
 #[test]
 fn test_perceptor_multiple_updates() {
     let mut p = TelegramPerceptor::new(test_config());
-    p.feed_update(TelegramUpdate { update_id: 1, text: "tick".into(), chat_id: 1 });
-    p.feed_update(TelegramUpdate { update_id: 2, text: "inject 100".into(), chat_id: 1 });
+    p.feed_update(TelegramUpdate {
+        update_id: 1,
+        text: "tick".into(),
+        chat_id: 1,
+    });
+    p.feed_update(TelegramUpdate {
+        update_id: 2,
+        text: "inject 100".into(),
+        chat_id: 1,
+    });
     assert_eq!(p.pending_count(), 2);
     assert_eq!(p.receive().unwrap().opcode, OpCode::TickForward as u16);
     assert_eq!(p.receive().unwrap().opcode, OpCode::InjectToken as u16);
@@ -128,8 +148,12 @@ fn test_effector_emit_event_stores_message() {
 fn test_effector_emit_result_ok() {
     use axiom_ucl::UclCommand;
     let mut e = TelegramEffector::mock(test_config());
-    let result = axiom_runtime::Gateway::with_default_engine()
-        .process(&UclCommand::new(OpCode::TickForward, 0, 0, 0));
+    let result = axiom_runtime::Gateway::with_default_engine().process(&UclCommand::new(
+        OpCode::TickForward,
+        0,
+        0,
+        0,
+    ));
     e.emit_result(&result);
     assert_eq!(e.sent_messages.len(), 1);
     assert!(e.sent_messages[0].contains("OK"));
@@ -151,8 +175,16 @@ fn test_telegram_roundtrip_no_panic() {
     let mut e = TelegramEffector::mock(test_config());
     let mut gw = Gateway::with_default_engine();
 
-    p.feed_update(TelegramUpdate { update_id: 1, text: "tick".into(), chat_id: 1 });
-    p.feed_update(TelegramUpdate { update_id: 2, text: "inject 100".into(), chat_id: 1 });
+    p.feed_update(TelegramUpdate {
+        update_id: 1,
+        text: "tick".into(),
+        chat_id: 1,
+    });
+    p.feed_update(TelegramUpdate {
+        update_id: 2,
+        text: "inject 100".into(),
+        chat_id: 1,
+    });
 
     while let Some(cmd) = p.receive() {
         let result = gw.process(&cmd);

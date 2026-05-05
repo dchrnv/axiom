@@ -1,7 +1,7 @@
 // Этап 9A — Event Bus: подписочная модель поверх EventObserver
+use axiom_core::{Event, EventPriority, EventType};
 use axiom_runtime::{EventBus, EventObserver, Gateway};
-use axiom_core::{Event, EventType, EventPriority};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 use std::sync::{Arc, Mutex};
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ fn test_broadcast_and_typed_both_receive() {
     bus.publish(&events);
 
     assert_eq!(*broadcast_count.lock().unwrap(), 2); // broadcast получает все
-    assert_eq!(*typed_count.lock().unwrap(), 1);     // typed только TokenCreate
+    assert_eq!(*typed_count.lock().unwrap(), 1); // typed только TokenCreate
 }
 
 // ─── total_count ─────────────────────────────────────────────────────────────

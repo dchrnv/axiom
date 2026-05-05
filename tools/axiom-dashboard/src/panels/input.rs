@@ -1,10 +1,10 @@
-use egui::Ui;
 use crate::state::AppData;
+use egui::Ui;
 
 pub fn show(
-    ui:     &mut Ui,
-    data:   &AppData,
-    input:  &mut String,
+    ui: &mut Ui,
+    data: &AppData,
+    input: &mut String,
     cmd_tx: &std::sync::mpsc::Sender<String>,
 ) {
     ui.heading("Input");
@@ -52,11 +52,14 @@ pub fn show(
 }
 
 fn send_input(text: &str, tx: &std::sync::mpsc::Sender<String>) {
-    if text.is_empty() { return; }
+    if text.is_empty() {
+        return;
+    }
     let json = if text.starts_with(':') {
         let cmd = text.split_whitespace().next().unwrap_or(text);
-        let is_mutate = matches!(cmd,
-            ":save"|":load"|":autosave"|":tick"|":export"|":import"|":quit"|":q"
+        let is_mutate = matches!(
+            cmd,
+            ":save" | ":load" | ":autosave" | ":tick" | ":export" | ":import" | ":quit" | ":q"
         );
         if is_mutate {
             serde_json::json!({ "type": "mutate_command", "cmd": text }).to_string()

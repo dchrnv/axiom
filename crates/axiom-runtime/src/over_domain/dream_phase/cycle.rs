@@ -4,13 +4,13 @@
 // DreamCycle — машина стадий сна: Stabilization → Processing → Consolidation.
 // Спецификация: docs/spec/Dream/DREAM_Phase_V1_0.md, раздел 5.
 
-use axiom_core::{TOKEN_FLAG_DREAM_REPORT, STATE_ACTIVE};
+use axiom_core::{STATE_ACTIVE, TOKEN_FLAG_DREAM_REPORT};
 use axiom_domain::AshtiCore;
-use axiom_ucl::{UclCommand, OpCode, InjectFrameAnchorPayload, BondTokensPayload};
+use axiom_ucl::{BondTokensPayload, InjectFrameAnchorPayload, OpCode, UclCommand};
 
+use super::state::{SleepTrigger, WakeReason};
 use crate::over_domain::traits::WeaverId;
 use crate::over_domain::weavers::restore_frame_from_anchor;
-use super::state::{SleepTrigger, WakeReason};
 
 // ── конфигурация ───────────────────────────────────────────────────────────────
 
@@ -19,20 +19,20 @@ pub struct DreamCycleConfig {
     /// Максимум тиков одного DreamCycle до Timeout.
     pub max_dream_duration_ticks: u32,
     /// Максимум proposals обрабатываемых за один цикл.
-    pub max_proposals_per_cycle:  usize,
+    pub max_proposals_per_cycle: usize,
     /// V1.0: всегда false — Recombination не реализован.
-    pub enable_recombination:     bool,
+    pub enable_recombination: bool,
     /// Proposals обрабатываемых за один тик Processing.
-    pub batch_size:               usize,
+    pub batch_size: usize,
 }
 
 impl Default for DreamCycleConfig {
     fn default() -> Self {
         Self {
             max_dream_duration_ticks: 50_000,
-            max_proposals_per_cycle:  100,
-            enable_recombination:     false,
-            batch_size:               8,
+            max_proposals_per_cycle: 100,
+            enable_recombination: false,
+            batch_size: 8,
         }
     }
 }
@@ -52,20 +52,20 @@ pub enum CycleStage {
 
 #[derive(Debug, Clone)]
 pub struct DreamProposal {
-    pub source:           WeaverId,
-    pub kind:             DreamProposalKind,
+    pub source: WeaverId,
+    pub kind: DreamProposalKind,
     /// Приоритет 0..=255: выше — обрабатывается раньше.
-    pub priority:         u8,
+    pub priority: u8,
     pub created_at_event: u64,
 }
 
 #[derive(Debug, Clone)]
 pub enum DreamProposalKind {
     Promotion {
-        anchor_id:     u32,
+        anchor_id: u32,
         source_domain: u16,
         target_domain: u16,
-        rule_id:       String,
+        rule_id: String,
     },
     /// V1.0: заглушка — сразу vetoed при обработке.
     HeavyCrystallization {},
@@ -75,47 +75,47 @@ pub enum DreamProposalKind {
 
 #[derive(Debug, Clone)]
 pub struct DreamReport {
-    pub started_at_event:              u64,
-    pub ended_at_event:                u64,
-    pub duration_ticks:                u32,
-    pub trigger:                       SleepTrigger,
-    pub wake_reason:                   WakeReason,
-    pub proposals_processed:           u32,
-    pub proposals_approved:            u32,
-    pub proposals_vetoed:              u32,
-    pub proposals_deferred:            u32,
-    pub promotions_applied:            u32,
+    pub started_at_event: u64,
+    pub ended_at_event: u64,
+    pub duration_ticks: u32,
+    pub trigger: SleepTrigger,
+    pub wake_reason: WakeReason,
+    pub proposals_processed: u32,
+    pub proposals_approved: u32,
+    pub proposals_vetoed: u32,
+    pub proposals_deferred: u32,
+    pub promotions_applied: u32,
     pub heavy_crystallizations_applied: u32,
-    pub fatigue_before:                u8,
+    pub fatigue_before: u8,
     /// 0 в V1.0 — заполняется движком после пробуждения (Этап 4).
-    pub fatigue_after:                 u8,
+    pub fatigue_after: u8,
 }
 
 // ── статистика ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Default, Clone)]
 pub struct DreamCycleStats {
-    pub total_cycles:        u64,
-    pub completed_cycles:    u64,
-    pub timed_out_cycles:    u64,
-    pub total_processed:     u64,
-    pub total_approved:      u64,
-    pub total_vetoed:        u64,
-    pub total_promotions:    u64,
+    pub total_cycles: u64,
+    pub completed_cycles: u64,
+    pub timed_out_cycles: u64,
+    pub total_processed: u64,
+    pub total_approved: u64,
+    pub total_vetoed: u64,
+    pub total_promotions: u64,
 }
 
 impl DreamCycleStats {
     fn record_completed(&mut self, report: &DreamReport) {
-        self.total_cycles     += 1;
+        self.total_cycles += 1;
         self.completed_cycles += 1;
-        self.total_processed  += report.proposals_processed as u64;
-        self.total_approved   += report.proposals_approved  as u64;
-        self.total_vetoed     += report.proposals_vetoed    as u64;
-        self.total_promotions += report.promotions_applied  as u64;
+        self.total_processed += report.proposals_processed as u64;
+        self.total_approved += report.proposals_approved as u64;
+        self.total_vetoed += report.proposals_vetoed as u64;
+        self.total_promotions += report.promotions_applied as u64;
     }
 
     fn record_timeout(&mut self) {
-        self.total_cycles    += 1;
+        self.total_cycles += 1;
         self.timed_out_cycles += 1;
     }
 }
@@ -123,16 +123,16 @@ impl DreamCycleStats {
 // ── внутреннее состояние активного цикла ─────────────────────────────────────
 
 struct ActiveCycle {
-    started_at_tick:  u64,
+    started_at_tick: u64,
     started_at_event: u64,
-    trigger:          SleepTrigger,
-    fatigue_before:   u8,
-    stage:            CycleStage,
-    processed:        u32,
-    approved:         u32,
-    vetoed:           u32,
-    deferred:         u32,
-    queue_sorted:     bool,
+    trigger: SleepTrigger,
+    fatigue_before: u8,
+    stage: CycleStage,
+    processed: u32,
+    approved: u32,
+    vetoed: u32,
+    deferred: u32,
+    queue_sorted: bool,
 }
 
 // ── результат advance() ───────────────────────────────────────────────────────
@@ -151,6 +151,7 @@ pub enum CycleAdvanceResult {
 
 // ── внутренний результат обработки proposal ───────────────────────────────────
 
+#[allow(dead_code)]
 enum ProposalResult {
     Approved(Vec<UclCommand>),
     Vetoed(String),
@@ -160,14 +161,14 @@ enum ProposalResult {
 // ── DreamCycle ────────────────────────────────────────────────────────────────
 
 pub struct DreamCycle {
-    config:         DreamCycleConfig,
-    queue:          Vec<DreamProposal>,
-    current_cycle:  Option<ActiveCycle>,
+    config: DreamCycleConfig,
+    queue: Vec<DreamProposal>,
+    current_cycle: Option<ActiveCycle>,
     /// Накопленные UCL-команды (дренируются вместе с DreamReport).
     pending_commands: Vec<UclCommand>,
     /// Последний построенный DreamReport (доступен после Complete/Timeout).
-    last_report:    Option<DreamReport>,
-    pub stats:      DreamCycleStats,
+    last_report: Option<DreamReport>,
+    pub stats: DreamCycleStats,
 }
 
 impl DreamCycle {
@@ -197,27 +198,24 @@ impl DreamCycle {
     }
 
     /// Начать новый цикл сна.
-    pub fn start_cycle(
-        &mut self,
-        tick:      u64,
-        event_id:  u64,
-        trigger:   SleepTrigger,
-        fatigue:   u8,
-    ) {
-        debug_assert!(self.current_cycle.is_none(), "DreamCycle: start_cycle called while active");
+    pub fn start_cycle(&mut self, tick: u64, event_id: u64, trigger: SleepTrigger, fatigue: u8) {
+        debug_assert!(
+            self.current_cycle.is_none(),
+            "DreamCycle: start_cycle called while active"
+        );
         self.pending_commands.clear();
         self.last_report = None;
         self.current_cycle = Some(ActiveCycle {
-            started_at_tick:  tick,
+            started_at_tick: tick,
             started_at_event: event_id,
             trigger,
-            fatigue_before:   fatigue,
-            stage:            CycleStage::Stabilization,
-            processed:        0,
-            approved:         0,
-            vetoed:           0,
-            deferred:         0,
-            queue_sorted:     false,
+            fatigue_before: fatigue,
+            stage: CycleStage::Stabilization,
+            processed: 0,
+            approved: 0,
+            vetoed: 0,
+            deferred: 0,
+            queue_sorted: false,
         });
     }
 
@@ -229,13 +227,13 @@ impl DreamCycle {
     /// Продвинуть цикл на один тик.
     pub fn advance(
         &mut self,
-        tick:    u64,
-        ashti:   &AshtiCore,
+        tick: u64,
+        ashti: &AshtiCore,
         com_event_id: u64,
     ) -> CycleAdvanceResult {
         let cycle = match self.current_cycle.as_mut() {
             Some(c) => c,
-            None    => return CycleAdvanceResult::NotActive,
+            None => return CycleAdvanceResult::NotActive,
         };
 
         if tick - cycle.started_at_tick >= self.config.max_dream_duration_ticks as u64 {
@@ -302,16 +300,20 @@ impl DreamCycle {
 
     fn process_batch(&mut self, ashti: &AshtiCore) {
         let batch = self.config.batch_size;
-        let max   = self.config.max_proposals_per_cycle as u32;
+        let max = self.config.max_proposals_per_cycle as u32;
         let mut count = 0;
 
         while count < batch && !self.queue.is_empty() {
             let cycle = self.current_cycle.as_ref().unwrap();
-            if cycle.processed >= max { break; }
-            if cycle.deferred >= 10  { break; }
+            if cycle.processed >= max {
+                break;
+            }
+            if cycle.deferred >= 10 {
+                break;
+            }
 
             let proposal = self.queue.remove(0);
-            let result   = Self::process_proposal(&proposal, ashti);
+            let result = Self::process_proposal(&proposal, ashti);
 
             let cycle = self.current_cycle.as_mut().unwrap();
             cycle.processed += 1;
@@ -335,20 +337,28 @@ impl DreamCycle {
 
     fn process_proposal(proposal: &DreamProposal, ashti: &AshtiCore) -> ProposalResult {
         match &proposal.kind {
-            DreamProposalKind::Promotion { anchor_id, source_domain, target_domain, .. } => {
+            DreamProposalKind::Promotion {
+                anchor_id,
+                source_domain,
+                target_domain,
+                ..
+            } => {
                 let source_idx = match ashti.index_of(*source_domain) {
                     Some(i) => i,
-                    None    => return ProposalResult::Vetoed(
-                        format!("source domain {} not found", source_domain)
-                    ),
+                    None => {
+                        return ProposalResult::Vetoed(format!(
+                            "source domain {} not found",
+                            source_domain
+                        ))
+                    }
                 };
                 let source_state = match ashti.state(source_idx) {
                     Some(s) => s,
-                    None    => return ProposalResult::Vetoed("source state unavailable".into()),
+                    None => return ProposalResult::Vetoed("source state unavailable".into()),
                 };
 
                 let frame = match restore_frame_from_anchor(*anchor_id, source_state) {
-                    Ok(f)  => f,
+                    Ok(f) => f,
                     Err(e) => return ProposalResult::Vetoed(format!("restore: {:?}", e)),
                 };
 
@@ -364,41 +374,44 @@ impl DreamCycle {
     fn finalize_complete(&mut self, tick: u64, com_event_id: u64) {
         let cycle = self.current_cycle.take().unwrap();
         let report = DreamReport {
-            started_at_event:              cycle.started_at_event,
-            ended_at_event:                com_event_id,
-            duration_ticks:                (tick - cycle.started_at_tick) as u32,
-            trigger:                       cycle.trigger,
-            wake_reason:                   WakeReason::CycleComplete,
-            proposals_processed:           cycle.processed,
-            proposals_approved:            cycle.approved,
-            proposals_vetoed:              cycle.vetoed,
-            proposals_deferred:            cycle.deferred,
-            promotions_applied:            cycle.approved,
+            started_at_event: cycle.started_at_event,
+            ended_at_event: com_event_id,
+            duration_ticks: (tick - cycle.started_at_tick) as u32,
+            trigger: cycle.trigger,
+            wake_reason: WakeReason::CycleComplete,
+            proposals_processed: cycle.processed,
+            proposals_approved: cycle.approved,
+            proposals_vetoed: cycle.vetoed,
+            proposals_deferred: cycle.deferred,
+            promotions_applied: cycle.approved,
             heavy_crystallizations_applied: 0,
-            fatigue_before:                cycle.fatigue_before,
-            fatigue_after:                 0,
+            fatigue_before: cycle.fatigue_before,
+            fatigue_after: 0,
         };
         self.stats.record_completed(&report);
-        self.pending_commands.push(build_dream_report_token(&report));
+        self.pending_commands
+            .push(build_dream_report_token(&report));
         self.last_report = Some(report);
     }
 
     fn finalize_timeout(&mut self, tick: u64, com_event_id: u64) {
         let cycle = self.current_cycle.take().unwrap();
         let report = DreamReport {
-            started_at_event:              cycle.started_at_event,
-            ended_at_event:                com_event_id,
-            duration_ticks:                (tick - cycle.started_at_tick) as u32,
-            trigger:                       cycle.trigger,
-            wake_reason:                   WakeReason::Timeout { max_dream_duration: self.config.max_dream_duration_ticks },
-            proposals_processed:           cycle.processed,
-            proposals_approved:            cycle.approved,
-            proposals_vetoed:              cycle.vetoed,
-            proposals_deferred:            cycle.deferred,
-            promotions_applied:            cycle.approved,
+            started_at_event: cycle.started_at_event,
+            ended_at_event: com_event_id,
+            duration_ticks: (tick - cycle.started_at_tick) as u32,
+            trigger: cycle.trigger,
+            wake_reason: WakeReason::Timeout {
+                max_dream_duration: self.config.max_dream_duration_ticks,
+            },
+            proposals_processed: cycle.processed,
+            proposals_approved: cycle.approved,
+            proposals_vetoed: cycle.vetoed,
+            proposals_deferred: cycle.deferred,
+            promotions_applied: cycle.approved,
             heavy_crystallizations_applied: 0,
-            fatigue_before:                cycle.fatigue_before,
-            fatigue_after:                 0,
+            fatigue_before: cycle.fatigue_before,
+            fatigue_after: 0,
         };
         self.stats.record_timeout();
         self.last_report = Some(report);
@@ -418,38 +431,42 @@ fn build_promotion_commands(frame: &RestoredFrame, target_domain: u16) -> Vec<Uc
     let mut cmds = Vec::with_capacity(1 + frame.participants.len());
 
     let anchor_payload = InjectFrameAnchorPayload {
-        lineage_hash:       frame.anchor.lineage_hash,
-        proposed_sutra_id:  frame.anchor_id,
-        target_domain_id:   target_domain,
-        type_flags:         frame.anchor.type_flags
-                            | axiom_core::TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
-        position:           frame.anchor.position,
-        state:              STATE_ACTIVE,
-        mass:               frame.anchor.mass,
-        temperature:        frame.anchor.temperature,
-        valence:            0,
-        reserved:           [0; 22],
+        lineage_hash: frame.anchor.lineage_hash,
+        proposed_sutra_id: frame.anchor_id,
+        target_domain_id: target_domain,
+        type_flags: frame.anchor.type_flags | axiom_core::TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
+        position: frame.anchor.position,
+        state: STATE_ACTIVE,
+        mass: frame.anchor.mass,
+        temperature: frame.anchor.temperature,
+        valence: 0,
+        reserved: [0; 22],
     };
     cmds.push(
-        UclCommand::new(OpCode::InjectToken, target_domain as u32, 200, axiom_ucl::flags::FRAME_ANCHOR)
-            .with_payload(&anchor_payload)
+        UclCommand::new(
+            OpCode::InjectToken,
+            target_domain as u32,
+            200,
+            axiom_ucl::flags::FRAME_ANCHOR,
+        )
+        .with_payload(&anchor_payload),
     );
 
     for p in &frame.participants {
         let bond_payload = BondTokensPayload {
-            source_id:     frame.anchor_id,
-            target_id:     p.sutra_id,
-            domain_id:     target_domain,
-            link_type:     p.role_link_type,
-            strength:      1.0,
-            conn_flags:    axiom_core::FLAG_ACTIVE as u32,
+            source_id: frame.anchor_id,
+            target_id: p.sutra_id,
+            domain_id: target_domain,
+            link_type: p.role_link_type,
+            strength: 1.0,
+            conn_flags: axiom_core::FLAG_ACTIVE,
             origin_domain: p.origin_domain_id,
-            role_id:       0,
-            reserved:      [0; 24],
+            role_id: 0,
+            reserved: [0; 24],
         };
         cmds.push(
             UclCommand::new(OpCode::BondTokens, target_domain as u32, 200, 0)
-                .with_payload(&bond_payload)
+                .with_payload(&bond_payload),
         );
     }
 
@@ -503,18 +520,18 @@ fn build_dream_report_token(report: &DreamReport) -> UclCommand {
 
 fn trigger_kind_byte(trigger: &SleepTrigger) -> u8 {
     match trigger {
-        SleepTrigger::Idle     { .. } => 0,
-        SleepTrigger::Fatigue  { .. } => 1,
+        SleepTrigger::Idle { .. } => 0,
+        SleepTrigger::Fatigue { .. } => 1,
         SleepTrigger::ExplicitCommand { .. } => 2,
     }
 }
 
 fn wake_reason_kind_byte(reason: &WakeReason) -> u8 {
     match reason {
-        WakeReason::CycleComplete          => 0,
-        WakeReason::CriticalSignal { .. }  => 1,
-        WakeReason::Timeout        { .. }  => 2,
-        WakeReason::GuardianOverride       => 3,
+        WakeReason::CycleComplete => 0,
+        WakeReason::CriticalSignal { .. } => 1,
+        WakeReason::Timeout { .. } => 2,
+        WakeReason::GuardianOverride => 3,
     }
 }
 
@@ -609,14 +626,14 @@ mod tests {
     fn processing_vetoes_unrestorable_anchor() {
         let mut dc = DreamCycle::with_defaults();
         dc.submit(DreamProposal {
-            source:           1,
-            priority:         100,
+            source: 1,
+            priority: 100,
             created_at_event: 0,
             kind: DreamProposalKind::Promotion {
-                anchor_id:     9999, // не существует
+                anchor_id: 9999, // не существует
                 source_domain: 109,
                 target_domain: 100,
-                rule_id:       "test".into(),
+                rule_id: "test".into(),
             },
         });
         dc.start_cycle(0, 1, make_trigger(), 0);
@@ -642,14 +659,14 @@ mod tests {
         });
         for prio in [50u8, 200, 100] {
             dc.submit(DreamProposal {
-                source:           1,
-                priority:         prio,
+                source: 1,
+                priority: prio,
                 created_at_event: 0,
                 kind: DreamProposalKind::Promotion {
-                    anchor_id:     prio as u32, // несуществующий — будет vetoed
+                    anchor_id: prio as u32, // несуществующий — будет vetoed
                     source_domain: 109,
                     target_domain: 100,
-                    rule_id:       format!("r{prio}"),
+                    rule_id: format!("r{prio}"),
                 },
             });
         }
@@ -660,24 +677,27 @@ mod tests {
         dc.advance(0, &ashti, 1);
         // Processing тик 1: обработать 1 (batch=1) — должен быть prio=200
         dc.advance(1, &ashti, 2); // processed=1
-        // Processing тик 2: prio=100
+                                  // Processing тик 2: prio=100
         dc.advance(2, &ashti, 3); // processed=2
-        // Processing тик 3: prio=50
+                                  // Processing тик 3: prio=50
         dc.advance(3, &ashti, 4); // processed=3, queue пуста → Consolidation
-        // Consolidation
+                                  // Consolidation
         let r = dc.advance(4, &ashti, 5);
         assert_eq!(r, CycleAdvanceResult::Complete);
         let rep = dc.drain_report().unwrap();
         assert_eq!(rep.proposals_processed, 3);
-        assert_eq!(rep.proposals_vetoed, 3, "все три proposal vetoed (несуществующие анкеры)");
+        assert_eq!(
+            rep.proposals_vetoed, 3,
+            "все три proposal vetoed (несуществующие анкеры)"
+        );
     }
 
     #[test]
     fn heavy_crystallization_always_vetoed() {
         let mut dc = DreamCycle::with_defaults();
         dc.submit(DreamProposal {
-            source:           1,
-            priority:         255,
+            source: 1,
+            priority: 255,
             created_at_event: 0,
             kind: DreamProposalKind::HeavyCrystallization {},
         });

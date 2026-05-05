@@ -8,19 +8,35 @@ use crate::snapshot::{FrameDetails, SystemSnapshot};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum EngineMessage {
-    Hello { version: u32, capabilities: u64 },
+    Hello {
+        version: u32,
+        capabilities: u64,
+    },
     Snapshot(SystemSnapshot),
     Event(EngineEvent),
-    CommandResult { command_id: u64, result: Result<CommandResultData, String> },
-    Bye { reason: ShutdownReason },
+    CommandResult {
+        command_id: u64,
+        result: Result<CommandResultData, String>,
+    },
+    Bye {
+        reason: ShutdownReason,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ClientMessage {
-    Hello { version: u32, client_kind: ClientKind },
+    Hello {
+        version: u32,
+        client_kind: ClientKind,
+    },
     RequestSnapshot,
-    Subscribe { event_categories: u64 },
-    Command { command_id: u64, command: EngineCommand },
+    Subscribe {
+        event_categories: u64,
+    },
+    Command {
+        command_id: u64,
+        command: EngineCommand,
+    },
     Bye,
 }
 

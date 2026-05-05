@@ -3,13 +3,11 @@ use axiom_config::ConfigLoader;
 use std::path::Path;
 
 fn tokens_dir() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config/presets/tokens")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/presets/tokens")
 }
 
 fn connections_dir() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config/presets/connection")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/presets/connection")
 }
 
 // ─── TokenPreset ─────────────────────────────────────────────────────────────
@@ -62,14 +60,20 @@ fn test_token_preset_description_loaded() {
     let mut loader = ConfigLoader::new();
     let presets = loader.load_token_presets(&tokens_dir()).unwrap();
     for preset in &presets {
-        assert!(!preset.description.is_empty(), "preset '{}' has empty description", preset.name);
+        assert!(
+            !preset.description.is_empty(),
+            "preset '{}' has empty description",
+            preset.name
+        );
     }
 }
 
 #[test]
 fn test_token_presets_missing_dir_returns_empty() {
     let mut loader = ConfigLoader::new();
-    let result = loader.load_token_presets(Path::new("/nonexistent/tokens")).unwrap();
+    let result = loader
+        .load_token_presets(Path::new("/nonexistent/tokens"))
+        .unwrap();
     assert!(result.is_empty());
 }
 
@@ -150,14 +154,20 @@ fn test_connection_preset_description_loaded() {
     let mut loader = ConfigLoader::new();
     let presets = loader.load_connection_presets(&connections_dir()).unwrap();
     for preset in &presets {
-        assert!(!preset.description.is_empty(), "preset '{}' has empty description", preset.name);
+        assert!(
+            !preset.description.is_empty(),
+            "preset '{}' has empty description",
+            preset.name
+        );
     }
 }
 
 #[test]
 fn test_connection_presets_missing_dir_returns_empty() {
     let mut loader = ConfigLoader::new();
-    let result = loader.load_connection_presets(Path::new("/nonexistent/connections")).unwrap();
+    let result = loader
+        .load_connection_presets(Path::new("/nonexistent/connections"))
+        .unwrap();
     assert!(result.is_empty());
 }
 
@@ -193,8 +203,7 @@ description: "Weak ephemeral connection"
 #[test]
 fn test_axiom_yaml_has_tokens_and_connections_dirs() {
     let mut loader = ConfigLoader::new();
-    let axiom_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../config/axiom.yaml");
+    let axiom_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/axiom.yaml");
     let loaded = loader.load_all(&axiom_path).unwrap();
     assert!(loaded.root.presets.tokens_dir.is_some());
     assert!(loaded.root.presets.connections_dir.is_some());

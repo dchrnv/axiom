@@ -27,9 +27,8 @@ pub fn patterns_view<'a>(state: &'a PatternsState) -> Element<'a, Message> {
 // ── Active layers ──────────────────────────────────────────────────────────
 
 fn active_layers_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
-    let current: [u8; 8] = std::array::from_fn(|i| {
-        state.layer_history[i].front().copied().unwrap_or(0)
-    });
+    let current: [u8; 8] =
+        std::array::from_fn(|i| state.layer_history[i].front().copied().unwrap_or(0));
 
     let rows: Vec<Element<Message>> = SEMANTIC_LAYERS
         .iter()
@@ -52,7 +51,9 @@ fn active_layers_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
 
     container(
         column![
-            text("Active layers").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text("Active layers")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
             column(rows).spacing(3),
         ]
         .spacing(8),
@@ -104,7 +105,8 @@ fn level_color(val: u8) -> Color {
 fn recent_frames_panel<'a>(frames: &'a VecDeque<FrameEvent>) -> Element<'a, Message> {
     if frames.is_empty() {
         return container(
-            text("No frame events yet.").size(13)
+            text("No frame events yet.")
+                .size(13)
                 .color(Color::from_rgb(0.45, 0.45, 0.45)),
         )
         .height(Length::Fill)
@@ -117,7 +119,9 @@ fn recent_frames_panel<'a>(frames: &'a VecDeque<FrameEvent>) -> Element<'a, Mess
 
     container(
         column![
-            text("Recent frames").size(13).color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text("Recent frames")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
             scrollable(column(cards).spacing(2)).height(Length::Fill),
         ]
         .spacing(8),
@@ -129,63 +133,90 @@ fn recent_frames_panel<'a>(frames: &'a VecDeque<FrameEvent>) -> Element<'a, Mess
 
 fn frame_card<'a>(ev: &'a FrameEvent) -> Element<'a, Message> {
     match ev {
-        FrameEvent::Crystallized { anchor_id, layers_present, participant_count, timestamp_secs } => {
+        FrameEvent::Crystallized {
+            anchor_id,
+            layers_present,
+            participant_count,
+            timestamp_secs,
+        } => {
             let layers_str = format_layers(*layers_present);
             column![
                 row![
                     text("●").size(13).color(Color::from_rgb(0.3, 0.75, 0.4)),
                     text(format!(
                         " Frame #{anchor_id}  syntactic  {participant_count} participants"
-                    )).size(13),
+                    ))
+                    .size(13),
                 ],
-                text(format!("  layers: {}  {}", layers_str, format_ago(*timestamp_secs)))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
+                text(format!(
+                    "  layers: {}  {}",
+                    layers_str,
+                    format_ago(*timestamp_secs)
+                ))
+                .size(11)
+                .color(Color::from_rgb(0.55, 0.55, 0.55)),
             ]
             .spacing(1)
             .padding([3u16, 8u16])
             .into()
         }
-        FrameEvent::Reactivated { anchor_id, new_temperature, timestamp_secs } => {
-            column![
-                row![
-                    text("↻").size(13).color(Color::from_rgb(0.6, 0.5, 0.85)),
-                    text(format!(" Frame #{anchor_id}  reactivated  temp→{new_temperature}")).size(13),
-                ],
-                text(format!("  {}", format_ago(*timestamp_secs)))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
-            ]
-            .spacing(1)
-            .padding([3u16, 8u16])
-            .into()
-        }
-        FrameEvent::Vetoed { reason, timestamp_secs } => {
-            column![
-                row![
-                    text("⊗").size(13).color(Color::from_rgb(0.85, 0.3, 0.3)),
-                    text(" Frame candidate vetoed by GUARDIAN").size(13),
-                ],
-                text(format!("  reason: \"{}\"  {}", reason, format_ago(*timestamp_secs)))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
-            ]
-            .spacing(1)
-            .padding([3u16, 8u16])
-            .into()
-        }
-        FrameEvent::Promoted { source_anchor_id, sutra_anchor_id, timestamp_secs } => {
-            column![
-                row![
-                    text("↑").size(13).color(Color::from_rgb(0.9, 0.7, 0.2)),
-                    text(format!(
-                        " Frame #{source_anchor_id}  promoted to SUTRA  #{sutra_anchor_id}"
-                    )).size(13),
-                ],
-                text(format!("  {}", format_ago(*timestamp_secs)))
-                    .size(11).color(Color::from_rgb(0.55, 0.55, 0.55)),
-            ]
-            .spacing(1)
-            .padding([3u16, 8u16])
-            .into()
-        }
+        FrameEvent::Reactivated {
+            anchor_id,
+            new_temperature,
+            timestamp_secs,
+        } => column![
+            row![
+                text("↻").size(13).color(Color::from_rgb(0.6, 0.5, 0.85)),
+                text(format!(
+                    " Frame #{anchor_id}  reactivated  temp→{new_temperature}"
+                ))
+                .size(13),
+            ],
+            text(format!("  {}", format_ago(*timestamp_secs)))
+                .size(11)
+                .color(Color::from_rgb(0.55, 0.55, 0.55)),
+        ]
+        .spacing(1)
+        .padding([3u16, 8u16])
+        .into(),
+        FrameEvent::Vetoed {
+            reason,
+            timestamp_secs,
+        } => column![
+            row![
+                text("⊗").size(13).color(Color::from_rgb(0.85, 0.3, 0.3)),
+                text(" Frame candidate vetoed by GUARDIAN").size(13),
+            ],
+            text(format!(
+                "  reason: \"{}\"  {}",
+                reason,
+                format_ago(*timestamp_secs)
+            ))
+            .size(11)
+            .color(Color::from_rgb(0.55, 0.55, 0.55)),
+        ]
+        .spacing(1)
+        .padding([3u16, 8u16])
+        .into(),
+        FrameEvent::Promoted {
+            source_anchor_id,
+            sutra_anchor_id,
+            timestamp_secs,
+        } => column![
+            row![
+                text("↑").size(13).color(Color::from_rgb(0.9, 0.7, 0.2)),
+                text(format!(
+                    " Frame #{source_anchor_id}  promoted to SUTRA  #{sutra_anchor_id}"
+                ))
+                .size(13),
+            ],
+            text(format!("  {}", format_ago(*timestamp_secs)))
+                .size(11)
+                .color(Color::from_rgb(0.55, 0.55, 0.55)),
+        ]
+        .spacing(1)
+        .padding([3u16, 8u16])
+        .into(),
     }
 }
 
@@ -196,7 +227,11 @@ fn format_layers(mask: u8) -> String {
             parts.push(format!("S{}", i + 1));
         }
     }
-    if parts.is_empty() { "—".to_string() } else { parts.join(", ") }
+    if parts.is_empty() {
+        "—".to_string()
+    } else {
+        parts.join(", ")
+    }
 }
 
 fn format_ago(timestamp_secs: u64) -> String {

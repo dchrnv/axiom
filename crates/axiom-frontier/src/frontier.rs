@@ -11,8 +11,8 @@
 //! - `CausalFrontier` — главная структура с begin_cycle/end_cycle API
 //! - `StormMetrics` — метрики для наблюдения за состоянием frontier
 
-use std::collections::VecDeque;
 use bitvec::prelude::*;
+use std::collections::VecDeque;
 
 // ============================================================================
 // FrontierConfig
@@ -304,14 +304,19 @@ impl CausalFrontier {
 
         let batching = self.config.enable_batch_events
             && self.config.batch_size > 1
-            && matches!(self.state, FrontierState::Storm | FrontierState::Stabilizing);
+            && matches!(
+                self.state,
+                FrontierState::Storm | FrontierState::Stabilizing
+            );
 
         if batching {
             // Batch tokens
             if !self.token_queue.is_empty() {
                 let mut count = 0u32;
                 while count < self.config.batch_size {
-                    if self.token_queue.pop().is_none() { break; }
+                    if self.token_queue.pop().is_none() {
+                        break;
+                    }
                     count += 1;
                 }
                 self.events_this_cycle += 1;
@@ -321,7 +326,9 @@ impl CausalFrontier {
             if !self.connection_queue.is_empty() {
                 let mut count = 0u32;
                 while count < self.config.batch_size {
-                    if self.connection_queue.pop().is_none() { break; }
+                    if self.connection_queue.pop().is_none() {
+                        break;
+                    }
                     count += 1;
                 }
                 self.events_this_cycle += 1;

@@ -6,9 +6,9 @@
 // VAD: простой энергетический детектор (RMS по фреймам).
 // Выход: InjectToken в SUTRA(100), temperature = energy * 255.
 
-use std::path::Path;
-use axiom_ucl::{UclCommand, OpCode};
 use axiom_runtime::Perceptor;
+use axiom_ucl::{OpCode, UclCommand};
+use std::path::Path;
 
 /// Домен для аудио-токенов (SUTRA=100)
 pub const AUDIO_DEFAULT_DOMAIN: u32 = 100;
@@ -78,6 +78,7 @@ pub struct AudioPerceptor {
     pending: std::collections::VecDeque<UclCommand>,
 }
 
+#[allow(clippy::new_without_default)]
 impl AudioPerceptor {
     /// Создать перцептор с настройками по умолчанию.
     pub fn new() -> Self {
@@ -114,21 +115,15 @@ impl AudioPerceptor {
 
     /// Читать WAV файл и обработать речевые сегменты.
     pub fn process_wav(&mut self, path: &Path) -> Result<usize, String> {
-        let mut reader = hound::WavReader::open(path)
-            .map_err(|e| format!("hound: {e}"))?;
+        let mut reader = hound::WavReader::open(path).map_err(|e| format!("hound: {e}"))?;
 
         let samples: Vec<i16> = match reader.spec().sample_format {
-            hound::SampleFormat::Int => {
-                reader.samples::<i16>()
-                    .filter_map(|s| s.ok())
-                    .collect()
-            }
-            hound::SampleFormat::Float => {
-                reader.samples::<f32>()
-                    .filter_map(|s| s.ok())
-                    .map(|f| (f * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16)
-                    .collect()
-            }
+            hound::SampleFormat::Int => reader.samples::<i16>().filter_map(|s| s.ok()).collect(),
+            hound::SampleFormat::Float => reader
+                .samples::<f32>()
+                .filter_map(|s| s.ok())
+                .map(|f| (f * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16)
+                .collect(),
         };
 
         Ok(self.feed_samples(&samples))

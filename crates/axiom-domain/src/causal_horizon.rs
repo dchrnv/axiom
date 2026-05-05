@@ -24,7 +24,10 @@ pub struct CausalHorizon {
 impl CausalHorizon {
     /// Создать новый CausalHorizon (horizon = 0).
     pub fn new() -> Self {
-        Self { horizon: 0, archived_count: 0 }
+        Self {
+            horizon: 0,
+            archived_count: 0,
+        }
     }
 
     /// Вычислить горизонт как min(token.last_event_id) по всем доменам.
@@ -36,7 +39,9 @@ impl CausalHorizon {
         for state in states {
             for token in &state.tokens {
                 let ev = token.last_event_id;
-                if ev == 0 { continue; } // токены с event_id=0 игнорируем
+                if ev == 0 {
+                    continue;
+                } // токены с event_id=0 игнорируем
                 min_event = Some(match min_event {
                     None => ev,
                     Some(m) => m.min(ev),

@@ -1,10 +1,10 @@
 // Tests for AxiomEngine::process_and_observe() — Фаза 1 CLI Channel V1.1
 
-use axiom_runtime::{AxiomEngine, ProcessingResult, ProcessingPath};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_runtime::{AxiomEngine, ProcessingPath};
+use axiom_ucl::{OpCode, UclCommand};
 
 const SUTRA: u32 = 100;
-const MAYA:  u16 = 110;
+const _MAYA: u16 = 110;
 
 /// Собрать InjectToken UclCommand для SUTRA с заданными mass и temperature.
 fn inject_cmd(mass: f32, temperature: f32) -> UclCommand {
@@ -61,8 +61,11 @@ fn test_process_and_observe_dominant_domain_valid() {
     let cmd = inject_cmd(70.0, 180.0);
     let result = engine.process_and_observe(&cmd);
     // dominant_domain_id должен быть в диапазоне 100..=110
-    assert!(result.dominant_domain_id >= 100 && result.dominant_domain_id <= 110,
-        "dominant_domain_id {} out of range", result.dominant_domain_id);
+    assert!(
+        result.dominant_domain_id >= 100 && result.dominant_domain_id <= 110,
+        "dominant_domain_id {} out of range",
+        result.dominant_domain_id
+    );
 }
 
 #[test]
@@ -106,6 +109,9 @@ fn test_process_and_observe_overhead_reasonable() {
 
     // Не жёсткий порог — просто не должно быть катастрофической деградации
     // При debug-билде накладные расходы выше, поэтому 5ms — мягкий потолок
-    assert!(per_call.as_millis() < 5,
-        "process_and_observe overhead too high: {:?}", per_call);
+    assert!(
+        per_call.as_millis() < 5,
+        "process_and_observe overhead too high: {:?}",
+        per_call
+    );
 }

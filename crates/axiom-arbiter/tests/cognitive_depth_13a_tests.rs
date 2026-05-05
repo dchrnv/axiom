@@ -63,19 +63,28 @@ fn make_full_arbiter(max_passes: u8, min_coherence: u8) -> Arbiter {
 #[test]
 fn test_maya_factory_defaults_max_passes() {
     let cfg = DomainConfig::factory_maya(10, 1);
-    assert_eq!(cfg.max_passes, 3, "factory_maya должен выставлять max_passes=3");
+    assert_eq!(
+        cfg.max_passes, 3,
+        "factory_maya должен выставлять max_passes=3"
+    );
 }
 
 #[test]
 fn test_maya_factory_defaults_min_coherence() {
     let cfg = DomainConfig::factory_maya(10, 1);
-    assert_eq!(cfg.min_coherence, 153, "factory_maya должен выставлять min_coherence=153 (≈0.6)");
+    assert_eq!(
+        cfg.min_coherence, 153,
+        "factory_maya должен выставлять min_coherence=153 (≈0.6)"
+    );
 }
 
 #[test]
 fn test_non_maya_factory_no_multipass() {
     let cfg = DomainConfig::factory_execution(1, 0);
-    assert_eq!(cfg.max_passes, 0, "Не-MAYA домены должны иметь max_passes=0");
+    assert_eq!(
+        cfg.max_passes, 0,
+        "Не-MAYA домены должны иметь max_passes=0"
+    );
     assert_eq!(cfg.min_coherence, 0);
 }
 
@@ -110,7 +119,7 @@ fn test_multipass_disabled_behaves_like_normal() {
     let mut arbiter = make_full_arbiter(0, 0);
     let token = make_token(1, 128, 128, 0);
     let result = arbiter.route_with_multipass(token);
-    assert_eq!(result.event_id > 0, true);
+    assert!(result.event_id > 0);
     assert!(result.confidence >= 0.0 && result.confidence <= 1.0);
 }
 
@@ -164,7 +173,7 @@ fn test_tension_trace_add_and_count() {
 fn test_tension_trace_drain_hot() {
     let mut exp = ExperienceModule::new();
     exp.add_tension_trace(make_token(1, 200, 100, 0), 180, 1); // горячий
-    exp.add_tension_trace(make_token(2, 50,  100, 0), 50,  2);  // холодный
+    exp.add_tension_trace(make_token(2, 50, 100, 0), 50, 2); // холодный
 
     let hot = exp.drain_hot_impulses(128); // порог 128
     assert_eq!(hot.len(), 1, "Только горячий трейс должен быть слит");
@@ -177,10 +186,18 @@ fn test_tension_trace_cool_decay() {
     exp.add_tension_trace(make_token(1, 100, 100, 0), 100, 1);
 
     exp.cool_tension_traces(30);
-    assert_eq!(exp.tension_count(), 1, "Трейс ещё жив после частичного остывания");
+    assert_eq!(
+        exp.tension_count(),
+        1,
+        "Трейс ещё жив после частичного остывания"
+    );
 
     exp.cool_tension_traces(100); // ostyvat до 0 → удаляется
-    assert_eq!(exp.tension_count(), 0, "Трейс должен быть удалён при temperature=0");
+    assert_eq!(
+        exp.tension_count(),
+        0,
+        "Трейс должен быть удалён при temperature=0"
+    );
 }
 
 #[test]

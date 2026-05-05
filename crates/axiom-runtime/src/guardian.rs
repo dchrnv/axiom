@@ -3,12 +3,12 @@
 //
 // GUARDIAN — над-доменный контроль соблюдения CODEX + GENOME правил
 
-use std::sync::Arc;
-use std::collections::HashMap;
-use axiom_core::{Token, STATE_LOCKED};
 use axiom_config::DomainConfig;
+use axiom_core::{Token, STATE_LOCKED};
 use axiom_domain::DomainState;
-use axiom_genome::{Genome, GenomeIndex, ModuleId, ResourceId, Permission};
+use axiom_genome::{Genome, GenomeIndex, ModuleId, Permission, ResourceId};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 // ============================================================================
 // Публичные типы
@@ -85,7 +85,7 @@ impl std::fmt::Display for GuardianError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GuardianError::AccessDenied => write!(f, "Guardian: access denied by GENOME"),
-            GuardianError::CodexFull    => write!(f, "Guardian: CODEX domain is full"),
+            GuardianError::CodexFull => write!(f, "Guardian: CODEX domain is full"),
         }
     }
 }
@@ -105,19 +105,19 @@ pub struct RoleStats {
 #[derive(Debug, Default, Clone)]
 pub struct GuardianStats {
     /// Число разрешённых рефлексов
-    pub reflex_allowed:    u64,
+    pub reflex_allowed: u64,
     /// Число заблокированных рефлексов
-    pub reflex_vetoed:     u64,
+    pub reflex_vetoed: u64,
     /// Число отказов доступа по GENOME
-    pub access_denied:     u64,
+    pub access_denied: u64,
     /// Число нарушений протокола
-    pub protocol_denied:   u64,
+    pub protocol_denied: u64,
     /// Число просканированных доменов
-    pub domains_scanned:   u64,
+    pub domains_scanned: u64,
     /// Число адаптаций порогов (Этап 6)
     pub thresholds_adapted: u64,
     /// Число DREAM-предложений (Этап 6)
-    pub dream_proposals:   u64,
+    pub dream_proposals: u64,
 }
 
 // ============================================================================
@@ -157,14 +157,14 @@ impl Default for GuardianConfig {
     fn default() -> Self {
         Self {
             high_success_threshold: 0.8,
-            low_success_threshold:  0.3,
+            low_success_threshold: 0.3,
             physics_high_threshold: 0.7,
-            threshold_step:         5,
-            temp_step:              5.0,
-            temp_min:               0.1,
-            temp_max:               500.0,
-            resonance_step:         10,
-            confidence_ceiling:     0.99,
+            threshold_step: 5,
+            temp_step: 5.0,
+            temp_min: 0.1,
+            temp_max: 500.0,
+            resonance_step: 10,
+            confidence_ceiling: 0.99,
         }
     }
 }
@@ -179,9 +179,9 @@ impl Default for GuardianConfig {
 /// - GENOME (абсолютные, неизменяемые конституционные ограничения)
 /// - CODEX  (пластичные правила в `DomainState`)
 pub struct Guardian {
-    genome:          Arc<Genome>,
-    genome_index:    GenomeIndex,
-    stats:           GuardianStats,
+    genome: Arc<Genome>,
+    genome_index: GenomeIndex,
+    stats: GuardianStats,
     violation_count: u32,
 }
 
@@ -209,8 +209,8 @@ impl Guardian {
     /// Проверить права доступа модуля к ресурсу по GENOME.
     pub fn enforce_access(
         &mut self,
-        module:    ModuleId,
-        resource:  ResourceId,
+        module: ModuleId,
+        resource: ResourceId,
         operation: Permission,
     ) -> bool {
         let allowed = self.genome_index.check_access(module, resource, operation);
@@ -247,13 +247,19 @@ impl Guardian {
         target_domain_id: u16,
         dream_state: crate::over_domain::DreamPhaseState,
     ) -> Option<VetoReason> {
-        use axiom_ucl::flags::FRAME_ANCHOR;
         use crate::over_domain::DreamPhaseState;
+        use axiom_ucl::flags::FRAME_ANCHOR;
 
         // Проверяем только FRAME_ANCHOR-записи в SUTRA (domain_id % 100 == 0)
-        if cmd_flags & FRAME_ANCHOR == 0 { return None; }
-        if target_domain_id % 100 != 0    { return None; }
-        if dream_state == DreamPhaseState::Dreaming { return None; }
+        if cmd_flags & FRAME_ANCHOR == 0 {
+            return None;
+        }
+        if !target_domain_id.is_multiple_of(100) {
+            return None;
+        }
+        if dream_state == DreamPhaseState::Dreaming {
+            return None;
+        }
 
         Some(VetoReason::SutraFrameWriteOutsideDream)
     }
@@ -344,7 +350,9 @@ impl Guardian {
 
         match action {
             CodexAction::AddRule(token) => {
-                codex_domain.add_token(token).map_err(|_| GuardianError::CodexFull)?;
+                codex_domain
+                    .add_token(token)
+                    .map_err(|_| GuardianError::CodexFull)?;
             }
             CodexAction::ResetViolations => {
                 self.violation_count = 0;
@@ -374,7 +382,9 @@ impl Guardian {
 
         for (domain_id, config) in configs.iter_mut() {
             let role = config.structural_role;
-            let Some(role_stat) = stats.iter().find(|s| s.role == role) else { continue };
+            let Some(role_stat) = stats.iter().find(|s| s.role == role) else {
+                continue;
+            };
 
             if role_stat.total_calls < 10 {
                 continue;
@@ -383,12 +393,14 @@ impl Guardian {
             let changed = if role_stat.success_rate > cfg.high_success_threshold
                 && config.reflex_threshold > cfg.threshold_step
             {
-                config.reflex_threshold = config.reflex_threshold.saturating_sub(cfg.threshold_step);
+                config.reflex_threshold =
+                    config.reflex_threshold.saturating_sub(cfg.threshold_step);
                 true
             } else if role_stat.success_rate < cfg.low_success_threshold
                 && config.reflex_threshold < 255 - cfg.threshold_step
             {
-                config.reflex_threshold = config.reflex_threshold.saturating_add(cfg.threshold_step);
+                config.reflex_threshold =
+                    config.reflex_threshold.saturating_add(cfg.threshold_step);
                 true
             } else {
                 false
@@ -420,7 +432,9 @@ impl Guardian {
 
         for (domain_id, config) in configs.iter_mut() {
             let role = config.structural_role;
-            let Some(role_stat) = stats.iter().find(|s| s.role == role) else { continue };
+            let Some(role_stat) = stats.iter().find(|s| s.role == role) else {
+                continue;
+            };
 
             if role_stat.total_calls < 10 {
                 continue;
@@ -490,7 +504,11 @@ impl Guardian {
     /// Возвращает `false` если:
     /// - `confidence < threshold` — слишком низкая уверенность
     /// - `confidence > cfg.confidence_ceiling` — аномально высокая (adversarial defense)
-    pub fn validate_ml_confidence_cfg(confidence: f32, threshold: f32, cfg: &GuardianConfig) -> bool {
+    pub fn validate_ml_confidence_cfg(
+        confidence: f32,
+        threshold: f32,
+        cfg: &GuardianConfig,
+    ) -> bool {
         confidence >= threshold && confidence <= cfg.confidence_ceiling
     }
 
@@ -504,7 +522,10 @@ impl Guardian {
     /// Все элементы должны пройти `validate_ml_confidence`.
     /// Пустой вектор — невалиден (возвращает `false`).
     pub fn validate_ml_output(output: &[f32], threshold: f32) -> bool {
-        !output.is_empty() && output.iter().all(|&c| Self::validate_ml_confidence(c, threshold))
+        !output.is_empty()
+            && output
+                .iter()
+                .all(|&c| Self::validate_ml_confidence(c, threshold))
     }
 }
 

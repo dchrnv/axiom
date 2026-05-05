@@ -5,10 +5,10 @@
 //
 // Маршрутизация: SUTRA(0) → EXPERIENCE(9) → [reflex OR ASHTI(1-8)] → MAYA(10)
 
-use axiom_core::Token;
+use crate::engine::AxiomEngine;
 use axiom_arbiter::RoutingResult;
 use axiom_config::GUARDIAN_CHECK_REQUIRED;
-use crate::engine::AxiomEngine;
+use axiom_core::Token;
 
 /// Выполнить полный цикл маршрутизации токена через Arbiter.
 ///
@@ -31,7 +31,8 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     // Шаг 3 (fast path): Guardian проверяет рефлекс если GUARDIAN_CHECK_REQUIRED бит установлен
     if let Some(ref reflex_token) = result.reflex {
         // Проверяем arbiter_flags домена-источника (SUTRA = 100)
-        let check_required = engine.ashti
+        let check_required = engine
+            .ashti
             .config_of(token.sutra_id as u16)
             .map(|cfg| cfg.arbiter_flags & GUARDIAN_CHECK_REQUIRED != 0)
             .unwrap_or(false);

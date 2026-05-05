@@ -1,8 +1,8 @@
 // Integration tests for axiom-runtime Guardian
-use axiom_runtime::{Guardian, ReflexDecision, VetoReason, InhibitReason, CodexAction};
-use axiom_domain::{DomainState, DomainConfig};
 use axiom_core::{Token, STATE_LOCKED};
-use axiom_genome::{ModuleId, ResourceId, Permission};
+use axiom_domain::{DomainConfig, DomainState};
+use axiom_genome::{ModuleId, Permission, ResourceId};
+use axiom_runtime::{CodexAction, Guardian, InhibitReason, ReflexDecision, VetoReason};
 
 fn make_token(sutra_id: u32, mass: u8, valence: i8) -> Token {
     let mut t = Token::new(sutra_id, 1, [0, 0, 0], 1);
@@ -68,7 +68,7 @@ fn test_zero_valence_zero_mass_allowed() {
 fn test_violations_accumulate() {
     let mut guardian = Guardian::with_default_genome();
     let bad1 = make_token(0, 100, 5); // sutra_id=0
-    let bad2 = make_token(1, 0, 3);   // valence without mass
+    let bad2 = make_token(1, 0, 3); // valence without mass
     guardian.validate_reflex(&bad1);
     guardian.validate_reflex(&bad2);
     assert_eq!(guardian.violation_count(), 2);
@@ -193,7 +193,9 @@ fn test_update_codex_reset_violations() {
     assert_eq!(guardian.violation_count(), 1);
 
     // ResetViolations через update_codex
-    guardian.update_codex(&mut codex, CodexAction::ResetViolations).unwrap();
+    guardian
+        .update_codex(&mut codex, CodexAction::ResetViolations)
+        .unwrap();
     assert_eq!(guardian.violation_count(), 0);
 }
 
@@ -202,7 +204,9 @@ fn test_update_codex_add_rule() {
     let mut guardian = Guardian::with_default_genome();
     let mut codex = DomainState::new(&DomainConfig::factory_logic(99, 0));
     let rule_token = make_token(42, 1, 0);
-    guardian.update_codex(&mut codex, CodexAction::AddRule(rule_token)).unwrap();
+    guardian
+        .update_codex(&mut codex, CodexAction::AddRule(rule_token))
+        .unwrap();
     assert_eq!(codex.token_count(), 1);
 }
 

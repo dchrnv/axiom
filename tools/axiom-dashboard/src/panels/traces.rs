@@ -1,5 +1,5 @@
-use egui::Ui;
 use crate::state::AppData;
+use egui::Ui;
 
 pub fn show(ui: &mut Ui, data: &AppData) {
     ui.heading("Domains");

@@ -6,10 +6,10 @@
 // Если медиана выйдет за 150 ns — ищи регрессию в FrameWeaver интеграции
 // или в основном pipeline AshtiCore (hot path).
 
+use axiom_runtime::AxiomEngine;
+use axiom_ucl::{OpCode, UclCommand};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::time::Duration;
-use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
 
 const LOGIC_ID: u32 = 106;
 
@@ -18,7 +18,7 @@ fn engine_with_50_tokens() -> AxiomEngine {
     for j in 1u32..=50 {
         let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 100, 0);
         cmd.payload[0] = (LOGIC_ID & 0xff) as u8;
-        cmd.payload[1] = (LOGIC_ID >> 8)   as u8;
+        cmd.payload[1] = (LOGIC_ID >> 8) as u8;
         let mass = 50.0f32 + j as f32;
         cmd.payload[4..8].copy_from_slice(&mass.to_le_bytes());
         engine.process_command(&cmd);

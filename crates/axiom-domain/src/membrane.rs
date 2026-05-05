@@ -3,8 +3,8 @@
 //
 // Domain V1.3: Membrane — фильтры входа/выхода токенов
 
-use axiom_core::{Token, STATE_LOCKED};
 use axiom_config::{DomainConfig, MEMBRANE_CLOSED};
+use axiom_core::{Token, STATE_LOCKED};
 
 /// Domain V1.3: может ли токен войти в домен?
 ///

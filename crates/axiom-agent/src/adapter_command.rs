@@ -4,17 +4,17 @@
 // Команды от адаптеров в tick_loop и ответы tick_loop адаптерам.
 // Единый канал — mpsc::Sender<AdapterCommand>.
 
-use axiom_runtime::GatewayPriority;
 use crate::protocol::ServerMessage;
+use axiom_runtime::GatewayPriority;
 
 /// Команда от любого адаптера в tick loop.
 pub struct AdapterCommand {
     /// UUID-подобный ID для корреляции ответа (пустая строка допустима для CLI)
-    pub id:       String,
+    pub id: String,
     /// Источник команды
-    pub source:   AdapterSource,
+    pub source: AdapterSource,
     /// Содержимое команды
-    pub payload:  AdapterPayload,
+    pub payload: AdapterPayload,
     /// Приоритет команды — определяет поведение во время DREAMING.
     /// Normal буферизуется, Critical вызывает пробуждение.
     pub priority: GatewayPriority,
@@ -36,15 +36,15 @@ pub enum AdapterSource {
 /// Тип команды от адаптера.
 pub enum AdapterPayload {
     /// Текстовый ввод → InjectToken → Engine
-    Inject         { text: String },
+    Inject { text: String },
     /// Мета-команда только для чтения (:status, :domains, ...)
-    MetaRead       { cmd: String },
+    MetaRead { cmd: String },
     /// Мутирующая мета-команда (:save, :load, :quit, ...)
-    MetaMutate     { cmd: String },
+    MetaMutate { cmd: String },
     /// Подписаться на каналы broadcast (ticks / state / ...)
-    Subscribe      { channels: Vec<String> },
+    Subscribe { channels: Vec<String> },
     /// Отписаться от каналов broadcast
-    Unsubscribe    { channels: Vec<String> },
+    Unsubscribe { channels: Vec<String> },
     /// Запросить детальный снапшот домена
     DomainSnapshot { domain_id: u16 },
 }
@@ -53,15 +53,18 @@ impl AdapterCommand {
     /// Команда graceful shutdown — для SIGTERM из любого источника.
     pub fn shutdown() -> Self {
         Self {
-            id:       "shutdown".to_string(),
-            source:   AdapterSource::Cli,
-            payload:  AdapterPayload::MetaMutate { cmd: ":quit".to_string() },
+            id: "shutdown".to_string(),
+            source: AdapterSource::Cli,
+            payload: AdapterPayload::MetaMutate {
+                cmd: ":quit".to_string(),
+            },
             priority: GatewayPriority::Normal,
         }
     }
 }
 
 /// Результат обработки одной AdapterCommand в tick loop.
+#[allow(clippy::large_enum_variant)]
 pub enum CommandResponse {
     /// Готово к отправке через broadcast_tx
     Message(ServerMessage),

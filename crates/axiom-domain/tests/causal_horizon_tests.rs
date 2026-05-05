@@ -1,6 +1,6 @@
 // Этап 7 Шаг 1 — CausalHorizon тесты
-use axiom_domain::{CausalHorizon, DomainState, DomainConfig};
 use axiom_core::Token;
+use axiom_domain::{CausalHorizon, DomainConfig, DomainState};
 
 fn make_state_with_tokens(event_ids: &[u64]) -> DomainState {
     let cfg = DomainConfig::factory_execution(1, 0);
@@ -61,7 +61,10 @@ fn test_horizon_monotonically_increases() {
     // Добавляем домен с меньшим event_id — горизонт НЕ откатывается (монотонный)
     let s2 = make_state_with_tokens(&[10]);
     ch.advance(&[&s1, &s2]);
-    assert_eq!(ch.horizon, 100, "монотонный — не убывает при появлении меньшего min");
+    assert_eq!(
+        ch.horizon, 100,
+        "монотонный — не убывает при появлении меньшего min"
+    );
 
     // Все токены обновились — горизонт растёт
     let s3 = make_state_with_tokens(&[150]);
@@ -92,7 +95,10 @@ fn test_is_behind_horizon_zero() {
 
 #[test]
 fn test_is_behind_true() {
-    let ch = CausalHorizon { horizon: 100, archived_count: 0 };
+    let ch = CausalHorizon {
+        horizon: 100,
+        archived_count: 0,
+    };
     assert!(ch.is_behind(50));
     assert!(ch.is_behind(99));
     assert!(!ch.is_behind(100)); // равно — не за горизонтом
@@ -173,8 +179,8 @@ fn test_ashti_run_horizon_gc_noop_without_tokens() {
 
 #[test]
 fn test_ashti_run_horizon_gc_removes_stale_experience() {
-    use axiom_domain::AshtiCore;
     use axiom_core::Token;
+    use axiom_domain::AshtiCore;
 
     let mut core = AshtiCore::new(1);
 
@@ -187,7 +193,7 @@ fn test_ashti_run_horizon_gc_removes_stale_experience() {
 
     // Впрыскиваем токен в EXECUTION домен с большим event_id
     let domain_id = core.domain_id_at(1).unwrap(); // EXECUTION
-    let mut tok = Token::new(1, domain_id as u16, [0, 0, 0], 1000);
+    let mut tok = Token::new(1, domain_id, [0, 0, 0], 1000);
     tok.last_event_id = 1000;
     let _ = core.inject_token(domain_id, tok);
 

@@ -22,16 +22,24 @@ pub fn config_view<'a>(
         &config.validation_errors,
     );
 
-    let has_pending = config.pending_changes.contains_key(&config.active_section_id);
+    let has_pending = config
+        .pending_changes
+        .contains_key(&config.active_section_id);
 
     let bottom = row![
         horizontal_space(),
         button(text("Discard").size(13))
-            .on_press_maybe(if has_pending { Some(Message::ConfigDiscard) } else { None })
+            .on_press_maybe(if has_pending {
+                Some(Message::ConfigDiscard)
+            } else {
+                None
+            })
             .style(button::secondary),
         button(text("Apply").size(13))
             .on_press_maybe(if has_pending {
-                Some(Message::ConfigApply { section_id: config.active_section_id.clone() })
+                Some(Message::ConfigApply {
+                    section_id: config.active_section_id.clone(),
+                })
             } else {
                 None
             })
@@ -53,10 +61,7 @@ pub fn config_view<'a>(
 
 // ── Section navigation ─────────────────────────────────────────────────────
 
-fn section_panel<'a>(
-    sections: &'a [ConfigSection],
-    active_id: &'a str,
-) -> Element<'a, Message> {
+fn section_panel<'a>(sections: &'a [ConfigSection], active_id: &'a str) -> Element<'a, Message> {
     let items: Vec<Element<Message>> = sections
         .iter()
         .flat_map(|s| section_entries(s, active_id, 0))
@@ -73,14 +78,16 @@ fn section_entries<'a>(
     let indent = (depth as u16) * 12;
     let is_active = section.id == active_id;
 
-    let btn = button(
-        row![
-            iced::widget::horizontal_space().width(indent),
-            text(section.label.as_str()).size(13),
-        ],
-    )
+    let btn = button(row![
+        iced::widget::horizontal_space().width(indent),
+        text(section.label.as_str()).size(13),
+    ])
     .on_press(Message::ConfigSectionSelected(section.id.clone()))
-    .style(if is_active { button::primary } else { button::text })
+    .style(if is_active {
+        button::primary
+    } else {
+        button::text
+    })
     .width(Length::Fill);
 
     let mut entries: Vec<Element<Message>> = vec![btn.into()];
@@ -104,9 +111,9 @@ fn field_panel<'a>(
 
     let content: Element<Message> = match section {
         None => text("Select a section").size(14).into(),
-        Some(sec) if sec.fields.is_empty() => {
-            text("No configurable fields in this section.").size(14).into()
-        }
+        Some(sec) if sec.fields.is_empty() => text("No configurable fields in this section.")
+            .size(14)
+            .into(),
         Some(sec) => {
             let pending_fields = pending.get(active_id);
             let rows: Vec<Element<Message>> = sec
@@ -147,9 +154,8 @@ fn field_row<'a>(
         field_control(field, section_id, display_value)
     };
 
-    let error_row: Option<Element<Message>> = error.map(|e| {
-        text(e.as_str()).size(11).color([0.85, 0.3, 0.3]).into()
-    });
+    let error_row: Option<Element<Message>> =
+        error.map(|e| text(e.as_str()).size(11).color([0.85, 0.3, 0.3]).into());
 
     let mut col = column![label, control].spacing(4);
     if let Some(desc) = description {
@@ -160,7 +166,12 @@ fn field_row<'a>(
     }
 
     container(col)
-        .padding(Padding { top: 0.0, right: 0.0, bottom: 8.0, left: 0.0 })
+        .padding(Padding {
+            top: 0.0,
+            right: 0.0,
+            bottom: 8.0,
+            left: 0.0,
+        })
         .into()
 }
 
@@ -201,7 +212,8 @@ fn field_control<'a>(
             let val = value_display(current);
             text_input("", val.as_str())
                 .on_input(move |s| {
-                    let parsed = s.parse::<i64>()
+                    let parsed = s
+                        .parse::<i64>()
                         .map(ConfigValue::Integer)
                         .unwrap_or(ConfigValue::String(s));
                     Message::ConfigFieldChanged {
@@ -217,7 +229,8 @@ fn field_control<'a>(
             let val = value_display(current);
             text_input("", val.as_str())
                 .on_input(move |s| {
-                    let parsed = s.parse::<f64>()
+                    let parsed = s
+                        .parse::<f64>()
                         .map(ConfigValue::Float)
                         .unwrap_or(ConfigValue::String(s));
                     Message::ConfigFieldChanged {
@@ -240,7 +253,11 @@ fn field_control<'a>(
                             field_id: fid.clone(),
                             value: ConfigValue::EnumVariant(v.clone()),
                         })
-                        .style(if is_selected { button::primary } else { button::secondary })
+                        .style(if is_selected {
+                            button::primary
+                        } else {
+                            button::secondary
+                        })
                         .into()
                 })
                 .collect();
@@ -250,7 +267,8 @@ fn field_control<'a>(
             let val = value_display(current);
             text_input("", val.as_str())
                 .on_input(move |s| {
-                    let parsed = s.parse::<u64>()
+                    let parsed = s
+                        .parse::<u64>()
                         .map(ConfigValue::Duration)
                         .unwrap_or(ConfigValue::String(s));
                     Message::ConfigFieldChanged {

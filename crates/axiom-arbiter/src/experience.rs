@@ -3,8 +3,8 @@
 //
 // EXPERIENCE module - ассоциативная память Arbiter V1.0
 
-use axiom_core::{Token, TOKEN_FLAG_GOAL};
 use crate::gridhash::{grid_hash, AssociativeIndex};
+use axiom_core::{Token, TOKEN_FLAG_GOAL};
 use std::cell::Cell;
 
 /// Нижняя граница "зоны любопытства" как доля от порога кристаллизации.
@@ -101,11 +101,14 @@ impl Experience {
     /// Полный линейный поиск с hash-prefilter. Активируется при промахе Phase 1.
     pub fn resonance_search(&self, token: &Token) -> ResonanceResult {
         if self.traces.is_empty() {
-            return ResonanceResult { level: ResonanceLevel::None, trace: None };
+            return ResonanceResult {
+                level: ResonanceLevel::None,
+                trace: None,
+            };
         }
 
         let reflex_t = self.reflex_threshold as f32 / 255.0;
-        let assoc_t  = self.association_threshold as f32 / 255.0;
+        let assoc_t = self.association_threshold as f32 / 255.0;
 
         // ── Phase 1: GridHash O(1) ───────────────────────────────────────────
         let grid_key = grid_hash(token, self.index.shift);
@@ -187,13 +190,17 @@ impl Experience {
     /// объединяются через `reduce` без mutex.
     ///
     /// Phase 1 (GridHash O(1)) всегда последовательная.
-    pub fn resonance_search_parallel(&self, token: &Token, pool: &rayon::ThreadPool) -> ResonanceResult {
+    pub fn resonance_search_parallel(
+        &self,
+        token: &Token,
+        pool: &rayon::ThreadPool,
+    ) -> ResonanceResult {
         if self.traces.len() < PARALLEL_THRESHOLD {
             return self.resonance_search(token);
         }
 
         let reflex_t = self.reflex_threshold as f32 / 255.0;
-        let assoc_t  = self.association_threshold as f32 / 255.0;
+        let assoc_t = self.association_threshold as f32 / 255.0;
 
         // ── Phase 1: GridHash O(1) — однопоточная, без накладных расходов ──
         let grid_key = grid_hash(token, self.index.shift);
@@ -211,7 +218,10 @@ impl Experience {
             }
             if best_score >= reflex_t {
                 if let Some(trace) = best_trace {
-                    return ResonanceResult { level: ResonanceLevel::Reflex, trace: Some(trace) };
+                    return ResonanceResult {
+                        level: ResonanceLevel::Reflex,
+                        trace: Some(trace),
+                    };
                 }
             }
         }
@@ -240,14 +250,22 @@ impl Experience {
                         }
                         let score = pattern_similarity(token, &trace.pattern) * trace.weight;
                         let matched = acc.2 + 1;
-                        if score > acc.0 { (score, i, matched) } else { (acc.0, acc.1, matched) }
+                        if score > acc.0 {
+                            (score, i, matched)
+                        } else {
+                            (acc.0, acc.1, matched)
+                        }
                     },
                 )
                 .reduce(
                     || (0.0f32, usize::MAX, 0u32),
                     |(s1, i1, c1), (s2, i2, c2)| {
                         let c = c1 + c2;
-                        if s1 >= s2 { (s1, i1, c) } else { (s2, i2, c) }
+                        if s1 >= s2 {
+                            (s1, i1, c)
+                        } else {
+                            (s2, i2, c)
+                        }
                     },
                 )
         });
@@ -268,7 +286,11 @@ impl Experience {
 
         ResonanceResult {
             level,
-            trace: if best_idx == usize::MAX { None } else { Some(self.traces[best_idx].clone()) },
+            trace: if best_idx == usize::MAX {
+                None
+            } else {
+                Some(self.traces[best_idx].clone())
+            },
         }
     }
 
@@ -276,7 +298,9 @@ impl Experience {
     pub fn add_trace(&mut self, pattern: Token, weight: f32, created_at: u64) {
         if self.traces.len() >= self.max_traces {
             // Evict lowest weight trace — удаляем из индекса ДО удаления из Vec
-            if let Some(min_idx) = self.traces.iter()
+            if let Some(min_idx) = self
+                .traces
+                .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.weight.total_cmp(&b.weight))
                 .map(|(i, _)| i)
@@ -310,7 +334,9 @@ impl Experience {
     /// Возвращает true если нашёл и усилил существующий след.
     pub fn strengthen_or_add(&mut self, pattern: Token, weight: f32, created_at: u64) -> bool {
         let ph = pattern_hash(&pattern);
-        if let Some(trace) = self.traces.iter_mut()
+        if let Some(trace) = self
+            .traces
+            .iter_mut()
             .filter(|t| (t.pattern_hash ^ ph).count_ones() <= 8)
             .max_by(|a, b| a.weight.total_cmp(&b.weight))
         {
@@ -366,7 +392,9 @@ impl Experience {
 
     /// Число следов с `last_used < horizon` — сколько будет удалено при pruning.
     pub fn prunable_count(&self, horizon: u64) -> usize {
-        if horizon == 0 { return 0; }
+        if horizon == 0 {
+            return 0;
+        }
         self.traces.iter().filter(|t| t.last_used < horizon).count()
     }
 
@@ -406,8 +434,7 @@ impl Experience {
         self.traces
             .iter()
             .filter(|t| {
-                t.pattern.type_flags & TOKEN_FLAG_GOAL != 0
-                    && t.weight < goal_achieved_weight
+                t.pattern.type_flags & TOKEN_FLAG_GOAL != 0 && t.weight < goal_achieved_weight
             })
             .map(|t| {
                 let impulse_weight = 1.0 - t.weight / goal_achieved_weight;
@@ -438,7 +465,9 @@ impl Experience {
     ///
     /// Находит лучший след по хэшу и усиливает его. Возвращает true если нашёл.
     pub fn strengthen_by_hash(&mut self, pattern_hash: u64, delta: f32) -> bool {
-        if let Some(trace) = self.traces.iter_mut()
+        if let Some(trace) = self
+            .traces
+            .iter_mut()
             .filter(|t| (t.pattern_hash ^ pattern_hash).count_ones() <= 8)
             .max_by(|a, b| a.weight.total_cmp(&b.weight))
         {
@@ -517,7 +546,11 @@ impl Experience {
     ///
     /// `temperature` — начальная горячесть: 255 = максимальное напряжение.
     pub fn add_tension_trace(&mut self, pattern: Token, temperature: u8, created_at: u64) {
-        self.tension_traces.push(TensionTrace { pattern, temperature, created_at });
+        self.tension_traces.push(TensionTrace {
+            pattern,
+            temperature,
+            created_at,
+        });
     }
 
     /// Слить горячие следы напряжения в импульсы.
@@ -529,9 +562,9 @@ impl Experience {
         self.tension_traces.retain(|t| {
             if t.temperature >= threshold {
                 hot.push(t.pattern);
-                false  // удалить из буфера
+                false // удалить из буфера
             } else {
-                true   // оставить
+                true // оставить
             }
         });
         hot
@@ -568,7 +601,9 @@ impl Experience {
     /// принимает след как есть. Вытесняет слабейший след при достижении лимита.
     pub fn import_trace(&mut self, trace: ExperienceTrace) {
         if self.traces.len() >= self.max_traces {
-            if let Some(min_idx) = self.traces.iter()
+            if let Some(min_idx) = self
+                .traces
+                .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.weight.total_cmp(&b.weight))
                 .map(|(i, _)| i)

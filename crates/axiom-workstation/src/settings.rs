@@ -34,7 +34,9 @@ pub fn load_settings() -> UiSettings {
 
 #[allow(dead_code)]
 pub fn save_settings(settings: &UiSettings) {
-    let Ok(toml_str) = toml::to_string(settings) else { return };
+    let Ok(toml_str) = toml::to_string(settings) else {
+        return;
+    };
     let path = config_path();
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);

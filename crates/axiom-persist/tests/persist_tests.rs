@@ -1,8 +1,8 @@
 // Тесты axiom-persist — Фаза 1 Memory Persistence V1.0
 
-use axiom_persist::{save, load, WriteOptions, IMPORT_WEIGHT_FACTOR, FORMAT_VERSION};
+use axiom_persist::{load, save, WriteOptions, FORMAT_VERSION, IMPORT_WEIGHT_FACTOR};
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 use std::path::PathBuf;
 
 fn temp_dir(name: &str) -> PathBuf {
@@ -54,12 +54,12 @@ fn test_save_and_load_tick_count() {
     }
 
     let expected_tick = engine.tick_count;
-    let expected_com  = engine.com_next_id;
+    let expected_com = engine.com_next_id;
 
     save(&engine, &dir, &WriteOptions::default()).expect("save failed");
     let result = load(&dir).expect("load failed");
 
-    assert_eq!(result.engine.tick_count,  expected_tick);
+    assert_eq!(result.engine.tick_count, expected_tick);
     assert_eq!(result.engine.com_next_id, expected_com);
 }
 
@@ -85,8 +85,10 @@ fn test_save_and_load_tokens() {
     let snap_after = result.engine.snapshot();
     let total_after: usize = snap_after.domains.iter().map(|d| d.tokens.len()).sum();
 
-    assert_eq!(total_before, total_after,
-        "token count should match after restore");
+    assert_eq!(
+        total_before, total_after,
+        "token count should match after restore"
+    );
 }
 
 // ─── Тест 4: Traces при загрузке получают weight × IMPORT_WEIGHT_FACTOR ───────
@@ -105,7 +107,10 @@ fn test_traces_weight_factor_on_load() {
     }
 
     // Сохраняем веса до save
-    let traces_before: Vec<f32> = engine.ashti.experience().traces()
+    let traces_before: Vec<f32> = engine
+        .ashti
+        .experience()
+        .traces()
         .iter()
         .map(|t| t.weight)
         .collect();
@@ -121,8 +126,11 @@ fn test_traces_weight_factor_on_load() {
     let result = load(&dir).expect("load failed");
 
     let traces_after = result.engine.ashti.experience().traces();
-    assert_eq!(traces_before.len(), traces_after.len(),
-        "trace count should match");
+    assert_eq!(
+        traces_before.len(),
+        traces_after.len(),
+        "trace count should match"
+    );
 
     for (before, after) in traces_before.iter().zip(traces_after.iter()) {
         let expected = (*before * IMPORT_WEIGHT_FACTOR).max(0.001);
@@ -144,7 +152,7 @@ fn test_corrupt_manifest_returns_error() {
     match load(&dir) {
         Err(axiom_persist::PersistError::CorruptManifest(_)) => {} // ожидаемо
         Err(e) => panic!("expected CorruptManifest, got: {e}"),
-        Ok(_)  => panic!("expected error on corrupt manifest"),
+        Ok(_) => panic!("expected error on corrupt manifest"),
     }
 }
 
@@ -160,7 +168,7 @@ fn test_version_mismatch_returns_error() {
     match load(&dir) {
         Err(axiom_persist::PersistError::VersionMismatch { .. }) => {} // ожидаемо
         Err(e) => panic!("expected VersionMismatch, got: {e}"),
-        Ok(_)  => panic!("expected error on version mismatch"),
+        Ok(_) => panic!("expected error on version mismatch"),
     }
 }
 
@@ -174,7 +182,7 @@ fn test_missing_dir_returns_not_found() {
     match load(&dir) {
         Err(axiom_persist::PersistError::NotFound(_)) => {} // ожидаемо
         Err(e) => panic!("expected NotFound, got: {e}"),
-        Ok(_)  => panic!("expected error on missing dir"),
+        Ok(_) => panic!("expected error on missing dir"),
     }
 }
 
@@ -225,7 +233,9 @@ fn test_trace_threshold_filtering() {
     let all_traces = engine.ashti.experience().traces().len();
 
     // Сохраняем с высоким порогом
-    let opts = WriteOptions { trace_weight_threshold: 0.99 };
+    let opts = WriteOptions {
+        trace_weight_threshold: 0.99,
+    };
     let manifest = save(&engine, &dir, &opts).expect("save failed");
 
     // Сохранилось не больше чем всего traces

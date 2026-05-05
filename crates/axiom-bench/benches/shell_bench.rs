@@ -4,24 +4,24 @@
 // активных Connection. Пересчитывается при каждом Connection-событии.
 // Горячий путь: incremental_update (только dirty токены) vs full_recompute.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use axiom_core::Connection;
 use axiom_shell::{
-    compute_shell, reconcile_shell_batch,
-    DomainShellCache, SemanticContributionTable,
+    compute_shell, reconcile_shell_batch, DomainShellCache, SemanticContributionTable,
 };
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 
 // Создаёт N связей у токена с id=1 разных типов (категории 1-7)
 fn make_connections(n: usize) -> Vec<Connection> {
-    (0..n).map(|i| {
-        let mut c = Connection::default();
-        c.source_id = 1;
-        c.target_id = (i + 2) as u32;
-        c.link_type = ((i % 7) + 1) as u16;
-        c.strength = 0.3 + (i % 10) as f32 * 0.05;
-        c
-    }).collect()
+    (0..n)
+        .map(|i| Connection {
+            source_id: 1,
+            target_id: (i + 2) as u32,
+            link_type: ((i % 7) + 1) as u16,
+            strength: 0.3 + (i % 10) as f32 * 0.05,
+            ..Connection::default()
+        })
+        .collect()
 }
 
 // ============================================================
@@ -81,10 +81,9 @@ fn bench_shell_incremental_update(c: &mut Criterion) {
                         cache
                     },
                     |mut cache| {
-                        black_box(cache.update_dirty_shells(
-                            black_box(&connections),
-                            black_box(&table),
-                        ))
+                        black_box(
+                            cache.update_dirty_shells(black_box(&connections), black_box(&table)),
+                        )
                     },
                     criterion::BatchSize::SmallInput,
                 )

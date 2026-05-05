@@ -3,8 +3,8 @@
 //! DreamConfig — параметры DreamScheduler, DreamCycle и FatigueTracker.
 //! Спецификация: docs/spec/Dream/DREAM_Phase_V1_0.md, разделы 3–4.
 
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 /// Конфигурация DreamScheduler — пороги принятия решения о засыпании.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
@@ -20,9 +20,9 @@ pub struct SchedulerConfig {
 impl Default for SchedulerConfig {
     fn default() -> Self {
         Self {
-            min_wake_ticks:    1000,
-            idle_threshold:     200,
-            fatigue_threshold:  180,
+            min_wake_ticks: 1000,
+            idle_threshold: 200,
+            fatigue_threshold: 180,
         }
     }
 }
@@ -56,9 +56,9 @@ pub struct FatigueWeightsConfig {
 impl Default for FatigueWeightsConfig {
     fn default() -> Self {
         Self {
-            uncrystallized_candidates:  80,
-            experience_pressure:       100,
-            pending_heavy_proposals:    60,
+            uncrystallized_candidates: 80,
+            experience_pressure: 100,
+            pending_heavy_proposals: 60,
             causal_horizon_growth_rate: 30,
         }
     }
@@ -67,12 +67,15 @@ impl Default for FatigueWeightsConfig {
 impl FatigueWeightsConfig {
     /// Валидация: хотя бы один вес должен быть ненулевым.
     pub fn validate(&self) -> Result<(), String> {
-        let total = self.uncrystallized_candidates  as u32
-            + self.experience_pressure              as u32
-            + self.pending_heavy_proposals          as u32
-            + self.causal_horizon_growth_rate       as u32;
+        let total = self.uncrystallized_candidates as u32
+            + self.experience_pressure as u32
+            + self.pending_heavy_proposals as u32
+            + self.causal_horizon_growth_rate as u32;
         if total == 0 {
-            return Err("fatigue_weights: all weights are zero — FatigueTracker will always return 0".to_string());
+            return Err(
+                "fatigue_weights: all weights are zero — FatigueTracker will always return 0"
+                    .to_string(),
+            );
         }
         Ok(())
     }
@@ -93,8 +96,8 @@ impl Default for CycleConfig {
     fn default() -> Self {
         Self {
             max_dream_duration_ticks: 50_000,
-            max_proposals_per_cycle:      100,
-            batch_size:                     8,
+            max_proposals_per_cycle: 100,
+            batch_size: 8,
         }
     }
 }
@@ -116,7 +119,7 @@ impl CycleConfig {
 ///
 /// Загружается опционально через `presets.dream_file` в axiom.yaml.
 /// При отсутствии файла engine использует дефолты из кода.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct DreamConfig {
     /// Параметры DreamScheduler (пороги засыпания).
     #[serde(default)]
@@ -129,30 +132,20 @@ pub struct DreamConfig {
     pub cycle: CycleConfig,
 }
 
-impl Default for DreamConfig {
-    fn default() -> Self {
-        Self {
-            scheduler:       SchedulerConfig::default(),
-            fatigue_weights: FatigueWeightsConfig::default(),
-            cycle:           CycleConfig::default(),
-        }
-    }
-}
-
 impl DreamConfig {
     /// Пресет для разработки и тестирования: низкие пороги, быстрые циклы.
     pub fn dev() -> Self {
         Self {
             scheduler: SchedulerConfig {
-                min_wake_ticks:   0,
-                idle_threshold:   10,
+                min_wake_ticks: 0,
+                idle_threshold: 10,
                 fatigue_threshold: 200,
             },
             fatigue_weights: FatigueWeightsConfig::default(),
             cycle: CycleConfig {
                 max_dream_duration_ticks: 1_000,
-                max_proposals_per_cycle:     50,
-                batch_size:                   4,
+                max_proposals_per_cycle: 50,
+                batch_size: 4,
             },
         }
     }
@@ -161,15 +154,15 @@ impl DreamConfig {
     pub fn production() -> Self {
         Self {
             scheduler: SchedulerConfig {
-                min_wake_ticks:    2000,
-                idle_threshold:     500,
-                fatigue_threshold:  200,
+                min_wake_ticks: 2000,
+                idle_threshold: 500,
+                fatigue_threshold: 200,
             },
             fatigue_weights: FatigueWeightsConfig::default(),
             cycle: CycleConfig {
                 max_dream_duration_ticks: 100_000,
-                max_proposals_per_cycle:      500,
-                batch_size:                    32,
+                max_proposals_per_cycle: 500,
+                batch_size: 32,
             },
         }
     }

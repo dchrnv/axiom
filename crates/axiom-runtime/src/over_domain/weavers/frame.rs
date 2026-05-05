@@ -14,24 +14,22 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use axiom_core::{
-    Connection, Token, FLAG_ACTIVE, STATE_ACTIVE, STATE_LOCKED,
-    TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
-    FRAME_CATEGORY_SYNTAX, FRAME_CATEGORY_MASK,
+    Connection, Token, FLAG_ACTIVE, FRAME_CATEGORY_MASK, FRAME_CATEGORY_SYNTAX, STATE_ACTIVE,
+    STATE_LOCKED, TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
 };
 use axiom_domain::{AshtiCore, DomainState};
 use axiom_genome::{Genome, ModuleId};
-use axiom_ucl::{
-    UclCommand, OpCode,
-    InjectFrameAnchorPayload, BondTokensPayload, ReinforceFramePayload,
-    flags as ucl_flags,
-};
 use axiom_shell::link_types;
-
-use crate::over_domain::traits::{
-    CrystallizationProposal, OverDomainComponent, OverDomainError,
-    PromotionProposal, Weaver, WeaverId,
+use axiom_ucl::{
+    flags as ucl_flags, BondTokensPayload, InjectFrameAnchorPayload, OpCode, ReinforceFramePayload,
+    UclCommand,
 };
+
 use crate::over_domain::dream_phase::cycle::{DreamProposal, DreamProposalKind};
+use crate::over_domain::traits::{
+    CrystallizationProposal, OverDomainComponent, OverDomainError, PromotionProposal, Weaver,
+    WeaverId,
+};
 
 /// Numeric ID для TickSchedule.weaver_scan_intervals.
 pub const FRAME_WEAVER_ID: WeaverId = 1;
@@ -229,10 +227,10 @@ pub enum RestoreError {
 impl std::fmt::Display for RestoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RestoreError::AnchorNotFound          => write!(f, "anchor not found"),
-            RestoreError::NotAFrameAnchor         => write!(f, "token is not a frame anchor"),
+            RestoreError::AnchorNotFound => write!(f, "anchor not found"),
+            RestoreError::NotAFrameAnchor => write!(f, "token is not a frame anchor"),
             RestoreError::DanglingParticipant(id) => write!(f, "dangling participant: {id}"),
-            RestoreError::InvalidLinkType(lt)     => write!(f, "invalid link type: {lt:#06x}"),
+            RestoreError::InvalidLinkType(lt) => write!(f, "invalid link type: {lt:#06x}"),
         }
     }
 }
@@ -256,7 +254,9 @@ pub fn restore_frame_from_anchor(
     anchor_id: u32,
     source_state: &DomainState,
 ) -> Result<RestoredFrame, RestoreError> {
-    let anchor = source_state.tokens.iter()
+    let anchor = source_state
+        .tokens
+        .iter()
         .find(|t| t.sutra_id == anchor_id)
         .copied()
         .ok_or(RestoreError::AnchorNotFound)?;
@@ -275,7 +275,11 @@ pub fn restore_frame_from_anchor(
         if (conn.link_type >> 8) != 0x08 {
             return Err(RestoreError::InvalidLinkType(conn.link_type));
         }
-        if !source_state.tokens.iter().any(|t| t.sutra_id == conn.target_id) {
+        if !source_state
+            .tokens
+            .iter()
+            .any(|t| t.sutra_id == conn.target_id)
+        {
             return Err(RestoreError::DanglingParticipant(conn.target_id));
         }
         let origin_domain = u16::from_be_bytes([conn.reserved_gate[0], conn.reserved_gate[1]]);
@@ -288,7 +292,12 @@ pub fn restore_frame_from_anchor(
         });
     }
 
-    Ok(RestoredFrame { anchor, anchor_id, category, participants })
+    Ok(RestoredFrame {
+        anchor,
+        anchor_id,
+        category,
+        participants,
+    })
 }
 
 // ============================================================================
@@ -381,27 +390,41 @@ impl FrameWeaver {
     /// Детерминированный proposed_sutra_id из lineage_hash (нижние 32 бита, не 0).
     fn proposed_id_from_hash(hash: u64) -> u32 {
         let low = (hash & 0xFFFF_FFFF) as u32;
-        if low == 0 { 1 } else { low }
+        if low == 0 {
+            1
+        } else {
+            low
+        }
     }
 
     /// Есть ли Frame с данным lineage_hash в EXPERIENCE?
     fn find_existing_anchor(experience_state: &DomainState, lineage_hash: u64) -> Option<u32> {
-        experience_state.tokens.iter().find(|t| {
-            (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0 && t.lineage_hash == lineage_hash
-        }).map(|t| t.sutra_id)
+        experience_state
+            .tokens
+            .iter()
+            .find(|t| {
+                (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0 && t.lineage_hash == lineage_hash
+            })
+            .map(|t| t.sutra_id)
     }
 
     /// Сканировать DomainState (MAYA) на синтаксические узоры.
     ///
     /// Возвращает кандидатов: группы синтаксических связей с source_id как Frame-голова.
     /// Требование: ≥ 2 различных слоя и ≥ min_participants участников.
-    pub fn scan_state_pub(&self, maya_state: &DomainState, maya_domain_id: u16) -> Vec<FrameCandidate> {
+    pub fn scan_state_pub(
+        &self,
+        maya_state: &DomainState,
+        maya_domain_id: u16,
+    ) -> Vec<FrameCandidate> {
         self.scan_state(maya_state, maya_domain_id)
     }
 
     fn scan_state(&self, maya_state: &DomainState, maya_domain_id: u16) -> Vec<FrameCandidate> {
         // Фильтровать активные синтаксические связи (категория 0x08)
-        let syn_conns: Vec<&Connection> = maya_state.connections.iter()
+        let syn_conns: Vec<&Connection> = maya_state
+            .connections
+            .iter()
             .filter(|c| (c.link_type >> 8) == 0x08 && (c.flags & FLAG_ACTIVE) != 0)
             .collect();
 
@@ -424,9 +447,8 @@ impl FrameWeaver {
             }
 
             // Проверить ≥ 2 различных слоя
-            let layers: std::collections::HashSet<u8> = conns.iter()
-                .map(|c| Self::layer_of(c.link_type))
-                .collect();
+            let layers: std::collections::HashSet<u8> =
+                conns.iter().map(|c| Self::layer_of(c.link_type)).collect();
             if layers.len() < 2 {
                 continue;
             }
@@ -466,21 +488,27 @@ impl FrameWeaver {
     }
 
     /// Построить UCL-команды для кристаллизации Frame в EXPERIENCE.
-    fn build_crystallization_commands(&self, candidate: &FrameCandidate, experience_domain: u16) -> Vec<UclCommand> {
+    fn build_crystallization_commands(
+        &self,
+        candidate: &FrameCandidate,
+        experience_domain: u16,
+    ) -> Vec<UclCommand> {
         let proposed_sutra_id = Self::proposed_id_from_hash(candidate.lineage_hash);
-        let mass = (candidate.participants.len() as u8).saturating_mul(16).max(32);
+        let mass = (candidate.participants.len() as u8)
+            .saturating_mul(16)
+            .max(32);
 
         let anchor_payload = InjectFrameAnchorPayload {
-            lineage_hash:      candidate.lineage_hash,
+            lineage_hash: candidate.lineage_hash,
             proposed_sutra_id,
-            target_domain_id:  experience_domain,
-            type_flags:        TOKEN_FLAG_FRAME_ANCHOR | candidate.category,
-            position:          candidate.anchor_position,
-            state:             STATE_ACTIVE,
+            target_domain_id: experience_domain,
+            type_flags: TOKEN_FLAG_FRAME_ANCHOR | candidate.category,
+            position: candidate.anchor_position,
+            state: STATE_ACTIVE,
             mass,
-            temperature:       128,
-            valence:           0,
-            reserved:          [0; 22],
+            temperature: 128,
+            valence: 0,
+            reserved: [0; 22],
         };
 
         let anchor_cmd = UclCommand::new(OpCode::InjectToken, 0, 10, ucl_flags::FRAME_ANCHOR)
@@ -490,20 +518,17 @@ impl FrameWeaver {
 
         for participant in &candidate.participants {
             let bond_payload = BondTokensPayload {
-                source_id:     proposed_sutra_id,
-                target_id:     participant.sutra_id,
-                domain_id:     experience_domain,
-                link_type:     participant.role_link_type,
-                strength:      1.0,
-                conn_flags:    0,
+                source_id: proposed_sutra_id,
+                target_id: participant.sutra_id,
+                domain_id: experience_domain,
+                link_type: participant.role_link_type,
+                strength: 1.0,
+                conn_flags: 0,
                 origin_domain: participant.origin_domain_id,
-                role_id:       participant.role_link_type,
-                reserved:      [0; 24],
+                role_id: participant.role_link_type,
+                reserved: [0; 24],
             };
-            cmds.push(
-                UclCommand::new(OpCode::BondTokens, 0, 10, 0)
-                    .with_payload(&bond_payload)
-            );
+            cmds.push(UclCommand::new(OpCode::BondTokens, 0, 10, 0).with_payload(&bond_payload));
         }
 
         cmds
@@ -513,32 +538,36 @@ impl FrameWeaver {
     fn build_reinforce_command(&self, anchor_id: u32) -> UclCommand {
         let payload = ReinforceFramePayload {
             anchor_id,
-            delta_mass:        4,
+            delta_mass: 4,
             delta_temperature: 8,
-            reserved:          [0; 42],
+            reserved: [0; 42],
         };
-        UclCommand::new(OpCode::ReinforceFrame, 0, 8, 0)
-            .with_payload(&payload)
+        UclCommand::new(OpCode::ReinforceFrame, 0, 8, 0).with_payload(&payload)
     }
 
-    /// Построить UCL-команды для промоции Frame из EXPERIENCE в SUTRA.
-    fn build_promotion_commands(candidate: &FrameCandidate, experience_anchor_id: u32, sutra_domain: u16) -> Vec<UclCommand> {
+    #[allow(dead_code)]
+    fn build_promotion_commands(
+        candidate: &FrameCandidate,
+        experience_anchor_id: u32,
+        sutra_domain: u16,
+    ) -> Vec<UclCommand> {
         // Новый уникальный ID для SUTRA-анкера (отличается от EXPERIENCE-анкера)
-        let proposed_sutra_id = Self::proposed_id_from_hash(
-            candidate.lineage_hash.wrapping_add(0xDEAD_BEEF_0000_0000)
-        );
+        let proposed_sutra_id =
+            Self::proposed_id_from_hash(candidate.lineage_hash.wrapping_add(0xDEAD_BEEF_0000_0000));
 
         let anchor_payload = InjectFrameAnchorPayload {
-            lineage_hash:      candidate.lineage_hash,
+            lineage_hash: candidate.lineage_hash,
             proposed_sutra_id,
-            target_domain_id:  sutra_domain,
-            type_flags:        TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE | candidate.category,
-            position:          candidate.anchor_position,
-            state:             STATE_LOCKED,
-            mass:              (candidate.participants.len() as u8).saturating_mul(32),
-            temperature:       255,
-            valence:           0,
-            reserved:          [0; 22],
+            target_domain_id: sutra_domain,
+            type_flags: TOKEN_FLAG_FRAME_ANCHOR
+                | TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE
+                | candidate.category,
+            position: candidate.anchor_position,
+            state: STATE_LOCKED,
+            mass: (candidate.participants.len() as u8).saturating_mul(32),
+            temperature: 255,
+            valence: 0,
+            reserved: [0; 22],
         };
 
         let anchor_cmd = UclCommand::new(OpCode::InjectToken, 0, 15, ucl_flags::FRAME_ANCHOR)
@@ -548,20 +577,17 @@ impl FrameWeaver {
 
         for participant in &candidate.participants {
             let bond_payload = BondTokensPayload {
-                source_id:     proposed_sutra_id,
-                target_id:     participant.sutra_id,
-                domain_id:     sutra_domain,
-                link_type:     participant.role_link_type,
-                strength:      1.0,
-                conn_flags:    0,
+                source_id: proposed_sutra_id,
+                target_id: participant.sutra_id,
+                domain_id: sutra_domain,
+                link_type: participant.role_link_type,
+                strength: 1.0,
+                conn_flags: 0,
                 origin_domain: participant.origin_domain_id,
-                role_id:       participant.role_link_type,
-                reserved:      [0; 24],
+                role_id: participant.role_link_type,
+                reserved: [0; 24],
             };
-            cmds.push(
-                UclCommand::new(OpCode::BondTokens, 0, 15, 0)
-                    .with_payload(&bond_payload)
-            );
+            cmds.push(UclCommand::new(OpCode::BondTokens, 0, 15, 0).with_payload(&bond_payload));
         }
 
         let _ = experience_anchor_id; // оригинал в EXPERIENCE не трогается
@@ -576,7 +602,9 @@ impl FrameWeaver {
             if candidate.stability_count >= self.config.stability_threshold {
                 return RuleAction::CrystallizeFull;
             }
-            return RuleAction::Defer { ticks: self.config.scan_interval_ticks };
+            return RuleAction::Defer {
+                ticks: self.config.scan_interval_ticks,
+            };
         }
 
         let mut best: Option<(u8, &RuleAction)> = None;
@@ -587,22 +615,24 @@ impl FrameWeaver {
             if !self.conditions_met(rule, candidate) {
                 continue;
             }
-            if best.map_or(true, |(p, _)| rule.priority > p) {
+            if best.is_none_or(|(p, _)| rule.priority > p) {
                 best = Some((rule.priority, &rule.action));
             }
         }
 
         match best {
             Some((_, action)) => action.clone(),
-            None => RuleAction::Defer { ticks: self.config.scan_interval_ticks },
+            None => RuleAction::Defer {
+                ticks: self.config.scan_interval_ticks,
+            },
         }
     }
 
     fn trigger_matches(&self, rule: &CrystallizationRule, candidate: &FrameCandidate) -> bool {
         match &rule.trigger {
             RuleTrigger::StabilityReached(n) => candidate.stability_count >= *n,
-            RuleTrigger::HighConfidence(_)   => false, // confidence не реализован в V1.1
-            RuleTrigger::DreamCycle          => false, // DREAM-фаза пока не сигнализирует сюда
+            RuleTrigger::HighConfidence(_) => false, // confidence не реализован в V1.1
+            RuleTrigger::DreamCycle => false,        // DREAM-фаза пока не сигнализирует сюда
             RuleTrigger::RepeatedAssembly { .. } => false, // deferred
         }
     }
@@ -621,7 +651,9 @@ impl FrameWeaver {
                     }
                 }
                 RuleCondition::MaxDepth(d) => {
-                    let max_layer = candidate.participants.iter()
+                    let max_layer = candidate
+                        .participants
+                        .iter()
                         .map(|p| p.layer)
                         .max()
                         .unwrap_or(0);
@@ -630,7 +662,9 @@ impl FrameWeaver {
                     }
                 }
                 RuleCondition::DominantLayer(layer) => {
-                    let count_dominant = candidate.participants.iter()
+                    let count_dominant = candidate
+                        .participants
+                        .iter()
                         .filter(|p| p.layer == *layer)
                         .count();
                     let total = candidate.participants.len();
@@ -639,7 +673,11 @@ impl FrameWeaver {
                     }
                 }
                 RuleCondition::RequiresParticipantFromDomain(domain_id) => {
-                    if !candidate.participants.iter().any(|p| p.origin_domain_id == *domain_id) {
+                    if !candidate
+                        .participants
+                        .iter()
+                        .any(|p| p.origin_domain_id == *domain_id)
+                    {
                         return false;
                     }
                 }
@@ -649,12 +687,21 @@ impl FrameWeaver {
     }
 
     /// Проверить Frame-анкер в EXPERIENCE на соответствие правилу промоции.
-    fn qualifies_for_promotion(&self, token: &Token, rule: &PromotionRule, current_tick: u64) -> bool {
+    fn qualifies_for_promotion(
+        &self,
+        token: &Token,
+        rule: &PromotionRule,
+        current_tick: u64,
+    ) -> bool {
         let age_ticks = current_tick.saturating_sub(token.last_event_id);
         if age_ticks < rule.min_age_ticks {
             return false;
         }
-        let reactivations = self.reactivation_counts.get(&token.sutra_id).copied().unwrap_or(0);
+        let reactivations = self
+            .reactivation_counts
+            .get(&token.sutra_id)
+            .copied()
+            .unwrap_or(0);
         if reactivations < rule.min_reactivations {
             return false;
         }
@@ -672,9 +719,8 @@ impl FrameWeaver {
     /// Обновить кандидат-карту по результатам нового скана.
     fn update_candidates(&mut self, new_scan: Vec<FrameCandidate>, current_tick: u64) {
         // Собрать lineage_hash из нового скана
-        let new_hashes: std::collections::HashSet<u64> = new_scan.iter()
-            .map(|c| c.lineage_hash)
-            .collect();
+        let new_hashes: std::collections::HashSet<u64> =
+            new_scan.iter().map(|c| c.lineage_hash).collect();
 
         // Удалить исчезнувшие кандидаты, увеличить stability существующих
         let mut to_remove = Vec::new();
@@ -691,12 +737,14 @@ impl FrameWeaver {
 
         // Добавить новые кандидаты
         for mut candidate in new_scan {
-            self.candidates.entry(candidate.lineage_hash).or_insert_with(|| {
-                candidate.detected_at_tick = current_tick;
-                candidate.stability_count = 1;
-                self.stats.candidates_detected += 1;
-                candidate
-            });
+            self.candidates
+                .entry(candidate.lineage_hash)
+                .or_insert_with(|| {
+                    candidate.detected_at_tick = current_tick;
+                    candidate.stability_count = 1;
+                    self.stats.candidates_detected += 1;
+                    candidate
+                });
         }
     }
 }
@@ -726,14 +774,12 @@ impl OverDomainComponent for FrameWeaver {
     fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError> {
         let level = ashti.level_id();
         let maya_domain_id = level * 100 + 10;
-        let exp_domain_id  = level * 100 + 9;
-        let sutra_domain_id = level * 100;
+        let exp_domain_id = level * 100 + 9;
+        let _sutra_domain_id = level * 100;
 
         // Получить состояния доменов
-        let maya_state = ashti.index_of(maya_domain_id)
-            .and_then(|i| ashti.state(i));
-        let exp_state = ashti.index_of(exp_domain_id)
-            .and_then(|i| ashti.state(i));
+        let maya_state = ashti.index_of(maya_domain_id).and_then(|i| ashti.state(i));
+        let exp_state = ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i));
 
         self.stats.scans_performed += 1;
 
@@ -748,7 +794,9 @@ impl OverDomainComponent for FrameWeaver {
         self.update_candidates(new_candidates, tick);
 
         // ── 3. Обработать стабильные кандидаты ──────────────────────────────
-        let stable_hashes: Vec<u64> = self.candidates.keys()
+        let stable_hashes: Vec<u64> = self
+            .candidates
+            .keys()
             .filter(|&&hash| {
                 self.candidates[&hash].stability_count >= self.config.stability_threshold
             })
@@ -758,7 +806,7 @@ impl OverDomainComponent for FrameWeaver {
         for hash in stable_hashes {
             let candidate = match self.candidates.get(&hash) {
                 Some(c) => c.clone(),
-                None    => continue,
+                None => continue,
             };
 
             // Проверить оценку правил кристаллизации
@@ -772,9 +820,8 @@ impl OverDomainComponent for FrameWeaver {
             }
 
             // Проверить: уже есть Frame с таким lineage_hash в EXPERIENCE?
-            let existing_anchor = exp_state.and_then(|state| {
-                Self::find_existing_anchor(state, candidate.lineage_hash)
-            });
+            let existing_anchor = exp_state
+                .and_then(|state| Self::find_existing_anchor(state, candidate.lineage_hash));
 
             if let Some(anchor_id) = existing_anchor {
                 // Реактивация существующего Frame
@@ -796,11 +843,17 @@ impl OverDomainComponent for FrameWeaver {
 
         // ── 4. Обновить счётчик frames_in_experience ─────────────────────────
         if let Some(state) = exp_state {
-            self.stats.frames_in_experience = state.tokens.iter()
-                .filter(|t| (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0
-                    && (t.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) == 0)
+            self.stats.frames_in_experience = state
+                .tokens
+                .iter()
+                .filter(|t| {
+                    (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0
+                        && (t.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) == 0
+                })
                 .count() as u64;
-            self.stats.frames_in_sutra = state.tokens.iter()
+            self.stats.frames_in_sutra = state
+                .tokens
+                .iter()
                 .filter(|t| (t.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) != 0)
                 .count() as u64;
         }
@@ -835,13 +888,14 @@ impl Weaver for FrameWeaver {
     fn propose_to_dream(&self, patterns: &[FrameCandidate]) -> Vec<CrystallizationProposal> {
         // DREAM-интеграция — Phase 4. Пока возвращаем каждый стабильный паттерн
         // как предложение с target_domain = EXPERIENCE.
-        patterns.iter()
+        patterns
+            .iter()
             .filter(|c| c.stability_count >= self.config.stability_threshold)
             .map(|_c| CrystallizationProposal {
-                weaver_id:     self.weaver_id(),
+                weaver_id: self.weaver_id(),
                 target_domain: 109,
-                commands:      Vec::new(), // заполняется движком при обработке
-                priority:      100,
+                commands: Vec::new(), // заполняется движком при обработке
+                priority: 100,
             })
             .collect()
     }
@@ -863,7 +917,7 @@ impl Weaver for FrameWeaver {
                     proposals.push(PromotionProposal {
                         weaver_id: self.weaver_id(),
                         anchor_id: anchor.sutra_id,
-                        commands:  Vec::new(),
+                        commands: Vec::new(),
                     });
                     break;
                 }
@@ -894,32 +948,36 @@ impl FrameWeaver {
     /// Вызывается из AxiomEngine при переходе FallingAsleep → Dreaming.
     pub fn dream_propose(&self, ashti: &AshtiCore) -> Vec<DreamProposal> {
         let level = ashti.level_id();
-        let exp_domain_id   = level * 100 + 9;
+        let exp_domain_id = level * 100 + 9;
         let sutra_domain_id = level * 100;
 
         let exp_state = match ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i)) {
             Some(s) => s,
-            None    => return Vec::new(),
+            None => return Vec::new(),
         };
 
         let tick = 0u64; // tick не нужен — qualifies_for_promotion сравнивает last_event_id
         let mut proposals = Vec::new();
 
         for token in &exp_state.tokens {
-            if (token.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0            { continue; }
-            if (token.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) != 0 { continue; }
+            if (token.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0 {
+                continue;
+            }
+            if (token.type_flags & TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE) != 0 {
+                continue;
+            }
 
             for rule in &self.config.promotion_rules {
                 if self.qualifies_for_promotion(token, rule, tick) {
                     proposals.push(DreamProposal {
-                        source:           FRAME_WEAVER_ID,
-                        priority:         100,
+                        source: FRAME_WEAVER_ID,
+                        priority: 100,
                         created_at_event: token.last_event_id,
                         kind: DreamProposalKind::Promotion {
-                            anchor_id:     token.sutra_id,
+                            anchor_id: token.sutra_id,
                             source_domain: exp_domain_id,
                             target_domain: sutra_domain_id,
-                            rule_id:       rule.id.clone(),
+                            rule_id: rule.id.clone(),
                         },
                     });
                     break; // одна промоция на frame за цикл
@@ -1008,20 +1066,14 @@ mod tests {
     #[test]
     fn scan_single_layer_not_detected() {
         let fw = FrameWeaver::with_default_config();
-        let state = state_with_conns(vec![
-            make_syn_conn(10, 20, 1),
-            make_syn_conn(10, 30, 1),
-        ]);
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 1)]);
         assert!(fw.scan_state(&state, 110).is_empty());
     }
 
     #[test]
     fn scan_two_layer_pattern_detected() {
         let fw = FrameWeaver::with_default_config();
-        let state = state_with_conns(vec![
-            make_syn_conn(10, 20, 1),
-            make_syn_conn(10, 30, 2),
-        ]);
+        let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
         let result = fw.scan_state(&state, 110);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].participants.len(), 3); // head + 2 targets
@@ -1034,7 +1086,9 @@ mod tests {
         let mut c2 = make_syn_conn(10, 30, 2);
         c1.flags = 0;
         c2.flags = 0;
-        assert!(fw.scan_state(&state_with_conns(vec![c1, c2]), 110).is_empty());
+        assert!(fw
+            .scan_state(&state_with_conns(vec![c1, c2]), 110)
+            .is_empty());
     }
 
     #[test]
@@ -1136,15 +1190,25 @@ mod tests {
             ..Default::default()
         });
         let mut ashti = AshtiCore::new(1);
-        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
-        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 20, 1))
+            .unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 30, 2))
+            .unwrap();
 
         fw.on_tick(1, &ashti).unwrap();
-        assert!(fw.drain_commands().is_empty(), "tick 1: stability=1, not yet stable");
+        assert!(
+            fw.drain_commands().is_empty(),
+            "tick 1: stability=1, not yet stable"
+        );
 
         fw.on_tick(2, &ashti).unwrap();
         let cmds = fw.drain_commands();
-        assert!(!cmds.is_empty(), "tick 2: stability=2 >= threshold, should crystallize");
+        assert!(
+            !cmds.is_empty(),
+            "tick 2: stability=2 >= threshold, should crystallize"
+        );
         assert_eq!(cmds[0].opcode, OpCode::InjectToken as u16);
     }
 
@@ -1156,12 +1220,19 @@ mod tests {
             ..Default::default()
         });
         let mut ashti = AshtiCore::new(1);
-        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
-        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 20, 1))
+            .unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 30, 2))
+            .unwrap();
 
         for tick in 1..5 {
             fw.on_tick(tick, &ashti).unwrap();
-            assert!(fw.drain_commands().is_empty(), "tick {tick}: still below threshold");
+            assert!(
+                fw.drain_commands().is_empty(),
+                "tick {tick}: still below threshold"
+            );
         }
     }
 
@@ -1175,8 +1246,12 @@ mod tests {
             ..Default::default()
         });
         let mut ashti = AshtiCore::new(1);
-        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
-        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 20, 1))
+            .unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 30, 2))
+            .unwrap();
 
         // Вычислить hash и proposed_id, пока borrow на ashti ещё не активен
         let hash = {
@@ -1207,7 +1282,8 @@ mod tests {
         let mut fw = FrameWeaver::with_default_config();
         let state = state_with_conns(vec![make_syn_conn(10, 20, 1), make_syn_conn(10, 30, 2)]);
         let candidates = fw.scan_state(&state, 110);
-        fw.pending_commands.extend(fw.build_crystallization_commands(&candidates[0], 109));
+        fw.pending_commands
+            .extend(fw.build_crystallization_commands(&candidates[0], 109));
 
         assert!(!fw.drain_commands().is_empty());
         assert!(fw.pending_commands.is_empty());
@@ -1240,7 +1316,10 @@ mod tests {
 
     #[test]
     fn stats_scans_increments_on_tick() {
-        let mut fw = FrameWeaver::new(FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() });
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            ..Default::default()
+        });
         let ashti = AshtiCore::new(1);
         fw.on_tick(1, &ashti).unwrap();
         fw.on_tick(2, &ashti).unwrap();
@@ -1269,11 +1348,17 @@ mod tests {
 
         // tick=200: возраст = 200-100 = 100 < 500 → не дозрел
         let proposals = fw.check_promotion(200, &empty_state(), &[&anchor]);
-        assert!(proposals.is_empty(), "не должен продвигать слишком молодой Frame");
+        assert!(
+            proposals.is_empty(),
+            "не должен продвигать слишком молодой Frame"
+        );
 
         // tick=700: возраст = 700-100 = 600 >= 500 → дозрел
         let proposals = fw.check_promotion(700, &empty_state(), &[&anchor]);
-        assert!(!proposals.is_empty(), "должен предложить промоцию зрелого Frame");
+        assert!(
+            !proposals.is_empty(),
+            "должен предложить промоцию зрелого Frame"
+        );
     }
 
     #[test]
@@ -1291,10 +1376,17 @@ mod tests {
 
     #[test]
     fn stats_candidates_detected_increments() {
-        let mut fw = FrameWeaver::new(FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() });
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            ..Default::default()
+        });
         let mut ashti = AshtiCore::new(1);
-        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
-        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 20, 1))
+            .unwrap();
+        ashti
+            .inject_connection(110, make_syn_conn(10, 30, 2))
+            .unwrap();
 
         fw.on_tick(1, &ashti).unwrap();
         assert_eq!(fw.stats.candidates_detected, 1);
@@ -1311,7 +1403,9 @@ mod tests {
         let mut anchor = Token::new(anchor_id, 109, [0; 3], 0);
         anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
         anchor.lineage_hash = FrameWeaver::fnv1a_lineage_hash(
-            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+            &std::iter::once(anchor_id)
+                .chain(participant_ids.iter().copied())
+                .collect::<Vec<_>>(),
         );
         state.tokens.push(anchor);
         // Participant tokens + connections
@@ -1322,7 +1416,7 @@ mod tests {
             let link_type = 0x0800u16 | ((layer as u16) << 4);
             let mut conn = Connection::new(anchor_id, pid, 109, 1);
             conn.link_type = link_type;
-            conn.reserved_gate[0] = 0;   // origin_domain BE hi
+            conn.reserved_gate[0] = 0; // origin_domain BE hi
             conn.reserved_gate[1] = 110; // origin_domain BE lo (=110=MAYA)
             state.connections.push(conn);
         }
@@ -1398,15 +1492,21 @@ mod tests {
         let mut anchor = Token::new(anchor_id, 109, [0; 3], 0);
         anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR | FRAME_CATEGORY_SYNTAX;
         anchor.lineage_hash = FrameWeaver::fnv1a_lineage_hash(
-            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+            &std::iter::once(anchor_id)
+                .chain(participant_ids.iter().copied())
+                .collect::<Vec<_>>(),
         );
         anchor.temperature = 255;
         anchor.mass = 255;
         ashti.inject_token(109, anchor).unwrap();
         // Inject participant tokens into SUTRA (100) и в EXPERIENCE (109) для restore_frame_from_anchor
         for &pid in participant_ids {
-            ashti.inject_token(100, Token::new(pid, 100, [0; 3], 0)).unwrap();
-            ashti.inject_token(109, Token::new(pid, 109, [0; 3], 0)).unwrap();
+            ashti
+                .inject_token(100, Token::new(pid, 100, [0; 3], 0))
+                .unwrap();
+            ashti
+                .inject_token(109, Token::new(pid, 109, [0; 3], 0))
+                .unwrap();
         }
         // Inject syntactic bonds in EXPERIENCE
         for (i, &pid) in participant_ids.iter().enumerate() {
@@ -1418,7 +1518,9 @@ mod tests {
             ashti.inject_connection(109, conn).unwrap();
         }
         let hash = FrameWeaver::fnv1a_lineage_hash(
-            &std::iter::once(anchor_id).chain(participant_ids.iter().copied()).collect::<Vec<_>>()
+            &std::iter::once(anchor_id)
+                .chain(participant_ids.iter().copied())
+                .collect::<Vec<_>>(),
         );
         (ashti, hash)
     }
@@ -1430,13 +1532,13 @@ mod tests {
         let config = FrameWeaverConfig {
             scan_interval_ticks: 1,
             promotion_rules: vec![PromotionRule {
-                min_age_ticks:           0,
-                min_reactivations:       0,
-                min_temperature:         200,
-                min_mass:                100,
+                min_age_ticks: 0,
+                min_reactivations: 0,
+                min_temperature: 200,
+                min_mass: 100,
                 min_participant_anchors: 0,
                 requires_codex_approval: false,
-                id:                      "test_promo".to_string(),
+                id: "test_promo".to_string(),
             }],
             ..Default::default()
         };
@@ -1448,30 +1550,39 @@ mod tests {
         // dream_propose() должна найти Frame и вернуть Promotion proposal
         let proposals = fw.dream_propose(&ashti);
         assert_eq!(proposals.len(), 1, "ожидается одно Promotion proposal");
-        assert!(matches!(
-            &proposals[0].kind,
-            crate::over_domain::dream_phase::cycle::DreamProposalKind::Promotion { anchor_id: aid, .. }
-            if *aid == 5000
-        ), "proposal должен содержать anchor_id=5000");
+        assert!(
+            matches!(
+                &proposals[0].kind,
+                crate::over_domain::dream_phase::cycle::DreamProposalKind::Promotion { anchor_id: aid, .. }
+                if *aid == 5000
+            ),
+            "proposal должен содержать anchor_id=5000"
+        );
 
         // on_tick больше не генерирует promotion-команды
         let mut fw_mut = FrameWeaver::new(FrameWeaverConfig {
             scan_interval_ticks: 1,
             promotion_rules: vec![PromotionRule {
-                min_age_ticks:           0,
-                min_reactivations:       0,
-                min_temperature:         200,
-                min_mass:                100,
+                min_age_ticks: 0,
+                min_reactivations: 0,
+                min_temperature: 200,
+                min_mass: 100,
                 min_participant_anchors: 0,
                 requires_codex_approval: false,
-                id:                      "test_promo".to_string(),
+                id: "test_promo".to_string(),
             }],
             ..Default::default()
         });
         fw_mut.on_tick(200_000, &ashti).unwrap();
         let cmds = fw_mut.drain_commands();
-        let bond_count = cmds.iter().filter(|c| c.opcode == OpCode::BondTokens as u16).count();
-        assert_eq!(bond_count, 0, "on_tick не должен генерировать promotion BondTokens");
+        let bond_count = cmds
+            .iter()
+            .filter(|c| c.opcode == OpCode::BondTokens as u16)
+            .count();
+        assert_eq!(
+            bond_count, 0,
+            "on_tick не должен генерировать promotion BondTokens"
+        );
     }
 
     #[test]
@@ -1479,13 +1590,13 @@ mod tests {
         let config = FrameWeaverConfig {
             scan_interval_ticks: 1,
             promotion_rules: vec![PromotionRule {
-                min_age_ticks:           0,
-                min_reactivations:       0,
-                min_temperature:         200,
-                min_mass:                100,
+                min_age_ticks: 0,
+                min_reactivations: 0,
+                min_temperature: 200,
+                min_mass: 100,
                 min_participant_anchors: 0,
                 requires_codex_approval: false,
-                id:                      "test_promo".to_string(),
+                id: "test_promo".to_string(),
             }],
             ..Default::default()
         };
@@ -1505,7 +1616,10 @@ mod tests {
         fw.on_tick(200_000, &ashti).unwrap();
         let cmds = fw.drain_commands();
         // restore вернёт DanglingParticipant → промоция пропущена
-        assert!(cmds.is_empty(), "промоция не должна выполняться при dangling participant");
+        assert!(
+            cmds.is_empty(),
+            "промоция не должна выполняться при dangling participant"
+        );
         assert_eq!(fw.stats.promotions_proposed, 0);
     }
 }

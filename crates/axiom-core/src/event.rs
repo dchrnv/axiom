@@ -521,14 +521,32 @@ mod tests {
 
     #[test]
     fn event_subtype_default_is_zero() {
-        let e = Event::new(1, 1, EventType::TokenMove, EventPriority::Normal, 1, 0, 0, 0);
+        let e = Event::new(
+            1,
+            1,
+            EventType::TokenMove,
+            EventPriority::Normal,
+            1,
+            0,
+            0,
+            0,
+        );
         assert_eq!(e.event_subtype, SUBTYPE_NONE);
         assert_eq!(e.event_subtype, 0);
     }
 
     #[test]
     fn event_subtype_roundtrip() {
-        let mut e = Event::new(1, 1, EventType::TokenMove, EventPriority::Normal, 1, 0, 0, 0);
+        let mut e = Event::new(
+            1,
+            1,
+            EventType::TokenMove,
+            EventPriority::Normal,
+            1,
+            0,
+            0,
+            0,
+        );
         e.event_subtype = SUBTYPE_GRAVITY;
         assert_eq!(e.event_subtype, SUBTYPE_GRAVITY);
         assert_eq!(e.event_subtype, 1);
@@ -536,7 +554,17 @@ mod tests {
 
     #[test]
     fn event_with_pulse_subtype_default_is_zero() {
-        let e = Event::with_pulse(1, 1, EventType::Heartbeat, EventPriority::Normal, 1, 0, 0, 0, 42);
+        let e = Event::with_pulse(
+            1,
+            1,
+            EventType::Heartbeat,
+            EventPriority::Normal,
+            1,
+            0,
+            0,
+            0,
+            42,
+        );
         assert_eq!(e.event_subtype, SUBTYPE_NONE);
     }
 }

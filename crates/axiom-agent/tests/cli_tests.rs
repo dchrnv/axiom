@@ -1,8 +1,8 @@
 // Этап 10B — CLI Channel: mock stdin → команды → mock stdout
-use axiom_agent::channels::cli::{CliPerceptor, CliEffector, parse_cli_command};
-use axiom_core::{Event, EventType, EventPriority};
+use axiom_agent::channels::cli::{parse_cli_command, CliEffector, CliPerceptor};
+use axiom_core::{Event, EventPriority, EventType};
+use axiom_runtime::{Effector, Perceptor};
 use axiom_ucl::{OpCode, UclCommand};
-use axiom_runtime::{Perceptor, Effector};
 
 // ─── parse_cli_command ────────────────────────────────────────────────────────
 
@@ -120,8 +120,12 @@ fn test_effector_emit_event() {
 fn test_effector_emit_result_ok() {
     let mut buf = Vec::new();
     let mut e = CliEffector::from_writer(&mut buf);
-    let result = axiom_runtime::Gateway::with_default_engine()
-        .process(&UclCommand::new(OpCode::TickForward, 0, 0, 0));
+    let result = axiom_runtime::Gateway::with_default_engine().process(&UclCommand::new(
+        OpCode::TickForward,
+        0,
+        0,
+        0,
+    ));
     e.emit_result(&result);
     let out = String::from_utf8(buf).unwrap();
     assert!(out.contains("[RESULT]"));
@@ -147,14 +151,9 @@ fn test_cli_roundtrip_no_panic() {
     let mut e = CliEffector::from_writer(&mut buf);
     let mut gw = Gateway::with_default_engine();
 
-    loop {
-        match p.receive() {
-            Some(cmd) => {
-                let result = gw.process(&cmd);
-                e.emit_result(&result);
-            }
-            None => break,
-        }
+    while let Some(cmd) = p.receive() {
+        let result = gw.process(&cmd);
+        e.emit_result(&result);
     }
 
     let out = String::from_utf8(buf).unwrap();

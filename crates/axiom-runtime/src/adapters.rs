@@ -6,10 +6,10 @@
 // Только интерфейсы. Конкретные адаптеры (REST, CLI, WebSocket)
 // живут за пределами workspace ядра.
 
-use std::collections::HashMap;
+use crate::engine::AxiomEngine;
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult};
-use crate::engine::AxiomEngine;
+use std::collections::HashMap;
 
 /// Trait для внешних адаптеров, работающих с Engine.
 ///
@@ -59,7 +59,10 @@ impl EventBus {
 
     /// Подписаться на конкретный тип событий.
     pub fn subscribe(&mut self, event_type: u16, observer: Box<dyn EventObserver>) {
-        self.subscribers.entry(event_type).or_default().push(observer);
+        self.subscribers
+            .entry(event_type)
+            .or_default()
+            .push(observer);
     }
 
     /// Подписаться на все события (broadcast).

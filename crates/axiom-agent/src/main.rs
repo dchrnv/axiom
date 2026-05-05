@@ -6,12 +6,12 @@
 // Запуск: `./axiom-agent [--config <path>]`
 // По умолчанию: config/axiom.yaml + config/channels.yaml
 
-use std::path::Path;
-use axiom_runtime::{Gateway, Perceptor, Effector};
-use axiom_agent::channels::cli::{CliPerceptor, CliEffector};
+use axiom_agent::channels::cli::{CliEffector, CliPerceptor};
 use axiom_agent::channels::shell::ShellEffector;
-use axiom_agent::channels::telegram::{TelegramPerceptor, TelegramConfig};
+use axiom_agent::channels::telegram::{TelegramConfig, TelegramPerceptor};
 use axiom_agent::config::AgentConfig;
+use axiom_runtime::{Effector, Gateway, Perceptor};
+use std::path::Path;
 
 fn main() {
     eprintln!("AXIOM Agent v{}", env!("CARGO_PKG_VERSION"));
@@ -19,11 +19,10 @@ fn main() {
     // ── Конфигурация ──────────────────────────────────────────────────────────
     let channels_path = Path::new("config/channels.yaml");
     let agent_cfg = if channels_path.exists() {
-        AgentConfig::from_file(channels_path)
-            .unwrap_or_else(|e| {
-                eprintln!("Warning: failed to load channels.yaml: {e}");
-                AgentConfig::default()
-            })
+        AgentConfig::from_file(channels_path).unwrap_or_else(|e| {
+            eprintln!("Warning: failed to load channels.yaml: {e}");
+            AgentConfig::default()
+        })
     } else {
         AgentConfig::default()
     };

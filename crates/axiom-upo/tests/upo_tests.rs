@@ -1,8 +1,8 @@
-use axiom_upo::{
-    DynamicTrace, Screen, TraceSourceType, UPO, UPOConfig,
-    TRACE_ACTIVE, TRACE_FADING, TRACE_ETERNAL,
-};
 use axiom_core::Token;
+use axiom_upo::{
+    DynamicTrace, Screen, TraceSourceType, UPOConfig, TRACE_ACTIVE, TRACE_ETERNAL, TRACE_FADING,
+    UPO,
+};
 
 // ============================================================================
 // TraceSourceType enum values
@@ -60,8 +60,8 @@ fn test_dynamic_trace_new_starts_active() {
 
 #[test]
 fn test_dynamic_trace_flag_constants() {
-    assert_eq!(TRACE_ACTIVE,  0b0001);
-    assert_eq!(TRACE_FADING,  0b0010);
+    assert_eq!(TRACE_ACTIVE, 0b0001);
+    assert_eq!(TRACE_FADING, 0b0010);
     assert_eq!(TRACE_ETERNAL, 0b1000);
 }
 

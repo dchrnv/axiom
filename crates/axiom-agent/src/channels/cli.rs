@@ -6,11 +6,11 @@
 // CliPerceptor читает текстовые команды из любого `BufRead` (stdin в prod,
 // строка/курсор в тестах). CliEffector пишет результаты в любой `Write`.
 
-use std::io::{BufRead, BufReader, Read, Write};
-use std::collections::HashSet;
 use axiom_core::Event;
-use axiom_ucl::{UclCommand, UclResult, OpCode};
-use axiom_runtime::{Perceptor, Effector};
+use axiom_runtime::{Effector, Perceptor};
+use axiom_ucl::{OpCode, UclCommand, UclResult};
+use std::collections::HashSet;
+use std::io::{BufRead, BufReader, Read, Write};
 
 /// Входящий CLI-адаптер: строки из `BufRead` → `UclCommand`.
 ///
@@ -39,6 +39,7 @@ impl<R: Read> CliPerceptor<R> {
     }
 }
 
+#[allow(clippy::new_without_default)]
 impl CliPerceptor<std::io::Stdin> {
     /// Создать перцептор из stdin.
     pub fn new() -> Self {
@@ -103,6 +104,7 @@ impl<W: Write> CliEffector<W> {
     }
 }
 
+#[allow(clippy::new_without_default)]
 impl CliEffector<std::io::Stdout> {
     /// Создать эффектор из stdout.
     pub fn new() -> Self {
@@ -149,29 +151,29 @@ fn format_event_type(et: u16) -> String {
 
 // ─── Async CliChannel (CLI Channel V1.1) ─────────────────────────────────────
 
-use axiom_config::{self, ConfigWatcher, AnchorSet};
-use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, TickSchedule, GuardianConfig};
+use crate::effectors::message::{DetailLevel, MessageEffector};
 use crate::perceptors::text::TextPerceptor;
-use crate::effectors::message::{MessageEffector, DetailLevel};
-use tokio::sync::mpsc;
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
+use axiom_config::{self, AnchorSet, ConfigWatcher};
+use axiom_persist::{AutoSaver, PersistenceConfig};
+use axiom_runtime::{AxiomEngine, GuardianConfig, TickSchedule};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::sync::Arc;
+use tokio::sync::mpsc;
 
 // ─── PerfTracker — счётчик производительности тиков ──────────────────────────
 
 /// Трекер производительности: замеряет время каждого тика и хранит скользящее окно.
 /// Трекер производительности — публичен для тестов.
 pub struct PerfTracker {
-    start:           std::time::Instant,
-    tick_times:      VecDeque<u64>,
+    start: std::time::Instant,
+    tick_times: VecDeque<u64>,
     /// Пиковое время тика в наносекундах
-    pub peak_ns:      u64,
-    window:          usize,
+    pub peak_ns: u64,
+    window: usize,
     /// Общее число тиков
-    pub total_ticks:  u64,
+    pub total_ticks: u64,
     /// Тик с пиковым временем
     pub peak_tick_id: u64,
 }
@@ -180,11 +182,11 @@ impl PerfTracker {
     /// Создать трекер с указанным скользящим окном.
     pub fn new(window: usize) -> Self {
         Self {
-            start:        std::time::Instant::now(),
-            tick_times:   VecDeque::with_capacity(window),
-            peak_ns:      0,
+            start: std::time::Instant::now(),
+            tick_times: VecDeque::with_capacity(window),
+            peak_ns: 0,
             window,
-            total_ticks:  0,
+            total_ticks: 0,
             peak_tick_id: 0,
         }
     }
@@ -197,19 +199,23 @@ impl PerfTracker {
         self.tick_times.push_back(ns);
         self.total_ticks += 1;
         if ns > self.peak_ns {
-            self.peak_ns      = ns;
+            self.peak_ns = ns;
             self.peak_tick_id = tick_id;
         }
     }
 
     pub(crate) fn avg_ns(&self) -> f64 {
-        if self.tick_times.is_empty() { return 0.0; }
+        if self.tick_times.is_empty() {
+            return 0.0;
+        }
         self.tick_times.iter().sum::<u64>() as f64 / self.tick_times.len() as f64
     }
 
     pub(crate) fn actual_hz(&self) -> f64 {
         let elapsed = self.start.elapsed().as_secs_f64();
-        if elapsed < 0.001 { return 0.0; }
+        if elapsed < 0.001 {
+            return 0.0;
+        }
         self.total_ticks as f64 / elapsed
     }
 
@@ -218,7 +224,9 @@ impl PerfTracker {
     }
 
     /// Создать PerfTracker для тестов (window=1).
-    pub fn new_for_test() -> Self { Self::new(1) }
+    pub fn new_for_test() -> Self {
+        Self::new(1)
+    }
 }
 
 pub(crate) fn fmt_ns(ns: u64) -> String {
@@ -238,43 +246,82 @@ pub(crate) fn fmt_ns(ns: u64) -> String {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct TickScheduleConfig {
-    #[serde(default)] pub adaptation_interval:    Option<u32>,
-    #[serde(default)] pub horizon_gc_interval:    Option<u32>,
-    #[serde(default)] pub snapshot_interval:      Option<u32>,
-    #[serde(default)] pub dream_interval:         Option<u32>,
-    #[serde(default)] pub tension_check_interval: Option<u32>,
-    #[serde(default)] pub goal_check_interval:    Option<u32>,
-    #[serde(default)] pub reconcile_interval:     Option<u32>,
-    #[serde(default)] pub persist_check_interval: Option<u32>,
+    #[serde(default)]
+    pub adaptation_interval: Option<u32>,
+    #[serde(default)]
+    pub horizon_gc_interval: Option<u32>,
+    #[serde(default)]
+    pub snapshot_interval: Option<u32>,
+    #[serde(default)]
+    pub dream_interval: Option<u32>,
+    #[serde(default)]
+    pub tension_check_interval: Option<u32>,
+    #[serde(default)]
+    pub goal_check_interval: Option<u32>,
+    #[serde(default)]
+    pub reconcile_interval: Option<u32>,
+    #[serde(default)]
+    pub persist_check_interval: Option<u32>,
     /// Минимальная частота тиков, Гц (default: 60)
-    #[serde(default)] pub adaptive_min_hz:   Option<u32>,
+    #[serde(default)]
+    pub adaptive_min_hz: Option<u32>,
     /// Максимальная частота тиков, Гц (default: 1000)
-    #[serde(default)] pub adaptive_max_hz:   Option<u32>,
+    #[serde(default)]
+    pub adaptive_max_hz: Option<u32>,
     /// Шаг увеличения при триггере, Гц (default: 200)
-    #[serde(default)] pub adaptive_step_up:  Option<u32>,
+    #[serde(default)]
+    pub adaptive_step_up: Option<u32>,
     /// Шаг уменьшения за cooldown-цикл, Гц (default: 20)
-    #[serde(default)] pub adaptive_step_down: Option<u32>,
+    #[serde(default)]
+    pub adaptive_step_down: Option<u32>,
     /// Число idle-тиков до снижения hz (default: 50)
-    #[serde(default)] pub adaptive_cooldown: Option<u32>,
+    #[serde(default)]
+    pub adaptive_cooldown: Option<u32>,
 }
 
 impl TickScheduleConfig {
     /// Применить значения из конфига поверх дефолтного TickSchedule.
     /// Отсутствующие поля (None) не перезаписываются.
     pub fn apply_to(&self, s: &mut TickSchedule) {
-        if let Some(v) = self.adaptation_interval    { s.adaptation_interval    = v; }
-        if let Some(v) = self.horizon_gc_interval    { s.horizon_gc_interval    = v; }
-        if let Some(v) = self.snapshot_interval      { s.snapshot_interval      = v; }
-        if let Some(v) = self.dream_interval         { s.dream_interval         = v; }
-        if let Some(v) = self.tension_check_interval { s.tension_check_interval = v; }
-        if let Some(v) = self.goal_check_interval    { s.goal_check_interval    = v; }
-        if let Some(v) = self.reconcile_interval     { s.reconcile_interval     = v; }
-        if let Some(v) = self.persist_check_interval { s.persist_check_interval = v; }
-        if let Some(v) = self.adaptive_min_hz        { s.adaptive_tick.min_hz   = v; }
-        if let Some(v) = self.adaptive_max_hz        { s.adaptive_tick.max_hz   = v; }
-        if let Some(v) = self.adaptive_step_up       { s.adaptive_tick.step_up  = v; }
-        if let Some(v) = self.adaptive_step_down     { s.adaptive_tick.step_down = v; }
-        if let Some(v) = self.adaptive_cooldown      { s.adaptive_tick.cooldown  = v; }
+        if let Some(v) = self.adaptation_interval {
+            s.adaptation_interval = v;
+        }
+        if let Some(v) = self.horizon_gc_interval {
+            s.horizon_gc_interval = v;
+        }
+        if let Some(v) = self.snapshot_interval {
+            s.snapshot_interval = v;
+        }
+        if let Some(v) = self.dream_interval {
+            s.dream_interval = v;
+        }
+        if let Some(v) = self.tension_check_interval {
+            s.tension_check_interval = v;
+        }
+        if let Some(v) = self.goal_check_interval {
+            s.goal_check_interval = v;
+        }
+        if let Some(v) = self.reconcile_interval {
+            s.reconcile_interval = v;
+        }
+        if let Some(v) = self.persist_check_interval {
+            s.persist_check_interval = v;
+        }
+        if let Some(v) = self.adaptive_min_hz {
+            s.adaptive_tick.min_hz = v;
+        }
+        if let Some(v) = self.adaptive_max_hz {
+            s.adaptive_tick.max_hz = v;
+        }
+        if let Some(v) = self.adaptive_step_up {
+            s.adaptive_tick.step_up = v;
+        }
+        if let Some(v) = self.adaptive_step_down {
+            s.adaptive_tick.step_down = v;
+        }
+        if let Some(v) = self.adaptive_cooldown {
+            s.adaptive_tick.cooldown = v;
+        }
     }
 }
 
@@ -284,29 +331,56 @@ impl TickScheduleConfig {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct GuardianConfigYaml {
-    #[serde(default)] pub high_success_threshold: Option<f32>,
-    #[serde(default)] pub low_success_threshold:  Option<f32>,
-    #[serde(default)] pub physics_high_threshold: Option<f32>,
-    #[serde(default)] pub threshold_step:         Option<u8>,
-    #[serde(default)] pub temp_step:              Option<f32>,
-    #[serde(default)] pub temp_min:               Option<f32>,
-    #[serde(default)] pub temp_max:               Option<f32>,
-    #[serde(default)] pub resonance_step:         Option<u16>,
-    #[serde(default)] pub confidence_ceiling:     Option<f32>,
+    #[serde(default)]
+    pub high_success_threshold: Option<f32>,
+    #[serde(default)]
+    pub low_success_threshold: Option<f32>,
+    #[serde(default)]
+    pub physics_high_threshold: Option<f32>,
+    #[serde(default)]
+    pub threshold_step: Option<u8>,
+    #[serde(default)]
+    pub temp_step: Option<f32>,
+    #[serde(default)]
+    pub temp_min: Option<f32>,
+    #[serde(default)]
+    pub temp_max: Option<f32>,
+    #[serde(default)]
+    pub resonance_step: Option<u16>,
+    #[serde(default)]
+    pub confidence_ceiling: Option<f32>,
 }
 
 impl GuardianConfigYaml {
     /// Применить значения из YAML поверх дефолтного GuardianConfig.
     pub fn apply_to(&self, g: &mut GuardianConfig) {
-        if let Some(v) = self.high_success_threshold { g.high_success_threshold = v; }
-        if let Some(v) = self.low_success_threshold  { g.low_success_threshold  = v; }
-        if let Some(v) = self.physics_high_threshold { g.physics_high_threshold = v; }
-        if let Some(v) = self.threshold_step         { g.threshold_step         = v; }
-        if let Some(v) = self.temp_step              { g.temp_step              = v; }
-        if let Some(v) = self.temp_min               { g.temp_min               = v; }
-        if let Some(v) = self.temp_max               { g.temp_max               = v; }
-        if let Some(v) = self.resonance_step         { g.resonance_step         = v; }
-        if let Some(v) = self.confidence_ceiling     { g.confidence_ceiling     = v; }
+        if let Some(v) = self.high_success_threshold {
+            g.high_success_threshold = v;
+        }
+        if let Some(v) = self.low_success_threshold {
+            g.low_success_threshold = v;
+        }
+        if let Some(v) = self.physics_high_threshold {
+            g.physics_high_threshold = v;
+        }
+        if let Some(v) = self.threshold_step {
+            g.threshold_step = v;
+        }
+        if let Some(v) = self.temp_step {
+            g.temp_step = v;
+        }
+        if let Some(v) = self.temp_min {
+            g.temp_min = v;
+        }
+        if let Some(v) = self.temp_max {
+            g.temp_max = v;
+        }
+        if let Some(v) = self.resonance_step {
+            g.resonance_step = v;
+        }
+        if let Some(v) = self.confidence_ceiling {
+            g.confidence_ceiling = v;
+        }
     }
 }
 
@@ -357,7 +431,11 @@ impl CliConfigFile {
         match serde_yaml::from_str::<Self>(&content) {
             Ok(cfg) => Some(cfg),
             Err(e) => {
-                eprintln!("[axiom-cli] config parse error in {}: {}", path.display(), e);
+                eprintln!(
+                    "[axiom-cli] config parse error in {}: {}",
+                    path.display(),
+                    e
+                );
                 None
             }
         }
@@ -438,9 +516,9 @@ impl Default for CliConfig {
             guardian_config: GuardianConfig::default(),
             ws_enabled: false,
             ws_port: 8765,
-            telegram_token:   None,
+            telegram_token: None,
             telegram_allowed: Vec::new(),
-            opensearch_url:   None,
+            opensearch_url: None,
             opensearch_index: "axiom-events".to_string(),
             opensearch_tick_interval: 0,
         }
@@ -455,7 +533,8 @@ impl CliConfig {
         let args: Vec<String> = std::env::args().collect();
 
         // Извлечь --config path до основного парсинга
-        let explicit_config = args.windows(2)
+        let explicit_config = args
+            .windows(2)
             .find(|w| w[0] == "--config")
             .map(|w| w[1].as_str());
 
@@ -464,11 +543,21 @@ impl CliConfig {
 
         // Слой 2: YAML-файл
         if let Some(file) = CliConfigFile::find_and_load(explicit_config) {
-            if let Some(v) = file.tick_hz           { config.tick_hz           = v; }
-            if let Some(v) = file.verbose           { config.verbose           = v; }
-            if let Some(v) = file.prompt            { config.prompt            = v; }
-            if let Some(v) = file.adaptive_tick_rate { config.adaptive_tick_rate = v; }
-            if let Some(v) = file.hot_reload        { config.hot_reload         = v; }
+            if let Some(v) = file.tick_hz {
+                config.tick_hz = v;
+            }
+            if let Some(v) = file.verbose {
+                config.verbose = v;
+            }
+            if let Some(v) = file.prompt {
+                config.prompt = v;
+            }
+            if let Some(v) = file.adaptive_tick_rate {
+                config.adaptive_tick_rate = v;
+            }
+            if let Some(v) = file.hot_reload {
+                config.hot_reload = v;
+            }
             if let Some(ref s) = file.detail_level {
                 if let Some(d) = DetailLevel::from_str(s) {
                     config.detail_level = d;
@@ -493,8 +582,8 @@ impl CliConfig {
                     }
                 }
                 "--verbose" | "-v" => config.verbose = true,
-                "--adaptive"       => config.adaptive_tick_rate = true,
-                "--hot-reload"     => config.hot_reload = true,
+                "--adaptive" => config.adaptive_tick_rate = true,
+                "--hot-reload" => config.hot_reload = true,
                 "--detail" => {
                     i += 1;
                     if let Some(val) = args.get(i) {
@@ -503,7 +592,9 @@ impl CliConfig {
                         }
                     }
                 }
-                "--config"         => { i += 1; } // уже обработано выше
+                "--config" => {
+                    i += 1;
+                } // уже обработано выше
                 "--data-dir" => {
                     i += 1;
                     if let Some(val) = args.get(i) {
@@ -595,18 +686,19 @@ const EVENT_LOG_CAPACITY: usize = 256;
 /// Ядро живёт в tick loop (одном потоке). Все обращения к Engine — через
 /// tick loop. tokio не попадает в ядро.
 pub struct CliChannel {
-    engine:       AxiomEngine,
-    perceptor:    TextPerceptor,
-    effector:     MessageEffector,
-    config:       CliConfig,
-    auto_saver:   AutoSaver,
-    perf:         PerfTracker,
+    engine: AxiomEngine,
+    perceptor: TextPerceptor,
+    #[allow(dead_code)]
+    effector: MessageEffector,
+    config: CliConfig,
+    auto_saver: AutoSaver,
+    perf: PerfTracker,
     /// Кольцевой буфер последних событий COM
-    event_log:    VecDeque<Event>,
+    event_log: VecDeque<Event>,
     /// Активные watch-поля: traces | tension | tps
     watch_fields: HashSet<String>,
     /// Последнее число traces (для :watch traces)
-    last_traces:  usize,
+    last_traces: usize,
     /// Последнее число tension (для :watch tension)
     last_tension: usize,
     /// Тик последнего вывода tps (для :watch tps)
@@ -625,7 +717,7 @@ impl CliChannel {
     /// Создать новый CliChannel.
     /// TickSchedule из конфига применяется к Engine при создании.
     pub fn new(mut engine: AxiomEngine, config: CliConfig) -> Self {
-        engine.tick_schedule  = config.tick_schedule.clone();
+        engine.tick_schedule = config.tick_schedule.clone();
         engine.guardian_config = config.guardian_config.clone();
         let persist_interval = engine.tick_schedule.persist_check_interval;
         let auto_cfg = PersistenceConfig::new(persist_interval);
@@ -665,18 +757,18 @@ impl CliChannel {
 
         let perceptor = match &anchor_set {
             Some(a) => TextPerceptor::with_anchors(Arc::clone(a)),
-            None    => TextPerceptor::new(),
+            None => TextPerceptor::new(),
         };
 
         Self {
             engine,
             perceptor,
-            effector:     MessageEffector::new(),
-            auto_saver:   AutoSaver::new(auto_cfg),
-            perf:         PerfTracker::new(200),
-            event_log:    VecDeque::with_capacity(EVENT_LOG_CAPACITY),
+            effector: MessageEffector::new(),
+            auto_saver: AutoSaver::new(auto_cfg),
+            perf: PerfTracker::new(200),
+            event_log: VecDeque::with_capacity(EVENT_LOG_CAPACITY),
             watch_fields: HashSet::new(),
-            last_traces:  0,
+            last_traces: 0,
             last_tension: 0,
             last_tps_tick: 0,
             multipass_count: 0,
@@ -692,29 +784,29 @@ impl CliChannel {
     /// Thin wrapper над tick_loop. stdin → AdapterCommand → tick_loop.
     /// broadcast_rx → stdout для CLI-вывода.
     pub async fn run(&mut self) {
-        use tokio::sync::broadcast;
-        use crate::adapter_command::{AdapterCommand, AdapterSource, AdapterPayload};
+        use crate::adapter_command::{AdapterCommand, AdapterPayload, AdapterSource};
         use crate::adapters_config::AdaptersConfig;
-        use crate::tick_loop::tick_loop;
         use crate::protocol::ServerMessage;
+        use crate::tick_loop::tick_loop;
         use axiom_persist::PersistenceConfig;
+        use tokio::sync::broadcast;
 
         let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(256);
         let (broadcast_tx, mut broadcast_rx) = broadcast::channel::<ServerMessage>(1024);
         let snapshot = Arc::new(tokio::sync::RwLock::new(
-            axiom_runtime::BroadcastSnapshot::default()
+            axiom_runtime::BroadcastSnapshot::default(),
         ));
         let adapters_config = AdaptersConfig::from_cli_config(&self.config);
 
         // Phase 1: WebSocket-сервер (если включён)
         if adapters_config.websocket.enabled {
-            use crate::ws::{AppState, bind, serve_ws};
-            use std::sync::Arc;
+            use crate::ws::{bind, serve_ws, AppState};
             use std::sync::atomic::AtomicU64;
+            use std::sync::Arc;
             let ws_state = AppState {
-                command_tx:   command_tx.clone(),
+                command_tx: command_tx.clone(),
                 broadcast_tx: broadcast_tx.clone(),
-                snapshot:     Arc::clone(&snapshot),
+                snapshot: Arc::clone(&snapshot),
                 next_conn_id: Arc::new(AtomicU64::new(0)),
             };
             let listener = bind(adapters_config.websocket.port).await;
@@ -741,12 +833,14 @@ impl CliChannel {
             use crate::opensearch::{OpenSearchAdapter, OpenSearchConfig};
             let os = OpenSearchAdapter::new(OpenSearchConfig {
                 url,
-                index:         adapters_config.opensearch_index.clone(),
+                index: adapters_config.opensearch_index.clone(),
                 tick_interval: adapters_config.opensearch_tick_interval,
             });
-            println!("[opensearch] OpenSearch adapter started → {}/{}",
+            println!(
+                "[opensearch] OpenSearch adapter started → {}/{}",
                 adapters_config.opensearch_url.as_deref().unwrap_or(""),
-                adapters_config.opensearch_index);
+                adapters_config.opensearch_index
+            );
             os.run(broadcast_tx.clone());
         }
 
@@ -764,14 +858,23 @@ impl CliChannel {
                     Ok(0) | Err(_) => break,
                     Ok(_) => {
                         let trimmed = line.trim().to_string();
-                        if trimmed.is_empty() { continue; }
+                        if trimmed.is_empty() {
+                            continue;
+                        }
                         seq += 1;
                         let id = seq.to_string();
                         let payload = if trimmed.starts_with(':') {
-                            let cmd = trimmed.splitn(2, ' ').next().unwrap_or("");
-                            let is_mutating = matches!(cmd,
-                                ":save"|":load"|":autosave"|":tick"|
-                                ":export"|":import"|":quit"|":q"
+                            let cmd = trimmed.split(' ').next().unwrap_or("");
+                            let is_mutating = matches!(
+                                cmd,
+                                ":save"
+                                    | ":load"
+                                    | ":autosave"
+                                    | ":tick"
+                                    | ":export"
+                                    | ":import"
+                                    | ":quit"
+                                    | ":q"
                             );
                             if is_mutating {
                                 AdapterPayload::MetaMutate { cmd: trimmed }
@@ -781,9 +884,15 @@ impl CliChannel {
                         } else {
                             AdapterPayload::Inject { text: trimmed }
                         };
-                        let cmd = AdapterCommand { id, source: AdapterSource::Cli, payload,
-                            priority: axiom_runtime::GatewayPriority::Normal };
-                        if tx.send(cmd).await.is_err() { break; }
+                        let cmd = AdapterCommand {
+                            id,
+                            source: AdapterSource::Cli,
+                            payload,
+                            priority: axiom_runtime::GatewayPriority::Normal,
+                        };
+                        if tx.send(cmd).await.is_err() {
+                            break;
+                        }
                     }
                 }
             }
@@ -798,7 +907,14 @@ impl CliChannel {
                         print!("{}", output);
                     }
                     Ok(ServerMessage::Result {
-                        domain_name, coherence, traces_matched, position, path, reflex_hit, shell, ..
+                        domain_name,
+                        coherence,
+                        traces_matched,
+                        position,
+                        path,
+                        reflex_hit,
+                        shell,
+                        ..
                     }) => {
                         use crate::effectors::message::DetailLevel;
                         let [x, y, z] = position;
@@ -808,12 +924,16 @@ impl CliChannel {
                                 println!("  [{}{}] → {}", path, reflex, domain_name);
                             }
                             DetailLevel::Min => {
-                                println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
-                                    path, reflex, domain_name, coherence, traces_matched, x, y, z);
+                                println!(
+                                    "  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
+                                    path, reflex, domain_name, coherence, traces_matched, x, y, z
+                                );
                             }
                             DetailLevel::Mid => {
-                                println!("  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
-                                    path, reflex, domain_name, coherence, traces_matched, x, y, z);
+                                println!(
+                                    "  [{}{}] → {} | coh={:.2} matched={} pos=({},{},{})",
+                                    path, reflex, domain_name, coherence, traces_matched, x, y, z
+                                );
                                 println!("  shell: {:?}", shell);
                             }
                             DetailLevel::Max => {
@@ -829,7 +949,7 @@ impl CliChannel {
                     Ok(ServerMessage::Error { message, .. }) => {
                         eprintln!("  error: {}", message);
                     }
-                    Ok(_) => {}  // Tick, State — не нужны в CLI stdout
+                    Ok(_) => {} // Tick, State — не нужны в CLI stdout
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         eprintln!("[broadcast] lagged by {} messages", n);
                     }
@@ -843,13 +963,20 @@ impl CliChannel {
             &mut self.auto_saver,
             AutoSaver::new(PersistenceConfig::disabled()),
         );
-        let engine         = std::mem::replace(&mut self.engine, AxiomEngine::new());
+        let engine = std::mem::replace(&mut self.engine, AxiomEngine::new());
         let config_watcher = self.config_watcher.take();
 
         tick_loop(
-            engine, command_rx, broadcast_tx, snapshot,
-            auto_saver, self.anchor_set.clone(), adapters_config, config_watcher,
-        ).await;
+            engine,
+            command_rx,
+            broadcast_tx,
+            snapshot,
+            auto_saver,
+            self.anchor_set.clone(),
+            adapters_config,
+            config_watcher,
+        )
+        .await;
     }
 
     // ── удалён старый run() (монолитный tick loop) — Phase 0C ────────────────
@@ -857,17 +984,26 @@ impl CliChannel {
     // будущих CLI-только режимах (non-tick_loop path).
     #[allow(dead_code)]
     fn handle_meta_command(&mut self, line: &str) -> bool {
-        use crate::meta_commands::{handle_meta_read, handle_meta_mutate, MetaAction};
-        let cmd = line.splitn(2, ' ').next().unwrap_or("");
+        use crate::meta_commands::{handle_meta_mutate, handle_meta_read, MetaAction};
+        let cmd = line.split(' ').next().unwrap_or("");
 
-        let is_mutating = matches!(cmd,
-            ":save" | ":load" | ":autosave" | ":tick" |
-            ":export" | ":import" | ":quit" | ":q" |
-            ":force-sleep" | ":wake-up"
+        let is_mutating = matches!(
+            cmd,
+            ":save"
+                | ":load"
+                | ":autosave"
+                | ":tick"
+                | ":export"
+                | ":import"
+                | ":quit"
+                | ":q"
+                | ":force-sleep"
+                | ":wake-up"
         );
 
         if is_mutating {
-            let result = handle_meta_mutate(line, &mut self.engine, &mut self.auto_saver, &self.config);
+            let result =
+                handle_meta_mutate(line, &mut self.engine, &mut self.auto_saver, &self.config);
             print!("{}", result.output);
             match result.action {
                 MetaAction::Quit => return false,
@@ -875,9 +1011,9 @@ impl CliChannel {
                     self.engine.tick_schedule = self.config.tick_schedule.clone();
                     self.perceptor = match &self.anchor_set {
                         Some(a) => TextPerceptor::with_anchors(std::sync::Arc::clone(a)),
-                        None    => TextPerceptor::new(),
+                        None => TextPerceptor::new(),
                     };
-                    self.last_traces  = 0;
+                    self.last_traces = 0;
                     self.last_tension = 0;
                     self.multipass_count = 0;
                     self.auto_saver.reset_save_tick(self.engine.tick_count);
@@ -889,22 +1025,28 @@ impl CliChannel {
             }
         } else {
             let output = handle_meta_read(
-                line, &self.engine, self.anchor_set.as_deref(), &self.config,
-                &self.watch_fields, &self.event_log, &self.perf,
-                self.multipass_count, self.last_multipass_n,
+                line,
+                &self.engine,
+                self.anchor_set.as_deref(),
+                &self.config,
+                &self.watch_fields,
+                &self.event_log,
+                &self.perf,
+                self.multipass_count,
+                self.last_multipass_n,
             );
             print!("{}", output);
 
             // CLI-state mutations — не требуют &mut Engine
             match cmd {
                 ":watch" => {
-                    let arg = line.splitn(3, ' ').nth(1).unwrap_or("");
+                    let arg = line.split(' ').nth(1).unwrap_or("");
                     match arg {
                         "off" => self.watch_fields.clear(),
                         field if !field.is_empty() => {
                             let exp = self.engine.ashti.experience();
-                            self.last_traces   = exp.traces().len();
-                            self.last_tension  = exp.tension_count();
+                            self.last_traces = exp.traces().len();
+                            self.last_tension = exp.tension_count();
                             self.last_tps_tick = self.engine.tick_count;
                             self.watch_fields.insert(field.to_string());
                         }
@@ -912,19 +1054,17 @@ impl CliChannel {
                     }
                 }
                 ":unwatch" => {
-                    if let Some(field) = line.splitn(3, ' ').nth(1) {
+                    if let Some(field) = line.split(' ').nth(1) {
                         self.watch_fields.remove(field);
                     }
                 }
-                ":verbose" => {
-                    match line.splitn(3, ' ').nth(1) {
-                        Some("on")  => self.config.verbose = true,
-                        Some("off") => self.config.verbose = false,
-                        _ => {}
-                    }
-                }
+                ":verbose" => match line.split(' ').nth(1) {
+                    Some("on") => self.config.verbose = true,
+                    Some("off") => self.config.verbose = false,
+                    _ => {}
+                },
                 ":detail" => {
-                    if let Some(level) = line.splitn(3, ' ').nth(1) {
+                    if let Some(level) = line.split(' ').nth(1) {
                         if let Some(d) = DetailLevel::from_str(level) {
                             self.config.detail_level = d;
                         }

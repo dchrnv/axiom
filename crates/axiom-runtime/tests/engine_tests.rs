@@ -4,12 +4,12 @@
 // domain_count() всегда == 11, arbiter_ready() всегда == true.
 // Домены адресуются по schema: level_id(1) * 100 + role = 100..110.
 
-use std::sync::Arc;
-use axiom_runtime::{AxiomEngine, AxiomError, DreamPhaseState, GatewayPriority};
-use axiom_genome::Genome;
 use axiom_config::GUARDIAN_CHECK_REQUIRED;
-use axiom_ucl::{UclCommand, OpCode, UnfoldFramePayload};
-use axiom_core::{Token, Connection, FLAG_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR, FRAME_CATEGORY_SYNTAX};
+use axiom_core::{Connection, Token, FLAG_ACTIVE, FRAME_CATEGORY_SYNTAX, TOKEN_FLAG_FRAME_ANCHOR};
+use axiom_genome::Genome;
+use axiom_runtime::{AxiomEngine, AxiomError, DreamPhaseState, GatewayPriority};
+use axiom_ucl::{OpCode, UclCommand, UnfoldFramePayload};
+use std::sync::Arc;
 
 fn make_cmd(opcode: OpCode, target_id: u32) -> UclCommand {
     UclCommand::new(opcode, target_id, 100, 0)
@@ -50,9 +50,15 @@ fn test_try_new_error_contains_description() {
     let mut genome = Genome::default_ashti_core();
     genome.config.ashti_domain_count = 5;
     let result = AxiomEngine::try_new(Arc::new(genome));
-    let err = match result { Err(e) => e, Ok(_) => panic!("expected Err") };
+    let err = match result {
+        Err(e) => e,
+        Ok(_) => panic!("expected Err"),
+    };
     let msg = format!("{err}");
-    assert!(msg.contains("GENOME"), "error message should mention GENOME: {msg}");
+    assert!(
+        msg.contains("GENOME"),
+        "error message should mention GENOME: {msg}"
+    );
 }
 
 // ============================================================
@@ -68,7 +74,10 @@ fn test_domain_count_is_always_11() {
 #[test]
 fn test_arbiter_ready_after_creation() {
     let engine = AxiomEngine::new();
-    assert!(engine.arbiter_ready(), "AshtiCore регистрирует все 11 доменов при создании");
+    assert!(
+        engine.arbiter_ready(),
+        "AshtiCore регистрирует все 11 доменов при создании"
+    );
 }
 
 // ============================================================
@@ -169,7 +178,10 @@ fn test_drain_events_populated_after_heartbeat() {
             break;
         }
     }
-    assert!(got_events, "ожидались физические события после heartbeat pulse");
+    assert!(
+        got_events,
+        "ожидались физические события после heartbeat pulse"
+    );
 }
 
 #[test]
@@ -206,8 +218,16 @@ fn test_core_reset_reinitialises_engine() {
     // reset
     let reset_cmd = make_cmd(OpCode::CoreReset, 0);
     engine.process_command(&reset_cmd);
-    assert_eq!(engine.token_count(LOGIC_ID), 0, "после reset токены должны быть удалены");
-    assert_eq!(engine.domain_count(), 11, "после reset AshtiCore пересоздаётся с 11 доменами");
+    assert_eq!(
+        engine.token_count(LOGIC_ID),
+        0,
+        "после reset токены должны быть удалены"
+    );
+    assert_eq!(
+        engine.domain_count(),
+        11,
+        "после reset AshtiCore пересоздаётся с 11 доменами"
+    );
 }
 
 // ============================================================
@@ -254,7 +274,10 @@ fn test_unimplemented_opcodes_return_success() {
     ];
     for opcode in unimplemented {
         let result = engine.process_command(&make_cmd(opcode, 0));
-        assert!(result.is_success(), "{opcode:?} должен возвращать Success, не UNKNOWN_OPCODE");
+        assert!(
+            result.is_success(),
+            "{opcode:?} должен возвращать Success, не UNKNOWN_OPCODE"
+        );
         assert_eq!(result.events_generated, 0);
     }
 }
@@ -336,7 +359,7 @@ fn test_inject_anchor_tokens_domain() {
 // ============================================================
 
 const EXPERIENCE_ID: u16 = 109;
-const SUTRA_ID:      u16 = 100;
+const _SUTRA_ID: u16 = 100;
 
 /// Подготовить EXPERIENCE-Frame в engine.ashti: анкер + participants.
 fn inject_test_frame(engine: &mut AxiomEngine, anchor_id: u32, participant_ids: &[u32]) {
@@ -346,7 +369,10 @@ fn inject_test_frame(engine: &mut AxiomEngine, anchor_id: u32, participant_ids: 
     engine.ashti.inject_token(EXPERIENCE_ID, anchor).unwrap();
 
     for (i, &pid) in participant_ids.iter().enumerate() {
-        engine.ashti.inject_token(EXPERIENCE_ID, Token::new(pid, EXPERIENCE_ID, [0; 3], 0)).unwrap();
+        engine
+            .ashti
+            .inject_token(EXPERIENCE_ID, Token::new(pid, EXPERIENCE_ID, [0; 3], 0))
+            .unwrap();
         let layer = (i as u8 % 8) + 1;
         let link_type = 0x0800u16 | ((layer as u16) << 4);
         let mut conn = Connection::new(anchor_id, pid, EXPERIENCE_ID, 1);
@@ -359,10 +385,10 @@ fn inject_test_frame(engine: &mut AxiomEngine, anchor_id: u32, participant_ids: 
 
 fn make_unfold_cmd(anchor_id: u32, target_domain: u16) -> UclCommand {
     let payload = UnfoldFramePayload {
-        frame_anchor_id:  anchor_id,
+        frame_anchor_id: anchor_id,
         target_domain_id: target_domain,
-        unfold_depth:     1,
-        reserved:         [0; 41],
+        unfold_depth: 1,
+        reserved: [0; 41],
     };
     UclCommand::new(OpCode::UnfoldFrame, 0, 10, 0).with_payload(&payload)
 }
@@ -373,7 +399,12 @@ fn unfold_frame_to_target_domain() {
     inject_test_frame(&mut engine, 8000, &[8001, 8002, 8003]);
 
     let before_tokens = engine.token_count(LOGIC_ID);
-    let before_conns = engine.ashti.state(engine.ashti.index_of(LOGIC_ID).unwrap()).unwrap().connections.len();
+    let before_conns = engine
+        .ashti
+        .state(engine.ashti.index_of(LOGIC_ID).unwrap())
+        .unwrap()
+        .connections
+        .len();
 
     let cmd = make_unfold_cmd(8000, LOGIC_ID);
     let result = engine.process_command(&cmd);
@@ -382,11 +413,19 @@ fn unfold_frame_to_target_domain() {
     // В LOGIC должен появиться новый токен-анкер
     assert_eq!(engine.token_count(LOGIC_ID), before_tokens + 1);
     // В LOGIC должны появиться 3 новые связи
-    let after_conns = engine.ashti.state(engine.ashti.index_of(LOGIC_ID).unwrap()).unwrap().connections.len();
+    let after_conns = engine
+        .ashti
+        .state(engine.ashti.index_of(LOGIC_ID).unwrap())
+        .unwrap()
+        .connections
+        .len();
     assert_eq!(after_conns, before_conns + 3);
 
     // Оригинальный Frame в EXPERIENCE остался нетронутым
-    assert!(engine.ashti.find_token_by_sutra_id(EXPERIENCE_ID, 8000).is_some());
+    assert!(engine
+        .ashti
+        .find_token_by_sutra_id(EXPERIENCE_ID, 8000)
+        .is_some());
 }
 
 #[test]
@@ -396,8 +435,11 @@ fn unfold_frame_source_auto_detect_experience() {
 
     let cmd = make_unfold_cmd(8100, LOGIC_ID);
     let result = engine.process_command(&cmd);
-    assert_eq!(result.status, axiom_ucl::CommandStatus::Success as u8,
-        "должен найти Frame в EXPERIENCE и успешно развернуть");
+    assert_eq!(
+        result.status,
+        axiom_ucl::CommandStatus::Success as u8,
+        "должен найти Frame в EXPERIENCE и успешно развернуть"
+    );
 }
 
 #[test]
@@ -406,8 +448,11 @@ fn unfold_frame_returns_error_for_missing_anchor() {
     // Анкера 9999 нет ни в EXPERIENCE, ни в SUTRA
     let cmd = make_unfold_cmd(9999, LOGIC_ID);
     let result = engine.process_command(&cmd);
-    assert_ne!(result.status, axiom_ucl::CommandStatus::Success as u8,
-        "должен вернуть ошибку при отсутствии анкера");
+    assert_ne!(
+        result.status,
+        axiom_ucl::CommandStatus::Success as u8,
+        "должен вернуть ошибку при отсутствии анкера"
+    );
 }
 
 // ── DREAM Phase Stage 1: состояния и GatewayPriority ─────────────────────────
@@ -415,8 +460,11 @@ fn unfold_frame_returns_error_for_missing_anchor() {
 #[test]
 fn dream_phase_state_starts_as_wake() {
     let engine = AxiomEngine::new();
-    assert_eq!(engine.dream_phase_state, DreamPhaseState::Wake,
-        "AxiomEngine должен стартовать в состоянии Wake");
+    assert_eq!(
+        engine.dream_phase_state,
+        DreamPhaseState::Wake,
+        "AxiomEngine должен стартовать в состоянии Wake"
+    );
 }
 
 #[test]
@@ -427,8 +475,11 @@ fn dream_phase_state_default_is_wake() {
 #[test]
 fn gateway_priority_default_is_normal() {
     let p = GatewayPriority::default();
-    assert_eq!(p, GatewayPriority::Normal,
-        "GatewayPriority по умолчанию должен быть Normal");
+    assert_eq!(
+        p,
+        GatewayPriority::Normal,
+        "GatewayPriority по умолчанию должен быть Normal"
+    );
 }
 
 #[test]

@@ -7,13 +7,15 @@
 // Heartbeat V2.0, раздел 9: каждый домен имеет свой HeartbeatGenerator
 // SPACE V6.0, раздел 8: каждый домен имеет свой SpatialHashGrid
 
-use axiom_core::{Token, Connection, Event};
 use axiom_config::DomainConfig;
+use axiom_core::{Connection, Event, Token};
 use axiom_frontier::{CausalFrontier, FrontierConfig, FrontierEntity};
 use axiom_heartbeat::{HeartbeatConfig, HeartbeatGenerator};
 use axiom_space::SpatialHashGrid;
 
-use crate::physics::{EventGenerator, DEFAULT_DECAY_RATE, DEFAULT_STRESS_THRESHOLD, DEFAULT_COLLISION_RADIUS};
+use crate::physics::{
+    EventGenerator, DEFAULT_COLLISION_RADIUS, DEFAULT_DECAY_RATE, DEFAULT_STRESS_THRESHOLD,
+};
 
 /// Domain — runtime-структура управляющая состоянием и причинным фронтиром.
 ///
@@ -146,7 +148,9 @@ impl Domain {
                     if let Some(token) = tokens.get(token_idx as usize) {
                         // Затухание
                         if self.heartbeat_config.enable_decay {
-                            if let Some(event) = event_generator.check_decay(token, DEFAULT_DECAY_RATE) {
+                            if let Some(event) =
+                                event_generator.check_decay(token, DEFAULT_DECAY_RATE)
+                            {
                                 generated_events.push(event);
                             }
                         }
@@ -178,7 +182,8 @@ impl Domain {
 
                             for collision_idx in collisions {
                                 if let Some(other_token) = tokens.get(collision_idx as usize) {
-                                    let event = event_generator.generate_collision(token, other_token);
+                                    let event =
+                                        event_generator.generate_collision(token, other_token);
                                     generated_events.push(event);
 
                                     self.frontier.push_token(collision_idx);
@@ -214,7 +219,10 @@ impl Domain {
                             {
                                 generated_events.push(event);
                             }
-                            axiom_shell::process_connection_event(&mut self.shell_cache, connection);
+                            axiom_shell::process_connection_event(
+                                &mut self.shell_cache,
+                                connection,
+                            );
                         }
                     }
                 }
@@ -230,12 +238,13 @@ impl Domain {
     ///
     /// SPACE V6.0, раздел 4.5: перестройка после применения событий.
     pub fn rebuild_spatial_grid(&mut self, tokens: &[Token]) {
-        self.spatial_grid.rebuild(self.active_tokens, |token_index| {
-            tokens
-                .get(token_index)
-                .map(|t| (t.position[0], t.position[1], t.position[2]))
-                .unwrap_or((0, 0, 0))
-        });
+        self.spatial_grid
+            .rebuild(self.active_tokens, |token_index| {
+                tokens
+                    .get(token_index)
+                    .map(|t| (t.position[0], t.position[1], t.position[2]))
+                    .unwrap_or((0, 0, 0))
+            });
         self.events_since_rebuild = 0;
     }
 

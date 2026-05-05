@@ -1,8 +1,8 @@
 // Тесты boot sequence — Фаза 2 Memory Persistence V1.0
 
-use axiom_persist::{save, load, WriteOptions};
+use axiom_persist::{load, save, WriteOptions};
 use axiom_runtime::AxiomEngine;
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 use std::path::PathBuf;
 
 fn temp_dir(name: &str) -> PathBuf {
@@ -36,20 +36,37 @@ fn test_boot_restore_full_cycle() {
         engine_a.process_command(&tick);
     }
 
-    let tick_before    = engine_a.tick_count;
-    let com_before     = engine_a.com_next_id;
-    let tokens_before: usize = engine_a.snapshot().domains.iter().map(|d| d.tokens.len()).sum();
+    let tick_before = engine_a.tick_count;
+    let com_before = engine_a.com_next_id;
+    let tokens_before: usize = engine_a
+        .snapshot()
+        .domains
+        .iter()
+        .map(|d| d.tokens.len())
+        .sum();
 
     save(&engine_a, &dir, &WriteOptions::default()).expect("save failed");
 
     // "Перезапуск" — новый engine, загружаем
     let result = load(&dir).expect("load failed");
 
-    assert_eq!(result.engine.tick_count,  tick_before,  "tick_count мismatch");
-    assert_eq!(result.engine.com_next_id, com_before,   "com_next_id mismatch");
+    assert_eq!(result.engine.tick_count, tick_before, "tick_count мismatch");
+    assert_eq!(
+        result.engine.com_next_id, com_before,
+        "com_next_id mismatch"
+    );
 
-    let tokens_after: usize = result.engine.snapshot().domains.iter().map(|d| d.tokens.len()).sum();
-    assert_eq!(tokens_before, tokens_after, "token count mismatch after boot restore");
+    let tokens_after: usize = result
+        .engine
+        .snapshot()
+        .domains
+        .iter()
+        .map(|d| d.tokens.len())
+        .sum();
+    assert_eq!(
+        tokens_before, tokens_after,
+        "token count mismatch after boot restore"
+    );
 }
 
 // ─── Тест 2: Отсутствие axiom-data/ → load возвращает NotFound ────────────────
@@ -67,7 +84,7 @@ fn test_boot_missing_data_dir() {
     match load(&dir) {
         Err(axiom_persist::PersistError::NotFound(_)) => {} // ожидаемо
         Err(e) => panic!("unexpected error: {e}"),
-        Ok(_)  => panic!("expected error when dir missing"),
+        Ok(_) => panic!("expected error when dir missing"),
     }
 }
 
@@ -91,12 +108,17 @@ fn test_boot_traces_are_active_after_load() {
     let result = load(&dir).expect("load failed");
 
     let traces_after = result.engine.ashti.experience().traces().len();
-    assert_eq!(traces_before, traces_after,
-        "trace count should survive boot restore: before={traces_before}, after={traces_after}");
+    assert_eq!(
+        traces_before, traces_after,
+        "trace count should survive boot restore: before={traces_before}, after={traces_after}"
+    );
 
     // Traces должны быть ненулевого веса (пусть и сниженного)
     for trace in result.engine.ashti.experience().traces() {
-        assert!(trace.weight > 0.0, "all traces must have positive weight after load");
+        assert!(
+            trace.weight > 0.0,
+            "all traces must have positive weight after load"
+        );
     }
 }
 
@@ -125,7 +147,10 @@ fn test_boot_resave_after_load() {
     save(&engine_b, &dir, &WriteOptions::default()).expect("resave");
     let r2 = load(&dir).expect("second load");
 
-    assert_eq!(r2.engine.tick_count, tick2, "tick_count after resave/reload");
+    assert_eq!(
+        r2.engine.tick_count, tick2,
+        "tick_count after resave/reload"
+    );
 }
 
 // ─── Тест 5: data_dir по умолчанию "axiom-data" ───────────────────────────────

@@ -55,18 +55,30 @@ fn test_ucl_result() {
 
 #[test]
 fn test_preset_void_maps_to_structural_role_8() {
-    assert_eq!(ucl_preset_to_structural_role(0), 8, "UCL Void(0) → StructuralRole::Void(8)");
+    assert_eq!(
+        ucl_preset_to_structural_role(0),
+        8,
+        "UCL Void(0) → StructuralRole::Void(8)"
+    );
 }
 
 #[test]
 fn test_preset_sutra_maps_to_structural_role_0() {
-    assert_eq!(ucl_preset_to_structural_role(1), 0, "UCL Sutra(1) → StructuralRole::Sutra(0)");
+    assert_eq!(
+        ucl_preset_to_structural_role(1),
+        0,
+        "UCL Sutra(1) → StructuralRole::Sutra(0)"
+    );
 }
 
 #[test]
 fn test_preset_others_pass_through() {
     for n in [2u8, 3, 4, 5, 6, 7, 9, 10] {
-        assert_eq!(ucl_preset_to_structural_role(n), n, "preset {n} должен проходить без изменений");
+        assert_eq!(
+            ucl_preset_to_structural_role(n),
+            n,
+            "preset {n} должен проходить без изменений"
+        );
     }
 }
 
@@ -76,9 +88,18 @@ fn test_spawn_domain_builder_structural_role_correct() {
     let payload = cmd.payload;
     // factory_preset = payload[2], structural_role = payload[3]
     assert_eq!(payload[2], 0, "factory_preset должен остаться 0 (Void)");
-    assert_eq!(payload[3], 8, "structural_role должен быть 8 (StructuralRole::Void)");
+    assert_eq!(
+        payload[3], 8,
+        "structural_role должен быть 8 (StructuralRole::Void)"
+    );
 
     let cmd2 = UclBuilder::spawn_domain(0, 1); // preset=1 (Sutra)
-    assert_eq!(cmd2.payload[2], 1, "factory_preset должен остаться 1 (Sutra)");
-    assert_eq!(cmd2.payload[3], 0, "structural_role должен быть 0 (StructuralRole::Sutra)");
+    assert_eq!(
+        cmd2.payload[2], 1,
+        "factory_preset должен остаться 1 (Sutra)"
+    );
+    assert_eq!(
+        cmd2.payload[3], 0,
+        "structural_role должен быть 0 (StructuralRole::Sutra)"
+    );
 }

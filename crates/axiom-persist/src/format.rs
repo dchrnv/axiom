@@ -6,10 +6,10 @@
 // Отдельный слой между внутренними типами ядра и форматом на диске.
 // Позволяет эволюционировать формат независимо от структур ядра.
 
-use serde::{Deserialize, Serialize};
-use axiom_core::{Token, Connection};
 use axiom_arbiter::{ExperienceTrace, TensionTrace};
 use axiom_config::DomainConfig;
+use axiom_core::{Connection, Token};
+use serde::{Deserialize, Serialize};
 
 /// Состояние одного домена на диске.
 ///
@@ -40,12 +40,12 @@ pub struct StoredTrace {
 impl From<&ExperienceTrace> for StoredTrace {
     fn from(t: &ExperienceTrace) -> Self {
         Self {
-            pattern:       t.pattern,
-            weight:        t.weight,
-            created_at:    t.created_at,
-            last_used:     t.last_used,
+            pattern: t.pattern,
+            weight: t.weight,
+            created_at: t.created_at,
+            last_used: t.last_used,
             success_count: t.success_count,
-            pattern_hash:  t.pattern_hash,
+            pattern_hash: t.pattern_hash,
         }
     }
 }
@@ -53,12 +53,12 @@ impl From<&ExperienceTrace> for StoredTrace {
 impl From<StoredTrace> for ExperienceTrace {
     fn from(s: StoredTrace) -> Self {
         Self {
-            pattern:       s.pattern,
-            weight:        s.weight,
-            created_at:    s.created_at,
-            last_used:     s.last_used,
+            pattern: s.pattern,
+            weight: s.weight,
+            created_at: s.created_at,
+            last_used: s.last_used,
             success_count: s.success_count,
-            pattern_hash:  s.pattern_hash,
+            pattern_hash: s.pattern_hash,
         }
     }
 }
@@ -66,17 +66,17 @@ impl From<StoredTrace> for ExperienceTrace {
 /// Tension trace на диске.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StoredTensionTrace {
-    pub pattern:     Token,
+    pub pattern: Token,
     pub temperature: u8,
-    pub created_at:  u64,
+    pub created_at: u64,
 }
 
 impl From<&TensionTrace> for StoredTensionTrace {
     fn from(t: &TensionTrace) -> Self {
         Self {
-            pattern:     t.pattern,
+            pattern: t.pattern,
             temperature: t.temperature,
-            created_at:  t.created_at,
+            created_at: t.created_at,
         }
     }
 }
@@ -84,9 +84,9 @@ impl From<&TensionTrace> for StoredTensionTrace {
 impl From<StoredTensionTrace> for TensionTrace {
     fn from(s: StoredTensionTrace) -> Self {
         Self {
-            pattern:     s.pattern,
+            pattern: s.pattern,
             temperature: s.temperature,
-            created_at:  s.created_at,
+            created_at: s.created_at,
         }
     }
 }
@@ -94,9 +94,9 @@ impl From<StoredTensionTrace> for TensionTrace {
 /// Полное состояние Engine на диске.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StoredEngineState {
-    pub tick_count:  u64,
+    pub tick_count: u64,
     pub com_next_id: u64,
-    pub domains:     Vec<StoredDomain>,
-    pub traces:      Vec<StoredTrace>,
-    pub tension:     Vec<StoredTensionTrace>,
+    pub domains: Vec<StoredDomain>,
+    pub traces: Vec<StoredTrace>,
+    pub tension: Vec<StoredTensionTrace>,
 }

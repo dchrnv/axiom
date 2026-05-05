@@ -9,11 +9,11 @@
 // data_dir не хранится в AutoSaver — передаётся при каждом вызове tick/force_save.
 // Единственный источник правды для пути — CliConfig.data_dir в вызывающем коде.
 
-use std::path::Path;
-use schemars::JsonSchema;
-use axiom_runtime::AxiomEngine;
 use crate::error::PersistError;
 use crate::writer::{save, WriteOptions};
+use axiom_runtime::AxiomEngine;
+use schemars::JsonSchema;
+use std::path::Path;
 
 /// Конфигурация автосохранения.
 #[derive(Debug, Clone, JsonSchema)]
@@ -115,7 +115,11 @@ impl AutoSaver {
     }
 
     /// Принудительное сохранение (например при :quit).
-    pub fn force_save(&mut self, engine: &AxiomEngine, data_dir: &Path) -> Result<(), PersistError> {
+    pub fn force_save(
+        &mut self,
+        engine: &AxiomEngine,
+        data_dir: &Path,
+    ) -> Result<(), PersistError> {
         let opts = WriteOptions {
             trace_weight_threshold: self.config.trace_weight_threshold,
         };

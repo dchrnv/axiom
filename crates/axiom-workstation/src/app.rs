@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
 
 use iced::widget::column;
-use iced::{Element, Subscription, Task, window};
+use iced::{window, Element, Subscription, Task};
 
 use axiom_protocol::{
     adapters::AdapterInfo,
@@ -16,7 +16,10 @@ use axiom_protocol::{
 
 use crate::connection::ws_subscription;
 use crate::settings::{is_first_run, load_settings, save_settings, UiSettings};
-use crate::ui::{benchmarks, config, conversation, dream_state, files, header, live_field, patterns, system_map, tabs, welcome};
+use crate::ui::{
+    benchmarks, config, conversation, dream_state, files, header, live_field, patterns, system_map,
+    tabs, welcome,
+};
 
 // ── AppPhase ───────────────────────────────────────────────────────────────
 
@@ -69,8 +72,16 @@ pub enum SystemMessageKind {
 
 #[derive(Debug, Clone)]
 pub enum ConversationMessage {
-    User { text: String, target_domain: u16, timestamp_secs: u64 },
-    System { text: String, timestamp_secs: u64, kind: SystemMessageKind },
+    User {
+        text: String,
+        target_domain: u16,
+        timestamp_secs: u64,
+    },
+    System {
+        text: String,
+        timestamp_secs: u64,
+        kind: SystemMessageKind,
+    },
 }
 
 #[derive(Debug)]
@@ -116,10 +127,26 @@ impl ConversationState {
 
 #[derive(Debug, Clone)]
 pub enum FrameEvent {
-    Crystallized { anchor_id: u32, layers_present: u8, participant_count: u8, timestamp_secs: u64 },
-    Reactivated { anchor_id: u32, new_temperature: u8, timestamp_secs: u64 },
-    Vetoed { reason: String, timestamp_secs: u64 },
-    Promoted { source_anchor_id: u32, sutra_anchor_id: u32, timestamp_secs: u64 },
+    Crystallized {
+        anchor_id: u32,
+        layers_present: u8,
+        participant_count: u8,
+        timestamp_secs: u64,
+    },
+    Reactivated {
+        anchor_id: u32,
+        new_temperature: u8,
+        timestamp_secs: u64,
+    },
+    Vetoed {
+        reason: String,
+        timestamp_secs: u64,
+    },
+    Promoted {
+        source_anchor_id: u32,
+        sutra_anchor_id: u32,
+        timestamp_secs: u64,
+    },
 }
 
 #[derive(Debug)]
@@ -180,6 +207,7 @@ pub struct CompletedImport {
     pub source: String,
     pub tokens_added: u32,
     pub errors: u32,
+    #[allow(dead_code)]
     pub timestamp_secs: u64,
     pub cancelled: bool,
 }
@@ -231,7 +259,11 @@ pub struct OrbitCamera {
 
 impl Default for OrbitCamera {
     fn default() -> Self {
-        Self { azimuth: 0.3, elevation: 0.4, distance: 4.0 }
+        Self {
+            azimuth: 0.3,
+            elevation: 0.4,
+            distance: 4.0,
+        }
     }
 }
 
@@ -328,8 +360,14 @@ impl TabKind {
 pub enum ConnectionState {
     Disconnected,
     Connecting,
-    Reconnecting { attempt: u32, next_retry_secs: u64 },
-    Connected { engine_version: u32, connected_at: Instant },
+    Reconnecting {
+        attempt: u32,
+        next_retry_secs: u64,
+    },
+    Connected {
+        engine_version: u32,
+        connected_at: Instant,
+    },
 }
 
 // ── Message ────────────────────────────────────────────────────────────────
@@ -338,12 +376,20 @@ pub enum ConnectionState {
 pub enum Message {
     // WebSocket lifecycle
     WsConnecting,
-    WsConnected { engine_version: u32 },
+    WsConnected {
+        engine_version: u32,
+    },
     WsDisconnected,
-    WsReconnecting { attempt: u32, next_retry_secs: u64 },
+    WsReconnecting {
+        attempt: u32,
+        next_retry_secs: u64,
+    },
     WsSnapshot(SystemSnapshot),
     WsEvent(EngineEvent),
-    WsCommandResult { command_id: u64, result: Result<CommandResultData, String> },
+    WsCommandResult {
+        command_id: u64,
+        result: Result<CommandResultData, String>,
+    },
     // Command plumbing
     CommandSenderReady(CommandSender),
     #[allow(dead_code)]
@@ -356,8 +402,14 @@ pub enum Message {
     AnimationTick,
     // Configuration tab
     ConfigSectionSelected(String),
-    ConfigFieldChanged { section_id: String, field_id: String, value: ConfigValue },
-    ConfigApply { section_id: String },
+    ConfigFieldChanged {
+        section_id: String,
+        field_id: String,
+        value: ConfigValue,
+    },
+    ConfigApply {
+        section_id: String,
+    },
     ConfigDiscard,
     // Conversation tab
     ConversationInputChanged(String),
@@ -376,6 +428,7 @@ pub enum Message {
     FilesConfirmCancel,
     FilesCancelDismiss,
     // Benchmarks tab
+    #[allow(dead_code)]
     BenchIterationsChanged(String),
     #[allow(dead_code)]
     BenchRun,
@@ -387,7 +440,10 @@ pub enum Message {
     DismissAlert(usize),
     // Live Field tab
     LiveFieldDomainSelected(u16),
-    LiveFieldCameraRotate { dx: f32, dy: f32 },
+    LiveFieldCameraRotate {
+        dx: f32,
+        dy: f32,
+    },
     LiveFieldCameraZoom(f32),
     LiveFieldCameraReset,
     LiveFieldToggleOption(LiveFieldOption),
@@ -448,13 +504,18 @@ impl WorkstationApp {
             files: FilesState::default(),
             benchmarks: BenchmarksState::default(),
             live_field: LiveFieldState::default(),
-            phase: if is_first_run() { AppPhase::Welcome } else { AppPhase::Main },
+            phase: if is_first_run() {
+                AppPhase::Welcome
+            } else {
+                AppPhase::Main
+            },
             show_connection_details: false,
             alerts: VecDeque::with_capacity(5),
             subscription_key: 0,
         }
     }
 
+    #[allow(dead_code)]
     pub fn push_alert(&mut self, message: String) {
         if self.alerts.len() >= 5 {
             self.alerts.pop_front();
@@ -511,15 +572,24 @@ impl WorkstationApp {
                 self.connection = ConnectionState::Disconnected;
                 self.command_tx = None;
             }
-            Message::WsReconnecting { attempt, next_retry_secs } => {
-                self.connection = ConnectionState::Reconnecting { attempt, next_retry_secs };
+            Message::WsReconnecting {
+                attempt,
+                next_retry_secs,
+            } => {
+                self.connection = ConnectionState::Reconnecting {
+                    attempt,
+                    next_retry_secs,
+                };
             }
             Message::WsSnapshot(snap) => {
                 tracing::debug!("Snapshot: tick={}", snap.current_tick);
-                self.patterns.push_layer_snapshot(snap.over_domain.layer_activations);
+                self.patterns
+                    .push_layer_snapshot(snap.over_domain.layer_activations);
                 // Accumulate DreamReports
                 if let Some(report) = &snap.last_dream_report {
-                    let is_new = self.dream_state.recent_dreams
+                    let is_new = self
+                        .dream_state
+                        .recent_dreams
                         .front()
                         .map(|r| r.cycle_id != report.cycle_id)
                         .unwrap_or(true);
@@ -536,7 +606,11 @@ impl WorkstationApp {
                 }
                 // Patterns feed + conversation correlation
                 match &ev {
-                    EngineEvent::FrameCrystallized { anchor_id, layers_present, participant_count } => {
+                    EngineEvent::FrameCrystallized {
+                        anchor_id,
+                        layers_present,
+                        participant_count,
+                    } => {
                         self.patterns.push_frame_event(FrameEvent::Crystallized {
                             anchor_id: *anchor_id,
                             layers_present: *layers_present,
@@ -553,7 +627,10 @@ impl WorkstationApp {
                             );
                         }
                     }
-                    EngineEvent::FrameReactivated { anchor_id, new_temperature } => {
+                    EngineEvent::FrameReactivated {
+                        anchor_id,
+                        new_temperature,
+                    } => {
                         self.patterns.push_frame_event(FrameEvent::Reactivated {
                             anchor_id: *anchor_id,
                             new_temperature: *new_temperature,
@@ -569,7 +646,10 @@ impl WorkstationApp {
                             );
                         }
                     }
-                    EngineEvent::FramePromoted { source_anchor_id, sutra_anchor_id } => {
+                    EngineEvent::FramePromoted {
+                        source_anchor_id,
+                        sutra_anchor_id,
+                    } => {
                         self.patterns.push_frame_event(FrameEvent::Promoted {
                             source_anchor_id: *source_anchor_id,
                             sutra_anchor_id: *sutra_anchor_id,
@@ -582,7 +662,9 @@ impl WorkstationApp {
                             timestamp_secs: current_timestamp_secs(),
                         });
                     }
-                    EngineEvent::DomainActivity { layer_activations, .. } => {
+                    EngineEvent::DomainActivity {
+                        layer_activations, ..
+                    } => {
                         self.patterns.push_layer_snapshot(*layer_activations);
                     }
                     EngineEvent::AdapterStarted { adapter_id, source } => {
@@ -593,7 +675,11 @@ impl WorkstationApp {
                             total: 0,
                         });
                     }
-                    EngineEvent::AdapterProgress { adapter_id, processed, total } => {
+                    EngineEvent::AdapterProgress {
+                        adapter_id,
+                        processed,
+                        total,
+                    } => {
                         if let Some(ref mut ri) = self.files.running_import {
                             if &ri.adapter_id == adapter_id {
                                 ri.processed = *processed;
@@ -601,7 +687,11 @@ impl WorkstationApp {
                             }
                         }
                     }
-                    EngineEvent::AdapterFinished { adapter_id: _, tokens_added, errors } => {
+                    EngineEvent::AdapterFinished {
+                        adapter_id: _,
+                        tokens_added,
+                        errors,
+                    } => {
                         if let Some(ri) = self.files.running_import.take() {
                             let imp = CompletedImport {
                                 adapter_id: ri.adapter_id,
@@ -625,7 +715,11 @@ impl WorkstationApp {
                             total: 0,
                         });
                     }
-                    EngineEvent::BenchProgress { run_id, completed, total } => {
+                    EngineEvent::BenchProgress {
+                        run_id,
+                        completed,
+                        total,
+                    } => {
                         if let Some(ref mut rb) = self.benchmarks.running {
                             if rb.run_id == *run_id {
                                 rb.completed = *completed;
@@ -661,10 +755,8 @@ impl WorkstationApp {
                             );
                         }
                         Err(e) => {
-                            self.conversation.push_system(
-                                format!("Ошибка: {}", e),
-                                SystemMessageKind::Error,
-                            );
+                            self.conversation
+                                .push_system(format!("Ошибка: {}", e), SystemMessageKind::Error);
                         }
                     }
                     return chat_scroll_to_bottom();
@@ -725,12 +817,17 @@ impl WorkstationApp {
             Message::AnimationTick => {
                 self.animation_phase = (self.animation_phase + 0.005) % 1.0;
                 let now = current_timestamp_secs();
-                self.alerts.retain(|a| now.saturating_sub(a.timestamp_secs) < 10);
+                self.alerts
+                    .retain(|a| now.saturating_sub(a.timestamp_secs) < 10);
             }
             Message::ConfigSectionSelected(section_id) => {
                 self.config.active_section_id = section_id;
             }
-            Message::ConfigFieldChanged { section_id, field_id, value } => {
+            Message::ConfigFieldChanged {
+                section_id,
+                field_id,
+                value,
+            } => {
                 self.config.validation_errors.remove(&field_id);
                 self.config
                     .pending_changes
@@ -816,7 +913,10 @@ impl WorkstationApp {
                     EngineCommand::StartImport {
                         adapter_id,
                         source_path: self.files.source_path.clone(),
-                        options: ImportOptions { params: vec![], target_domain: None },
+                        options: ImportOptions {
+                            params: vec![],
+                            target_domain: None,
+                        },
                     },
                 );
             }
@@ -906,7 +1006,13 @@ impl WorkstationApp {
                 let id = self.next_id();
                 self.conversation.pending_submit_id = Some(id);
                 return Task::batch([
-                    self.send_command_task(id, EngineCommand::SubmitText { text, target_domain: target }),
+                    self.send_command_task(
+                        id,
+                        EngineCommand::SubmitText {
+                            text,
+                            target_domain: target,
+                        },
+                    ),
                     chat_scroll_to_bottom(),
                 ]);
             }
@@ -949,11 +1055,7 @@ impl WorkstationApp {
         if self.alerts.is_empty() {
             base.into()
         } else {
-            iced::widget::stack![
-                base,
-                alert_overlay(&self.alerts),
-            ]
-            .into()
+            iced::widget::stack![base, alert_overlay(&self.alerts),].into()
         }
     }
 
@@ -970,15 +1072,9 @@ impl WorkstationApp {
             TabKind::SystemMap => {
                 system_map::system_map_view(&self.engine_snapshot, self.animation_phase)
             }
-            TabKind::Configuration => {
-                config::config_view(&self.config, &self.settings)
-            }
-            TabKind::Conversation => {
-                conversation::conversation_view(&self.conversation)
-            }
-            TabKind::Patterns => {
-                patterns::patterns_view(&self.patterns)
-            }
+            TabKind::Configuration => config::config_view(&self.config, &self.settings),
+            TabKind::Conversation => conversation::conversation_view(&self.conversation),
+            TabKind::Patterns => patterns::patterns_view(&self.patterns),
             TabKind::DreamState => {
                 dream_state::dream_state_view(&self.dream_state, &self.engine_snapshot)
             }
@@ -1006,7 +1102,10 @@ fn chat_scroll_to_bottom() -> Task<Message> {
     use iced::widget::scrollable;
     scrollable::scroll_to(
         scrollable::Id::new("chat_feed"),
-        scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
+        scrollable::AbsoluteOffset {
+            x: 0.0,
+            y: f32::MAX,
+        },
     )
 }
 
@@ -1028,9 +1127,16 @@ fn alert_overlay(alerts: &VecDeque<AlertEntry>) -> Element<'_, Message> {
                 .spacing(8)
                 .align_y(Alignment::Center),
             )
-            .padding(Padding { top: 6.0, right: 10.0, bottom: 6.0, left: 10.0 })
+            .padding(Padding {
+                top: 6.0,
+                right: 10.0,
+                bottom: 6.0,
+                left: 10.0,
+            })
             .style(|_theme| iced::widget::container::Style {
-                background: Some(iced::Background::Color(Color::from_rgba(0.15, 0.15, 0.15, 0.9))),
+                background: Some(iced::Background::Color(Color::from_rgba(
+                    0.15, 0.15, 0.15, 0.9,
+                ))),
                 border: iced::Border {
                     radius: 4.0.into(),
                     ..Default::default()
@@ -1050,7 +1156,10 @@ fn alert_overlay(alerts: &VecDeque<AlertEntry>) -> Element<'_, Message> {
         .into()
 }
 
-fn keyboard_shortcut(key: iced::keyboard::Key, modifiers: iced::keyboard::Modifiers) -> Option<Message> {
+fn keyboard_shortcut(
+    key: iced::keyboard::Key,
+    modifiers: iced::keyboard::Modifiers,
+) -> Option<Message> {
     use iced::keyboard::Key;
     if modifiers.control() {
         match key.as_ref() {
@@ -1104,7 +1213,8 @@ mod tests {
     #[test]
     fn test_detach_excludes_tab_from_bar() {
         let mut app = WorkstationApp::new();
-        app.detached_windows.insert(window::Id::unique(), TabKind::LiveField);
+        app.detached_windows
+            .insert(window::Id::unique(), TabKind::LiveField);
 
         let detached: Vec<TabKind> = app.detached_windows.values().copied().collect();
         let visible: Vec<TabKind> = TabKind::all()
@@ -1138,7 +1248,11 @@ mod tests {
             value: ConfigValue::String("192.168.1.1:9876".to_string()),
         });
 
-        let pending = app.config.pending_changes.get("workstation.connection").unwrap();
+        let pending = app
+            .config
+            .pending_changes
+            .get("workstation.connection")
+            .unwrap();
         assert!(matches!(
             pending.get("engine_address"),
             Some(ConfigValue::String(s)) if s == "192.168.1.1:9876"
@@ -1205,7 +1319,9 @@ mod tests {
     #[test]
     fn test_conversation_submit_adds_message() {
         let mut app = WorkstationApp::new();
-        let _ = app.update(Message::ConversationInputChanged("Кошка спит на окне.".to_string()));
+        let _ = app.update(Message::ConversationInputChanged(
+            "Кошка спит на окне.".to_string(),
+        ));
         let _ = app.update(Message::ConversationSubmit);
 
         assert_eq!(app.conversation.messages.len(), 1);
@@ -1260,7 +1376,10 @@ mod tests {
         assert_eq!(app.conversation.messages.len(), 2); // User + Ack
         assert!(matches!(
             &app.conversation.messages[1],
-            ConversationMessage::System { kind: SystemMessageKind::Acknowledgment, .. }
+            ConversationMessage::System {
+                kind: SystemMessageKind::Acknowledgment,
+                ..
+            }
         ));
     }
 
@@ -1281,7 +1400,10 @@ mod tests {
         assert_eq!(app.conversation.messages.len(), 2); // User + Error
         assert!(matches!(
             &app.conversation.messages[1],
-            ConversationMessage::System { kind: SystemMessageKind::Error, .. }
+            ConversationMessage::System {
+                kind: SystemMessageKind::Error,
+                ..
+            }
         ));
     }
 
@@ -1300,7 +1422,11 @@ mod tests {
         assert_eq!(app.patterns.recent_frames.len(), 1);
         assert!(matches!(
             &app.patterns.recent_frames[0],
-            FrameEvent::Crystallized { anchor_id: 1234, participant_count: 3, .. }
+            FrameEvent::Crystallized {
+                anchor_id: 1234,
+                participant_count: 3,
+                ..
+            }
         ));
     }
 
@@ -1595,14 +1721,20 @@ mod tests {
         let mut app = WorkstationApp::new();
         assert!(app.live_field.display.show_connections);
 
-        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::ShowConnections));
+        let _ = app.update(Message::LiveFieldToggleOption(
+            LiveFieldOption::ShowConnections,
+        ));
         assert!(!app.live_field.display.show_connections);
 
-        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::ShowConnections));
+        let _ = app.update(Message::LiveFieldToggleOption(
+            LiveFieldOption::ShowConnections,
+        ));
         assert!(app.live_field.display.show_connections);
 
         assert!(app.live_field.display.layer_color_coding);
-        let _ = app.update(Message::LiveFieldToggleOption(LiveFieldOption::LayerColorCoding));
+        let _ = app.update(Message::LiveFieldToggleOption(
+            LiveFieldOption::LayerColorCoding,
+        ));
         assert!(!app.live_field.display.layer_color_coding);
     }
 

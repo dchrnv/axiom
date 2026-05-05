@@ -4,7 +4,7 @@
 // snapshot() захватывает все 11 доменов.
 
 use axiom_runtime::{AxiomEngine, EngineSnapshot};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_ucl::{OpCode, UclCommand};
 
 const LOGIC_ID: u16 = 106; // level_id(1) * 100 + role(6) = 106
 
@@ -51,9 +51,18 @@ fn test_snapshot_captures_tokens() {
 fn test_snapshot_find_domain() {
     let engine = AxiomEngine::new();
     let snap = engine.snapshot();
-    assert!(snap.find_domain(100).is_some(), "SUTRA (id=100) должен быть в snapshot");
-    assert!(snap.find_domain(110).is_some(), "MAYA (id=110) должен быть в snapshot");
-    assert!(snap.find_domain(999).is_none(), "несуществующий домен не должен находиться");
+    assert!(
+        snap.find_domain(100).is_some(),
+        "SUTRA (id=100) должен быть в snapshot"
+    );
+    assert!(
+        snap.find_domain(110).is_some(),
+        "MAYA (id=110) должен быть в snapshot"
+    );
+    assert!(
+        snap.find_domain(999).is_none(),
+        "несуществующий домен не должен находиться"
+    );
 }
 
 // ============================================================
@@ -111,7 +120,10 @@ fn test_com_next_id_saved_in_snapshot() {
 
     let snap = engine.snapshot();
     // com_next_id должен быть больше начального (1)
-    assert!(snap.com_next_id > 1, "com_next_id должен сохраняться в snapshot");
+    assert!(
+        snap.com_next_id > 1,
+        "com_next_id должен сохраняться в snapshot"
+    );
 }
 
 #[test]
@@ -125,8 +137,10 @@ fn test_com_next_id_restored_monotonically() {
 
     // После restore com_next_id не сбрасывается в 1
     let restored = AxiomEngine::restore_from(&snap);
-    assert_eq!(restored.com_next_id, saved_com,
-        "com_next_id после restore должен совпадать со snapshot");
+    assert_eq!(
+        restored.com_next_id, saved_com,
+        "com_next_id после restore должен совпадать со snapshot"
+    );
 }
 
 // ============================================================
@@ -142,7 +156,10 @@ fn test_tick_count_saved_in_snapshot() {
     }
 
     let snap = engine.snapshot();
-    assert_eq!(snap.tick_count, 7, "tick_count должен сохраняться в snapshot");
+    assert_eq!(
+        snap.tick_count, 7,
+        "tick_count должен сохраняться в snapshot"
+    );
 }
 
 #[test]
@@ -155,8 +172,10 @@ fn test_tick_count_restored() {
 
     let snap = engine.snapshot();
     let restored = AxiomEngine::restore_from(&snap);
-    assert_eq!(restored.tick_count, 42,
-        "tick_count после restore должен совпадать со snapshot");
+    assert_eq!(
+        restored.tick_count, 42,
+        "tick_count после restore должен совпадать со snapshot"
+    );
 }
 
 #[test]

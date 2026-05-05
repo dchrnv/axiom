@@ -5,21 +5,23 @@
 //   2. SpatialHashGrid::rebuild — хеш-таблица, ожидаем O(n) с cache pressure
 //   3. resonance_search (Experience) — линейный поиск по HashMap
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use axiom_space::{apply_gravity_batch, GravityModel, SpatialHashGrid};
 use axiom_arbiter::ExperienceModule;
 use axiom_core::Token;
+use axiom_space::{apply_gravity_batch, GravityModel, SpatialHashGrid};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 fn make_positions(n: usize) -> Vec<[i16; 3]> {
-    (0..n).map(|i| {
-        let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
-        let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
-        let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
-        [x, y, z]
-    }).collect()
+    (0..n)
+        .map(|i| {
+            let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
+            let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
+            let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
+            [x, y, z]
+        })
+        .collect()
 }
 
 fn make_masses(n: usize) -> Vec<u16> {
@@ -27,12 +29,14 @@ fn make_masses(n: usize) -> Vec<u16> {
 }
 
 fn make_pos_tuples(n: usize) -> Vec<(i16, i16, i16)> {
-    (0..n).map(|i| {
-        let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
-        let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
-        let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
-        (x, y, z)
-    }).collect()
+    (0..n)
+        .map(|i| {
+            let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
+            let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
+            let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
+            (x, y, z)
+        })
+        .collect()
 }
 
 // ─── 1. apply_gravity_batch: 10K → 10M ───────────────────────────────────────
@@ -44,20 +48,18 @@ fn bench_gravity_stress(c: &mut Criterion) {
 
     for &n in &[10_000usize, 100_000, 1_000_000, 10_000_000] {
         let positions = make_positions(n);
-        let masses    = make_masses(n);
+        let masses = make_masses(n);
 
-        group.bench_with_input(
-            BenchmarkId::new("tokens", n),
-            &n,
-            |b, _| b.iter(|| {
+        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
+            b.iter(|| {
                 black_box(apply_gravity_batch(
                     black_box(&positions),
                     black_box(&masses),
                     24,
                     GravityModel::Linear,
                 ))
-            }),
-        );
+            })
+        });
     }
     group.finish();
 }
@@ -73,14 +75,12 @@ fn bench_grid_stress(c: &mut Criterion) {
         let positions = make_pos_tuples(n);
         let mut grid = SpatialHashGrid::new();
 
-        group.bench_with_input(
-            BenchmarkId::new("tokens", n),
-            &n,
-            |b, _| b.iter(|| {
+        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
+            b.iter(|| {
                 grid.rebuild(positions.len(), |i| positions[i]);
                 black_box(&grid);
-            }),
-        );
+            })
+        });
     }
     group.finish();
 }
@@ -97,18 +97,14 @@ fn bench_resonance_stress(c: &mut Criterion) {
         for i in 0..n {
             let mut t = Token::new(i as u32 + 1, 100, [0, 0, 0], 1);
             t.temperature = (i % 256) as u8;
-            t.mass        = ((i * 3) % 256) as u8;
+            t.mass = ((i * 3) % 256) as u8;
             exp.add_trace(t, 0.9, i as u64 + 1);
         }
         let query = Token::new(42, 100, [0, 0, 0], 1);
 
-        group.bench_with_input(
-            BenchmarkId::new("traces", n),
-            &n,
-            |b, _| b.iter(|| {
-                black_box(exp.resonance_search(black_box(&query)))
-            }),
-        );
+        group.bench_with_input(BenchmarkId::new("traces", n), &n, |b, _| {
+            b.iter(|| black_box(exp.resonance_search(black_box(&query))))
+        });
     }
     group.finish();
 }

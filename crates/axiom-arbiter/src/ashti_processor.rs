@@ -3,9 +3,9 @@
 //
 // ASHTI Processor - обработка токенов через ASHTI 1-8 домены
 
+use crate::experience::ExperienceTrace;
 use axiom_config::DomainConfig;
 use axiom_core::{Token, TOKEN_FLAG_GOAL};
-use crate::experience::ExperienceTrace;
 
 /// ASHTI Processor - обработка токенов через ASHTI 1-8 домены
 pub struct AshtiProcessor;

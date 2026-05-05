@@ -1,15 +1,15 @@
+use futures_util::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
-use futures_util::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, mpsc, Mutex};
-use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tokio_tungstenite::accept_async;
+use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tracing::{debug, info, warn};
 
-use axiom_protocol::messages::{ClientMessage, EngineMessage, ShutdownReason};
 use axiom_protocol::commands::EngineCommand;
+use axiom_protocol::messages::{ClientMessage, EngineMessage, ShutdownReason};
 use axiom_protocol::snapshot::SystemSnapshot;
 use axiom_protocol::PROTOCOL_VERSION;
 
@@ -125,9 +125,14 @@ impl BroadcastServer {
         };
 
         let (client_version, client_kind, subscriptions) = match client_hello {
-            ClientMessage::Hello { version, client_kind } => {
-                (version, client_kind, axiom_protocol::event_category::DEFAULT)
-            }
+            ClientMessage::Hello {
+                version,
+                client_kind,
+            } => (
+                version,
+                client_kind,
+                axiom_protocol::event_category::DEFAULT,
+            ),
             _ => {
                 warn!("Expected Hello, got other message from {}", peer_addr);
                 return Ok(());
@@ -136,14 +141,19 @@ impl BroadcastServer {
 
         // Version check: major must match
         if (client_version >> 24) != (PROTOCOL_VERSION >> 24) {
-            let bye = EngineMessage::Bye { reason: ShutdownReason::VersionMismatch };
+            let bye = EngineMessage::Bye {
+                reason: ShutdownReason::VersionMismatch,
+            };
             let bytes = postcard::to_stdvec(&bye)?;
             ws_sink.send(WsMessage::Binary(bytes)).await?;
             return Ok(());
         }
 
         let client_id = CLIENT_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
-        info!("Client {} connected: id={} kind={:?}", peer_addr, client_id, client_kind);
+        info!(
+            "Client {} connected: id={} kind={:?}",
+            peer_addr, client_id, client_kind
+        );
 
         // Send Hello back
         let server_hello = EngineMessage::Hello {
@@ -154,7 +164,10 @@ impl BroadcastServer {
         ws_sink.send(WsMessage::Binary(bytes)).await?;
 
         // Send current snapshot so client has initial state without waiting for next event
-        let cached_snapshot = self.handle.snapshot_cache.read()
+        let cached_snapshot = self
+            .handle
+            .snapshot_cache
+            .read()
             .ok()
             .and_then(|g| g.as_ref().cloned());
         if let Some(snap_bytes) = cached_snapshot {
@@ -273,14 +286,14 @@ fn should_send(msg: &EngineMessage, categories: u64, tick_event_interval: u32) -
                 EngineEvent::FrameCrystallized { .. }
                 | EngineEvent::FrameReactivated { .. }
                 | EngineEvent::FramePromoted { .. } => FRAMES,
-                EngineEvent::GuardianVeto { .. }   => GUARDIAN,
+                EngineEvent::GuardianVeto { .. } => GUARDIAN,
                 EngineEvent::AdapterStarted { .. }
                 | EngineEvent::AdapterProgress { .. }
                 | EngineEvent::AdapterFinished { .. } => ADAPTERS,
                 EngineEvent::BenchStarted { .. }
                 | EngineEvent::BenchProgress { .. }
                 | EngineEvent::BenchFinished { .. } => BENCHMARKS,
-                EngineEvent::Alert { .. }          => ALERTS,
+                EngineEvent::Alert { .. } => ALERTS,
             };
             categories & cat != 0
         }

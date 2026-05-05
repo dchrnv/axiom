@@ -1,6 +1,6 @@
 // Этап 9C — Gateway::set_config_watcher / check_config_reload
-use axiom_runtime::Gateway;
 use axiom_config::ConfigWatcher;
+use axiom_runtime::Gateway;
 use std::time::Duration;
 
 const AXIOM_YAML_V1: &str = r#"
@@ -76,7 +76,10 @@ fn test_gateway_detects_config_change() {
     std::thread::sleep(Duration::from_millis(150));
 
     let result = gw.check_config_reload();
-    assert!(result.is_some(), "check_config_reload должен вернуть новую конфигурацию");
+    assert!(
+        result.is_some(),
+        "check_config_reload должен вернуть новую конфигурацию"
+    );
     std::fs::remove_dir_all(dir).ok();
 }
 

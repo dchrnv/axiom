@@ -12,10 +12,10 @@
 //   layers  — по набору на каждый Shell-слой L1..L8
 //   domains — по набору на каждый ASHTI-домен D1..D8
 
-use serde::{Deserialize, Serialize};
-use schemars::JsonSchema;
-use std::path::Path;
 use crate::loader::ConfigError;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 // ─── Основные структуры ──────────────────────────────────────────────────────
 
@@ -54,10 +54,11 @@ pub enum MatchType {
 }
 
 impl MatchType {
+    /// Returns the match type as a static string slice.
     pub fn as_str(self) -> &'static str {
         match self {
-            MatchType::Exact     => "exact",
-            MatchType::Alias     => "alias",
+            MatchType::Exact => "exact",
+            MatchType::Alias => "alias",
             MatchType::Substring => "substring",
         }
     }
@@ -66,10 +67,12 @@ impl MatchType {
 /// Результат сопоставления одного слова из текста с якорем.
 #[derive(Debug)]
 pub struct AnchorMatch<'a> {
-    pub anchor:       &'a Anchor,
+    /// The anchor that matched.
+    pub anchor: &'a Anchor,
     /// Вес совпадения: Exact=1.0, Alias=0.9, Substring=0.5
-    pub score:        f32,
-    pub match_type:   MatchType,
+    pub score: f32,
+    /// The type of match that was found.
+    pub match_type: MatchType,
     /// Слово из ввода, которое совпало
     pub matched_word: String,
 }
@@ -83,19 +86,24 @@ struct AxesFile {
 
 #[derive(Debug, Deserialize)]
 struct LayerFile {
-    #[allow(dead_code)] layer: String,
+    #[allow(dead_code)]
+    layer: String,
     #[serde(default)]
-    #[allow(dead_code)] description: String,
+    #[allow(dead_code)]
+    description: String,
     anchors: Vec<Anchor>,
 }
 
 #[derive(Debug, Deserialize)]
 struct DomainFile {
-    #[allow(dead_code)] domain: String,
+    #[allow(dead_code)]
+    domain: String,
     #[serde(default)]
-    #[allow(dead_code)] domain_id: u16,
+    #[allow(dead_code)]
+    domain_id: u16,
     #[serde(default)]
-    #[allow(dead_code)] description: String,
+    #[allow(dead_code)]
+    description: String,
     anchors: Vec<Anchor>,
 }
 
@@ -120,8 +128,8 @@ impl AnchorSet {
     /// Создать пустой набор (fallback если файлы не найдены).
     pub fn empty() -> Self {
         Self {
-            axes:    Vec::new(),
-            layers:  vec![Vec::new(); 8],
+            axes: Vec::new(),
+            layers: vec![Vec::new(); 8],
             domains: vec![Vec::new(); 8],
         }
     }
@@ -150,10 +158,10 @@ impl AnchorSet {
         let mut layers = vec![Vec::new(); 8];
         let layers_dir = anchors_dir.join("layers");
         if layers_dir.exists() {
-            for i in 0..8usize {
+            for (i, layer) in layers.iter_mut().enumerate() {
                 let prefix = format!("L{}_", i + 1);
                 if let Some(path) = Self::find_yaml_prefix(&layers_dir, &prefix) {
-                    layers[i] = Self::parse_layer(&path)?;
+                    *layer = Self::parse_layer(&path)?;
                 }
             }
         }
@@ -161,22 +169,28 @@ impl AnchorSet {
         let mut domains = vec![Vec::new(); 8];
         let domains_dir = anchors_dir.join("domains");
         if domains_dir.exists() {
-            for i in 0..8usize {
+            for (i, domain) in domains.iter_mut().enumerate() {
                 let prefix = format!("D{}_", i + 1);
                 if let Some(path) = Self::find_yaml_prefix(&domains_dir, &prefix) {
-                    domains[i] = Self::parse_domain(&path)?;
+                    *domain = Self::parse_domain(&path)?;
                 }
             }
         }
 
-        Ok(Self { axes, layers, domains })
+        Ok(Self {
+            axes,
+            layers,
+            domains,
+        })
     }
 
     // ─── Private loaders ─────────────────────────────────────────────────────
 
     fn load_axes(anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
         let path = anchors_dir.join("axes.yaml");
-        if !path.exists() { return Ok(Vec::new()); }
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
         let content = std::fs::read_to_string(&path).map_err(ConfigError::IoError)?;
         let file: AxesFile = serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
         Ok(file.axes)
@@ -195,7 +209,8 @@ impl AnchorSet {
     }
 
     fn find_yaml_prefix(dir: &Path, prefix: &str) -> Option<std::path::PathBuf> {
-        std::fs::read_dir(dir).ok()?
+        std::fs::read_dir(dir)
+            .ok()?
             .filter_map(|e| e.ok())
             .map(|e| e.path())
             .find(|p| {
@@ -208,12 +223,14 @@ impl AnchorSet {
 
     // ─── Statistics ───────────────────────────────────────────────────────────
 
+    /// Returns the total number of anchors across all categories.
     pub fn total_count(&self) -> usize {
         self.axes.len()
             + self.layers.iter().map(|l| l.len()).sum::<usize>()
             + self.domains.iter().map(|d| d.len()).sum::<usize>()
     }
 
+    /// Returns `true` if the registry contains no anchors.
     pub fn is_empty(&self) -> bool {
         self.total_count() == 0
     }
@@ -227,7 +244,9 @@ impl AnchorSet {
     pub fn match_text<'a>(&'a self, text: &str) -> Vec<AnchorMatch<'a>> {
         let text_lower = text.to_lowercase();
         let words: Vec<&str> = text_lower.split_whitespace().collect();
-        if words.is_empty() { return Vec::new(); }
+        if words.is_empty() {
+            return Vec::new();
+        }
 
         let mut matches = Vec::new();
 
@@ -248,7 +267,10 @@ impl AnchorSet {
             // 2. Alias совпадение
             let alias_hit = anchor.aliases.iter().find_map(|alias| {
                 let a = alias.to_lowercase();
-                words.iter().find(|&&w| w == a.as_str()).map(|w| w.to_string())
+                words
+                    .iter()
+                    .find(|&&w| w == a.as_str())
+                    .map(|w| w.to_string())
             });
             if let Some(w) = alias_hit {
                 matches.push(AnchorMatch {
@@ -262,7 +284,9 @@ impl AnchorSet {
 
             // 3. Substring (только значимые — 4+ символов с обеих сторон)
             let substr_hit = words.iter().find_map(|&w| {
-                if w.len() < 4 || word_lower.len() < 4 { return None; }
+                if w.len() < 4 || word_lower.len() < 4 {
+                    return None;
+                }
                 if w.contains(word_lower.as_str()) || word_lower.contains(w) {
                     Some(w.to_string())
                 } else {
@@ -279,14 +303,18 @@ impl AnchorSet {
             }
         }
 
-        matches.sort_by(|a, b| b.score.partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal));
+        matches.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         matches.truncate(5);
         matches
     }
 
     fn all_anchors(&self) -> impl Iterator<Item = &Anchor> {
-        self.axes.iter()
+        self.axes
+            .iter()
             .chain(self.layers.iter().flatten())
             .chain(self.domains.iter().flatten())
     }
@@ -296,7 +324,9 @@ impl AnchorSet {
     /// Вычислить взвешенную позицию на основе совпадений.
     /// Если совпадений нет — вернуть [0.0; 3] (caller использует FNV-1a fallback).
     pub fn compute_position(&self, matches: &[AnchorMatch<'_>]) -> [f32; 3] {
-        if matches.is_empty() { return [0.0; 3]; }
+        if matches.is_empty() {
+            return [0.0; 3];
+        }
         let total: f32 = matches.iter().map(|m| m.score).sum();
         let mut pos = [0.0f32; 3];
         for m in matches {
@@ -313,7 +343,7 @@ impl AnchorSet {
     /// Exact=0.95, Alias=0.90, Substring=0.75, no match=0.80 (текущий дефолт).
     pub fn compute_semantic_weight(&self, matches: &[AnchorMatch<'_>]) -> f32 {
         match matches.first() {
-            None    => 0.80,
+            None => 0.80,
             Some(m) => 0.70 + m.score * 0.25,
         }
     }
@@ -321,13 +351,15 @@ impl AnchorSet {
     /// Вычислить взвешенный Shell-профиль [L1..L8] на основе совпадений.
     /// Если совпадений нет — вернуть [0; 8].
     pub fn compute_shell(&self, matches: &[AnchorMatch<'_>]) -> [u8; 8] {
-        if matches.is_empty() { return [0u8; 8]; }
+        if matches.is_empty() {
+            return [0u8; 8];
+        }
         let total: f32 = matches.iter().map(|m| m.score).sum();
         let mut shell = [0f32; 8];
         for m in matches {
             let w = m.score / total;
-            for i in 0..8 {
-                shell[i] += m.anchor.shell[i] as f32 * w;
+            for (sh, &av) in shell.iter_mut().zip(m.anchor.shell.iter()) {
+                *sh += av as f32 * w;
             }
         }
         shell.map(|v| v.round() as u8)
@@ -342,21 +374,30 @@ mod tests {
 
     fn make_anchor(word: &str, aliases: &[&str], pos: [i16; 3]) -> Anchor {
         Anchor {
-            id:          word.to_string(),
-            word:        word.to_string(),
-            aliases:     aliases.iter().map(|s| s.to_string()).collect(),
-            tags:        Vec::new(),
-            position:    pos,
-            shell:       [0; 8],
+            id: word.to_string(),
+            word: word.to_string(),
+            aliases: aliases.iter().map(|s| s.to_string()).collect(),
+            tags: Vec::new(),
+            position: pos,
+            shell: [0; 8],
             description: String::new(),
         }
     }
 
     fn set_with_axes() -> AnchorSet {
         let mut s = AnchorSet::empty();
-        s.axes.push(make_anchor("порядок", &["структура", "закон"], [30000, 0, 0]));
-        s.axes.push(make_anchor("хаос",    &["творчество", "поток"],  [-30000, 0, 0]));
-        s.axes.push(make_anchor("жизнь",   &["рост", "связь"],        [0, 30000, 0]));
+        s.axes.push(make_anchor(
+            "порядок",
+            &["структура", "закон"],
+            [30000, 0, 0],
+        ));
+        s.axes.push(make_anchor(
+            "хаос",
+            &["творчество", "поток"],
+            [-30000, 0, 0],
+        ));
+        s.axes
+            .push(make_anchor("жизнь", &["рост", "связь"], [0, 30000, 0]));
         s
     }
 

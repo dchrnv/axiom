@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Интеграционные тесты REST-адаптера (Phase 2).
 
-use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use axiom_agent::adapter_command::AdapterCommand;
 use axiom_agent::adapters_config::AdaptersConfig;
 use axiom_agent::channels::cli::CliConfig;
 use axiom_agent::protocol::ServerMessage;
 use axiom_agent::tick_loop::tick_loop;
-use axiom_agent::ws::{AppState, bind, serve_ws};
+use axiom_agent::ws::{serve_ws, AppState};
 use axiom_persist::{AutoSaver, PersistenceConfig};
 use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
 use tokio::net::TcpListener;
@@ -17,33 +17,43 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-fn make_engine() -> AxiomEngine { AxiomEngine::new() }
-fn make_saver()  -> AutoSaver   { AutoSaver::new(PersistenceConfig::disabled()) }
+fn make_engine() -> AxiomEngine {
+    AxiomEngine::new()
+}
+fn make_saver() -> AutoSaver {
+    AutoSaver::new(PersistenceConfig::disabled())
+}
 
 /// Запустить полный сервер (WS + REST + tick_loop). Возвращает базовый URL.
 async fn spawn_server() -> String {
     let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(64);
-    let (broadcast_tx, _)        = broadcast::channel::<ServerMessage>(256);
-    let snapshot                 = Arc::new(RwLock::new(BroadcastSnapshot::default()));
+    let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(256);
+    let snapshot = Arc::new(RwLock::new(BroadcastSnapshot::default()));
 
     let ws_state = AppState {
         command_tx,
         broadcast_tx: broadcast_tx.clone(),
-        snapshot:     Arc::clone(&snapshot),
+        snapshot: Arc::clone(&snapshot),
         next_conn_id: Arc::new(AtomicU64::new(0)),
     };
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let port     = listener.local_addr().unwrap().port();
+    let port = listener.local_addr().unwrap().port();
     tokio::spawn(serve_ws(listener, ws_state));
 
     let mut cfg = AdaptersConfig::from_cli_config(&CliConfig::default());
-    cfg.websocket.tick_broadcast_interval  = 0;
+    cfg.websocket.tick_broadcast_interval = 0;
     cfg.websocket.state_broadcast_interval = 1; // обновлять snapshot каждый тик
 
     tokio::spawn(tick_loop(
-        make_engine(), command_rx, broadcast_tx, snapshot,
-        make_saver(), None, cfg, None,
+        make_engine(),
+        command_rx,
+        broadcast_tx,
+        snapshot,
+        make_saver(),
+        None,
+        cfg,
+        None,
     ));
 
     format!("http://127.0.0.1:{port}")
@@ -61,11 +71,18 @@ async fn test_rest_get_status_200() {
     // Ждём инициализации
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
 
-    let resp = http().get(format!("{base}/api/status")).send().await.unwrap();
+    let resp = http()
+        .get(format!("{base}/api/status"))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = resp.json().await.unwrap();
-    assert!(json.get("tick_count").is_some(), "status should contain tick_count");
+    assert!(
+        json.get("tick_count").is_some(),
+        "status should contain tick_count"
+    );
 }
 
 #[tokio::test]
@@ -94,9 +111,15 @@ async fn test_rest_get_domains_11_entries() {
     let _inject = http()
         .post(format!("{base}/api/inject"))
         .json(&serde_json::json!({"text":"init"}))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
-    let resp = http().get(format!("{base}/api/domains")).send().await.unwrap();
+    let resp = http()
+        .get(format!("{base}/api/domains"))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = resp.json().await.unwrap();
@@ -113,7 +136,9 @@ async fn test_rest_post_inject_returns_result() {
     let resp = http()
         .post(format!("{base}/api/inject"))
         .json(&serde_json::json!({"text":"hello world"}))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
@@ -130,7 +155,9 @@ async fn test_rest_post_invalid_json_returns_400() {
         .post(format!("{base}/api/inject"))
         .header("content-type", "application/json")
         .body("not json")
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 400);
 }
@@ -142,7 +169,9 @@ async fn test_rest_post_inject_missing_text_returns_400() {
     let resp = http()
         .post(format!("{base}/api/inject"))
         .json(&serde_json::json!({"wrong_field": "value"}))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 400);
 }
@@ -156,7 +185,9 @@ async fn test_rest_post_read_command_status() {
     let resp = http()
         .post(format!("{base}/api/command"))
         .json(&serde_json::json!({"cmd":":status","type":"read"}))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
@@ -172,7 +203,9 @@ async fn test_rest_post_command_default_type_is_read() {
     let resp = http()
         .post(format!("{base}/api/command"))
         .json(&serde_json::json!({"cmd":":domains"}))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
@@ -188,7 +221,9 @@ async fn test_rest_get_domain_valid_id() {
     // domain_id 100 = SUTRA (всегда существует)
     let resp = http()
         .get(format!("{base}/api/domain/100"))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
@@ -206,7 +241,9 @@ async fn test_rest_get_domain_invalid_id_404() {
     // domain_id 9999 не существует
     let resp = http()
         .get(format!("{base}/api/domain/9999"))
-        .send().await.unwrap();
+        .send()
+        .await
+        .unwrap();
 
     assert_eq!(resp.status(), 404);
 }

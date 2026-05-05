@@ -3,8 +3,8 @@
 //
 // AgentConfig — конфигурация axiom-agent из channels.yaml
 
-use std::path::Path;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Конфигурация всех каналов агента
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -53,14 +53,15 @@ pub struct ShellChannelConfig {
     pub whitelist: String,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 impl AgentConfig {
     /// Загрузить конфигурацию из YAML файла.
     pub fn from_file(path: &Path) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("read channels.yaml: {e}"))?;
-        serde_yaml::from_str(&content)
-            .map_err(|e| format!("parse channels.yaml: {e}"))
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("read channels.yaml: {e}"))?;
+        serde_yaml::from_str(&content).map_err(|e| format!("parse channels.yaml: {e}"))
     }
 }

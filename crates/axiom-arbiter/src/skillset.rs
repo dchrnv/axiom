@@ -3,8 +3,8 @@
 // Skill: кристаллизованный след опыта с высоким весом и подтверждениями.
 // SkillSet: коллекция навыков + механизм кристаллизации + поиск.
 
-use axiom_core::Token;
 use crate::experience::ExperienceTrace;
+use axiom_core::Token;
 
 /// Кристаллизованный навык
 ///
@@ -155,11 +155,15 @@ impl SkillSet {
             let threshold = self.activation_similarity;
             self.skills.iter().any(|s| {
                 let hash_dist = (s.pattern_hash ^ skill.pattern_hash).count_ones();
-                if hash_dist > 40 { return false; }
+                if hash_dist > 40 {
+                    return false;
+                }
                 skill_pattern_similarity(&s.pattern, &skill.pattern) >= threshold
             })
         };
-        if is_dup { return false; }
+        if is_dup {
+            return false;
+        }
         skill.activation_weight = (skill.activation_weight * weight_factor).max(0.001);
         skill.success_count = 0;
         self.skills.push(skill);
@@ -180,7 +184,8 @@ impl SkillSet {
     ///
     /// Возвращает число фактически импортированных (без дублей).
     pub fn import_batch(&mut self, skills: &[Skill]) -> usize {
-        skills.iter()
+        skills
+            .iter()
             .filter(|s| self.import_skill_with_factor((*s).clone(), Self::FRACTAL_IMPORT_FACTOR))
             .count()
     }

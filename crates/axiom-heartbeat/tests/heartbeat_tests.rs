@@ -153,8 +153,8 @@ fn test_heartbeat_full_coverage() {
         ..HeartbeatConfig::medium()
     };
 
-    let total_tokens = 10;
-    let pulses_needed = (total_tokens + config.batch_size - 1) / config.batch_size;
+    let total_tokens: usize = 10;
+    let pulses_needed = total_tokens.div_ceil(config.batch_size);
 
     // За ceil(10/3) = 4 пульса должны быть покрыты все токены
     for pulse in 1..=pulses_needed {
@@ -182,24 +182,32 @@ fn test_heartbeat_idle_state() {
 
 #[test]
 fn test_internal_drive_weak_disabled() {
-    assert!(!HeartbeatConfig::weak().enable_internal_drive,
-        "weak: Internal Drive отключён (слабое железо)");
+    assert!(
+        !HeartbeatConfig::weak().enable_internal_drive,
+        "weak: Internal Drive отключён (слабое железо)"
+    );
 }
 
 #[test]
 fn test_internal_drive_medium_enabled() {
-    assert!(HeartbeatConfig::medium().enable_internal_drive,
-        "medium: Internal Drive включён");
+    assert!(
+        HeartbeatConfig::medium().enable_internal_drive,
+        "medium: Internal Drive включён"
+    );
 }
 
 #[test]
 fn test_internal_drive_powerful_enabled() {
-    assert!(HeartbeatConfig::powerful().enable_internal_drive,
-        "powerful: Internal Drive включён");
+    assert!(
+        HeartbeatConfig::powerful().enable_internal_drive,
+        "powerful: Internal Drive включён"
+    );
 }
 
 #[test]
 fn test_internal_drive_disabled_preset_off() {
-    assert!(!HeartbeatConfig::disabled().enable_internal_drive,
-        "disabled: Internal Drive выключен вместе с heartbeat");
+    assert!(
+        !HeartbeatConfig::disabled().enable_internal_drive,
+        "disabled: Internal Drive выключен вместе с heartbeat"
+    );
 }

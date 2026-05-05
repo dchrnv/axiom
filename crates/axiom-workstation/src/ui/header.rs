@@ -9,19 +9,19 @@ pub fn header_view<'a>(
     engine_address: &'a str,
 ) -> Element<'a, Message> {
     let (indicator, conn_text) = match connection {
-        ConnectionState::Disconnected => (
-            "●",
-            "Disconnected".to_string(),
-        ),
-        ConnectionState::Connecting => (
-            "●",
-            "Connecting…".to_string(),
-        ),
-        ConnectionState::Reconnecting { attempt, next_retry_secs } => (
+        ConnectionState::Disconnected => ("●", "Disconnected".to_string()),
+        ConnectionState::Connecting => ("●", "Connecting…".to_string()),
+        ConnectionState::Reconnecting {
+            attempt,
+            next_retry_secs,
+        } => (
             "●",
             format!("Reconnecting (attempt {}, {}s)", attempt, next_retry_secs),
         ),
-        ConnectionState::Connected { engine_version, connected_at } => (
+        ConnectionState::Connected {
+            engine_version,
+            connected_at,
+        } => (
             "●",
             format!(
                 "Connected  v{:#010x}  ({}s)",
@@ -67,16 +67,22 @@ fn connection_details<'a>(
     engine_address: &'a str,
 ) -> Element<'a, Message> {
     let details: Element<Message> = match connection {
-        ConnectionState::Connected { engine_version, connected_at } => column![
+        ConnectionState::Connected {
+            engine_version,
+            connected_at,
+        } => column![
             text(format!("Engine address:  {}", engine_address))
                 .size(12)
                 .color(Color::from_rgb(0.6, 0.6, 0.6)),
             text(format!("Engine version:  v{:#010x}", engine_version))
                 .size(12)
                 .color(Color::from_rgb(0.6, 0.6, 0.6)),
-            text(format!("Connected for:   {}s", connected_at.elapsed().as_secs()))
-                .size(12)
-                .color(Color::from_rgb(0.6, 0.6, 0.6)),
+            text(format!(
+                "Connected for:   {}s",
+                connected_at.elapsed().as_secs()
+            ))
+            .size(12)
+            .color(Color::from_rgb(0.6, 0.6, 0.6)),
         ]
         .spacing(3)
         .into(),

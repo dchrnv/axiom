@@ -6,9 +6,9 @@
 // Обновляется ПОСЛЕДНИМ при записи — наличие валидного manifest означает
 // что все файлы записаны корректно. При загрузке проверяется первым.
 
+use crate::error::PersistError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use crate::error::PersistError;
 
 /// Текущая версия формата хранилища.
 pub const FORMAT_VERSION: &str = "axiom-memory-v1";
@@ -67,17 +67,16 @@ impl MemoryManifest {
 
     /// Обновить `last_saved` и счётчики.
     pub fn update(&mut self, tick_count: u64, com_next_id: u64, contents: ManifestContents) {
-        self.last_saved  = chrono_like_now();
-        self.tick_count  = tick_count;
+        self.last_saved = chrono_like_now();
+        self.tick_count = tick_count;
         self.com_next_id = com_next_id;
-        self.contents    = contents;
+        self.contents = contents;
     }
 
     /// Записать manifest в файл `<dir>/manifest.yaml`.
     pub fn write_to(&self, dir: &Path) -> Result<(), PersistError> {
         let path = dir.join("manifest.yaml");
-        let yaml = serde_yaml::to_string(self)
-            .map_err(|e| PersistError::Encode(e.to_string()))?;
+        let yaml = serde_yaml::to_string(self).map_err(|e| PersistError::Encode(e.to_string()))?;
         std::fs::write(&path, yaml)?;
         Ok(())
     }

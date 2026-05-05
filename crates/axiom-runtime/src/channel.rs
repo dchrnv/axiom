@@ -7,9 +7,9 @@
 // и получать события асинхронно через drain.
 // Ядро однопоточное — никакой синхронизации не требуется.
 
-use std::collections::VecDeque;
 use axiom_core::Event;
 use axiom_ucl::{UclCommand, UclResult};
+use std::collections::VecDeque;
 
 /// In-process канал между внешними компонентами и Gateway.
 ///
@@ -112,7 +112,10 @@ pub struct ChannelBatchResult {
 
 impl ChannelBatchResult {
     pub(crate) fn new() -> Self {
-        Self { processed: 0, errors: Vec::new() }
+        Self {
+            processed: 0,
+            errors: Vec::new(),
+        }
     }
 
     /// Все команды обработаны без ошибок?

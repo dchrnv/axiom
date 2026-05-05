@@ -116,8 +116,14 @@ fn test_frontier_creation_with_config() {
 
     assert_eq!(frontier.size(), 0);
     assert!(frontier.is_empty());
-    assert_eq!(frontier.max_frontier_size(), FrontierConfig::weak().max_frontier_size);
-    assert_eq!(frontier.storm_threshold(), FrontierConfig::weak().storm_threshold);
+    assert_eq!(
+        frontier.max_frontier_size(),
+        FrontierConfig::weak().max_frontier_size
+    );
+    assert_eq!(
+        frontier.storm_threshold(),
+        FrontierConfig::weak().storm_threshold
+    );
 }
 
 // ============================================================================
@@ -407,8 +413,14 @@ fn test_frontier_getters() {
     assert_eq!(frontier.token_count(), 2);
     assert_eq!(frontier.connection_count(), 1);
     assert_eq!(frontier.size(), 3);
-    assert_eq!(frontier.max_frontier_size(), FrontierConfig::medium().max_frontier_size);
-    assert_eq!(frontier.storm_threshold(), FrontierConfig::medium().storm_threshold);
+    assert_eq!(
+        frontier.max_frontier_size(),
+        FrontierConfig::medium().max_frontier_size
+    );
+    assert_eq!(
+        frontier.storm_threshold(),
+        FrontierConfig::medium().storm_threshold
+    );
 }
 
 #[test]

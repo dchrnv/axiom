@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
-use crate::types::{ModuleId, ResourceId, Permission, DataType, MAX_MODULES, MAX_RESOURCES};
 use crate::genome::Genome;
+use crate::types::{DataType, ModuleId, Permission, ResourceId, MAX_MODULES, MAX_RESOURCES};
 
 /// Предвычисленные матрицы для O(1) lookup.
 ///
@@ -37,11 +37,19 @@ impl GenomeIndex {
             }
         }
 
-        Self { access_matrix, protocol_matrix }
+        Self {
+            access_matrix,
+            protocol_matrix,
+        }
     }
 
     /// O(1) проверка права доступа.
-    pub fn check_access(&self, module: ModuleId, resource: ResourceId, required: Permission) -> bool {
+    pub fn check_access(
+        &self,
+        module: ModuleId,
+        resource: ResourceId,
+        required: Permission,
+    ) -> bool {
         self.access_matrix[module as usize][resource as usize] >= required
     }
 
@@ -58,8 +66,9 @@ impl GenomeIndex {
         target: ModuleId,
         data_type: DataType,
     ) -> bool {
-        genome.protocol_rules.iter().any(|r|
-            r.source == source && r.target == target && r.data_type == data_type
-        )
+        genome
+            .protocol_rules
+            .iter()
+            .any(|r| r.source == source && r.target == target && r.data_type == data_type)
     }
 }

@@ -7,11 +7,11 @@
 // HeartbeatConfig, пресеты). GENOME не перезагружается никогда — он не является
 // частью LoadedAxiomConfig.
 
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
-use notify::{Watcher, RecommendedWatcher, RecursiveMode};
 
-use crate::loader::{ConfigLoader, LoadedAxiomConfig, ConfigError};
+use crate::loader::{ConfigError, ConfigLoader, LoadedAxiomConfig};
 
 /// Горячая перезагрузка конфигурации.
 ///
@@ -80,9 +80,10 @@ impl ConfigWatcher {
         while let Ok(event) = self.rx.try_recv() {
             if let Ok(ev) = event {
                 // Интересуют только изменения файла с нашим именем
-                let affects_config = ev.paths.iter().any(|p| {
-                    p.file_name() == self.config_path.file_name()
-                });
+                let affects_config = ev
+                    .paths
+                    .iter()
+                    .any(|p| p.file_name() == self.config_path.file_name());
                 if affects_config {
                     changed = true;
                 }

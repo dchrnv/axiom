@@ -1,5 +1,5 @@
-use egui::Ui;
 use crate::state::AppData;
+use egui::Ui;
 
 pub fn show(ui: &mut Ui, data: &AppData) {
     ui.heading("Status");
@@ -17,12 +17,26 @@ pub fn show(ui: &mut Ui, data: &AppData) {
     }
 
     ui.separator();
-    egui::Grid::new("status_grid").num_columns(2).show(ui, |ui| {
-        ui.label("tick_count");  ui.label(data.tick_count.to_string()); ui.end_row();
-        ui.label("traces");      ui.label(data.traces.to_string());     ui.end_row();
-        ui.label("tension");     ui.label(data.tension.to_string());    ui.end_row();
-        ui.label("last_matched");ui.label(data.last_matched.to_string()); ui.end_row();
-        ui.label("domains");     ui.label(data.domains.len().to_string()); ui.end_row();
-        ui.label("tokens");      ui.label(data.tokens.len().to_string()); ui.end_row();
-    });
+    egui::Grid::new("status_grid")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("tick_count");
+            ui.label(data.tick_count.to_string());
+            ui.end_row();
+            ui.label("traces");
+            ui.label(data.traces.to_string());
+            ui.end_row();
+            ui.label("tension");
+            ui.label(data.tension.to_string());
+            ui.end_row();
+            ui.label("last_matched");
+            ui.label(data.last_matched.to_string());
+            ui.end_row();
+            ui.label("domains");
+            ui.label(data.domains.len().to_string());
+            ui.end_row();
+            ui.label("tokens");
+            ui.label(data.tokens.len().to_string());
+            ui.end_row();
+        });
 }

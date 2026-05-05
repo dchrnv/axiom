@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
+use crate::types::{DataType, ModuleId, Permission, ResourceId};
 use serde::{Deserialize, Serialize};
-use crate::types::{ModuleId, ResourceId, Permission, DataType};
 
 /// Структурные инварианты системы — физические и архитектурные ограничения.
 /// Эти значения никогда не меняются в рантайме.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenomeInvariants {
     /// Размеры core-структур в байтах
-    pub token_size: u16,           // Всегда 64
-    pub connection_size: u16,      // Всегда 64
-    pub event_size: u16,           // Всегда 32
-    pub domain_config_size: u16,   // Всегда 128
+    pub token_size: u16, // Всегда 64
+    pub connection_size: u16,    // Всегда 64
+    pub event_size: u16,         // Всегда 32
+    pub domain_config_size: u16, // Всегда 128
 
     /// Фундаментальные ограничения
-    pub max_domains: u8,               // 11 доменов в одном уровне Ashti_Core
-    pub min_intensity_nonzero: bool,   // min_intensity > 0 для EXPERIENCE(9)
-    pub sutra_write_exclusive: bool,   // Только SUTRA(0) имеет право WRITE на токены
+    pub max_domains: u8, // 11 доменов в одном уровне Ashti_Core
+    pub min_intensity_nonzero: bool, // min_intensity > 0 для EXPERIENCE(9)
+    pub sutra_write_exclusive: bool, // Только SUTRA(0) имеет право WRITE на токены
 
     /// Временная модель
-    pub no_wall_clock_in_core: bool,   // Запрет std::time внутри ядра — всегда true
-    pub event_id_monotonic: bool,      // event_id строго возрастает — всегда true
+    pub no_wall_clock_in_core: bool, // Запрет std::time внутри ядра — всегда true
+    pub event_id_monotonic: bool, // event_id строго возрастает — всегда true
 }
 
 impl GenomeInvariants {

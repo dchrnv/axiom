@@ -14,13 +14,13 @@
 //   B → C: стоимость реального сканирования (5 узоров)
 //   C → D: масштабирование по числу узоров
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use std::time::Duration;
-use axiom_runtime::{AxiomEngine, FrameWeaver, FrameWeaverConfig};
 use axiom_core::{Connection, FLAG_ACTIVE};
-use axiom_ucl::{UclCommand, OpCode};
+use axiom_runtime::{AxiomEngine, FrameWeaver, FrameWeaverConfig};
+use axiom_ucl::{OpCode, UclCommand};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::time::Duration;
 
-const MAYA_ID:  u16 = 110;
+const MAYA_ID: u16 = 110;
 const LOGIC_ID: u32 = 106;
 
 fn tick_cmd() -> UclCommand {
@@ -35,7 +35,7 @@ fn base_engine(fw_config: FrameWeaverConfig) -> AxiomEngine {
     for j in 1u32..=50 {
         let mut cmd = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 100, 0);
         cmd.payload[0] = (LOGIC_ID & 0xff) as u8;
-        cmd.payload[1] = (LOGIC_ID >> 8)   as u8;
+        cmd.payload[1] = (LOGIC_ID >> 8) as u8;
         let mass = 50.0f32 + j as f32;
         cmd.payload[4..8].copy_from_slice(&mass.to_le_bytes());
         engine.process_command(&cmd);
@@ -54,20 +54,32 @@ fn syn_conn(source: u32, target: u32, layer: u8) -> Connection {
 /// Добавить N синтаксических узоров (каждый = 1 head + 2 participants, 2 слоя).
 fn add_maya_patterns(engine: &mut AxiomEngine, patterns: usize) {
     for i in 0..patterns {
-        let head   = (i * 3 + 1) as u32;
-        let tgt1   = (i * 3 + 2) as u32;
-        let tgt2   = (i * 3 + 3) as u32;
-        engine.ashti.inject_connection(MAYA_ID, syn_conn(head, tgt1, 1)).ok();
-        engine.ashti.inject_connection(MAYA_ID, syn_conn(head, tgt2, 2)).ok();
+        let head = (i * 3 + 1) as u32;
+        let tgt1 = (i * 3 + 2) as u32;
+        let tgt2 = (i * 3 + 3) as u32;
+        engine
+            .ashti
+            .inject_connection(MAYA_ID, syn_conn(head, tgt1, 1))
+            .ok();
+        engine
+            .ashti
+            .inject_connection(MAYA_ID, syn_conn(head, tgt2, 2))
+            .ok();
     }
 }
 
 fn config_disabled() -> FrameWeaverConfig {
-    FrameWeaverConfig { scan_interval_ticks: u32::MAX, ..Default::default() }
+    FrameWeaverConfig {
+        scan_interval_ticks: u32::MAX,
+        ..Default::default()
+    }
 }
 
 fn config_active() -> FrameWeaverConfig {
-    FrameWeaverConfig { scan_interval_ticks: 1, ..Default::default() }
+    FrameWeaverConfig {
+        scan_interval_ticks: 1,
+        ..Default::default()
+    }
 }
 
 // ── Группа A: FW disabled ────────────────────────────────────────────────────
@@ -88,7 +100,7 @@ fn bench_fw_disabled(c: &mut Criterion) {
                 for j in 51u32..=50 + n as u32 {
                     let mut c = UclCommand::new(OpCode::InjectToken, LOGIC_ID, 100, 0);
                     c.payload[0] = (LOGIC_ID & 0xff) as u8;
-                    c.payload[1] = (LOGIC_ID >> 8)   as u8;
+                    c.payload[1] = (LOGIC_ID >> 8) as u8;
                     let mass = j as f32;
                     c.payload[4..8].copy_from_slice(&mass.to_le_bytes());
                     engine.process_command(&c);
@@ -153,8 +165,8 @@ fn bench_fw_patterns_20(c: &mut Criterion) {
 // ── Изолированный замер scan_state ───────────────────────────────────────────
 
 fn bench_scan_state_isolated(c: &mut Criterion) {
-    use axiom_domain::DomainState;
     use axiom_config::DomainConfig;
+    use axiom_domain::DomainState;
 
     let mut group = c.benchmark_group("FrameWeaver: scan_state isolated");
     group.measurement_time(Duration::from_secs(5));
@@ -169,8 +181,8 @@ fn bench_scan_state_isolated(c: &mut Criterion) {
                 let mut state = DomainState::new(&DomainConfig::default());
                 for i in 0..n {
                     let head = (i * 3 + 1) as u32;
-                    let t1   = (i * 3 + 2) as u32;
-                    let t2   = (i * 3 + 3) as u32;
+                    let t1 = (i * 3 + 2) as u32;
+                    let t2 = (i * 3 + 3) as u32;
                     state.connections.push(syn_conn(head, t1, 1));
                     state.connections.push(syn_conn(head, t2, 2));
                 }

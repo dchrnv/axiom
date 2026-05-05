@@ -92,7 +92,10 @@ fn test_pulse_cold_trace_not_returned() {
     arbiter.experience_mut().add_tension_trace(token, 50, 1); // холодный (50 < порог 128)
 
     let impulses = arbiter.on_heartbeat_pulse(1, true);
-    assert!(impulses.is_empty(), "Холодный след не должен стать импульсом");
+    assert!(
+        impulses.is_empty(),
+        "Холодный след не должен стать импульсом"
+    );
 }
 
 #[test]
@@ -120,19 +123,32 @@ fn test_pulse_cools_traces() {
     arbiter.experience_mut().add_tension_trace(token, 130, 3);
     // cool(130-10=120), 120 < 128 → не возвращается
     let impulses_3 = arbiter.on_heartbeat_pulse(3, true);
-    assert!(impulses_3.is_empty(), "После остывания ниже порога — импульс не генерируется");
+    assert!(
+        impulses_3.is_empty(),
+        "После остывания ниже порога — импульс не генерируется"
+    );
 }
 
 #[test]
 fn test_pulse_multiple_hot_traces() {
     let mut arbiter = make_full_arbiter();
     for i in 0..3u32 {
-        arbiter.experience_mut().add_tension_trace(make_token(i, 200), 200, i as u64 + 1);
+        arbiter
+            .experience_mut()
+            .add_tension_trace(make_token(i, 200), 200, i as u64 + 1);
     }
 
     let impulses = arbiter.on_heartbeat_pulse(1, true);
-    assert_eq!(impulses.len(), 3, "Все три горячих следа должны стать импульсами");
-    assert_eq!(arbiter.experience().tension_count(), 0, "После drain следов нет");
+    assert_eq!(
+        impulses.len(),
+        3,
+        "Все три горячих следа должны стать импульсами"
+    );
+    assert_eq!(
+        arbiter.experience().tension_count(),
+        0,
+        "После drain следов нет"
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -158,15 +174,22 @@ fn test_impulse_can_be_re_routed() {
 fn test_tension_decay_across_multiple_pulses() {
     let mut arbiter = make_full_arbiter();
     // temperature=200, decay=10 за пульс → остынет до < 128 за ~8 пульсов
-    arbiter.experience_mut().add_tension_trace(make_token(1, 100), 200, 1);
+    arbiter
+        .experience_mut()
+        .add_tension_trace(make_token(1, 100), 200, 1);
 
     // Первый пульс: cool(200-10=190), drain(190>=128) → горячий
     let first = arbiter.on_heartbeat_pulse(1, true);
     assert!(!first.is_empty());
     // След удалён из буфера — добавим снова с меньшей температурой
-    arbiter.experience_mut().add_tension_trace(make_token(1, 100), 120, 2);
+    arbiter
+        .experience_mut()
+        .add_tension_trace(make_token(1, 100), 120, 2);
 
     // cool(120-10=110), 110 < 128 → холодный
     let second = arbiter.on_heartbeat_pulse(2, true);
-    assert!(second.is_empty(), "После нескольких пульсов след остывает ниже порога");
+    assert!(
+        second.is_empty(),
+        "После нескольких пульсов след остывает ниже порога"
+    );
 }

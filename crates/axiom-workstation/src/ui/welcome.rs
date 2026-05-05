@@ -8,8 +8,12 @@ pub fn welcome_view<'a>(connection: &'a ConnectionState) -> Element<'a, Message>
 
     container(
         column![
-            text("AXIOM").size(52).color(Color::from_rgb(0.75, 0.75, 0.75)),
-            text("Workstation").size(28).color(Color::from_rgb(0.55, 0.55, 0.55)),
+            text("AXIOM")
+                .size(52)
+                .color(Color::from_rgb(0.75, 0.75, 0.75)),
+            text("Workstation")
+                .size(28)
+                .color(Color::from_rgb(0.55, 0.55, 0.55)),
             status,
         ]
         .spacing(24)
@@ -36,11 +40,15 @@ fn connection_status<'a>(connection: &'a ConnectionState) -> Element<'a, Message
         .align_x(iced::Alignment::Center)
         .into(),
 
-        ConnectionState::Reconnecting { attempt, next_retry_secs } => column![
-            text(format!("Reconnecting… (attempt {}, retry in {}s)", attempt, next_retry_secs))
-                .size(13)
-                .color(Color::from_rgb(0.75, 0.6, 0.3)),
-        ]
+        ConnectionState::Reconnecting {
+            attempt,
+            next_retry_secs,
+        } => column![text(format!(
+            "Reconnecting… (attempt {}, retry in {}s)",
+            attempt, next_retry_secs
+        ))
+        .size(13)
+        .color(Color::from_rgb(0.75, 0.6, 0.3)),]
         .align_x(iced::Alignment::Center)
         .into(),
 
@@ -62,11 +70,9 @@ fn connection_status<'a>(connection: &'a ConnectionState) -> Element<'a, Message
         .align_x(iced::Alignment::Center)
         .into(),
 
-        ConnectionState::Connected { .. } => column![
-            text("Connected — starting…")
-                .size(14)
-                .color(Color::from_rgb(0.35, 0.7, 0.45)),
-        ]
+        ConnectionState::Connected { .. } => column![text("Connected — starting…")
+            .size(14)
+            .color(Color::from_rgb(0.35, 0.7, 0.45)),]
         .align_x(iced::Alignment::Center)
         .into(),
     }

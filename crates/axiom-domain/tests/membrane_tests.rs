@@ -1,7 +1,9 @@
 // Integration tests for axiom-domain membrane: can_enter_domain, can_exit_domain
-use axiom_domain::{can_enter_domain, can_exit_domain};
-use axiom_config::{DomainConfig, MEMBRANE_OPEN, MEMBRANE_CLOSED, MEMBRANE_SEMI, MEMBRANE_ADAPTIVE};
+use axiom_config::{
+    DomainConfig, MEMBRANE_ADAPTIVE, MEMBRANE_CLOSED, MEMBRANE_OPEN, MEMBRANE_SEMI,
+};
 use axiom_core::{Token, STATE_LOCKED};
+use axiom_domain::{can_enter_domain, can_exit_domain};
 
 fn make_token(sutra_id: u32) -> Token {
     Token::new(sutra_id, 1, [0, 0, 0], 0)

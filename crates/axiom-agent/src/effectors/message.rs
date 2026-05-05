@@ -9,8 +9,8 @@
 //   mid — routing + output без input-секции
 //   max — полный вывод: input / routing / output
 
-use axiom_runtime::result::{ProcessingResult, ProcessingPath};
 pub use axiom_runtime::domain_name;
+use axiom_runtime::result::{ProcessingPath, ProcessingResult};
 
 /// Уровень детализации вывода при обработке текстового ввода.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -28,13 +28,14 @@ pub enum DetailLevel {
 
 impl DetailLevel {
     /// Разобрать уровень детализации из строки ("off" / "min" / "mid" / "max").
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "off"  => Some(Self::Off),
-            "min"  => Some(Self::Min),
-            "mid"  => Some(Self::Mid),
-            "max"  => Some(Self::Max),
-            _      => None,
+            "off" => Some(Self::Off),
+            "min" => Some(Self::Min),
+            "mid" => Some(Self::Mid),
+            "max" => Some(Self::Max),
+            _ => None,
         }
     }
 
@@ -54,7 +55,9 @@ pub struct MessageEffector;
 
 impl MessageEffector {
     /// Создать новый `MessageEffector`.
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Форматировать ProcessingResult в строку для stdout.
     ///
@@ -91,8 +94,11 @@ impl MessageEffector {
     fn fmt_min(&self, result: &ProcessingResult) -> String {
         let mut out = String::with_capacity(160);
         out.push_str(&format!("  path:     {}\n", path_str(&result.path)));
-        out.push_str(&format!("  domain:   {} ({})\n",
-            result.dominant_domain_id, domain_name(result.dominant_domain_id)));
+        out.push_str(&format!(
+            "  domain:   {} ({})\n",
+            result.dominant_domain_id,
+            domain_name(result.dominant_domain_id)
+        ));
         if let Some(c) = result.coherence_score {
             out.push_str(&format!("  coherence:{:.2}\n", c));
         }
@@ -124,22 +130,39 @@ impl MessageEffector {
         if let Some(c) = result.coherence_score {
             out.push_str(&format!("  confidence: {:.2}\n", c));
         }
-        out.push_str(&format!("  traces:     {} matched (of {} total)\n",
-            result.traces_matched, result.total_traces));
-        out.push_str(&format!("  passes:     {} (max: {})\n",
-            result.passes.max(1), result.max_passes));
+        out.push_str(&format!(
+            "  traces:     {} matched (of {} total)\n",
+            result.traces_matched, result.total_traces
+        ));
+        out.push_str(&format!(
+            "  passes:     {} (max: {})\n",
+            result.passes.max(1),
+            result.max_passes
+        ));
 
         // ── output
         out.push_str("  ── output ───────────────────────────\n");
-        out.push_str(&format!("  domain:     {} ({})\n",
-            result.dominant_domain_id, domain_name(result.dominant_domain_id)));
+        out.push_str(&format!(
+            "  domain:     {} ({})\n",
+            result.dominant_domain_id,
+            domain_name(result.dominant_domain_id)
+        ));
         if let Some(c) = result.coherence_score {
-            out.push_str(&format!("  coherence:  {:.2} (threshold: {:.2})\n", c, result.min_coherence));
+            out.push_str(&format!(
+                "  coherence:  {:.2} (threshold: {:.2})\n",
+                c, result.min_coherence
+            ));
         }
         let [x, y, z] = result.output_position;
         out.push_str(&format!("  position:   ({}, {}, {})\n", x, y, z));
-        out.push_str(&format!("  tension:    created={}\n",
-            if result.tension_created { "true" } else { "false" }));
+        out.push_str(&format!(
+            "  tension:    created={}\n",
+            if result.tension_created {
+                "true"
+            } else {
+                "false"
+            }
+        ));
 
         out
     }
@@ -157,33 +180,46 @@ impl MessageEffector {
         out.push_str(&format!("  hash:       {:#018x}\n", result.input_hash));
         let [ix, iy, iz] = result.input_position;
         let [_, _, _, valence, temp, mass, _, _] = result.input_shell;
-        out.push_str(&format!("  token:      pos=({},{},{}) mass={} temp={} valence={}\n",
-            ix, iy, iz, mass, temp, valence));
+        out.push_str(&format!(
+            "  token:      pos=({},{},{}) mass={} temp={} valence={}\n",
+            ix, iy, iz, mass, temp, valence
+        ));
         out.push_str(&format!("  shell:      {:?}\n", result.input_shell));
 
         // ── routing
         out.push_str("  ── routing ──────────────────────────\n");
         let path_icon = match &result.path {
-            ProcessingPath::Reflex      => "⚡ reflex",
-            ProcessingPath::SlowPath    => "slow-path",
-            ProcessingPath::MultiPass(_)=> "multi-pass",
+            ProcessingPath::Reflex => "⚡ reflex",
+            ProcessingPath::SlowPath => "slow-path",
+            ProcessingPath::MultiPass(_) => "multi-pass",
         };
         out.push_str(&format!("  path:       {}\n", path_icon));
         out.push_str(&format!("  reflex_hit: {}\n", result.reflex_hit));
         if let Some(c) = result.coherence_score {
             out.push_str(&format!("  confidence: {:.2}\n", c));
         }
-        out.push_str(&format!("  traces:     {} matched (of {} total)\n",
-            result.traces_matched, result.total_traces));
-        out.push_str(&format!("  passes:     {} (max: {})\n",
-            result.passes.max(1), result.max_passes));
+        out.push_str(&format!(
+            "  traces:     {} matched (of {} total)\n",
+            result.traces_matched, result.total_traces
+        ));
+        out.push_str(&format!(
+            "  passes:     {} (max: {})\n",
+            result.passes.max(1),
+            result.max_passes
+        ));
 
         // ── output
         out.push_str("  ── output ───────────────────────────\n");
-        out.push_str(&format!("  dominant:   {} ({})\n",
-            result.dominant_domain_id, domain_name(result.dominant_domain_id)));
+        out.push_str(&format!(
+            "  dominant:   {} ({})\n",
+            result.dominant_domain_id,
+            domain_name(result.dominant_domain_id)
+        ));
         if let Some(c) = result.coherence_score {
-            out.push_str(&format!("  coherence:  {:.2} (threshold: {:.2})\n", c, result.min_coherence));
+            out.push_str(&format!(
+                "  coherence:  {:.2} (threshold: {:.2})\n",
+                c, result.min_coherence
+            ));
         }
         let [ox, oy, oz] = result.output_position;
         out.push_str(&format!("  position:   ({}, {}, {})\n", ox, oy, oz));
@@ -196,8 +232,14 @@ impl MessageEffector {
         out.push_str(&format!("  Δpos:       ({:+}, {:+}, {:+})\n", dx, dy, dz));
 
         out.push_str(&format!("  event_id:   {}\n", result.event_id));
-        out.push_str(&format!("  tension:    created={}\n",
-            if result.tension_created { "true" } else { "false" }));
+        out.push_str(&format!(
+            "  tension:    created={}\n",
+            if result.tension_created {
+                "true"
+            } else {
+                "false"
+            }
+        ));
 
         out
     }
@@ -206,24 +248,30 @@ impl MessageEffector {
 /// Форматировать ProcessingPath в строку.
 fn path_str(path: &ProcessingPath) -> String {
     match path {
-        ProcessingPath::Reflex       => "reflex".to_string(),
-        ProcessingPath::SlowPath     => "slow-path".to_string(),
+        ProcessingPath::Reflex => "reflex".to_string(),
+        ProcessingPath::SlowPath => "slow-path".to_string(),
         ProcessingPath::MultiPass(n) => format!("multi-pass({})", n),
     }
 }
 
 impl Default for MessageEffector {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axiom_runtime::result::{ProcessingResult, ProcessingPath};
+    use axiom_runtime::result::{ProcessingPath, ProcessingResult};
     use axiom_ucl::UclResult;
 
-    fn make_result(path: ProcessingPath, reflex: bool, coherence: f32, domain: u16) -> ProcessingResult {
+    fn make_result(
+        path: ProcessingPath,
+        reflex: bool,
+        coherence: f32,
+        domain: u16,
+    ) -> ProcessingResult {
         ProcessingResult {
             ucl_result: UclResult::success(0),
             path,
@@ -252,7 +300,7 @@ mod tests {
         let r = make_result(ProcessingPath::Reflex, true, 0.95, 110);
         let out = e.format_result(&r, DetailLevel::Min, None);
         assert!(out.contains("reflex"), "output: {}", out);
-        assert!(out.contains("MAYA"),   "output: {}", out);
+        assert!(out.contains("MAYA"), "output: {}", out);
         assert!(out.contains("reflex:   hit"), "output: {}", out);
     }
 
