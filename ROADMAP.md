@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 39.0  
-**Дата:** 2026-04-30
+**Версия:** 40.0  
+**Дата:** 2026-05-05
 
 ---
 
@@ -16,11 +16,12 @@ axiom-ucl → axiom-upo                          axiom-agent
                                                 (axiom-cli)
 ```
 
-**DREAM Phase V1.0 + DreamConfig завершены.** 1088 тестов, 0 failures.  
-**FrameWeaver V1.2:** промоция перенесена из on_tick → dream_propose() (вызов при FallingAsleep).  
-**Over-Domain Layer:** traits `OverDomainComponent` + `Weaver`; `FrameWeaver V1.2` встроен в `AxiomEngine`.  
-**DREAM (2026-04-28–29):** DreamScheduler, FatigueTracker, DreamCycle, DreamProposal; 4 состояния системы; GUARDIAN::check_frame_anchor_sutra_write(); CLI :dream-stats/:force-sleep/:wake-up; DreamConfig в axiom-config с hot-reload.  
-**Онтология:** SUTRA / EXPERIENCE / MAYA. Frame живёт в EXPERIENCE (STATE_ACTIVE), промоция в SUTRA через CODEX только в DREAMING-состоянии.
+**Workstation V1.0 завершён (2026-05-05).** 1174 тестов, 0 failures.  
+**Три новых crate:** axiom-protocol (41 тест), axiom-broadcasting (6 тестов), axiom-workstation (39 тестов).  
+**axiom-workstation:** iced 0.13 desktop-клиент, 8 вкладок (System Map, Live Field, Conversation, Patterns, Dream State, Configuration, Files, Benchmarks), bidirectional WebSocket, Welcome/Main фазы, alert overlay, keyboard shortcuts.  
+**axiom-broadcasting** пока не подключён к реальному Engine tick-loop (BRD-TD-07 → axiom-node).  
+**DREAM Phase V1.0 + DreamConfig завершены (2026-04-28–29).** FrameWeaver V1.2: промоция → dream_propose().  
+**Онтология:** SUTRA / EXPERIENCE / MAYA. Frame живёт в EXPERIENCE, промоция в SUTRA только в DREAMING.
 
 ---
 

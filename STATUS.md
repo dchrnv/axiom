@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-04-30
+**Обновлено:** 2026-05-05
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1088 тестов, 0 failures**
+**1174 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -99,6 +99,21 @@ axiom-persist (D-04):
 
 axiom-space:
   └── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
+
+Workstation V1.0 ✅ (2026-05-05):
+  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(14), EngineEvent(14),
+    EngineMessage/ClientMessage (handshake), SystemSnapshot, ConfigSchema, BenchSpec;
+    postcard сериализация; PROTOCOL_VERSION = 0x01_00_00_00
+  axiom-broadcasting — WebSocket-сервер (tokio-tungstenite 0.24): BroadcastServer/Handle,
+    subscription filter (event_category bits + tick_event_interval), heartbeat ping/pong,
+    build_system_snapshot(); BRD-TD-07 (Engine integration) → axiom-node
+  axiom-workstation — iced 0.13 desktop-клиент оператора:
+    ├── connection.rs — ws_subscription + reconnect backoff [1,2,5,10,30]s
+    ├── settings.rs — UiSettings, TOML-персистенция (dirs)
+    ├── app.rs — WorkstationApp, AppPhase (Welcome/Main), 8 табов, bidirectional WS,
+    │             keyboard shortcuts Ctrl+1–8/,/S/Z, alert overlay, subscription_key hot-reload
+    └── ui/ — header, tabs, welcome, system_map(canvas), config(schema-driven), conversation,
+              patterns(sparklines L1-L8), dream_state, files, benchmarks, live_field(3D canvas)
 ```
 
 **Документация:** [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
@@ -123,9 +138,12 @@ axiom-space:
 | axiom-runtime | 280 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.2 ✅), DREAM Phase V1.0 (DreamScheduler, FatigueTracker, DreamCycle, DreamProposal), Gateway (with_config, check_config_reload), Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 152 (175 all-features) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop (CliState, adaptive sleep, ConfigWatcher), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
+| axiom-protocol | 41 | EngineCommand/Event/Message, SystemSnapshot, ConfigSchema, BenchSpec, AdapterInfo; postcard round-trip |
+| axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter, heartbeat, build_system_snapshot |
+| axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main, alert overlay, keyboard shortcuts |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | — | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1088** | |
+| **Итого** | **1174** | |
 
 ---
 
@@ -177,3 +195,14 @@ axiom-space:
 | DREAM Phase 6 | CLI :dream-stats / :force-sleep / :wake-up; BroadcastSnapshot расширен; dream_cli_tests (5 тестов) | ✅ |
 | DREAM Phase 7 | Smoke-тест 8 тестов: full_cycle, multiple_cycles, interrupted_cycle, scheduler_stats, promotions | ✅ |
 | DreamConfig | axiom-config: SchedulerConfig+FatigueWeightsConfig+CycleConfig; apply_dream_config() в engine; Gateway::with_config(); hot-reload; dream.yaml; :schema dream | ✅ |
+| WS Stage 0–1 | axiom-protocol (41 тест) + axiom-broadcasting scaffold; postcard сериализация | ✅ |
+| WS Stage 2 | axiom-broadcasting: BroadcastServer/Handle, filter, heartbeat, 6 тестов | ✅ |
+| WS Stage 3 | axiom-workstation базовая инфраструктура: settings, connection, reconnect backoff, 3 теста | ✅ |
+| WS Stage 4 | Multi-window (iced::daemon), tabs, System Map canvas (мандала + анимация) | ✅ |
+| WS Stage 5 | Configuration tab: schema-driven UI, bidirectional WS, workstation-секция | ✅ |
+| WS Stage 6 | Conversation tab: лента, domain selector, Submit, корреляция с Frame-событиями | ✅ |
+| WS Stage 7 | Patterns tab (sparklines L1-L8) + Dream State tab (force sleep / wake up) | ✅ |
+| WS Stage 8 | Files tab (import flow) + Benchmarks tab (progress + history) | ✅ |
+| WS Stage 9 | Welcome/Main фазы, alert overlay, keyboard shortcuts Ctrl+1–8, hot-reload адреса | ✅ |
+| WS Stage 10 | Live Field 3D canvas: орбитальная камера, перспективное проецирование, процедурные токены | ✅ |
+| WS Stage 11 | clippy --workspace -D warnings → 0 errors; 1174 тестов; fmt; README + errata | ✅ |
