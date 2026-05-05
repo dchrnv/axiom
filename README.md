@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1088%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1174%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1088 tests passing.**
+**Axiom is in active development — core architecture complete, 1174 tests passing.**
 
 ---
 
@@ -56,6 +56,7 @@
 - **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
 - **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
 - **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
+- **Workstation V1.0** — десктопный рабочий стол оператора (iced 0.13). Подключается к движку через WebSocket (`axiom-broadcasting`). 8 вкладок: System Map (мандала ASHTI с анимацией), Live Field (3D-канвас с орбитальной камерой), Conversation, Patterns (sparklines L1-L8), Dream State, Configuration (schema-driven), Files, Benchmarks. Bidirectional WS, Welcome/Main фазы, keyboard shortcuts.
 
 #### Детерминизм — это не ограничение
 
@@ -68,14 +69,21 @@
 ### Architecture
 
 ```
+  ┌───────────────────────────────────────────────────────────────┐
+  │  axiom-workstation  (iced 0.13 desktop GUI)                    │
+  │    System Map · Live Field · Conversation · Patterns           │
+  │    Dream State · Configuration · Files · Benchmarks           │
+  └────────────────────────────┬──────────────────────────────────┘
+                               │ WebSocket (axiom-broadcasting)
                     ┌─────────────────────────────────────────────┐
-  External World    │  External Adapters                           │
+  External World    │  External Adapters + axiom-broadcasting      │
   WebSocket /       │    CLI  ── stdin/stdout, axiom-cli.yaml      │
   REST API /        │    WS   ── axum 0.8, ws://host/ws            │
-  egui Dashboard /  │    REST ── axum Router, 5 endpoints          │
+  Workstation /     │    REST ── axum Router, 5 endpoints          │
   Telegram /        │    GUI  ── egui/eframe dashboard             │
   OpenSearch        │    TG   ── Telegram long-poll (feature)      │
                     │    OS   ── OpenSearch indexer  (feature)     │
+                    │    BCast── axiom-broadcasting WebSocket srv  │
                     │  tick_loop — единственный writer AxiomEngine │
                     │  Gateway — UCL protocol (in-process)         │
                     └──────────────────┬──────────────────────────┘
@@ -166,6 +174,7 @@ let result = gw.process_channel(&mut ch);
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md) — WebSocket, REST, Dashboard, Telegram, OpenSearch
+- [crates/axiom-workstation/README.md](crates/axiom-workstation/README.md) — Workstation V1.0: архитектура, вкладки, протокол, запуск
 - [QUICKSTART.md](QUICKSTART.md) — быстрый старт: CLI, WebSocket, REST, адаптеры
 - [STATUS.md](STATUS.md) — текущее состояние, тесты по crates
 - [ROADMAP.md](ROADMAP.md) — активные планы
