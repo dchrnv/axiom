@@ -19,7 +19,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-cargo test --workspace   # 991 тестов, 0 failures
+cargo test --workspace   # 1174 тестов, 0 failures
 cargo build --release    # production build
 ```
 
@@ -203,6 +203,32 @@ GET http://localhost:8765/domain-detail/100
 Timeout ожидания ответа — 5 секунд.
 
 Тесты: `cargo test -p axiom-agent --test rest_tests`
+
+---
+
+## Workstation (V1.0)
+
+Десктопный рабочий стол оператора на iced 0.13. Подключается к движку через выделенный WebSocket-сервер (`axiom-broadcasting`), не через axiom-cli.
+
+> **Статус:** `axiom-broadcasting` ещё не подключён к тик-циклу движка (BRD-TD-07 — откладывается до `axiom-node`). Workstation компилируется и запускается, но без живого сервера будет ждать подключения на Welcome-экране.
+
+```bash
+cargo run -p axiom-workstation
+```
+
+По умолчанию подключается к `127.0.0.1:9876`. Адрес меняется в Configuration → Connection.
+
+**8 вкладок:**
+- **System Map** — мандала ASHTI с пульсацией и анимацией состояния
+- **Live Field** — 3D-визуализация токенов, орбитальная камера (drag + scroll)
+- **Conversation** — текстовый ввод в Engine с историей и domain selector
+- **Patterns** — sparklines активности слоёв L1-L8 + лента событий
+- **Dream State** — состояние цикла сна, fatigue, force sleep / wake up
+- **Configuration** — schema-driven редактор конфигурации движка
+- **Files** — импорт данных через адаптеры (progress + история)
+- **Benchmarks** — запуск бенчмарков и история результатов
+
+**Keyboard shortcuts:** `Ctrl+1–8` — переключение вкладок, `Ctrl+S` — применить конфиг, `Ctrl+Z` — сбросить изменения.
 
 ---
 
