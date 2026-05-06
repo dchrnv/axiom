@@ -60,6 +60,8 @@ pub struct DomainSummary {
     pub token_count: usize,
     /// Число связей в домене
     pub connection_count: usize,
+    /// Средняя температура токенов (0 если домен пуст)
+    pub temperature_avg: u8,
 }
 
 /// Детальный snapshot одного домена — только по явному запросу.

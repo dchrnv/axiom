@@ -179,6 +179,7 @@ impl BroadcastServer {
         let command_tx = self.command_tx.clone();
         let mut subscribed_categories = subscriptions;
         let tick_event_interval = self.config.tick_event_interval;
+        let domain_activity_threshold = self.config.domain_activity_threshold;
 
         // Heartbeat: server initiates ping every heartbeat_interval, expects pong within pong_timeout.
         let heartbeat_interval = self.config.heartbeat_interval;
@@ -216,7 +217,7 @@ impl BroadcastServer {
                 result = event_rx.recv() => {
                     match result {
                         Ok(msg) => {
-                            if !should_send(&msg, subscribed_categories, tick_event_interval) {
+                            if !should_send(&msg, subscribed_categories, tick_event_interval, domain_activity_threshold) {
                                 continue;
                             }
                             let bytes = match postcard::to_stdvec(&msg) {
@@ -228,8 +229,18 @@ impl BroadcastServer {
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
-                            warn!("Client {} lagged, dropped {} messages", client_id, n);
-                            // SCALE-POINT: send Snapshot for resync here
+                            warn!("Client {} lagged, dropped {} messages — sending snapshot for resync", client_id, n);
+                            let snap_bytes = self
+                                .handle
+                                .snapshot_cache
+                                .read()
+                                .ok()
+                                .and_then(|g| g.as_ref().cloned());
+                            if let Some(bytes) = snap_bytes {
+                                if ws_sink.send(WsMessage::Binary(bytes)).await.is_err() {
+                                    break;
+                                }
+                            }
                         }
                         Err(broadcast::error::RecvError::Closed) => break,
                     }
@@ -268,7 +279,12 @@ impl BroadcastServer {
     }
 }
 
-fn should_send(msg: &EngineMessage, categories: u64, tick_event_interval: u32) -> bool {
+fn should_send(
+    msg: &EngineMessage,
+    categories: u64,
+    tick_event_interval: u32,
+    domain_activity_threshold: u32,
+) -> bool {
     use axiom_protocol::event_category::*;
     use axiom_protocol::events::EngineEvent;
 
@@ -281,7 +297,12 @@ fn should_send(msg: &EngineMessage, categories: u64, tick_event_interval: u32) -
                     }
                     TICK
                 }
-                EngineEvent::DomainActivity { .. } => DOMAIN_ACTIVITY,
+                EngineEvent::DomainActivity { recent_activity, .. } => {
+                    if *recent_activity < domain_activity_threshold {
+                        return false;
+                    }
+                    DOMAIN_ACTIVITY
+                }
                 EngineEvent::DreamPhaseTransition { .. } => DREAM_PHASE,
                 EngineEvent::FrameCrystallized { .. }
                 | EngineEvent::FrameReactivated { .. }

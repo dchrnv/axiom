@@ -11,9 +11,16 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
+use axiom_broadcasting::{build_system_snapshot, BroadcastHandle};
 use axiom_config::{AnchorSet, ConfigWatcher};
 use axiom_core::Event;
 use axiom_persist::AutoSaver;
+use axiom_protocol::{
+    bench::{BenchEnvironment, BenchResults},
+    commands::EngineCommand,
+    events::EngineEvent,
+    messages::{CommandResultData, EngineMessage},
+};
 use axiom_runtime::{AxiomEngine, BroadcastSnapshot, TickRateReason};
 use axiom_ucl::{OpCode, UclCommand};
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -66,6 +73,7 @@ pub async fn tick_loop(
     anchor_set: Option<Arc<AnchorSet>>,
     config: AdaptersConfig,
     config_watcher: Option<ConfigWatcher>,
+    wstation_handle: Option<Arc<BroadcastHandle>>,
 ) {
     let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
     let base_tick_ms = 1000u64 / config.tick_hz.max(1) as u64;
@@ -84,11 +92,22 @@ pub async fn tick_loop(
         };
         tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
 
-        // Горячая перезагрузка axiom.yaml. Domain-пресеты не применяются к running engine —
-        // AxiomEngine не имеет apply_domain_config(). Перезапустите CLI для полного эффекта.
+        // Горячая перезагрузка axiom.yaml: применяем обновлённые domain-пресеты к running engine.
         if let Some(ref watcher) = config_watcher {
-            if let Some(_new_cfg) = watcher.poll() {
-                eprintln!("[config] axiom.yaml changed — restart to apply domain config");
+            if let Some(new_cfg) = watcher.poll() {
+                let mut applied = 0usize;
+                for (name, domain_cfg) in &new_cfg.domains {
+                    let domain_id = domain_cfg.domain_id;
+                    if domain_id == 0 {
+                        continue; // пресет без привязанного domain_id — пропускаем
+                    }
+                    engine.apply_domain_config(domain_id, domain_cfg);
+                    applied += 1;
+                    eprintln!("[config] applied domain '{}' (id={}) hot-reload", name, domain_id);
+                }
+                if applied == 0 {
+                    eprintln!("[config] axiom.yaml changed — no domain presets with domain_id found");
+                }
             }
         }
 
@@ -122,6 +141,20 @@ pub async fn tick_loop(
                 }
                 Err(mpsc::error::TryRecvError::Empty) => break,
                 Err(mpsc::error::TryRecvError::Disconnected) => return,
+            }
+        }
+
+        // 1b. Drain Workstation commands
+        if let Some(ref h) = wstation_handle {
+            loop {
+                match h.try_recv_command().await {
+                    Some((cmd_id, cmd)) => {
+                        handle_wstation_command(
+                            cmd_id, cmd, &mut engine, h, &mut perceptor,
+                        );
+                    }
+                    None => break,
+                }
             }
         }
 
@@ -162,6 +195,13 @@ pub async fn tick_loop(
                 last_matched: engine.last_matched(),
             });
         }
+        if let Some(ref h) = wstation_handle {
+            h.publish(EngineMessage::Event(EngineEvent::Tick {
+                tick: t,
+                event: engine.com_next_id,
+                hot_path_ns: tick_ns,
+            }));
+        }
 
         // 4. State-snapshot broadcast
         let state_interval = config.websocket.state_broadcast_interval as u64;
@@ -173,6 +213,9 @@ pub async fn tick_loop(
                 tick_count: t,
                 snapshot: for_bcast,
             });
+            if let Some(ref h) = wstation_handle {
+                h.update_snapshot(build_system_snapshot(&engine, tick_ns));
+            }
         }
 
         // 5. Автосохранение
@@ -296,6 +339,94 @@ pub(crate) fn process_adapter_command(
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+fn handle_wstation_command(
+    cmd_id: u64,
+    cmd: EngineCommand,
+    engine: &mut AxiomEngine,
+    handle: &BroadcastHandle,
+    perceptor: &mut TextPerceptor,
+) {
+    match cmd {
+        EngineCommand::SubmitText { text, .. } => {
+            let ucl = perceptor.perceive(&text);
+            engine.process_and_observe(&ucl);
+            handle.publish(EngineMessage::CommandResult {
+                command_id: cmd_id,
+                result: Ok(CommandResultData::None),
+            });
+        }
+        EngineCommand::RequestFullSnapshot => {
+            handle.update_snapshot(build_system_snapshot(engine, 0));
+            handle.publish(EngineMessage::CommandResult {
+                command_id: cmd_id,
+                result: Ok(CommandResultData::None),
+            });
+        }
+        EngineCommand::RunBench { spec } => {
+            let run_id = cmd_id;
+            handle.publish(EngineMessage::Event(EngineEvent::BenchStarted {
+                bench_id: spec.bench_id.clone(),
+                run_id,
+            }));
+
+            let bench_tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+            let n = spec.iterations.max(1) as usize;
+            let mut timings_ns: Vec<u64> = Vec::with_capacity(n);
+
+            for i in 0..n {
+                let t0 = Instant::now();
+                engine.process_command(&bench_tick_cmd);
+                timings_ns.push(t0.elapsed().as_nanos() as u64);
+
+                if i % 50 == 49 {
+                    handle.publish(EngineMessage::Event(EngineEvent::BenchProgress {
+                        run_id,
+                        completed: (i + 1) as u32,
+                        total: n as u32,
+                    }));
+                }
+            }
+
+            timings_ns.sort_unstable();
+            let len = timings_ns.len();
+            let median = timings_ns[len / 2] as f64;
+            let p50 = median;
+            let p99 = timings_ns[(len * 99 / 100).min(len - 1)] as f64;
+            let mean = timings_ns.iter().sum::<u64>() as f64 / len as f64;
+            let variance = timings_ns.iter().map(|&t| {
+                let d = t as f64 - mean;
+                d * d
+            }).sum::<f64>() / len as f64;
+            let std_dev = variance.sqrt();
+
+            let results = BenchResults {
+                bench_id: spec.bench_id,
+                iterations: n as u32,
+                median_ns: median,
+                p50_ns: p50,
+                p99_ns: p99,
+                std_dev_ns: std_dev,
+                environment: BenchEnvironment {
+                    os: std::env::consts::OS.to_string(),
+                    arch: std::env::consts::ARCH.to_string(),
+                    engine_version: 0,
+                },
+            };
+
+            handle.publish(EngineMessage::Event(EngineEvent::BenchFinished {
+                run_id,
+                results,
+            }));
+            handle.publish(EngineMessage::CommandResult {
+                command_id: cmd_id,
+                result: Ok(CommandResultData::None),
+            });
+        }
+        // Remaining commands: ForceSleep, ForceWake, config, adapters
+        _ => {}
+    }
+}
 
 fn make_perceptor(anchor_set: &Option<Arc<AnchorSet>>) -> TextPerceptor {
     match anchor_set {

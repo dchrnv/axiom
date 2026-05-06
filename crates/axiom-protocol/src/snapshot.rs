@@ -8,6 +8,8 @@ pub struct SystemSnapshot {
     pub engine_state: EngineState,
     pub current_tick: u64,
     pub current_event: u64,
+    /// Duration of the last engine tick in nanoseconds (0 = not yet measured).
+    pub hot_path_ns: u64,
 
     pub domains: Vec<DomainSnapshot>,
     pub over_domain: OverDomainSnapshot,
@@ -22,6 +24,14 @@ pub struct SystemSnapshot {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct TokenFieldPoint {
+    pub position: [f32; 3],
+    pub layer: u8,
+    pub temperature: u8,
+    pub anchor_membership: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DomainSnapshot {
     pub id: u16,
     pub name: String,
@@ -32,6 +42,8 @@ pub struct DomainSnapshot {
     pub recent_activity: u32,
     /// Activity per semantic layer (8 layers).
     pub layer_activations: [u8; 8],
+    /// Sampled token positions for Live Field (max 300 per domain).
+    pub token_field: Vec<TokenFieldPoint>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -82,6 +94,8 @@ pub struct FrameWeaverStats {
     /// Promotions since last Wake transition.
     pub promotions_since_wake: u32,
     pub last_crystallization_tick: u64,
+    /// Activation counts per syntactic layer (S1–S8) since last crystallization.
+    pub syntactic_layer_activations: [u8; 8],
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

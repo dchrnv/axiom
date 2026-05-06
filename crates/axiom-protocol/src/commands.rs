@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::bench::BenchSpec;
 use crate::config::ConfigValue;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -61,5 +62,10 @@ pub enum EngineCommand {
     RequestFullSnapshot,
     RequestFrameDetails {
         anchor_id: u32,
+    },
+
+    // Benchmarks
+    RunBench {
+        spec: BenchSpec,
     },
 }

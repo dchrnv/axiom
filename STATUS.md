@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-05
+**Обновлено:** 2026-05-06
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1174 тестов, 0 failures**
+**1183 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -19,17 +19,16 @@ AxiomEngine
   ├── Guardian (CODEX + GENOME: enforce_access, validate_reflex, ML filters)
   └── Over-Domain Layer:
         ├── OverDomainComponent trait (object-safe, on_tick каждые N тиков через mem::take)
-        ├── Weaver trait (type Pattern, scan, propose_to_dream, check_promotion)
-        └── FrameWeaver V1.2 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
-              scan_state, build_crystallization_commands, ReinforceFrame (lineage_hash dedup),
-              build_promotion_commands (→ SUTRA STATE_LOCKED + TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE),
-              CycleStrategy::Allow (default); Weaver trait: scan(tick,…), check_promotion(tick,…);
-              restore_frame_from_anchor — восстановление участников из графа EXPERIENCE;
-              UnfoldFrame handler — разворачивает Frame в произвольный целевой домен;
-              встроен в AxiomEngine (on_tick + drain_commands внутри interval-guard);
-              GENOME: 5 access rules (MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control);
-              35+ unit-тестов + integration + e2e smoke; FrameWeaverStats: unfold_requests;
-              V1.2: промоция перенесена из on_tick → dream_propose() (вызов при FallingAsleep)
+        ├── Weaver trait (type Pattern, scan, propose_to_dream, check_promotion(tick))
+        └── FrameWeaver V1.3 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
+              scan_state (confidence из avg connection.strength), build_crystallization_commands,
+              ReinforceFrame (lineage_hash dedup), build_promotion_commands (→ SUTRA STATE_LOCKED),
+              CycleStrategy::Allow (default); restore_frame_from_anchor; UnfoldFrame handler;
+              встроен в AxiomEngine (on_tick + drain_commands); FrameWeaverStats: unfold_requests;
+              GENOME: on_boot enforcement (check_access для MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control);
+              RuleTrigger: StabilityReached, HighConfidence(f32), DreamCycle, RepeatedAssembly{window_ticks};
+              min_participant_anchors cross-domain check; check_promotion(tick) — корректный min_age_ticks;
+              V1.2: промоция → dream_propose(); V1.3: все RuleTrigger реализованы, GENOME enforcement
 
 DREAM Phase V1.0 ✅ — когнитивный сон: 4 состояния (Wake/FallingAsleep/Dreaming/Waking)
   ├── DreamScheduler — 3 триггера: Idle (порог idle тиков), Fatigue (0-255, 4 фактора), ExplicitCommand
@@ -49,14 +48,17 @@ domain_name() — pub fn в axiom-runtime (EA-TD-01 ✅)
 axiom-agent:
   ├── TextPerceptor — текст → UclCommand(InjectToken): якорное позиционирование → FNV-1a fallback
   ├── MessageEffector — ProcessingResult → диагностический вывод (DetailLevel: off/min/mid/max)
-  ├── MLEngine (mock + ONNX) → VisionPerceptor, AudioPerceptor (VAD)
+  ├── MLEngine (mock + ONNX) → VisionPerceptor (explicit ShapeMismatch при input_size=0),
+  │   AudioPerceptor (VAD)
   ├── CLI Channel: stdin/stdout loop, axiom-cli.yaml, все :команды
   │   CLI Extended V1.0: :domain/:events/:frontier/:guardian/:watch/:config/:trace/:connections
   │   :dream/:multipass/:reflector/:impulses/:schema/:anchors/:match/:help/:perf/:tickrate
   │   Горячая перезагрузка config/axiom.yaml (--hot-reload) через ConfigWatcher → tick_loop
+  │   domain config hot-reload: apply_domain_config() при watcher.poll()
   └── External Adapters (Phase 0–5 + Tech Debt Closure):
       ├── tick_loop — единственный writer AxiomEngine; CliState (PerfTracker, event_log,
       │              watch_fields, multipass_count); адаптивный sleep (EA-TD-03/04 ✅)
+      │              Workstation commands: handle_wstation_command + RunBench с BenchProgress events
       ├── AdapterCommand / AdapterPayload — Inject, MetaRead, MetaMutate, DomainSnapshot,
       │              Subscribe, Unsubscribe; AdapterSource: Cli, WebSocket, Rest, Telegram
       ├── ServerMessage — Result, Tick, State, CommandResult, DomainDetail, Error (serde JSON)
@@ -101,19 +103,27 @@ axiom-space:
   └── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
 
 Workstation V1.0 ✅ (2026-05-05):
-  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(14), EngineEvent(14),
+  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(15 incl. RunBench), EngineEvent(14),
     EngineMessage/ClientMessage (handshake), SystemSnapshot, ConfigSchema, BenchSpec;
+    TokenFieldPoint + token_field: Vec<TokenFieldPoint> в DomainSnapshot;
+    FrameWeaverStats: syntactic_layer_activations [u8; 8];
     postcard сериализация; PROTOCOL_VERSION = 0x01_00_00_00
   axiom-broadcasting — WebSocket-сервер (tokio-tungstenite 0.24): BroadcastServer/Handle,
-    subscription filter (event_category bits + tick_event_interval), heartbeat ping/pong,
+    subscription filter (event_category bits + tick_event_interval + domain_activity_threshold),
+    heartbeat ping/pong, snapshot resync при RecvError::Lagged,
     build_system_snapshot(); BRD-TD-07 (Engine integration) → axiom-node
   axiom-workstation — iced 0.13 desktop-клиент оператора:
     ├── connection.rs — ws_subscription + reconnect backoff [1,2,5,10,30]s
     ├── settings.rs — UiSettings, TOML-персистенция (dirs)
     ├── app.rs — WorkstationApp, AppPhase (Welcome/Main), 8 табов, bidirectional WS,
-    │             keyboard shortcuts Ctrl+1–8/,/S/Z, alert overlay, subscription_key hot-reload
-    └── ui/ — header, tabs, welcome, system_map(canvas), config(schema-driven), conversation,
-              patterns(sparklines L1-L8), dream_state, files, benchmarks, live_field(3D canvas)
+    │             keyboard shortcuts Ctrl+1–8/,/S/Z, alert overlay, subscription_key hot-reload;
+    │             MenuBar (кастомный dropdown через stack), DetachTab (View → Detach),
+    │             RunBench подключён к протоколу (BenchStarted/Progress/Finished events)
+    └── ui/ — header, tabs, welcome (fade-in анимация), system_map(canvas::Cache),
+              config(schema-driven), conversation(multi-line text_editor, Ctrl+Enter),
+              patterns(sparklines L1-L8, syntactic_layer_activations, show-more pagination),
+              dream_state(show-more pagination), files(rfd AsyncFileDialog Browse button),
+              benchmarks, live_field(3D canvas, реальный token_field из DomainSnapshot)
 ```
 
 **Документация:** [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
@@ -127,7 +137,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-core | 34 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 91 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
+| axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
 | axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
@@ -135,15 +145,15 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
-| axiom-runtime | 280 | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.2 ✅), DREAM Phase V1.0 (DreamScheduler, FatigueTracker, DreamCycle, DreamProposal), Gateway (with_config, check_config_reload), Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
-| axiom-agent | 152 (175 all-features) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine; tick_loop (CliState, adaptive sleep, ConfigWatcher), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
+| axiom-runtime | 288 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3 ✅), DREAM Phase V1.0 (DreamScheduler, FatigueTracker, DreamCycle, DreamProposal), Gateway (with_config, check_config_reload), Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-agent | 133 (156 telegram,opensearch) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
-| axiom-protocol | 41 | EngineCommand/Event/Message, SystemSnapshot, ConfigSchema, BenchSpec, AdapterInfo; postcard round-trip |
-| axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter, heartbeat, build_system_snapshot |
-| axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main, alert overlay, keyboard shortcuts |
+| axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip |
+| axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter (domain_activity_threshold), heartbeat, snapshot resync при Lagged, build_system_snapshot |
+| axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
-| tools/axiom-dashboard | — | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1174** | |
+| tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
+| **Итого** | **1183** | |
 
 ---
 
@@ -206,3 +216,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | WS Stage 9 | Welcome/Main фазы, alert overlay, keyboard shortcuts Ctrl+1–8, hot-reload адреса | ✅ |
 | WS Stage 10 | Live Field 3D canvas: орбитальная камера, перспективное проецирование, процедурные токены | ✅ |
 | WS Stage 11 | clippy --workspace -D warnings → 0 errors; 1174 тестов; fmt; README + errata | ✅ |
+| WS B1–B6 | UI-доделки: rfd file picker (B1), multi-line text_editor Ctrl+Enter (B2), show-more pagination Patterns+Dream (B3), canvas::Cache system_map (B4), welcome fade-in (B5), MenuBar + DetachTab (B6) | ✅ |
+| Protocol C1–C3 | syntactic_layer_activations [u8;8] в FrameWeaverStats (C1); RunBench в протоколе + tick_loop (C2); TokenFieldPoint + token_field в DomainSnapshot + Live Field real data (C3) | ✅ |
+| Engine D1–D6 | tick в check_promotion (D1); min_participant_anchors cross-domain (D2); все RuleTrigger (D3); GENOME on_boot enforcement (D4); domain config hot-reload apply_domain_config (D5); domain_activity_threshold + Lagged resync (D6) | ✅ |
+| E2 | MLEngine size check — явная ShapeMismatch вместо silent fallback (D-06 закрыт) | ✅ |

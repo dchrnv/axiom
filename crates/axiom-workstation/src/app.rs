@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
 
-use iced::widget::column;
+use iced::widget::{column, text_editor};
 use iced::{window, Element, Subscription, Task};
 
 use axiom_protocol::{
@@ -87,7 +87,7 @@ pub enum ConversationMessage {
 #[derive(Debug)]
 pub struct ConversationState {
     pub messages: Vec<ConversationMessage>,
-    pub input_buffer: String,
+    pub editor_content: text_editor::Content,
     pub target_domain: u16,
     pub sending: bool,
     pub last_submit_at: Option<Instant>,
@@ -98,7 +98,7 @@ impl Default for ConversationState {
     fn default() -> Self {
         Self {
             messages: Vec::new(),
-            input_buffer: String::new(),
+            editor_content: text_editor::Content::new(),
             target_domain: 101,
             sending: false,
             last_submit_at: None,
@@ -153,6 +153,7 @@ pub enum FrameEvent {
 pub struct PatternsState {
     pub layer_history: [VecDeque<u8>; 8],
     pub recent_frames: VecDeque<FrameEvent>,
+    pub show_all_frames: bool,
 }
 
 impl Default for PatternsState {
@@ -160,6 +161,7 @@ impl Default for PatternsState {
         Self {
             layer_history: std::array::from_fn(|_| VecDeque::with_capacity(30)),
             recent_frames: VecDeque::with_capacity(100),
+            show_all_frames: false,
         }
     }
 }
@@ -188,6 +190,7 @@ impl PatternsState {
 pub struct DreamWindowState {
     pub recent_dreams: VecDeque<DreamReport>,
     pub confirm_force_sleep: bool,
+    pub show_all_dreams: bool,
 }
 
 impl DreamWindowState {
@@ -396,10 +399,10 @@ pub enum Message {
     SendCommand(EngineCommand),
     // Window / tab management
     TabSelected(TabKind),
-    #[allow(dead_code)]
     DetachTab(TabKind),
     WindowCloseRequested(window::Id),
     AnimationTick,
+    ToggleViewMenu,
     // Configuration tab
     ConfigSectionSelected(String),
     ConfigFieldChanged {
@@ -412,7 +415,7 @@ pub enum Message {
     },
     ConfigDiscard,
     // Conversation tab
-    ConversationInputChanged(String),
+    ConversationEditorAction(text_editor::Action),
     ConversationDomainSelected(u16),
     ConversationSubmit,
     // Dream State tab
@@ -422,15 +425,18 @@ pub enum Message {
     ForceWakeRequest,
     // Files tab
     FilesPathChanged(String),
+    FilesBrowse,
+    FilesPickPath(Option<String>),
     FilesAdapterSelected(String),
     FilesStartImport,
     FilesCancelRequest,
     FilesConfirmCancel,
     FilesCancelDismiss,
+    // Patterns / Dream State pagination
+    PatternsShowMore,
+    DreamsShowMore,
     // Benchmarks tab
-    #[allow(dead_code)]
     BenchIterationsChanged(String),
-    #[allow(dead_code)]
     BenchRun,
     // Welcome screen
     SkipToMain,
@@ -475,6 +481,10 @@ pub struct WorkstationApp {
     pub show_connection_details: bool,
     pub alerts: VecDeque<AlertEntry>,
     pub subscription_key: u64,
+    /// Last activity timestamp per ASHTI domain (index = domain_id - 101, range 0-7)
+    pub last_domain_active: [Option<std::time::Instant>; 8],
+    pub welcome_opacity: f32,
+    pub show_view_menu: bool,
 }
 
 impl WorkstationApp {
@@ -512,6 +522,9 @@ impl WorkstationApp {
             show_connection_details: false,
             alerts: VecDeque::with_capacity(5),
             subscription_key: 0,
+            last_domain_active: [None; 8],
+            welcome_opacity: 0.0,
+            show_view_menu: false,
         }
     }
 
@@ -583,8 +596,12 @@ impl WorkstationApp {
             }
             Message::WsSnapshot(snap) => {
                 tracing::debug!("Snapshot: tick={}", snap.current_tick);
-                self.patterns
-                    .push_layer_snapshot(snap.over_domain.layer_activations);
+                let layer_data = snap
+                    .frame_weaver_stats
+                    .as_ref()
+                    .map(|fw| fw.syntactic_layer_activations)
+                    .unwrap_or(snap.over_domain.layer_activations);
+                self.patterns.push_layer_snapshot(layer_data);
                 // Accumulate DreamReports
                 if let Some(report) = &snap.last_dream_report {
                     let is_new = self
@@ -663,9 +680,15 @@ impl WorkstationApp {
                         });
                     }
                     EngineEvent::DomainActivity {
-                        layer_activations, ..
+                        domain_id,
+                        layer_activations,
+                        ..
                     } => {
                         self.patterns.push_layer_snapshot(*layer_activations);
+                        if *domain_id >= 101 && *domain_id <= 108 {
+                            let idx = (*domain_id - 101) as usize;
+                            self.last_domain_active[idx] = Some(std::time::Instant::now());
+                        }
                     }
                     EngineEvent::AdapterStarted { adapter_id, source } => {
                         self.files.running_import = Some(RunningImport {
@@ -748,7 +771,7 @@ impl WorkstationApp {
                     self.conversation.sending = false;
                     match result {
                         Ok(_) => {
-                            self.conversation.input_buffer.clear();
+                            self.conversation.editor_content = text_editor::Content::new();
                             self.conversation.push_system(
                                 "Обработан текст.".to_string(),
                                 SystemMessageKind::Acknowledgment,
@@ -793,8 +816,13 @@ impl WorkstationApp {
             }
             Message::TabSelected(tab) => {
                 self.active_tab_in_main = tab;
+                self.show_view_menu = false;
+            }
+            Message::ToggleViewMenu => {
+                self.show_view_menu = !self.show_view_menu;
             }
             Message::DetachTab(tab) => {
+                self.show_view_menu = false;
                 let (id, open_task) = window::open(window::Settings {
                     size: iced::Size::new(900.0, 700.0),
                     ..Default::default()
@@ -816,6 +844,7 @@ impl WorkstationApp {
             }
             Message::AnimationTick => {
                 self.animation_phase = (self.animation_phase + 0.005) % 1.0;
+                self.welcome_opacity = (self.welcome_opacity + 0.04).min(1.0);
                 let now = current_timestamp_secs();
                 self.alerts
                     .retain(|a| now.saturating_sub(a.timestamp_secs) < 10);
@@ -873,8 +902,14 @@ impl WorkstationApp {
                     .remove(&self.config.active_section_id);
                 self.config.validation_errors.clear();
             }
-            Message::ConversationInputChanged(text) => {
-                self.conversation.input_buffer = text;
+            Message::PatternsShowMore => {
+                self.patterns.show_all_frames = true;
+            }
+            Message::DreamsShowMore => {
+                self.dream_state.show_all_dreams = true;
+            }
+            Message::ConversationEditorAction(action) => {
+                self.conversation.editor_content.perform(action);
             }
             Message::ConversationDomainSelected(domain) => {
                 self.conversation.target_domain = domain;
@@ -896,6 +931,22 @@ impl WorkstationApp {
             }
             Message::FilesPathChanged(path) => {
                 self.files.source_path = path;
+            }
+            Message::FilesBrowse => {
+                return Task::perform(
+                    async {
+                        rfd::AsyncFileDialog::new()
+                            .pick_file()
+                            .await
+                            .map(|h| h.path().to_string_lossy().into_owned())
+                    },
+                    Message::FilesPickPath,
+                );
+            }
+            Message::FilesPickPath(maybe_path) => {
+                if let Some(path) = maybe_path {
+                    self.files.source_path = path;
+                }
             }
             Message::FilesAdapterSelected(id) => {
                 self.files.selected_adapter_id = Some(id);
@@ -940,7 +991,26 @@ impl WorkstationApp {
                 self.benchmarks.iterations_input = s;
             }
             Message::BenchRun => {
-                // Deferred: RunBench не добавлен в протокол (WS8-TD-02)
+                let iterations = self
+                    .benchmarks
+                    .iterations_input
+                    .trim()
+                    .parse::<u32>()
+                    .unwrap_or(100)
+                    .clamp(1, 10_000);
+                let id = self.next_id();
+                let spec = axiom_protocol::bench::BenchSpec {
+                    bench_id: "engine_tick".to_string(),
+                    iterations,
+                    options: axiom_protocol::bench::BenchOptions::default(),
+                };
+                self.benchmarks.running = Some(RunningBench {
+                    bench_id: spec.bench_id.clone(),
+                    run_id: id,
+                    completed: 0,
+                    total: iterations,
+                });
+                return self.send_command_task(id, EngineCommand::RunBench { spec });
             }
             Message::SkipToMain => {
                 self.phase = AppPhase::Main;
@@ -991,7 +1061,7 @@ impl WorkstationApp {
                 return self.update(Message::ConfigApply { section_id });
             }
             Message::ConversationSubmit => {
-                let text = self.conversation.input_buffer.trim().to_string();
+                let text = self.conversation.editor_content.text().trim().to_string();
                 if text.is_empty() || self.conversation.sending {
                     return Task::none();
                 }
@@ -1030,7 +1100,7 @@ impl WorkstationApp {
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         if Some(id) == self.main_window {
             match self.phase {
-                AppPhase::Welcome => welcome::welcome_view(&self.connection),
+                AppPhase::Welcome => welcome::welcome_view(&self.connection, self.welcome_opacity),
                 AppPhase::Main => self.main_window_view(),
             }
         } else if let Some(&tab) = self.detached_windows.get(&id) {
@@ -1047,6 +1117,8 @@ impl WorkstationApp {
                 &self.connection,
                 self.show_connection_details,
                 &self.settings.engine_address,
+                self.show_view_menu,
+                self.active_tab_in_main,
             ),
             tabs::tabs_bar(self.active_tab_in_main, &detached),
             self.tab_content_for(self.active_tab_in_main),
@@ -1061,7 +1133,7 @@ impl WorkstationApp {
 
     fn detached_window_view(&self, tab: TabKind) -> Element<'_, Message> {
         column![
-            header::header_view(&self.connection, false, &self.settings.engine_address),
+            header::header_view(&self.connection, false, &self.settings.engine_address, false, tab),
             self.tab_content_for(tab),
         ]
         .into()
@@ -1070,7 +1142,11 @@ impl WorkstationApp {
     fn tab_content_for(&self, tab: TabKind) -> Element<'_, Message> {
         match tab {
             TabKind::SystemMap => {
-                system_map::system_map_view(&self.engine_snapshot, self.animation_phase)
+                system_map::system_map_view(
+                    &self.engine_snapshot,
+                    self.animation_phase,
+                    &self.last_domain_active,
+                )
             }
             TabKind::Configuration => config::config_view(&self.config, &self.settings),
             TabKind::Conversation => conversation::conversation_view(&self.conversation),
@@ -1307,7 +1383,7 @@ mod tests {
     #[test]
     fn test_conversation_empty_no_submit() {
         let mut app = WorkstationApp::new();
-        assert!(app.conversation.input_buffer.is_empty());
+        assert!(app.conversation.editor_content.text().trim().is_empty());
 
         let _ = app.update(Message::ConversationSubmit);
 
@@ -1319,9 +1395,8 @@ mod tests {
     #[test]
     fn test_conversation_submit_adds_message() {
         let mut app = WorkstationApp::new();
-        let _ = app.update(Message::ConversationInputChanged(
-            "Кошка спит на окне.".to_string(),
-        ));
+        app.conversation.editor_content =
+            text_editor::Content::with_text("Кошка спит на окне.");
         let _ = app.update(Message::ConversationSubmit);
 
         assert_eq!(app.conversation.messages.len(), 1);
@@ -1337,7 +1412,7 @@ mod tests {
     #[test]
     fn test_conversation_no_double_submit() {
         let mut app = WorkstationApp::new();
-        let _ = app.update(Message::ConversationInputChanged("text".to_string()));
+        app.conversation.editor_content = text_editor::Content::with_text("text");
         let _ = app.update(Message::ConversationSubmit);
         assert!(app.conversation.sending);
 
@@ -1360,7 +1435,7 @@ mod tests {
     #[test]
     fn test_conversation_ack_on_result() {
         let mut app = WorkstationApp::new();
-        let _ = app.update(Message::ConversationInputChanged("hello".to_string()));
+        app.conversation.editor_content = text_editor::Content::with_text("hello");
         let _ = app.update(Message::ConversationSubmit);
 
         let submit_id = app.conversation.pending_submit_id.unwrap();
@@ -1372,7 +1447,7 @@ mod tests {
         });
 
         assert!(!app.conversation.sending);
-        assert!(app.conversation.input_buffer.is_empty());
+        assert!(app.conversation.editor_content.text().trim().is_empty());
         assert_eq!(app.conversation.messages.len(), 2); // User + Ack
         assert!(matches!(
             &app.conversation.messages[1],
@@ -1387,7 +1462,7 @@ mod tests {
     #[test]
     fn test_conversation_error_on_result() {
         let mut app = WorkstationApp::new();
-        let _ = app.update(Message::ConversationInputChanged("hello".to_string()));
+        app.conversation.editor_content = text_editor::Content::with_text("hello");
         let _ = app.update(Message::ConversationSubmit);
 
         let submit_id = app.conversation.pending_submit_id.unwrap();

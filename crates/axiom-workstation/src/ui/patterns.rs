@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use iced::widget::{column, container, row, scrollable, text};
+use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Color, Element, Length};
 
 use crate::app::{FrameEvent, Message, PatternsState};
@@ -19,7 +19,7 @@ const SEMANTIC_LAYERS: &[(&str, &str)] = &[
 pub fn patterns_view<'a>(state: &'a PatternsState) -> Element<'a, Message> {
     column![
         active_layers_panel(state),
-        recent_frames_panel(&state.recent_frames),
+        recent_frames_panel(state),
     ]
     .into()
 }
@@ -102,7 +102,11 @@ fn level_color(val: u8) -> Color {
 
 // ── Recent frames ──────────────────────────────────────────────────────────
 
-fn recent_frames_panel<'a>(frames: &'a VecDeque<FrameEvent>) -> Element<'a, Message> {
+const FRAMES_PAGE: usize = 20;
+
+fn recent_frames_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
+    let frames = &state.recent_frames;
+
     if frames.is_empty() {
         return container(
             text("No frame events yet.")
@@ -115,7 +119,24 @@ fn recent_frames_panel<'a>(frames: &'a VecDeque<FrameEvent>) -> Element<'a, Mess
         .into();
     }
 
-    let cards: Vec<Element<Message>> = frames.iter().map(frame_card).collect();
+    let visible = if state.show_all_frames {
+        frames.len()
+    } else {
+        frames.len().min(FRAMES_PAGE)
+    };
+    let mut cards: Vec<Element<Message>> =
+        frames.iter().take(visible).map(frame_card).collect();
+
+    if !state.show_all_frames && frames.len() > FRAMES_PAGE {
+        cards.push(
+            button(
+                text(format!("Show more… ({} remaining)", frames.len() - FRAMES_PAGE)).size(12),
+            )
+            .on_press(Message::PatternsShowMore)
+            .style(button::secondary)
+            .into(),
+        );
+    }
 
     container(
         column![

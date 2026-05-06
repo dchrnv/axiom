@@ -405,10 +405,6 @@ fn draw_domain_points(
     active: bool,
     size: Size,
 ) {
-    let n = domain.token_count.min(MAX_POINTS);
-    if n == 0 {
-        return;
-    }
     let base_alpha: f32 = if active { 0.85 } else { 0.18 };
     let dot_size_boost = display.highlight_recent && domain.recent_activity > 50 && active;
 
@@ -416,40 +412,89 @@ fn draw_domain_points(
         .with_color(Color::from_rgba(0.4, 0.5, 0.8, base_alpha * 0.18))
         .with_width(0.5);
 
-    // Compute anchor (first point projected) for connection lines
-    let anchor_screen = if display.show_connections {
-        let s0 = hash_seed(domain.id as u64, 0);
-        project(pseudo_pos(s0), camera, size)
-    } else {
-        None
-    };
-
-    for i in 0..n {
-        let seed = hash_seed(domain.id as u64, i as u64);
-        let pos = pseudo_pos(seed);
-        let Some(screen) = project(pos, camera, size) else {
-            continue;
-        };
-
-        // Connection line to anchor point (skip self)
-        if display.show_connections && i > 0 {
-            if let Some(anchor) = anchor_screen {
-                frame.stroke(&Path::line(screen, anchor), conn_stroke);
-            }
-        }
-
-        let color = if display.layer_color_coding {
-            let layer = pick_layer(&domain.layer_activations, lcg_next(seed));
-            Color {
-                a: base_alpha,
-                ..LAYER_COLORS[layer]
-            }
+    if !domain.token_field.is_empty() {
+        // Real token positions from engine snapshot
+        let anchor_screen = if display.show_connections {
+            let p = &domain.token_field[0].position;
+            project((p[0], p[1], p[2]), camera, size)
         } else {
-            Color::from_rgba(0.6, 0.72, 1.0, base_alpha)
+            None
         };
 
-        let radius = if dot_size_boost { 3.0 } else { 2.0 };
-        frame.fill(&Path::circle(screen, radius), color);
+        for (i, tp) in domain.token_field.iter().enumerate() {
+            let pos = (tp.position[0], tp.position[1], tp.position[2]);
+            let Some(screen) = project(pos, camera, size) else {
+                continue;
+            };
+
+            if display.show_connections && i > 0 {
+                if let Some(anchor) = anchor_screen {
+                    frame.stroke(&Path::line(screen, anchor), conn_stroke);
+                }
+            }
+
+            let is_anchor = tp.anchor_membership.is_some();
+            let color = if display.show_anchors && is_anchor {
+                Color::from_rgba(1.0, 0.85, 0.3, base_alpha)
+            } else if display.layer_color_coding {
+                let layer = (tp.layer as usize).min(7);
+                Color {
+                    a: base_alpha,
+                    ..LAYER_COLORS[layer]
+                }
+            } else {
+                let warmth = tp.temperature as f32 / 255.0;
+                Color::from_rgba(0.5 + warmth * 0.5, 0.72 - warmth * 0.2, 1.0 - warmth * 0.4, base_alpha)
+            };
+
+            let radius = if dot_size_boost && tp.temperature > 128 {
+                3.0
+            } else if is_anchor {
+                3.5
+            } else {
+                2.0
+            };
+            frame.fill(&Path::circle(screen, radius), color);
+        }
+    } else {
+        // Fallback: pseudo-random scatter until engine provides token data
+        let n = domain.token_count.min(MAX_POINTS);
+        if n == 0 {
+            return;
+        }
+        let anchor_screen = if display.show_connections {
+            let s0 = hash_seed(domain.id as u64, 0);
+            project(pseudo_pos(s0), camera, size)
+        } else {
+            None
+        };
+
+        for i in 0..n {
+            let seed = hash_seed(domain.id as u64, i as u64);
+            let pos = pseudo_pos(seed);
+            let Some(screen) = project(pos, camera, size) else {
+                continue;
+            };
+
+            if display.show_connections && i > 0 {
+                if let Some(anchor) = anchor_screen {
+                    frame.stroke(&Path::line(screen, anchor), conn_stroke);
+                }
+            }
+
+            let color = if display.layer_color_coding {
+                let layer = pick_layer(&domain.layer_activations, lcg_next(seed));
+                Color {
+                    a: base_alpha,
+                    ..LAYER_COLORS[layer]
+                }
+            } else {
+                Color::from_rgba(0.6, 0.72, 1.0, base_alpha)
+            };
+
+            let radius = if dot_size_boost { 3.0 } else { 2.0 };
+            frame.fill(&Path::circle(screen, radius), color);
+        }
     }
 }
 

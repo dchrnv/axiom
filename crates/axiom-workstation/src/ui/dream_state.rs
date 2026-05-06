@@ -18,7 +18,7 @@ pub fn dream_state_view<'a>(
     ]
     .height(200);
 
-    column![top, recent_dreams_panel(&state.recent_dreams),].into()
+    column![top, recent_dreams_panel(state),].into()
 }
 
 // ── Current state ──────────────────────────────────────────────────────────
@@ -162,9 +162,11 @@ fn fatigue_sparkline(history: &[f32]) -> String {
 
 // ── Recent dreams ──────────────────────────────────────────────────────────
 
-fn recent_dreams_panel<'a>(
-    dreams: &'a std::collections::VecDeque<DreamReport>,
-) -> Element<'a, Message> {
+const DREAMS_PAGE: usize = 5;
+
+fn recent_dreams_panel<'a>(state: &'a crate::app::DreamWindowState) -> Element<'a, Message> {
+    let dreams = &state.recent_dreams;
+
     if dreams.is_empty() {
         return container(
             column![
@@ -181,7 +183,24 @@ fn recent_dreams_panel<'a>(
         .into();
     }
 
-    let cards: Vec<Element<Message>> = dreams.iter().map(dream_card).collect();
+    let visible = if state.show_all_dreams {
+        dreams.len()
+    } else {
+        dreams.len().min(DREAMS_PAGE)
+    };
+    let mut cards: Vec<Element<Message>> =
+        dreams.iter().take(visible).map(dream_card).collect();
+
+    if !state.show_all_dreams && dreams.len() > DREAMS_PAGE {
+        cards.push(
+            button(
+                text(format!("Show more… ({} remaining)", dreams.len() - DREAMS_PAGE)).size(12),
+            )
+            .on_press(Message::DreamsShowMore)
+            .style(button::secondary)
+            .into(),
+        );
+    }
 
     container(
         column![

@@ -402,16 +402,26 @@ impl AxiomEngine {
         (0u16..=10)
             .map(|offset| {
                 let id = 100 + offset;
-                let conn_count = self
+                let (conn_count, temperature_avg) = self
                     .ashti
                     .index_of(id)
                     .and_then(|i| self.ashti.state(i))
-                    .map_or(0, |s| s.connections.len());
+                    .map(|s| {
+                        let temp_avg = if s.tokens.is_empty() {
+                            0u8
+                        } else {
+                            let sum: u64 = s.tokens.iter().map(|t| t.temperature as u64).sum();
+                            (sum / s.tokens.len() as u64) as u8
+                        };
+                        (s.connections.len(), temp_avg)
+                    })
+                    .unwrap_or((0, 0));
                 DomainSummary {
                     domain_id: id,
                     name: domain_name(id).to_string(),
                     token_count: self.ashti.token_count(id),
                     connection_count: conn_count,
+                    temperature_avg,
                 }
             })
             .collect()
@@ -1073,7 +1083,7 @@ impl AxiomEngine {
         let event_id = self.com_next_id;
 
         // Собрать proposals от FrameWeaver
-        let proposals = self.frame_weaver.dream_propose(&self.ashti);
+        let proposals = self.frame_weaver.dream_propose(&self.ashti, self.tick_count);
         for p in proposals {
             self.dream_cycle.submit(p);
         }
@@ -1139,7 +1149,9 @@ impl AxiomEngine {
 
         let tick = self.tick_count;
         self.dream_scheduler.on_dream_finished(tick);
+        self.dream_phase_stats.last_wake_tick = tick;
         self.dream_phase_state = DreamPhaseState::Wake;
+        self.frame_weaver.on_dream_wake();
 
         count
     }
@@ -1428,6 +1440,17 @@ impl AxiomEngine {
 
         self.dream_scheduler = DreamScheduler::new(sched_cfg, weights);
         self.dream_cycle = DreamCycle::new(cycle_cfg);
+    }
+
+    /// Применить обновлённый `DomainConfig` к running engine.
+    ///
+    /// Обновляет пороги Arbiter'а и применяет изменения к EXPERIENCE-домену немедленно.
+    /// Токены и связи не затрагиваются — только пороговые параметры.
+    pub fn apply_domain_config(&mut self, domain_id: u16, cfg: &DomainConfig) {
+        self.ashti
+            .arbiter_domain_configs_mut()
+            .insert(domain_id, cfg.clone());
+        self.ashti.apply_experience_thresholds();
     }
 
     /// Найти токен по sutra_id по всем доменам AshtiCore

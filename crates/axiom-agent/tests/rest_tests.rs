@@ -54,6 +54,7 @@ async fn spawn_server() -> String {
         None,
         cfg,
         None,
+        None,
     ));
 
     format!("http://127.0.0.1:{port}")

@@ -53,6 +53,8 @@ pub struct FrameCandidate {
     pub category: u16,
     /// FNV-1a хэш sutra_id всех участников (включая head)
     pub lineage_hash: u64,
+    /// Средняя сила связей участников (0.0..1.0), используется RuleTrigger::HighConfidence.
+    pub confidence: f32,
 }
 
 /// Участник Frame — токен с конкретной синтаксической ролью.
@@ -205,6 +207,8 @@ pub struct FrameWeaverStats {
     pub frames_in_sutra: u64,
     pub unfold_requests: u64,
     pub cycles_handled: u64,
+    /// Activation counts per syntactic layer (S1=index 0 … S8=index 7) since last crystallization.
+    pub syntactic_layer_activations: [u8; 8],
 }
 
 // ============================================================================
@@ -317,6 +321,9 @@ pub struct FrameWeaver {
     pending_commands: Vec<UclCommand>,
     /// Счётчики реактиваций: anchor_id → count
     reactivation_counts: HashMap<u32, u32>,
+    /// Флаг: dream-цикл только что завершился (для RuleTrigger::DreamCycle).
+    /// Сбрасывается после первого скана, который его увидит.
+    dream_cycle_completed: bool,
     pub stats: FrameWeaverStats,
 }
 
@@ -327,8 +334,17 @@ impl FrameWeaver {
             candidates: HashMap::new(),
             pending_commands: Vec::new(),
             reactivation_counts: HashMap::new(),
+            dream_cycle_completed: false,
             stats: FrameWeaverStats::default(),
         }
+    }
+
+    /// Уведомить FrameWeaver о завершении dream-цикла.
+    ///
+    /// Вызывается из AxiomEngine при переходе Dreaming/Waking → Wake.
+    /// Устанавливает флаг, который считывается `RuleTrigger::DreamCycle` в следующем скане.
+    pub fn on_dream_wake(&mut self) {
+        self.dream_cycle_completed = true;
     }
 
     pub fn with_default_config() -> Self {
@@ -474,6 +490,14 @@ impl FrameWeaver {
             let lineage_hash = Self::fnv1a_lineage_hash(&all_ids);
             let anchor_position = Self::compute_centroid(&participants, &maya_state.tokens);
 
+            // Confidence = средняя сила связей (strength для syntactic connections хранится в
+            // Connection.strength — f32 0.0..1.0). Голова (PREDICATE) не имеет связи, не считаем.
+            let confidence = if conns.is_empty() {
+                0.0
+            } else {
+                conns.iter().map(|c| c.strength).sum::<f32>() / conns.len() as f32
+            };
+
             candidates.push(FrameCandidate {
                 anchor_position,
                 participants,
@@ -481,6 +505,7 @@ impl FrameWeaver {
                 stability_count: 0,
                 category: FRAME_CATEGORY_SYNTAX,
                 lineage_hash,
+                confidence,
             });
         }
 
@@ -631,9 +656,13 @@ impl FrameWeaver {
     fn trigger_matches(&self, rule: &CrystallizationRule, candidate: &FrameCandidate) -> bool {
         match &rule.trigger {
             RuleTrigger::StabilityReached(n) => candidate.stability_count >= *n,
-            RuleTrigger::HighConfidence(_) => false, // confidence не реализован в V1.1
-            RuleTrigger::DreamCycle => false,        // DREAM-фаза пока не сигнализирует сюда
-            RuleTrigger::RepeatedAssembly { .. } => false, // deferred
+            RuleTrigger::HighConfidence(threshold) => candidate.confidence >= *threshold,
+            RuleTrigger::DreamCycle => self.dream_cycle_completed,
+            RuleTrigger::RepeatedAssembly { window_ticks } => {
+                let interval = self.config.scan_interval_ticks.max(1) as u64;
+                let ticks_assembled = candidate.stability_count as u64 * interval;
+                ticks_assembled >= *window_ticks as u64
+            }
         }
     }
 
@@ -692,6 +721,7 @@ impl FrameWeaver {
         token: &Token,
         rule: &PromotionRule,
         current_tick: u64,
+        participant_anchor_count: u32,
     ) -> bool {
         let age_ticks = current_tick.saturating_sub(token.last_event_id);
         if age_ticks < rule.min_age_ticks {
@@ -711,9 +741,36 @@ impl FrameWeaver {
         if token.mass < rule.min_mass {
             return false;
         }
+        if participant_anchor_count < rule.min_participant_anchors as u32 {
+            return false;
+        }
         true
-        // min_participant_anchors — проверка участников в SUTRA (deferred: requires cross-domain lookup)
         // requires_codex_approval — проверяется GUARDIAN, не здесь
+    }
+
+    /// Подсчитать участников frame-анкера, которые сами являются frame-анкерами
+    /// в указанном `anchor_domain_state` (обычно SUTRA-домен для cross-domain проверки
+    /// или EXPERIENCE-домен для быстрой аппроксимации).
+    fn count_participant_anchors(
+        anchor_id: u32,
+        exp_state: &DomainState,
+        anchor_domain_state: &DomainState,
+    ) -> u32 {
+        exp_state
+            .connections
+            .iter()
+            .filter(|c| {
+                c.source_id == anchor_id
+                    && (c.flags & axiom_core::FLAG_ACTIVE) != 0
+                    && (c.link_type >> 8) == 0x08
+            })
+            .filter(|c| {
+                anchor_domain_state
+                    .tokens
+                    .iter()
+                    .any(|t| t.sutra_id == c.target_id && (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0)
+            })
+            .count() as u32
     }
 
     /// Обновить кандидат-карту по результатам нового скана.
@@ -762,8 +819,23 @@ impl OverDomainComponent for FrameWeaver {
         ModuleId::FrameWeaver
     }
 
-    fn on_boot(&mut self, _genome: &Arc<Genome>) -> Result<(), OverDomainError> {
-        // TODO Phase 4: проверить права GENOME для ModuleId::FrameWeaver на EXPERIENCE и SUTRA
+    fn on_boot(&mut self, genome: &Arc<Genome>) -> Result<(), OverDomainError> {
+        use axiom_genome::{GenomeIndex, types::{Permission, ResourceId}};
+        let index = GenomeIndex::build(genome);
+        let module = ModuleId::FrameWeaver;
+
+        // MAYA/Read — нужно для сканирования паттернов
+        if !index.check_access(module, ResourceId::MayaOutput, Permission::Read) {
+            return Err(OverDomainError::GenomeDenied);
+        }
+        // EXPERIENCE/ReadWrite — нужно для кристаллизации и реактивации Frame
+        if !index.check_access(module, ResourceId::ExperienceMemory, Permission::ReadWrite) {
+            return Err(OverDomainError::GenomeDenied);
+        }
+        // SUTRA/Control — нужно для промоции через CODEX
+        if !index.check_access(module, ResourceId::SutraTokens, Permission::Control) {
+            return Err(OverDomainError::GenomeDenied);
+        }
         Ok(())
     }
 
@@ -834,6 +906,12 @@ impl OverDomainComponent for FrameWeaver {
                 let cmds = self.build_crystallization_commands(&candidate, exp_domain_id);
                 self.stats.crystallizations_approved += 1;
                 self.stats.candidates_proposed_to_dream += 1;
+                // Record which syntactic layers are active in this frame
+                for p in &candidate.participants {
+                    let idx = (p.layer as usize).min(7);
+                    self.stats.syntactic_layer_activations[idx] =
+                        self.stats.syntactic_layer_activations[idx].saturating_add(1);
+                }
                 self.pending_commands.extend(cmds);
             }
 
@@ -861,6 +939,9 @@ impl OverDomainComponent for FrameWeaver {
         // ── 5. Промоция EXPERIENCE → SUTRA убрана из on_tick (DREAM Phase V1.0) ─
         // Промоция теперь только через DreamCycle: FrameWeaver::dream_propose()
         // вызывается из Engine при переходе в FallingAsleep.
+
+        // Сбрасываем флаг после первого скана, который его увидел
+        self.dream_cycle_completed = false;
 
         Ok(())
     }
@@ -912,8 +993,10 @@ impl Weaver for FrameWeaver {
             if (anchor.type_flags & TOKEN_FLAG_FRAME_ANCHOR) == 0 {
                 continue;
             }
+            let participant_anchor_count =
+                Self::count_participant_anchors(anchor.sutra_id, experience_state, experience_state);
             for rule in &self.config.promotion_rules {
-                if self.qualifies_for_promotion(anchor, rule, tick) {
+                if self.qualifies_for_promotion(anchor, rule, tick, participant_anchor_count) {
                     proposals.push(PromotionProposal {
                         weaver_id: self.weaver_id(),
                         anchor_id: anchor.sutra_id,
@@ -946,7 +1029,7 @@ impl FrameWeaver {
     /// которые квалифицируются для промоции по правилам PromotionRule.
     ///
     /// Вызывается из AxiomEngine при переходе FallingAsleep → Dreaming.
-    pub fn dream_propose(&self, ashti: &AshtiCore) -> Vec<DreamProposal> {
+    pub fn dream_propose(&self, ashti: &AshtiCore, tick: u64) -> Vec<DreamProposal> {
         let level = ashti.level_id();
         let exp_domain_id = level * 100 + 9;
         let sutra_domain_id = level * 100;
@@ -956,7 +1039,9 @@ impl FrameWeaver {
             None => return Vec::new(),
         };
 
-        let tick = 0u64; // tick не нужен — qualifies_for_promotion сравнивает last_event_id
+        // SUTRA-стейт нужен для cross-domain подсчёта participant-анкеров (FW-TD-02)
+        let sutra_state_opt = ashti.index_of(sutra_domain_id).and_then(|i| ashti.state(i));
+
         let mut proposals = Vec::new();
 
         for token in &exp_state.tokens {
@@ -967,8 +1052,16 @@ impl FrameWeaver {
                 continue;
             }
 
+            // Кол-во участников этого frame, которые уже являются SUTRA-анкерами
+            let participant_anchor_count = match sutra_state_opt {
+                Some(sutra_state) => {
+                    Self::count_participant_anchors(token.sutra_id, exp_state, sutra_state)
+                }
+                None => 0,
+            };
+
             for rule in &self.config.promotion_rules {
-                if self.qualifies_for_promotion(token, rule, tick) {
+                if self.qualifies_for_promotion(token, rule, tick, participant_anchor_count) {
                     proposals.push(DreamProposal {
                         source: FRAME_WEAVER_ID,
                         priority: 100,
@@ -1362,6 +1455,254 @@ mod tests {
     }
 
     #[test]
+    fn check_promotion_respects_min_participant_anchors() {
+        let config = FrameWeaverConfig {
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks: 0,
+                min_reactivations: 0,
+                min_temperature: 0,
+                min_mass: 0,
+                min_participant_anchors: 2,
+                requires_codex_approval: false,
+                id: "test_pa".to_string(),
+            }],
+            ..Default::default()
+        };
+        let fw = FrameWeaver::new(config);
+
+        let anchor_id = 100u32;
+        let participant_ids = [200u32, 300u32];
+
+        let mut anchor = Token::new(anchor_id, 109, [0; 3], 0);
+        anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+
+        // Без участников-анкеров → не квалифицируется
+        let proposals = fw.check_promotion(0, &empty_state(), &[&anchor]);
+        assert!(proposals.is_empty(), "без participant-анкеров промоция не должна происходить");
+
+        // Создаём EXPERIENCE-стейт с двумя participant-анкерами и связями к ним
+        let mut exp_state = empty_state();
+        exp_state.tokens.push(anchor);
+        for &pid in &participant_ids {
+            let mut pt = Token::new(pid, 109, [0; 3], 0);
+            pt.type_flags = TOKEN_FLAG_FRAME_ANCHOR; // участники сами являются анкерами
+            exp_state.tokens.push(pt);
+            let mut conn = Connection::new(anchor_id, pid, 109, 0);
+            conn.link_type = 0x0810u16; // syntactic bond layer 1
+            exp_state.connections.push(conn);
+        }
+
+        // check_promotion использует experience_state для аппроксимации → должен квалифицироваться
+        let proposals = fw.check_promotion(0, &exp_state, &[&anchor]);
+        assert!(!proposals.is_empty(), "с двумя participant-анкерами промоция должна быть предложена");
+    }
+
+    #[test]
+    fn dream_propose_respects_min_participant_anchors() {
+        // Правило: min_participant_anchors = 2
+        let config = FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            promotion_rules: vec![PromotionRule {
+                min_age_ticks: 0,
+                min_reactivations: 0,
+                min_temperature: 200,
+                min_mass: 100,
+                min_participant_anchors: 2,
+                requires_codex_approval: false,
+                id: "test_pa2".to_string(),
+            }],
+            ..Default::default()
+        };
+        let fw = FrameWeaver::new(config);
+
+        let anchor_id = 5000u32;
+        let participant_ids = [5001u32, 5002u32, 5003u32];
+
+        // Сборка ashti: участники НЕ являются анкерами в SUTRA
+        let (ashti_no_sutra_anchors, _) = make_promotion_ashti(anchor_id, &participant_ids);
+        let proposals = fw.dream_propose(&ashti_no_sutra_anchors, 0);
+        assert!(
+            proposals.is_empty(),
+            "без SUTRA-анкеров среди участников min_participant_anchors=2 не выполняется"
+        );
+
+        // Сборка ashti: два участника являются анкерами в SUTRA-домене
+        let (mut ashti_with_anchors, _) = make_promotion_ashti(anchor_id, &participant_ids);
+        for &pid in &participant_ids[..2] {
+            let sutra_idx = ashti_with_anchors.index_of(100).unwrap();
+            if let Some(state) = ashti_with_anchors.state_mut(sutra_idx) {
+                if let Some(t) = state.tokens.iter_mut().find(|t| t.sutra_id == pid) {
+                    t.type_flags |= TOKEN_FLAG_FRAME_ANCHOR;
+                }
+            }
+        }
+        let proposals = fw.dream_propose(&ashti_with_anchors, 0);
+        assert!(
+            !proposals.is_empty(),
+            "с двумя SUTRA-анкерами среди участников min_participant_anchors=2 должна быть промоция"
+        );
+    }
+
+    #[test]
+    fn trigger_high_confidence_fires_on_threshold() {
+        let rule = CrystallizationRule {
+            id: "hc".to_string(),
+            priority: 10,
+            trigger: RuleTrigger::HighConfidence(0.7),
+            conditions: vec![],
+            action: RuleAction::CrystallizeFull,
+        };
+        let fw = FrameWeaver::new(FrameWeaverConfig {
+            crystallization_rules: vec![rule],
+            ..Default::default()
+        });
+
+        let make_candidate = |confidence: f32| FrameCandidate {
+            anchor_position: [0; 3],
+            participants: vec![],
+            detected_at_tick: 0,
+            stability_count: 100,
+            category: FRAME_CATEGORY_SYNTAX,
+            lineage_hash: 1,
+            confidence,
+        };
+
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&make_candidate(0.5)),
+                RuleAction::Defer { .. }
+            ),
+            "confidence 0.5 < 0.7 → Defer"
+        );
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&make_candidate(0.8)),
+                RuleAction::CrystallizeFull
+            ),
+            "confidence 0.8 >= 0.7 → CrystallizeFull"
+        );
+    }
+
+    #[test]
+    fn trigger_repeated_assembly_fires_after_window() {
+        let rule = CrystallizationRule {
+            id: "ra".to_string(),
+            priority: 10,
+            trigger: RuleTrigger::RepeatedAssembly { window_ticks: 100 },
+            conditions: vec![],
+            action: RuleAction::CrystallizeFull,
+        };
+        let fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 20,
+            crystallization_rules: vec![rule],
+            ..Default::default()
+        });
+
+        let make_candidate = |stability_count: u32| FrameCandidate {
+            anchor_position: [0; 3],
+            participants: vec![],
+            detected_at_tick: 0,
+            stability_count,
+            category: FRAME_CATEGORY_SYNTAX,
+            lineage_hash: 2,
+            confidence: 0.0,
+        };
+
+        // 4 сканов × 20 тиков = 80 < 100 → Defer
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&make_candidate(4)),
+                RuleAction::Defer { .. }
+            ),
+            "80 ticks assembled < window 100 → Defer"
+        );
+        // 5 сканов × 20 тиков = 100 >= 100 → CrystallizeFull
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&make_candidate(5)),
+                RuleAction::CrystallizeFull
+            ),
+            "100 ticks assembled >= window 100 → CrystallizeFull"
+        );
+    }
+
+    #[test]
+    fn trigger_dream_cycle_fires_after_on_dream_wake() {
+        let rule = CrystallizationRule {
+            id: "dc".to_string(),
+            priority: 10,
+            trigger: RuleTrigger::DreamCycle,
+            conditions: vec![],
+            action: RuleAction::CrystallizeFull,
+        };
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            crystallization_rules: vec![rule],
+            ..Default::default()
+        });
+
+        let candidate = FrameCandidate {
+            anchor_position: [0; 3],
+            participants: vec![],
+            detected_at_tick: 0,
+            stability_count: 0,
+            category: FRAME_CATEGORY_SYNTAX,
+            lineage_hash: 3,
+            confidence: 0.0,
+        };
+
+        // До on_dream_wake → Defer
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&candidate),
+                RuleAction::Defer { .. }
+            ),
+            "без dream wake → Defer"
+        );
+
+        // После on_dream_wake → CrystallizeFull
+        fw.on_dream_wake();
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&candidate),
+                RuleAction::CrystallizeFull
+            ),
+            "после on_dream_wake → CrystallizeFull"
+        );
+
+        // Флаг сбрасывается после on_tick
+        let ashti = AshtiCore::new(1);
+        fw.on_tick(1, &ashti).unwrap();
+        assert!(
+            matches!(
+                fw.evaluate_crystallization_rules(&candidate),
+                RuleAction::Defer { .. }
+            ),
+            "после on_tick флаг сброшен → Defer"
+        );
+    }
+
+    #[test]
+    fn scan_state_computes_confidence_from_connection_strength() {
+        let mut c1 = make_syn_conn(10, 20, 1);
+        c1.strength = 0.8;
+        let mut c2 = make_syn_conn(10, 30, 2);
+        c2.strength = 0.4;
+        let state = state_with_conns(vec![c1, c2]);
+        let fw = FrameWeaver::new(FrameWeaverConfig {
+            min_participants: 2,
+            ..Default::default()
+        });
+        let candidates = fw.scan_state(&state, 110);
+        assert_eq!(candidates.len(), 1);
+        let conf = candidates[0].confidence;
+        assert!(
+            (conf - 0.6).abs() < 0.001,
+            "ожидаемый confidence = (0.8+0.4)/2 = 0.6, получено {conf}"
+        );
+    }
+
+    #[test]
     fn scan_records_correct_detection_tick() {
         let mut fw = FrameWeaver::new(FrameWeaverConfig {
             scan_interval_ticks: 1,
@@ -1548,7 +1889,7 @@ mod tests {
         let (ashti, _hash) = make_promotion_ashti(anchor_id, participants);
 
         // dream_propose() должна найти Frame и вернуть Promotion proposal
-        let proposals = fw.dream_propose(&ashti);
+        let proposals = fw.dream_propose(&ashti, 0);
         assert_eq!(proposals.len(), 1, "ожидается одно Promotion proposal");
         assert!(
             matches!(
@@ -1621,5 +1962,33 @@ mod tests {
             "промоция не должна выполняться при dangling participant"
         );
         assert_eq!(fw.stats.promotions_proposed, 0);
+    }
+
+    #[test]
+    fn on_boot_passes_with_default_genome() {
+        let genome = Arc::new(Genome::default_ashti_core());
+        let mut fw = FrameWeaver::with_default_config();
+        assert!(
+            fw.on_boot(&genome).is_ok(),
+            "дефолтный GENOME должен давать FrameWeaver доступ ко всем нужным ресурсам"
+        );
+    }
+
+    #[test]
+    fn on_boot_fails_when_genome_denies_access() {
+        use axiom_genome::types::{ModuleId as M, ResourceId as R};
+
+        // Строим Genome без права ExperienceMemory для FrameWeaver
+        let mut genome = Genome::default_ashti_core();
+        genome.access_rules.retain(|rule| {
+            !(rule.module == M::FrameWeaver && rule.resource == R::ExperienceMemory)
+        });
+        let genome = Arc::new(genome);
+
+        let mut fw = FrameWeaver::with_default_config();
+        assert!(
+            matches!(fw.on_boot(&genome), Err(OverDomainError::GenomeDenied)),
+            "без ExperienceMemory/ReadWrite on_boot должен вернуть GenomeDenied"
+        );
     }
 }

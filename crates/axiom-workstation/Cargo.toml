@@ -19,6 +19,7 @@ futures-util = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 iced = { version = "0.13", features = ["canvas", "tokio"] }
+rfd = { version = "0.14", default-features = false, features = ["xdg-portal", "tokio"] }
 dirs = "5"
 toml = "0.8"
 

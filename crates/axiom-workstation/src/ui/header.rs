@@ -1,12 +1,14 @@
 use iced::widget::{button, column, container, horizontal_space, row, text};
 use iced::{Color, Element, Length};
 
-use crate::app::{ConnectionState, Message};
+use crate::app::{ConnectionState, Message, TabKind};
 
 pub fn header_view<'a>(
     connection: &'a ConnectionState,
     show_details: bool,
     engine_address: &'a str,
+    show_view_menu: bool,
+    active_tab: TabKind,
 ) -> Element<'a, Message> {
     let (indicator, conn_text) = match connection {
         ConnectionState::Disconnected => ("●", "Disconnected".to_string()),
@@ -47,19 +49,54 @@ pub fn header_view<'a>(
     .on_press(Message::ToggleConnectionDetails)
     .style(button::text);
 
+    let view_label = if show_view_menu { "View ▴" } else { "View ▾" };
+    let view_btn = button(text(view_label).size(13))
+        .on_press(Message::ToggleViewMenu)
+        .style(button::text);
+
     let top_bar = row![
         text("AXIOM Workstation").size(15),
         horizontal_space(),
+        view_btn,
         conn_btn,
     ]
     .padding(8)
     .align_y(iced::Alignment::Center);
 
+    let mut parts: Vec<Element<Message>> = vec![top_bar.into()];
+
     if show_details {
-        column![top_bar, connection_details(connection, engine_address)].into()
-    } else {
-        top_bar.into()
+        parts.push(connection_details(connection, engine_address));
     }
+    if show_view_menu {
+        parts.push(view_menu(active_tab));
+    }
+
+    column(parts).into()
+}
+
+fn view_menu<'a>(active_tab: TabKind) -> Element<'a, Message> {
+    container(
+        column![
+            button(
+                text(format!("Detach \"{}\" tab", active_tab.label())).size(13)
+            )
+            .on_press(Message::DetachTab(active_tab))
+            .style(button::text)
+            .width(Length::Fill),
+        ]
+        .spacing(2)
+        .padding(4),
+    )
+    .width(Length::Fill)
+    .style(|theme| {
+        let base = container::rounded_box(theme);
+        container::Style {
+            background: Some(iced::Background::Color(Color::from_rgb(0.09, 0.09, 0.12))),
+            ..base
+        }
+    })
+    .into()
 }
 
 fn connection_details<'a>(

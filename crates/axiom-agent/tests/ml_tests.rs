@@ -184,17 +184,32 @@ fn test_vision_perceptor_name() {
 
 #[test]
 fn test_vision_process_image_with_mock_engine() {
-    // Создаём тестовое изображение в памяти
+    // Создаём тестовое изображение 4×4 RGBA
     let img = image::RgbaImage::from_pixel(4, 4, image::Rgba([128, 64, 32, 255]));
     let tmp = std::env::temp_dir().join("axiom_test_img.png");
     img.save(&tmp).unwrap();
 
-    // MLEngine.mock с 6 float выходом = 1 детекция
-    let engine = MLEngine::mock(vec![0], vec![0.0, 0.8, 10.0, 10.0, 5.0, 5.0]);
+    // input_size=64: side = floor(sqrt(64/3)) = 4, resize 4×4 → tensor 4*4*4=64 элементов
+    let engine = MLEngine::mock(vec![64], vec![0.0, 0.8, 10.0, 10.0, 5.0, 5.0]);
     let mut p = VisionPerceptor::new(engine).with_threshold(0.5);
     let count = p.process_image(&tmp).unwrap();
     assert_eq!(count, 1);
     assert_eq!(p.pending_count(), 1);
+
+    std::fs::remove_file(tmp).ok();
+}
+
+#[test]
+fn test_vision_process_image_fails_for_zero_size_engine() {
+    let img = image::RgbaImage::from_pixel(4, 4, image::Rgba([128, 64, 32, 255]));
+    let tmp = std::env::temp_dir().join("axiom_test_zero_engine.png");
+    img.save(&tmp).unwrap();
+
+    // input_size=0 → process_image должен вернуть явную ошибку, а не молча fallback-ить
+    let engine = MLEngine::mock(vec![0], vec![]);
+    let mut p = VisionPerceptor::new(engine);
+    let err = p.process_image(&tmp).unwrap_err();
+    assert!(matches!(err, MLError::ShapeMismatch { expected: 0, got: 0 }));
 
     std::fs::remove_file(tmp).ok();
 }

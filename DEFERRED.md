@@ -1,29 +1,21 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 38.0
-**Обновлён:** 2026-05-05
+**Версия:** 39.0
+**Обновлён:** 2026-05-06
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 2
 
-### BRD-TD-01 — DomainActivity throttle enforcement
+### ~~BRD-TD-01 — DomainActivity throttle enforcement~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-broadcasting/src/server.rs` → `should_send()`
-
-`BroadcastingConfig::domain_activity_threshold` объявлен, но `should_send()` его не проверяет — событие `DomainActivity` всегда проходит фильтр. Полная реализация требует `recent_activity` дельты от Engine.
-
-**Когда:** Stage 3+ (Engine integration).
+**Закрыто:** 2026-05-06 в D6. `should_send()` проверяет `domain_activity_threshold`: события с `recent_activity < threshold` отфильтровываются.
 
 ---
 
-### BRD-TD-03 — Snapshot resync при RecvError::Lagged
+### ~~BRD-TD-03 — Snapshot resync при RecvError::Lagged~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-broadcasting/src/server.rs`, ветка `RecvError::Lagged`
-
-При переполнении broadcast-очереди клиент теряет события. Сейчас сервер логирует предупреждение и продолжает. По спеке нужно отправить клиенту полный `SystemSnapshot` для resync. Помечено `// SCALE-POINT` в коде.
-
-**Когда:** Stage 3+ (после Engine integration — нужен живой snapshot).
+**Закрыто:** 2026-05-06 в D6. При `RecvError::Lagged` сервер читает `snapshot_cache` и отправляет клиенту полный снапшот для resync.
 
 ---
 
@@ -59,23 +51,15 @@
 
 ## Workstation V1.0 — отложено из Stage 4
 
-### WS4-TD-01 — DetachTab: нет UI-триггера
+### ~~WS4-TD-01 — DetachTab: нет UI-триггера~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/tabs.rs`
-
-`Message::DetachTab(tab)` и вся логика detach/re-attach реализованы в `app.rs`, но в таб-баре нет кнопки/жеста для вызова. По спеке — правый клик на табе или иконка «открепить».
-
-**Когда:** Stage 9 (общие компоненты + контекстное меню).
+**Закрыто:** 2026-05-06 в B6. Пункт "View → Detach current tab" добавлен в MenuBar.
 
 ---
 
-### WS4-TD-02 — System Map canvas без Cache
+### ~~WS4-TD-02 — System Map canvas без Cache~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/system_map.rs`
-
-Canvas перерисовывается каждые 33ms (AnimationTick) без разделения на статический и анимированный слой. По спеке — статические элементы (домены, подписи) кешируются через `canvas::Cache`, анимация мандалы — отдельный `Frame`. При большом количестве доменов это может просадить FPS.
-
-**Когда:** Stage 10 (Live Field) — тогда появится реальная нагрузка на canvas, и оптимизация станет оправданной.
+**Закрыто:** 2026-05-06 в B4. Статический слой (домены, кольца, разделители) через `canvas::Cache`, динамика мандалы — отдельный `Frame` при AnimationTick.
 
 ---
 
@@ -109,121 +93,65 @@ Canvas перерисовывается каждые 33ms (AnimationTick) без
 
 ## Workstation V1.0 — отложено из Stage 10
 
-### WS10-TD-01 — Live Field: индивидуальные позиции токенов (протокол-gap)
+### ~~WS10-TD-01 — Live Field: индивидуальные позиции токенов (протокол-gap)~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/live_field.rs`, `crates/axiom-protocol/src/snapshot.rs`
-
-`DomainSnapshot` содержит только агрегированные данные: `token_count: u32`, `layer_activations: [u8; 8]`, `temperature_avg: u8`. Спека Live Field (Документ 3B, раздел 3) требует индивидуальные данные на токен: position 3D, mass, temperature, activation_strength, anchor_membership.
-
-Сейчас позиции генерируются процедурно: детерминированный LCG по `(domain_id, index)`, сферические позиции радиуса [0.3, 1.0], слой назначается по весам `layer_activations`. Визуально правдоподобно, но не отражает реальное состояние памяти.
-
-**Что нужно:** Добавить в протокол (новый тип `TokenFieldPoint`) и в `DomainSnapshot`:
-```
-token_field: Vec<TokenFieldPoint>
-```
-где `TokenFieldPoint { position: [f32; 3], layer: u8, temperature: u8, anchor_membership: Option<u32> }`.
-
-Осложняющий фактор: при большом `token_count` snapshot становится тяжёлым. Потребуется rate-limiting/sampling или отдельный streaming-канал (WS-subscribe на конкретный domain).
-
-**Когда:** При интеграции живого Engine (axiom-node) или при необходимости реального visualization для debugging.
+**Закрыто:** 2026-05-06 в C3. `TokenFieldPoint { position: [f32; 3], layer: u8, temperature: u8, anchor_membership: Option<u32> }` добавлен в протокол и `DomainSnapshot`; sampling max 300 токенов; Live Field теперь использует реальные данные с warmth-color + anchor highlight.
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 9
 
-### WS9-TD-01 — Главное меню (iced 0.13 нет нативного menu widget)
+### ~~WS9-TD-01 — Главное меню~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/app.rs`, `crates/axiom-workstation/src/ui/`
-
-Спека (Документ 3D раздел 10.4) описывает меню `File / Engine / View / Configuration / Help`. В iced 0.13 нет нативного MenuBar виджета без `iced_aw`. Сейчас меню не реализовано.
-
-**Что нужно:** Добавить зависимость `iced_aw` или реализовать кастомные dropdown через `stack` + condition, либо дождаться iced 0.14+ с нативным меню.
-
-**Когда:** Stage 11 (полировка) или при добавлении `iced_aw`.
+**Закрыто:** 2026-05-06 в B6. Кастомный dropdown MenuBar через `stack` + условный overlay; меню `File / Engine / View / Configuration`.
 
 ---
 
-### WS9-TD-02 — Welcome screen анимация (fade-in)
+### ~~WS9-TD-02 — Welcome screen анимация (fade-in)~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/welcome.rs`
-
-Спека (Документ 3A раздел 1.4) описывает: fade-in 800ms, "AXIOM" появляется первым, через 500ms "Workstation", затем пауза и подключение. Сейчас экран статический — нет fade анимации.
-
-**Что нужно:** Добавить `welcome_opacity: f32` в `WelcomeState`, накапливать через `AnimationTick`, применять через alpha-channel в View. Требует iced 0.13 `opacity()` или кастомный overlay.
-
-**Когда:** Stage 11 (polish) или по запросу.
+**Закрыто:** 2026-05-06 в B5. `welcome_opacity: f32` в `WorkstationApp`, накапливается в `AnimationTick`.
 
 ---
 
-### WS9-TD-03 — DetachTab UI: кнопка в таб-баре
+### ~~WS9-TD-03 — DetachTab UI~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/tabs.rs`, `crates/axiom-workstation/src/app.rs`
-
-Уже в DEFERRED как WS4-TD-01. Спека 10.5 уточняет: в V1.0 нет context menu, но View-меню должно содержать "Detach current tab". Без MenuBar (WS9-TD-01) эта функция недоступна.
-
-**Когда:** После WS9-TD-01 (Menu bar).
+**Закрыто:** 2026-05-06 в B6 вместе с WS9-TD-01. "View → Detach current tab" добавлен в MenuBar.
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 8
 
-### WS8-TD-01 — Файловый пикер (rfd)
+### ~~WS8-TD-01 — Файловый пикер (rfd)~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/files.rs`, кнопка «Browse…» рядом с полем пути
-
-Спека описывает кнопку открытия нативного файлового диалога. Зависимость `rfd` не включена в `Cargo.toml`. Сейчас источник вводится вручную через `text_input`.
-
-**Что нужно:** Добавить `rfd = { version = "0.14", features = ["tokio"] }` в `axiom-workstation/Cargo.toml`, добавить `Message::FilesPickPath` и кнопку Browse, которая вызывает `rfd::AsyncFileDialog::new().pick_file()` через `Task::future`.
-
-**Когда:** Stage 9 или при первом реальном использовании импорта.
+**Закрыто:** 2026-05-06 в B1. `rfd = { version = "0.14", features = ["tokio"] }`, кнопка Browse через `rfd::AsyncFileDialog::new().pick_file()` + `Task::future`.
 
 ---
 
-### WS8-TD-02 — RunBench отсутствует в протоколе
+### ~~WS8-TD-02 — RunBench отсутствует в протоколе~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-protocol/src/commands.rs`, `crates/axiom-workstation/src/app.rs`
-
-`EngineCommand` не содержит варианта `RunBench`. Вкладка Benchmarks отображает историю результатов (через `BenchFinished` события) и прогресс запущенного бенча, но запустить бенч из Workstation невозможно. `Message::BenchRun` присутствует в коде, но является no-op.
-
-**Что нужно:** Добавить в протокол `EngineCommand::RunBench { spec: BenchSpec }`, реализовать в Engine и отправлять из `update()` при `Message::BenchRun`.
-
-**Когда:** При добавлении benchmark-runner в Engine.
+**Закрыто:** 2026-05-06 в C2. `EngineCommand::RunBench { spec: BenchSpec }` добавлен; tick_loop выполняет бенч и публикует `BenchStarted/Progress/Finished`; Workstation `Message::BenchRun` подключён.
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 7
 
-### WS7-TD-01 — Syntactic S1-S8 sparklines в Patterns
+### ~~WS7-TD-01 — Syntactic S1-S8 sparklines~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/patterns.rs`, `crates/axiom-protocol/src/snapshot.rs`
-
-Спека описывает 8 синтаксических слоёв (S1-S8: core arguments, modification, structural, pragmatic, temporal, spatial, causal internal, meta) с отдельными sparklines. Данных нет в протоколе — `FrameWeaverStats` содержит только агрегированные счётчики (total_frames, last_crystallization_tick и т.д.) без per-layer активности.
-
-**Что нужно:** Добавить `syntactic_layer_activations: [u8; 8]` в `FrameWeaverStats` в протоколе + заполнять из Engine side.
-
-**Когда:** Stage 8+ (Engine integration) или при необходимости более детальной отладки FrameWeaver.
+**Закрыто:** 2026-05-06 в C1. `syntactic_layer_activations: [u8; 8]` добавлен в `FrameWeaverStats`; Patterns tab получает реальные данные из FrameWeaver.
 
 ---
 
-### WS7-TD-02 — Show more / пагинация в лентах Patterns и Dream State
+### ~~WS7-TD-02 — Show more / пагинация~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/patterns.rs`, `crates/axiom-workstation/src/ui/dream_state.rs`
-
-Спека показывает "[ Show more... ]" кнопку внизу лент. Сейчас показываются все накопленные события (max 100 для frames, max 20 для dreams) без пагинации.
-
-**Когда:** Stage 9 (общие компоненты), или когда появятся реальные данные и ленты начнут переполняться.
+**Закрыто:** 2026-05-06 в B3. Кнопка `[ Show more... ]` в Patterns (max 20, store 100) и Dream State (max 5, store 20) с `show_all: bool` флагом.
 
 ---
 
 ## Workstation V1.0 — отложено из Stage 6
 
-### WS6-TD-01 — Multi-line text editor + Ctrl+Enter
+### ~~WS6-TD-01 — Multi-line text editor + Ctrl+Enter~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-workstation/src/ui/conversation.rs`, input_panel()
-
-Сейчас используется `text_input` (однострочный). Спека требует multi-line с Enter = новая строка, Ctrl+Enter = отправка. Нужно переключиться на `iced::widget::text_editor` с `text_editor::Content` в `ConversationState`. Обнаружение Ctrl+Enter требует отдельной клавиатурной подписки (`iced::keyboard::on_key_press`).
-
-**Когда:** Stage 9 (общие компоненты) или по мере необходимости.
+**Закрыто:** 2026-05-06 в B2. `iced::widget::text_editor` с `text_editor::Content`; Enter = новая строка, Ctrl+Enter = отправка через `on_key_press`.
 
 ---
 
@@ -283,51 +211,27 @@ token_field: Vec<TokenFieldPoint>
 
 ---
 
-### D-06 — MLEngine: input_size/output_size = 0 при загрузке ONNX
+### ~~D-06 — MLEngine: input_size/output_size = 0 при загрузке ONNX~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-agent/src/ml/engine.rs:120-123`
-
-Проверка `if *input_size > 0` скрывает ShapeMismatch-ошибки.
-
-**Когда:** При первой реальной ONNX-модели.
+**Закрыто:** 2026-05-06 в E2. `process_image()` возвращает `MLError::ShapeMismatch { expected: 0, got: 0 }` при `input_size == 0` вместо молчаливого fallback `else { 224 }`.
 
 ---
 
-### FW-TD-02 — FrameWeaver: min_participant_anchors не проверяется
+### ~~FW-TD-02 — FrameWeaver: min_participant_anchors не проверяется~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs`, метод `qualifies_for_promotion`
-
-Поле `PromotionRule::min_participant_anchors` (минимум участников, которые сами являются анкерами SUTRA) не проверяется — требует cross-domain lookup: найти sutra_ids участников Frame в SUTRA-домене. В текущей сигнатуре `check_promotion` нет доступа к AshtiCore.
-
-**Что нужно:**
-- Расширить сигнатуру `Weaver::check_promotion` (добавить `ashti: &AshtiCore`) или
-- Передавать предвычисленный список SUTRA-анкеров снаружи
-
-**Когда:** При реализации полного пути промоции.
+**Закрыто:** 2026-05-06 в D2. `count_participant_anchors()` выполняет cross-domain lookup через EXPERIENCE-connections с `link_type >> 8 == 0x08`; `qualifies_for_promotion` использует результат.
 
 ---
 
-### FW-TD-03 — Weaver::check_promotion без доступа к current_tick
+### ~~FW-TD-03 — Weaver::check_promotion без доступа к current_tick~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/traits.rs`, сигнатура `check_promotion`
-
-Сигнатура `fn check_promotion(&self, experience_state: &DomainState, anchors: &[&Token]) -> Vec<PromotionProposal>` не передаёт текущий tick, поэтому `qualifies_for_promotion` использует `tick_proxy = 0` для проверки `min_age_ticks`.
-
-**Что нужно:** Добавить `tick: u64` параметр в сигнатуру трейта (breaking change).
-
-**Когда:** При первой реальной промоции EXPERIENCE → SUTRA.
+**Закрыто:** 2026-05-06 в D1. `tick: u64` добавлен в сигнатуру `Weaver::check_promotion`; `dream_propose` передаёт `engine.tick_count`; `min_age_ticks` теперь проверяется корректно.
 
 ---
 
-### FW-TD-04 — on_boot не проверяет GENOME-права для FrameWeaver
+### ~~FW-TD-04 — on_boot не проверяет GENOME-права~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:624`, метод `on_boot`
-
-`_genome` игнорируется — не проверяется наличие `ModuleId::FrameWeaver` в GENOME access_rules и что выданные права соответствуют ожидаемым (EXPERIENCE/ReadWrite, MAYA/Read, SUTRA/Control). TODO-комментарий оставлен в коде.
-
-**Что нужно:** Вызвать `genome.index().check_access(ModuleId::FrameWeaver, ...)` для каждого нужного ресурса; вернуть `Err(OverDomainError::GenomeDenied)` при отсутствии прав.
-
-**Когда:** При добавлении runtime GENOME-enforcement (GenomeIndex уже реализован).
+**Закрыто:** 2026-05-06 в D4. `on_boot` вызывает `genome.index().check_access(ModuleId::FrameWeaver, ...)` для трёх ресурсов (MAYA/Read, EXPERIENCE/ReadWrite, SUTRA/Control); возвращает `Err(GenomeDenied)` при нарушении.
 
 ---
 
@@ -341,50 +245,21 @@ token_field: Vec<TokenFieldPoint>
 
 ---
 
-### FW-TD-06 — промоция EXPERIENCE→SUTRA без участников (dummy_candidate)
+### ~~FW-TD-06 — промоция EXPERIENCE→SUTRA без участников~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:727-734`, `on_tick` фаза 5
-
-При срабатывании промоции из `on_tick` создаётся `dummy_candidate` с `participants: Vec::new()`. В результате `build_promotion_commands` генерирует только токен-анкер в SUTRA, но **не** генерирует `BondTokens` к участникам Frame. SUTRA-анкер изолирован — без связей к участникам паттерна.
-
-**Что нужно:** Восстанавливать участников из EXPERIENCE — хранить `participants` в Connection-метаданных EXPERIENCE-анкера или в отдельном side-store (lineage_hash → Vec<sutra_id>).
-
-**Когда:** При полной реализации пути EXPERIENCE → SUTRA.
+**Закрыто:** 2026-05-06 в D2. Участники восстанавливаются из EXPERIENCE-графа через `count_participant_anchors`; `check_promotion` передаёт `ashti: &AshtiCore` для cross-domain lookup.
 
 ---
 
-### FW-TD-07 — три нереализованных RuleTrigger ветки (DreamCycle, HighConfidence, RepeatedAssembly)
+### ~~FW-TD-07 — три нереализованных RuleTrigger ветки~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs:511-513`, `trigger_matches`
-
-Три ветки `RuleTrigger` всегда возвращают `false`:
-- `DreamCycle` — DREAM Phase V1.0 реализована, но сигнал из DreamCycle в FrameWeaver ещё не подключён
-- `HighConfidence(f32)` — нет confidence scoring у кандидатов (см. также DreamPhase_V2_plus.md)
-- `RepeatedAssembly { window_ticks }` — нет счётчика повторных сборок в скользящем окне
-
-**Что нужно:**
-- `DreamCycle`: сигнал от DREAM (флаг или канал)
-- `HighConfidence`: добавить `confidence: f32` в `FrameCandidate`, вычислять из силы связей
-- `RepeatedAssembly`: хранить `assembly_counts: HashMap<u64, (u64, u32)>` (hash → (last_tick, count))
-
-**Когда:** По мере расширения модели кристаллизации.
+**Закрыто:** 2026-05-06 в D3. `DreamCycle`: флаг `dream_cycle_completed` в FrameWeaver, устанавливается через `on_dream_wake()`; `HighConfidence(f32)`: `confidence` в `FrameCandidate` = avg `connection.strength`; `RepeatedAssembly`: `stability_count * scan_interval_ticks >= window_ticks`.
 
 ---
 
-### EA-TD-07 — Применение domain config при hot-reload к running engine
+### ~~EA-TD-07 — Применение domain config при hot-reload~~ ✅ ЗАКРЫТО
 
-**Где:** `crates/axiom-agent/src/tick_loop.rs`, ветка `if let Some(_new_cfg) = watcher.poll()`
-
-**Частично закрыто (2026-04-29):** `Gateway::check_config_reload()` теперь автоматически применяет `DreamConfig` при hot-reload через `engine.apply_dream_config(&cfg.dream)`. DreamScheduler и DreamCycle перенастраиваются без рестарта.
-
-Оставшаяся часть: применение обновлённых **domain**-пресетов к уже запущенному `AxiomEngine` не реализовано — `AxiomEngine` не имеет метода `apply_domain_config(&DomainConfig)`.
-
-**Что нужно:**
-1. Добавить `pub fn apply_domain_config(&mut self, domain_id: u16, cfg: &DomainConfig)` в `AxiomEngine`
-2. В `tick_loop.rs` при обнаружении изменений перебрать `new_cfg.domains` и применить каждый
-3. Логировать что именно изменилось (threshold, membrane, physics params)
-
-**Когда:** Когда понадобится живая перенастройка доменных порогов без рестарта. Сейчас обход — рестарт axiom-cli с новыми конфигами.
+**Закрыто:** 2026-05-06 в D5. `apply_domain_config(&mut self, domain_id: u16, cfg: &DomainConfig)` добавлен в `AxiomEngine`; `tick_loop` итерирует `new_cfg.domains` при `watcher.poll()` и применяет каждый домен с `domain_id != 0`.
 
 ---
 

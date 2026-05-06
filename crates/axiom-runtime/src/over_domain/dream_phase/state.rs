@@ -74,5 +74,6 @@ pub struct DreamPhaseStats {
     pub total_sleeps: u64,
     pub total_dream_ticks: u64,
     pub interrupted_dreams: u64,
-    // расширяется в этапах 2–4
+    /// Tick at which the last dream cycle ended (Waking → Wake transition). 0 = never.
+    pub last_wake_tick: u64,
 }

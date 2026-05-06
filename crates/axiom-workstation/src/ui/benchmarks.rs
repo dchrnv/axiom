@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, scrollable, text};
+use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Color, Element, Length};
 
 use axiom_protocol::bench::BenchResults;
@@ -6,9 +6,39 @@ use axiom_protocol::bench::BenchResults;
 use crate::app::{BenchmarksState, Message};
 
 pub fn benchmarks_view<'a>(state: &'a BenchmarksState) -> Element<'a, Message> {
-    column![running_panel(state), history_panel(state),]
+    column![controls_panel(state), running_panel(state), history_panel(state),]
         .spacing(0)
         .into()
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+
+fn controls_panel<'a>(state: &'a BenchmarksState) -> Element<'a, Message> {
+    let can_run = state.running.is_none();
+    let run_btn = button(text("Run engine_tick bench").size(12))
+        .on_press_maybe(if can_run { Some(Message::BenchRun) } else { None })
+        .style(button::primary);
+
+    container(
+        column![
+            text("Benchmarks")
+                .size(13)
+                .color(Color::from_rgb(0.6, 0.6, 0.6)),
+            row![
+                text("Iterations:").size(12).color(Color::from_rgb(0.5, 0.5, 0.5)),
+                text_input("100", &state.iterations_input)
+                    .on_input(Message::BenchIterationsChanged)
+                    .size(12)
+                    .width(80),
+                run_btn,
+            ]
+            .spacing(8)
+            .align_y(iced::Alignment::Center),
+        ]
+        .spacing(8),
+    )
+    .padding(16)
+    .into()
 }
 
 // ── Running bench ──────────────────────────────────────────────────────────

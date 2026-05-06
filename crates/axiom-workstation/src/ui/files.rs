@@ -1,7 +1,7 @@
 use iced::widget::{
     button, column, container, horizontal_space, row, scrollable, text, text_input,
 };
-use iced::{Color, Element, Length};
+use iced::{Alignment, Color, Element, Length};
 
 use crate::app::{CompletedImport, FilesState, Message};
 
@@ -58,6 +58,12 @@ fn import_controls<'a>(state: &'a FilesState) -> Element<'a, Message> {
         .size(13)
         .padding(8);
 
+    let browse_btn = button(text("Browse…").size(12))
+        .on_press(Message::FilesBrowse)
+        .style(button::secondary);
+
+    let path_row = row![path_input, browse_btn].spacing(8).align_y(Alignment::Center);
+
     let can_start = state.selected_adapter_id.is_some()
         && !state.source_path.is_empty()
         && state.running_import.is_none();
@@ -82,7 +88,7 @@ fn import_controls<'a>(state: &'a FilesState) -> Element<'a, Message> {
             text("Source path")
                 .size(11)
                 .color(Color::from_rgb(0.5, 0.5, 0.5)),
-            path_input,
+            path_row,
             start_btn,
         ]
         .spacing(8),

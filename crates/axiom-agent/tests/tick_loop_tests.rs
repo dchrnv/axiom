@@ -93,6 +93,7 @@ async fn test_tick_loop_terminates_on_quit_command() {
             None,
             make_config(),
             None,
+            None,
         ),
     )
     .await
@@ -130,6 +131,7 @@ async fn test_tick_loop_processes_inject_command() {
             make_saver(),
             None,
             make_config(),
+            None,
             None,
         ),
     )
@@ -173,6 +175,7 @@ async fn test_tick_loop_updates_snapshot_after_interval() {
             make_saver(),
             None,
             config,
+            None,
             None,
         ),
     )

@@ -1,5 +1,5 @@
 use iced::widget::{
-    button, column, container, horizontal_space, row, scrollable, text, text_input,
+    button, column, container, horizontal_space, row, scrollable, text, text_editor,
 };
 use iced::{Color, Element, Length, Padding};
 
@@ -130,7 +130,7 @@ fn input_panel<'a>(conv: &'a ConversationState) -> Element<'a, Message> {
         })
         .collect();
 
-    let can_submit = !conv.sending && !conv.input_buffer.trim().is_empty();
+    let can_submit = !conv.sending && !conv.editor_content.text().trim().is_empty();
 
     let submit_label = if conv.sending { "Sending..." } else { "Submit" };
     let submit_btn = button(text(submit_label).size(13))
@@ -141,24 +141,27 @@ fn input_panel<'a>(conv: &'a ConversationState) -> Element<'a, Message> {
         })
         .style(button::primary);
 
+    let editor = text_editor(&conv.editor_content)
+        .on_action(Message::ConversationEditorAction)
+        .placeholder("Enter text… (Ctrl+Enter to submit)")
+        .height(80)
+        .key_binding(|kp| {
+            use iced::keyboard::key::Named;
+            use iced::keyboard::Key;
+            if kp.modifiers.control() && kp.key == Key::Named(Named::Enter) {
+                Some(text_editor::Binding::Custom(Message::ConversationSubmit))
+            } else {
+                text_editor::Binding::from_key_press(kp)
+            }
+        });
+
     column![
         text("Target domain:")
             .size(11)
             .color(Color::from_rgb(0.5, 0.5, 0.5)),
         row(domain_btns).spacing(4),
-        row![
-            text_input(
-                "Enter text and press Enter or Submit...",
-                &conv.input_buffer
-            )
-            .on_input(Message::ConversationInputChanged)
-            .on_submit(Message::ConversationSubmit)
-            .size(13)
-            .width(Length::Fill),
-            submit_btn,
-        ]
-        .spacing(8)
-        .align_y(iced::Alignment::Center),
+        editor,
+        row![horizontal_space(), submit_btn],
     ]
     .spacing(6)
     .padding(12)

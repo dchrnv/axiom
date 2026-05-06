@@ -20,6 +20,8 @@ axiom-ucl = { path = "../axiom-ucl" }
 axiom-runtime = { path = "../axiom-runtime", features = ["adapters"] }
 axiom-genome = { path = "../axiom-genome" }
 axiom-persist = { path = "../axiom-persist" }
+axiom-protocol = { path = "../axiom-protocol" }
+axiom-broadcasting = { path = "../axiom-broadcasting" }
 schemars.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true

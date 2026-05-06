@@ -28,6 +28,7 @@ fn make_snapshot() -> SystemSnapshot {
         engine_state: EngineState::Wake,
         current_tick: 42,
         current_event: 7,
+        hot_path_ns: 0,
         domains: vec![DomainSnapshot {
             id: 100,
             name: "LOGIC".into(),
@@ -40,6 +41,7 @@ fn make_snapshot() -> SystemSnapshot {
             temperature_avg: 128,
             recent_activity: 2,
             layer_activations: [1, 0, 0, 0, 0, 0, 0, 0],
+            token_field: vec![],
         }],
         over_domain: OverDomainSnapshot {
             total_tokens: 10,
@@ -60,6 +62,7 @@ fn make_snapshot() -> SystemSnapshot {
             frames_in_sutra: 1,
             promotions_since_wake: 1,
             last_crystallization_tick: 40,
+            syntactic_layer_activations: [0; 8],
         }),
         guardian_stats: GuardianStats {
             total_vetoes: 0,

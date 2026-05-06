@@ -17,6 +17,7 @@ use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 
 use crate::adapter_command::{AdapterCommand, AdapterPayload, AdapterSource};
+use axiom_runtime::GatewayPriority;
 use crate::protocol::ServerMessage;
 
 /// Конфигурация Telegram-адаптера.
@@ -223,6 +224,7 @@ async fn poll_task(
                 id,
                 source: AdapterSource::Telegram(upd.chat_id),
                 payload,
+                priority: GatewayPriority::Normal,
             };
             if command_tx.send(cmd).await.is_err() {
                 return; // tick_loop shut down

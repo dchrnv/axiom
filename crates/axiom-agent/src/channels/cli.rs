@@ -500,6 +500,8 @@ pub struct CliConfig {
     pub opensearch_index: String,
     /// Индексировать Tick каждые N тиков (0 = не индексировать)
     pub opensearch_tick_interval: u64,
+    /// Порт сервера Broadcasting для Workstation (None = не запускать)
+    pub workstation_port: Option<u16>,
 }
 
 impl Default for CliConfig {
@@ -521,6 +523,7 @@ impl Default for CliConfig {
             opensearch_url: None,
             opensearch_index: "axiom-events".to_string(),
             opensearch_tick_interval: 0,
+            workstation_port: None,
         }
     }
 }
@@ -641,6 +644,12 @@ impl CliConfig {
                         config.opensearch_tick_interval = val.parse().unwrap_or(0);
                     }
                 }
+                "--workstation-port" => {
+                    i += 1;
+                    if let Some(val) = args.get(i) {
+                        config.workstation_port = val.parse().ok();
+                    }
+                }
                 "--help" | "-h" => {
                     eprintln!("{}", USAGE);
                     std::process::exit(0);
@@ -672,6 +681,7 @@ Options:
   --opensearch-url U  Enable OpenSearch adapter (requires --features opensearch)
   --opensearch-index S  Index name (default: axiom-events)
   --opensearch-tick N   Index tick events every N ticks (default: 0=off)
+  --workstation-port N  Start broadcasting server for Workstation (default: off)
   --help, -h        Show this message";
 
 /// Максимальный размер лога событий
@@ -844,6 +854,23 @@ impl CliChannel {
             os.run(broadcast_tx.clone());
         }
 
+        // Broadcasting: Workstation WebSocket server
+        let wstation_handle = if let Some(port) = self.config.workstation_port {
+            use axiom_broadcasting::{BroadcastingConfig, BroadcastServer};
+            use std::net::SocketAddr;
+            let addr = SocketAddr::from(([127, 0, 0, 1], port));
+            let (server, handle) = BroadcastServer::new(addr, BroadcastingConfig::default());
+            tokio::spawn(async move {
+                if let Err(e) = server.run().await {
+                    eprintln!("[workstation] broadcasting error: {e}");
+                }
+            });
+            println!("[workstation] broadcasting server on ws://127.0.0.1:{port}");
+            Some(handle)
+        } else {
+            None
+        };
+
         // stdin reader → parse → AdapterCommand
         let tx = command_tx.clone();
         tokio::spawn(async move {
@@ -975,6 +1002,7 @@ impl CliChannel {
             self.anchor_set.clone(),
             adapters_config,
             config_watcher,
+            wstation_handle,
         )
         .await;
     }

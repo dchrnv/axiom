@@ -98,11 +98,10 @@ impl VisionPerceptor {
 
         // Изменяем размер до входного тензора движка
         let input_size = self.engine.input_size();
-        let side = if input_size > 0 {
-            ((input_size / 3) as f64).sqrt() as u32
-        } else {
-            224
-        };
+        if input_size == 0 {
+            return Err(MLError::ShapeMismatch { expected: 0, got: 0 });
+        }
+        let side = ((input_size / 3) as f64).sqrt() as u32;
 
         let resized = img.resize_exact(side, side, image::imageops::FilterType::Nearest);
         let rgba = resized.to_rgba8();
