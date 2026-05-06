@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 46.0  
+**Версия:** 47.0  
 **Дата:** 2026-05-06
 
 ---
@@ -19,12 +19,7 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**Workstation V1.0 + B1–E2 завершены (2026-05-06).** 1183 тестов, 0 failures.  
-**B1–B6:** rfd file picker, multi-line editor, show-more, canvas::Cache, fade-in, MenuBar.  
-**C1–C3:** syntactic_layer_activations, RunBench, TokenFieldPoint/token_field.  
-**D1–D6:** check_promotion(tick), min_participant_anchors, RuleTrigger x3, GENOME on_boot, domain hot-reload, broadcasting throttle + Lagged resync.  
-**E2:** MLEngine explicit ShapeMismatch (D-06 закрыт).  
-**FrameWeaver V1.3** — все RuleTrigger реализованы, GENOME enforcement, корректный min_age_ticks.
+**1183 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions завершены.
 
 ---
 
