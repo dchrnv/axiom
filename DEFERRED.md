@@ -1,7 +1,35 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 40.0
-**Обновлён:** 2026-05-06
+**Версия:** 41.0
+**Обновлён:** 2026-05-07
+
+---
+
+## FrameWeaver
+
+### FW-TD-01 — RequestFrameDetails не реализован
+
+**Где:** `crates/axiom-protocol/src/commands.rs`, `crates/axiom-workstation/`
+
+`EngineCommand::RequestFrameDetails { anchor_id }` и `EngineEvent::FrameDetails(FrameDetails)` определены в axiom-protocol, но handler нигде не реализован — ни в axiom-workstation, ни в axiom-broadcasting.
+
+`FrameDetails` содержит `last_reactivated_at_tick: Option<u64>`, которое требует дополнительного per-anchor хранилища в FrameWeaver: `reactivation_counts` хранит счётчик, но не тик последней реактивации. `crystallized_at_tick` можно взять из `token.last_event_id` (он не сбрасывается при `ReinforceFrame`).
+
+**Что нужно:** добавить `last_reactivated_at: HashMap<u32, u64>` в FrameWeaver + реализовать handler в axiom-workstation (Benchmarks или отдельная вкладка).
+
+**Когда:** при добавлении детальной инспекции Frame в Workstation V2.0.
+
+---
+
+### FW-TD-02 — Per-pair co-activation не отслеживается
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs`
+
+Текущая структура: `reactivation_counts: HashMap<u32, u32>` — глобальный счётчик реактиваций на Frame-анкер. Нет информации о том, какие Frame-ы активировались совместно (в одном скане или в соседних).
+
+Нужно для: будущего CausalWeaver (причинные связи между Frame), AnalogyWeaver (похожие паттерны), рефлекторных сокращений опыта в EXPERIENCE. Конкретный вид структуры зависит от первого потребителя.
+
+**Когда:** при проектировании CausalWeaver или AnalogyWeaver.
 
 ---
 

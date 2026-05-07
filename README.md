@@ -170,6 +170,7 @@ let result = gw.process_channel(&mut ch);
 
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
 - [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver V1.2: scan/кристаллизация/промоция
+- [docs/guides/FrameWeaver_Implementation_V1_3.md](docs/guides/FrameWeaver_Implementation_V1_3.md) — FrameWeaver V1.3: полная реализация (все RuleTrigger, GENOME enforcement, dream_propose, min_participant_anchors)
 - [docs/guides/DREAM_Phase_Guide.md](docs/guides/DREAM_Phase_Guide.md) — DREAM Phase V1.0: состояния, триггеры, усталость, DreamCycle, CLI, конфиги
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
