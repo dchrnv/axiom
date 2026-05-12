@@ -1,0 +1,6 @@
+# Local workspace config — not committed (see .gitignore)
+# Включает нативную векторизацию для release и bench профилей (S4 Axiom Sentinel).
+# Бинарники непортируемы, но это Arch Linux dev machine — переносимость не цель.
+
+[build]
+rustflags = ["-C", "target-cpu=native"]
