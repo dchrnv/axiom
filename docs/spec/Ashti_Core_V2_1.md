@@ -1,15 +1,24 @@
-# Ashti_Core V2.1
+# Ashti_Core V2.2
 
 *Архитектурная композиция из одиннадцати специализированных Доменов (Domain V1) в рамках одного фрактального уровня, управляемая конституционным слоем GENOME и контролируемая GUARDIAN.*
 
 **Статус:** Актуальная спецификация (core)  
-**Версия:** 2.1.0  
-**Дата:** 2026-03-28  
-**Связанные спеки:** GENOME V1.0, GUARDIAN V1.0, Domain V1.3, DomainConfig V2.1, Arbiter V1.0, Causal Frontier V2.0, Shell V3.0, Heartbeat V2.0, COM V1.0, Time Model V1.0
+**Версия:** 2.2.0  
+**Дата:** 2026-05-12  
+**Связанные спеки:** GENOME V1.0, GUARDIAN V1.0, Domain V1.3, DomainConfig V2.1, Arbiter V2.1, Causal Frontier V2.0, Shell V3.0, Heartbeat V2.0, COM V1.0, Time Model V1.0, Axiom_Sentinel_V1_1
 
 ---
 
-## 1. Что изменилось в V2.1
+## 1. Что изменилось в V2.2
+
+V2.1 → V2.2 (Axiom Sentinel V1.1):
+
+- **`process_parallel_limited`** — новый публичный метод AshtiCore для Layer Priority режима. Делегирует в `Arbiter::route_token_limited` с ограниченным `max_role`.
+- Связанные спеки обновлены: Arbiter V2.1, Axiom_Sentinel_V1_1.
+
+---
+
+## 1.1 Что изменилось в V2.1
 
 Ashti_Core V2.0 описывала 11 доменов, двойной путь обработки и CODEX/GUARDIAN как концепции. V2.1 вносит следующие изменения:
 
@@ -245,9 +254,30 @@ CODEX — пластичный закон, аналог ADNA из NeuroGraph. С
 
 14. **Выход** → Результат из MAYA(10) исполняется или по протоколу `10 → 0` передаётся на следующий уровень.
 
-### 5.3 Принцип двойного пути (без изменений)
+### 5.3 Принцип двойного пути
 
 Медленный путь через ASHTI(1-8) работает **всегда**, независимо от наличия рефлекса. Это гарантирует постоянное обучение и коррекцию рефлексов.
+
+Исключение (V2.2): при Layer Priority режиме (`enable_layer_priority = true`, `budget_used_fraction > 0.80`) медленный путь ограничивается доменами 1–3 через `process_parallel_limited`.
+
+### 5.4 Публичный API AshtiCore (V2.2)
+
+```rust
+// Обычный путь (всегда используется при нормальном бюджете тика)
+pub fn process_parallel(&mut self, token: Token, pool: &rayon::ThreadPool) -> RoutingResult
+
+// Layer Priority путь (Sentinel S5): только домены 1..=max_role
+pub fn process_parallel_limited(
+    &mut self,
+    token: Token,
+    pool: &rayon::ThreadPool,
+    max_role: u8,
+) -> RoutingResult
+```
+
+Файл: `crates/axiom-domain/src/ashti_core.rs`
+
+`process_parallel_limited` делегирует в `self.arbiter.route_token_limited(token, Some(pool), max_role)`. Семантика идентична `process_parallel` кроме ограничения max_role.
 
 ---
 
@@ -304,6 +334,7 @@ CODEX — пластичный закон, аналог ADNA из NeuroGraph. С
 
 ## 9. История изменений
 
+- **V2.2 (2026-05-12)**: Axiom Sentinel V1.1. §5.4: добавлен `process_parallel_limited(token, pool, max_role)` — Layer Priority путь (S5). §5.3: уточнён принцип двойного пути (исключение для Layer Priority). Связанные спеки обновлены: Arbiter V2.1, Axiom_Sentinel_V1_1.
 - **V2.1**: Добавлены GENOME V1.0 и GUARDIAN V1.0 как явные компоненты. Уточнена роль CODEX(3): пластичный закон, GUARDIAN единственный писатель. EXPERIENCE(9) расширен: REFLECTOR (статистика), SKILLSET (скиллы) как внутренние зоны. Обновлён полный цикл с boot sequence. Маршруты привязаны к GENOME. Добавлена таблица прав Write. Архитектурная иерархия: GENOME → GUARDIAN → домены.
 - **V2.0**: Добавлен Домен 9 (EXPERIENCE). Двойной путь. Контроль рефлексов через GUARDIAN. 11 доменов.
 - **V1.4**: Десять доменов, три структурные роли.

@@ -1,11 +1,11 @@
-# AXIOM MODULE SPECIFICATION: Arbiter V2.0
+# AXIOM MODULE SPECIFICATION: Arbiter V2.1
 
 **Статус:** Актуальная спецификация (core)
-**Версия:** 2.0.0
-**Дата:** 2026-04-08
+**Версия:** 2.1.0
+**Дата:** 2026-05-12
 **Заменяет:** Arbiter V1.0
 **Назначение:** Над-доменный модуль маршрутизации, ассоциативной памяти и кристаллизации знания
-**Связанные спеки:** Ashti_Core V2.1, DomainConfig V2.1, COM V1.1, Cognitive_Depth V1.0, Axiom Sentinel V1.0
+**Связанные спеки:** Ashti_Core V2.2, DomainConfig V2.1, COM V1.1, Cognitive_Depth V1.0, Axiom_Sentinel_V1_1
 
 ---
 
@@ -49,6 +49,26 @@ Arbiter состоит из нескольких субмодулей:
 | `MayaProcessor` | `maya_processor.rs` | Консолидация результатов в MAYA |
 | `COM` | `com.rs` | Причинный счётчик event_id |
 | `GridHash` | `gridhash.rs` | O(1) пространственный индекс для EXPERIENCE |
+
+### 3.1 Experience API (V2.1: Axiom Sentinel S2)
+
+Добавлены методы для динамической дистилляции памяти (S2):
+
+```rust
+// Счётчик всех добавленных трейсов за время жизни экземпляра (не сбрасывается)
+pub traces_seen_total: u64
+
+// Проверить, нужно ли запустить export_skills (каждые 5000 трейсов)
+pub fn should_trigger_export(&self) -> bool
+
+// Оценка потребления памяти трейсами и tension_traces (байт)
+pub fn estimate_memory_bytes(&self) -> usize
+
+// Изменить лимит traces (минимум 1)
+pub fn set_max_traces(&mut self, n: usize)
+```
+
+`should_trigger_export` возвращает `true` при `traces_seen_total > 0 && traces_seen_total % 5000 == 0`. Вызывается в тик-цикле AxiomEngine для запуска `export_skills` без блокировки горячего пути.
 
 ---
 
@@ -98,9 +118,11 @@ experience.resonance_search_parallel(&token, pool)  // раздельный, ≥
 
 **Шаг 3: Slow path (ASHTI 1-8)**
 
-Выполняется **всегда** (SLOW_PATH_MANDATORY):
+Выполняется **всегда** (SLOW_PATH_MANDATORY), если только не активирован Layer Priority режим (см. §6.1):
 - При `Association` → hint (подсказка) передаётся в `route_to_ashti`
 - При `None` → обработка без подсказки
+
+`route_to_ashti` принимает параметр `max_role: u8` (обычно 8 — все домены). При `max_role < 8` цикл ограничивает обработку доменами 1..=max_role.
 
 **Шаг 4: Консолидация (MAYA)**
 
@@ -142,7 +164,9 @@ if final_confidence < min_coherence:
 
 ---
 
-## 6. Параллельный поиск (Axiom Sentinel V1.0, Фаза 2)
+## 6. Параллелизм (Axiom Sentinel)
+
+### 6.1 Параллельный поиск (V1.0, Фаза 2)
 
 ```rust
 pub fn route_token_parallel(token, source_domain, pool: &rayon::ThreadPool) -> RoutingResult
@@ -157,6 +181,22 @@ pub fn route_token_parallel(token, source_domain, pool: &rayon::ThreadPool) -> R
 При `traces.len() < 512` → автоматический fallback на sequential (без overhead rayon).
 
 В production flow Orchestrator всегда вызывает `process_parallel`.
+
+### 6.2 Layer Priority Path (V1.1, S5)
+
+```rust
+pub fn route_token_limited(token: Token, pool: Option<&rayon::ThreadPool>, max_role: u8) -> RoutingResult
+```
+
+Упрощённый путь обработки, используемый когда бюджет тика исчерпан более чем на 80% (TickBudget в AxiomEngine).
+
+Отличия от `route_token_parallel`:
+- Выполняет резонансный поиск (параллельный при наличии pool и ≥512 traces).
+- Вызывает `route_to_ashti` с ограниченным `max_role` (обычно 3 — только рефлекторные домены EXECUTION/SHADOW/CODEX).
+- **Не выполняет** multi-pass и не создаёт tension traces.
+- Возвращает `RoutingResult` с `passes = 1`.
+
+Включается через `TickSchedule::enable_layer_priority = true` (по умолчанию `false`). Пока gate выключен, поведение системы идентично V2.0. Orchestrator вызывает `route_token_limited` только когда `engine.budget_used_fraction() > 0.80` и gate включён.
 
 ---
 
@@ -254,7 +294,7 @@ pub struct PendingComparison {
 
 ## 12. Инварианты
 
-1. **Slow path обязателен.** ASHTI(1-8) обрабатывает токен всегда, даже при рефлексе.
+1. **Slow path обязателен.** ASHTI(1-8) обрабатывает токен всегда, даже при рефлексе. Исключение: при `enable_layer_priority = true` и `budget_used_fraction > 0.80` используется `route_token_limited` с `max_role ≤ 3`.
 2. **SkillSet приоритетнее Experience.** Кристаллизованный навык проверяется до resonance_search.
 3. **GUARDIAN имеет вето в Orchestrator, не в Arbiter.** Arbiter возвращает reflex; Orchestrator решает применять или нет.
 4. **Порог резонанса — глобальный.** Reflex/association threshold применяется один для всего Experience, не per-domain (как описывал V1.0 — это не реализовано).
@@ -277,5 +317,6 @@ pub struct PendingComparison {
 
 ## 14. История изменений
 
+- **V2.1 (2026-05-12)**: Axiom Sentinel V1.1. §3.1: Experience S2 API (traces_seen_total, should_trigger_export, estimate_memory_bytes, set_max_traces). §6.2: route_token_limited — Layer Priority путь (S5). §4.2: документирован параметр max_role в route_to_ashti. §12: уточнён инвариант Slow path (исключение для Layer Priority).
 - **V2.0 (2026-04-08)**: Полная актуализация. SkillSet fast path. Multi-pass (Cognitive Depth V1.0). TensionTrace / InternalDrive. GridHash двухфазный поиск. Параллельный поиск (Sentinel V1.0). Точки несоответствия с V1.0 задокументированы. GUARDIAN вето перенесено в Orchestrator.
 - **V1.0 (2026-03-19)**: Первая версия. Над-доменный модуль маршрутизации.

@@ -1,3 +1,14 @@
+# AXIOM MODULE SPECIFICATION: Axiom Sentinel V1.1
+
+**Статус:** Актуальная спецификация (performance)
+**Версия:** 1.1.0
+**Дата:** 2026-05-12
+**Заменяет:** Axiom Sentinel V1.0 (docs/architecture/)
+**Назначение:** Адаптивный когнитивный движок — аппаратная самодиагностика, параллелизм, бюджет тика, SIMD
+**Связанные спеки:** Arbiter_V2_1, Orchestrator_V1_1, Ashti_Core_V2_2, SPACE_V6_1
+
+---
+
 # Спецификация Axiom Sentinel v1.1: Адаптивный Когнитивный Движок
 
 ## 1. Концепция: Axiom Hybrid

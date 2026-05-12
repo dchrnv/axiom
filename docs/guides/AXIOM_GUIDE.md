@@ -556,6 +556,12 @@ engine.ashti.tick()                    // шаг физики
 engine.ashti.process(token)            // dual-path
 engine.drain_events()                  // Vec<Event>
 
+// Прямая инъекция токена (Sentinel V1.1 S1 — bypass UCL, ~20 ns)
+engine.inject_token_direct(domain_id, token)?;
+
+// Бюджет тика (Sentinel V1.1 S5)
+engine.budget_used_fraction()          // f32 0.0..=1.0
+
 // Адаптация (Этап 6)
 engine.run_adaptation()                // Vec<u32> обновлённых domain_id
 engine.dream_propose()                 // Vec<CodexAction>
@@ -574,6 +580,8 @@ engine.import_skills(&skills)          // usize импортировано
 // Внешняя интеграция (Этап 8) — см. раздел 10
 // Gateway и Channel — отдельный слой поверх Engine
 ```
+
+`inject_token_direct(domain_id, token)` — прямая запись токена в `DomainState`, минуя UCL-парсинг (~20 ns vs ~35 ns через UCL). Устанавливает `had_intake_this_tick = true`. Используется в горячих циклах, где UCL overhead недопустим.
 
 ---
 

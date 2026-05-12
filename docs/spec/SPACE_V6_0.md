@@ -1,8 +1,8 @@
-# AXIOM MODULE SPECIFICATION: SPACE V6.0
+# AXIOM MODULE SPECIFICATION: SPACE V6.1
 
 **Статус:** Актуальная спецификация (core)  
-**Версия:** 6.0.0  
-**Дата:** 2026-03-20  
+**Версия:** 6.1.0  
+**Дата:** 2026-05-12  
 **Назначение:** Пространственная модель доменов: координаты, индексация, вычисление расстояний, обнаружение соседей  
 **Модель времени:** COM `event_id` (причинный порядок, u64)  
 **Связанные спеки:** Token V5.2, Connection V5.0, DomainConfig V2.1, Domain V1.3, Event-Driven V1, Causal Frontier V1, Heartbeat V2.0, COM V1.0, Shell V3.0
@@ -533,17 +533,60 @@ i16 даёт диапазон -32768..+32767 = 65536 квантов по оси.
 
 ---
 
-## 15. Направления развития
+## 15. SIMD и батчевая физика (Axiom Sentinel V1.1)
+
+### 15.1 apply_gravity_batch
+
+```rust
+pub fn apply_gravity_batch(
+    positions: &[[i16; 3]],
+    masses: &[u8],
+    gravity_scale_shift: u8,
+    model: GravityModel,
+) -> GravityBatchResult
+```
+
+Файл: `crates/axiom-space/src/simd.rs`
+
+Батчевое вычисление гравитационных сил для массива токенов. Обрабатывает весь слайс за один проход. При `target-cpu=native` (S4) компилятор авто-векторизует до AVX2 (256-бит), достигая ~80–120M токенов/сек.
+
+Ограничение: безопасно для любого N, но при N > `L2_CHUNK_TOKENS` весь входной массив не помещается в L2-кэш, что вызывает деградацию производительности.
+
+### 15.2 apply_gravity_batch_chunked (S3)
+
+```rust
+pub const L2_CHUNK_TOKENS: usize = 65536;  // 512 KB / 8 bytes per token
+
+pub fn apply_gravity_batch_chunked(
+    positions: &[[i16; 3]],
+    masses: &[u8],
+    gravity_scale_shift: u8,
+    model: GravityModel,
+) -> GravityBatchResult
+```
+
+Файл: `crates/axiom-space/src/simd.rs`; реэкспортируется из `crates/axiom-space/src/lib.rs`.
+
+Обёртка над `apply_gravity_batch` с нарезкой входа на чанки размером `L2_CHUNK_TOKENS`. Каждый чанк обрабатывается в пределах L2-кэша Ryzen 5 3500U (512 KB), предотвращая деградацию скорости при N > 1M.
+
+Результаты чанков накапливаются в единый `GravityBatchResult`. При N ≤ `L2_CHUNK_TOKENS` вызов делегируется прямо в `apply_gravity_batch` без оверхеда.
+
+**Целевой показатель:** 1M токенов за ~8–10 ms (вместо ~25 ms без чанкинга).
+
+---
+
+## 16. Направления развития
 
 1. **Инкрементальное обновление хэша.** Вместо полной перестройки — обновление только затронутых ячеек при TokenMoved.
 2. **Пружинная динамика.** Систематическое использование ideal_dist из Connection для генерации сил между связанными токенами.
 3. **Кластеризация.** Автоматическое обнаружение плотных групп токенов и замена взаимодействий внутри кластера на лидерские (оптимизация для >100K токенов).
 4. **Иерархия доменов.** Преобразование координат между родительским и дочерним доменом для фрактальных структур.
-5. **SIMD-оптимизация.** Батчевое вычисление расстояний для массива токенов с использованием SIMD-инструкций.
+5. **Явные AVX2 intrinsics (SENT-S4b).** Если `apply_gravity_batch` с авто-векторизацией не достигает цели 8–10 ms — явные intrinsics через `std::arch::x86_64` в `#[cfg(feature = "simd")]`. Scalar fallback остаётся. Статус: DEFERRED до верификации бенчей.
 
 ---
 
-## 16. История изменений
+## 17. История изменений
 
+- **V6.1 (2026-05-12)**: Axiom Sentinel V1.1. §15: добавлены `apply_gravity_batch_chunked` и `L2_CHUNK_TOKENS` (S3). §15.1: задокументирован `apply_gravity_batch`. §16: SENT-S4b (явные AVX2) перемещён из «будущего» в DEFERRED.
 - **V6.0**: Полная переработка под терминологию и архитектуру Axiom. Убраны SemanticShell (заменён на Token V5.2 + Shell V3.0), профили Lamp/Edge/Core (заменены на конфигурацию), тиковая модель (заменена на Event-Driven). Привязка к DomainConfig V2.1, Causal Frontier V1, Heartbeat V2.0. Координаты i16 (из Token V5.2).
 - **V5.0**: Предыдущая версия (NeuroGraph). SemanticShell 64 байта, i32 Q16.16, Lamp/Edge/Core профили, тиковая модель.

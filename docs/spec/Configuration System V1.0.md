@@ -368,6 +368,22 @@ presets:
 
 Триггеры повышения частоты: обнаружены tension traces, получен внешний ввод, обработка завершилась через multipass.
 
+## 13.2b TickSchedule: Axiom Sentinel V1.1 поля (S2, S5)
+
+Поля, добавленные в `TickSchedule` при реализации Axiom Sentinel V1.1:
+
+| Поле | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `memory_pressure_threshold_bytes` | `u64` | 1 932 735 283 (~1.8 GiB) | При превышении — немедленный запуск `run_horizon_gc` + `snapshot_and_prune` |
+| `enable_layer_priority` | `bool` | `false` | Включает Layer Priority режим: при `budget_used_fraction > 0.80` slow path ограничивается доменами 1–3 |
+| `target_tick_ns` | `u64` | 1 000 000 (1 ms) | Целевой бюджет тика в наносекундах |
+
+`memory_pressure_threshold_bytes` проверяется каждый тик через `experience.estimate_memory_bytes()`. Достижение порога — неблокирующий триггер для GC.
+
+`enable_layer_priority` по умолчанию выключен для обратной совместимости: при `false` все домены 1–8 обрабатываются всегда, независимо от бюджета.
+
+---
+
 ## 13.3 GuardianConfig
 
 `GuardianConfig` открывает параметры агрессивности адаптации подсистемы Guardian. Это **ручки скорости обучения** модели — они управляют тем, насколько быстро пороги Arbiter и физика домена меняются в ответ на feedback успеха/неудачи.

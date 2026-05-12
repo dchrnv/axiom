@@ -1,10 +1,10 @@
-# AXIOM MODULE SPECIFICATION: Orchestrator V1.0
+# AXIOM MODULE SPECIFICATION: Orchestrator V1.1
 
 **Статус:** Актуальная спецификация (core)
-**Версия:** 1.0.0
-**Дата:** 2026-04-08
+**Версия:** 1.1.0
+**Дата:** 2026-05-12
 **Назначение:** Тонкий слой маршрутизации токена в axiom-runtime между AxiomEngine и AshtiCore
-**Связанные спеки:** Arbiter_V2_0, Ashti_Core V2.1, Axiom Sentinel V1.0
+**Связанные спеки:** Arbiter_V2_1, Ashti_Core V2.2, Axiom_Sentinel_V1_1
 
 ---
 
@@ -31,9 +31,11 @@ AxiomEngine::handle_dual_path()
         ▼
 orchestrator::route_token(engine, token)
         │
-        ├─ engine.ashti.process_parallel(token, pool)   → RoutingResult
+        ├─ engine.ashti.process_parallel(token, pool)          → RoutingResult  [обычный путь]
+        │   или
+        ├─ engine.ashti.process_parallel_limited(token, pool, max_role)          [Layer Priority, S5]
         │           │
-        │           └─ Arbiter → Experience → ASHTI(1-8) → MAYA
+        │           └─ Arbiter → Experience → ASHTI(1..=max_role) → MAYA
         │
         ├─ engine.guardian.validate_reflex(reflex_token)   [если нужно]
         │
@@ -44,7 +46,9 @@ Orchestrator не хранит состояния. Он мутирует `engine
 
 ---
 
-## 3. Единственная функция
+## 3. Функции
+
+### 3.0 route_token — основной путь
 
 ```rust
 pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResult
@@ -55,7 +59,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
 ### 3.1 Шаг 1: Параллельная маршрутизация
 
 ```rust
-let pool = &engine.thread_pool;
+let pool = engine.thread_pool.as_ref();
 let mut result = engine.ashti.process_parallel(token, pool);
 ```
 
@@ -63,7 +67,7 @@ let mut result = engine.ashti.process_parallel(token, pool);
 
 - При `Experience.traces.len() >= PARALLEL_THRESHOLD (512)` → резонансный поиск через rayon
 - При `< 512` → автоматически деградирует до последовательного без накладных расходов
-- **Split borrow**: `engine.ashti` (`&mut`) и `engine.thread_pool` (`&`) — разные поля структуры, Rust допускает одновременный заём
+- **Split borrow**: `engine.ashti` (`&mut`) и `engine.thread_pool` (`&Arc<rayon::ThreadPool>`) — разные поля структуры, Rust допускает одновременный заём. `engine.thread_pool.as_ref()` разыменовывает `Arc` в `&rayon::ThreadPool`.
 
 ### 3.2 Шаг 2: GUARDIAN check (опциональный)
 
@@ -101,6 +105,23 @@ if result.event_id > 0 {
 - Если рефлекс был → сравнение с consolidated_result, усиление или добавление контртрейса
 
 Ошибки финализации не фатальны (`let _`): trace может отсутствовать (например, при первом токене).
+
+---
+
+### 3.4 route_token_limited — Layer Priority путь (V1.1, S5)
+
+```rust
+pub(crate) fn route_token_limited(engine: &mut AxiomEngine, token: Token) -> RoutingResult
+```
+
+Используется вместо `route_token` когда `engine.budget_used_fraction() > 0.80` и `TickSchedule::enable_layer_priority = true`.
+
+Алгоритм:
+1. Вычисляет `max_role = engine.layer_priority_max_role()` → возвращает 3 при бюджетном ограничении.
+2. Вызывает `engine.ashti.process_parallel_limited(token, pool, max_role)`.
+3. Выполняет GUARDIAN check и `apply_feedback` аналогично `route_token`.
+
+Семантическая разница: только домены 1–3 (EXECUTION, SHADOW, CODEX) участвуют в slow path. Домены 4–8 пропускаются для экономии времени тика.
 
 ---
 
@@ -156,4 +177,5 @@ pub struct RoutingResult {
 
 ## 8. История изменений
 
+- **V1.1 (2026-05-12)**: Axiom Sentinel V1.1. §3.4: добавлена `route_token_limited` для Layer Priority режима (S5). §3.1: `engine.thread_pool.as_ref()` вместо `&engine.thread_pool` — корректное разыменование `Arc<rayon::ThreadPool>`. §2: диаграмма обновлена с альтернативным путём `process_parallel_limited`.
 - **V1.0 (2026-04-08)**: Первая версия. Выделен из engine.rs при реализации Axiom Sentinel V1.0, Фаза 2. Добавлен параллельный поиск через `process_parallel`. GUARDIAN check перенесён из Arbiter. apply_feedback централизован здесь.

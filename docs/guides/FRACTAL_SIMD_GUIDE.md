@@ -218,6 +218,29 @@ apply_accelerations_to_velocities(&mut velocities, &result);
 
 ---
 
+#### `apply_gravity_batch_chunked` (Axiom Sentinel V1.1, S3)
+
+```rust
+pub fn apply_gravity_batch_chunked(
+    positions: &[[i16; 3]],
+    masses: &[u8],
+    gravity_scale_shift: u8,
+    model: GravityModel,
+) -> GravityBatchResult
+```
+
+Обёртка над `apply_gravity_batch` с L2-кэш-осведомлённым чанкингом. При N > `L2_CHUNK_TOKENS` (65536 токенов = 512 KB) входной слайс нарезается на окна, каждое из которых помещается в L2-кэш Ryzen 5 3500U, предотвращая деградацию скорости.
+
+```rust
+pub const L2_CHUNK_TOKENS: usize = 65536;
+```
+
+При N ≤ `L2_CHUNK_TOKENS` вызов полностью делегируется в `apply_gravity_batch` без дополнительного оверхеда.
+
+**Когда использовать:** при N > 65K токенов (например, гравитационный расчёт для 1M токенов). Для N ≤ 65K `apply_gravity_batch` достаточен.
+
+---
+
 ### Feature flag `simd`
 
 В `Cargo.toml` потребителя:
@@ -228,7 +251,7 @@ axiom-space = { path = "...", features = ["simd"] }
 
 Сам feature сейчас пуст — он служит **явным маркером** того, что потребитель
 знает о batch-режиме и собирается компилировать с `-C target-cpu=native`.
-В будущем сюда можно добавить явные intrinsics для платформ без авто-векторизатора.
+В будущем сюда можно добавить явные intrinsics для платформ без авто-векторизатора (SENT-S4b, см. DEFERRED.md).
 
 ---
 
@@ -248,8 +271,9 @@ axiom-space = { path = "...", features = ["simd"] }
 |-----------|-----------|
 | `AshtiCore::tick()` | Физика каждого домена по одному |
 | `FractalChain::tick()` | Тик N уровней + MAYA→SUTRA transfer |
-| `apply_gravity_batch` | Batch-ускорение для N токенов одного домена |
+| `apply_gravity_batch` | Batch-ускорение для N ≤ 65K токенов одного домена |
+| `apply_gravity_batch_chunked` | То же, с L2-кэш-чанкингом для N > 65K |
 
-`apply_gravity_batch` не вызывается автоматически внутри `tick()` — это
-инструмент для пользователя, который хочет вручную управлять физикой поля
-в горячем цикле (например, в бенчмарках или специализированных симуляциях).
+`apply_gravity_batch` и `apply_gravity_batch_chunked` не вызываются автоматически
+внутри `tick()` — это инструменты для пользователя, который хочет вручную управлять
+физикой поля в горячем цикле (например, в бенчмарках или специализированных симуляциях).
