@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1183 тестов, 0 failures**
+**1192 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -87,6 +87,8 @@ axiom-runtime:
   │       TickSchedule::memory_pressure_threshold_bytes (1.8 GiB) → немедленный horizon GC
   │   S3: apply_gravity_batch_chunked + L2_CHUNK_TOKENS=65536 (512 KB / 8 B per token)
   │   S4: .cargo/config.toml target-cpu=native → авто-векторизация AVX2 в release/bench
+  │   S4b: apply_gravity_batch_avx2 — явные AVX2 intrinsics (VSQRTPS+VDIVPS), 8 tok/iter;
+  │        6.74 ms @ 1M токенов (цель 8–10 ms ✅); early exit shift≥16; scalar fallback
   │   S5: TickBudget (tick_budget_start / budget_used_fraction); enable_layer_priority gate;
   │       при budget>80% роли 4–8 пропускаются (process_parallel_limited / route_token_limited)
   ├── TickSchedule: enable_layer_priority, target_tick_ns, memory_pressure_threshold_bytes
@@ -111,7 +113,8 @@ axiom-persist (D-04):
   └── exchange: export/import traces+skills (bincode), GUARDIAN-валидация
 
 axiom-space:
-  ├── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
+  ├── apply_gravity_batch — scalar, детерминировано точный (feature "simd")
+  ├── apply_gravity_batch_avx2 — AVX2 f32, Linear, 8 tok/iter; 6.74 ms@1M (S4b ✅)
   └── apply_gravity_batch_chunked + L2_CHUNK_TOKENS — L2-cache-friendly batch для N>1M (S3)
 
 Workstation V1.0 ✅ (2026-05-05):
@@ -150,7 +153,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
-| axiom-space | 110 | SpatialHashGrid, физика, apply_gravity_batch (SIMD-ready, feature "simd") |
+| axiom-space | 119 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
@@ -165,7 +168,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1183** | |
+| **Итого** | **1192** | |
 
 ---
 

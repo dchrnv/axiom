@@ -19,7 +19,7 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1183 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S5) завершены.
+**1192 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S5 + S4b) завершены.
 
 ---
 
@@ -31,7 +31,7 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
 
 ### Фаза S — Axiom Sentinel V1.1 ✅
 
-**Реализовано 2026-05-12.** S0–S5 завершены, S6 → DEFERRED.md.
+**Реализовано 2026-05-12.** S0–S5 + S4b завершены. Gravity 1M: 6.74 ms (цель 8–10 ms ✅). S6 → DEFERRED.md.
 
 ---
 
