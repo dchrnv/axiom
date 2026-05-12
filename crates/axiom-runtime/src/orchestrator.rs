@@ -25,7 +25,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
     // автоматически деградирует до последовательного без накладных расходов.
     //
     // Split borrow: engine.ashti (&mut) и engine.thread_pool (&) — разные поля, ОК.
-    let pool = &engine.thread_pool;
+    let pool = engine.thread_pool.as_ref();
     let mut result = engine.ashti.process_parallel(token, pool);
 
     // Шаг 3 (fast path): Guardian проверяет рефлекс если GUARDIAN_CHECK_REQUIRED бит установлен

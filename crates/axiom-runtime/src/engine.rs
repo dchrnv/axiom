@@ -27,7 +27,7 @@ use axiom_ucl::{
     SpawnDomainPayload, UclCommand, UclResult, UnfoldFramePayload,
 };
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// Имя домена по domain_id (используется в диагностике и broadcast-типах).
 pub fn domain_name(id: u16) -> &'static str {
@@ -161,8 +161,8 @@ pub struct AxiomEngine {
     /// Минимум 1.
     pub worker_count: usize,
     /// Rayon ThreadPool для параллельных операций (фазы 2, 3 Sentinel).
-    /// Размер пула = max(1, worker_count - 1).
-    pub thread_pool: rayon::ThreadPool,
+    /// Размер пула = max(1, worker_count - 1). Разделяется через Arc (S0).
+    pub thread_pool: Arc<rayon::ThreadPool>,
     /// Over-Domain компоненты (Guardians + Weavers).
     /// Создаются при boot после GUARDIAN, хранятся как trait objects.
     /// Конкретные Weavers (FrameWeaver) также хранятся по значению для weaver-specific API.
@@ -216,7 +216,7 @@ impl AxiomEngine {
             tick_schedule: TickSchedule::default(),
             guardian_config: GuardianConfig::default(),
             worker_count,
-            thread_pool: build_thread_pool(worker_count),
+            thread_pool: get_shared_pool(worker_count),
             over_domain_components: Vec::new(),
             frame_weaver: FrameWeaver::with_default_config(),
             dream_phase_state: DreamPhaseState::default(),
@@ -271,6 +271,19 @@ impl AxiomEngine {
     /// true — если в буфере прерывания есть Critical-команды.
     pub fn has_critical_pending(&self) -> bool {
         !self.dream_priority_buffer.is_empty()
+    }
+
+    /// Прямая запись токена в домен, минуя UCL-парсинг (~20 ns vs ~35 ns).
+    ///
+    /// Горячий путь для сенсорных данных: нет Guardian-валидации, нет десериализации.
+    /// Вызывать только для доверенного ввода (сенсоры, внутренние компоненты).
+    pub fn inject_token_direct(
+        &mut self,
+        domain_id: u16,
+        token: Token,
+    ) -> Result<usize, axiom_domain::CapacityExceeded> {
+        self.had_intake_this_tick = true;
+        self.ashti.inject_token(domain_id, token)
     }
 
     // ── DREAM Phase helpers ───────────────────────────────────────────────────
@@ -1471,6 +1484,16 @@ impl Default for AxiomEngine {
 }
 
 // --- Утилиты ---
+
+/// Глобальный пул потоков (S0): создаётся один раз при первом вызове `AxiomEngine::try_new`.
+/// Устраняет ~567 µs overhead построения пула при каждом создании Engine (важно для бенчей).
+static SHARED_POOL: OnceLock<Arc<rayon::ThreadPool>> = OnceLock::new();
+
+fn get_shared_pool(worker_count: usize) -> Arc<rayon::ThreadPool> {
+    SHARED_POOL
+        .get_or_init(|| Arc::new(build_thread_pool(worker_count)))
+        .clone()
+}
 
 /// Создать rayon::ThreadPool с `max(1, worker_count - 1)` потоков.
 ///
