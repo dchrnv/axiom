@@ -5,7 +5,10 @@
 // Целочисленная пространственная модель с детерминистичной физикой
 
 pub mod simd;
-pub use simd::{apply_accelerations_to_velocities, apply_gravity_batch, GravityBatchResult};
+pub use simd::{
+    apply_accelerations_to_velocities, apply_gravity_batch, apply_gravity_batch_chunked,
+    GravityBatchResult, L2_CHUNK_TOKENS,
+};
 
 use serde::{Deserialize, Serialize};
 

@@ -11,6 +11,10 @@
 
 use crate::{compute_gravity, GravityModel};
 
+/// Размер чанка для L2-cache-friendly batch (512 KB / 8 bytes per token = 65536).
+/// При N > 1M токенов chunked-вариант снижает cache-miss, не меняя результат.
+pub const L2_CHUNK_TOKENS: usize = 65536;
+
 /// Результат batch-вычисления: ускорение для каждого токена.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GravityBatchResult {
@@ -57,6 +61,38 @@ pub fn apply_gravity_batch(
         accelerations.push((ax, ay, az));
     }
 
+    GravityBatchResult { accelerations }
+}
+
+/// Chunked-версия apply_gravity_batch: обрабатывает входные срезы окнами по L2_CHUNK_TOKENS.
+///
+/// Для N ≤ L2_CHUNK_TOKENS — делегирует напрямую в apply_gravity_batch без overhead.
+/// Для N > L2_CHUNK_TOKENS — итерирует чанками, удерживая рабочее множество в L2.
+/// Результат идентичен apply_gravity_batch.
+pub fn apply_gravity_batch_chunked(
+    positions: &[[i16; 3]],
+    masses: &[u16],
+    gravity_scale_shift: u32,
+    model: GravityModel,
+) -> GravityBatchResult {
+    assert_eq!(positions.len(), masses.len());
+    if positions.len() <= L2_CHUNK_TOKENS {
+        return apply_gravity_batch(positions, masses, gravity_scale_shift, model);
+    }
+    let n = positions.len();
+    let mut accelerations = Vec::with_capacity(n);
+    let mut start = 0;
+    while start < n {
+        let end = (start + L2_CHUNK_TOKENS).min(n);
+        let chunk = apply_gravity_batch(
+            &positions[start..end],
+            &masses[start..end],
+            gravity_scale_shift,
+            model,
+        );
+        accelerations.extend(chunk.accelerations);
+        start = end;
+    }
     GravityBatchResult { accelerations }
 }
 
