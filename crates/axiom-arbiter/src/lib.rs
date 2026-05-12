@@ -310,7 +310,7 @@ impl Arbiter {
             let reflex_token = skill.pattern;
             self.skillset.record_activation(skill_idx);
 
-            let ashti_results = self.route_to_ashti(token, None);
+            let ashti_results = self.route_to_ashti(token, None, 8);
             let consolidated = self.route_to_maya(ashti_results.clone());
 
             self.pending_comparisons.insert(
@@ -356,7 +356,7 @@ impl Arbiter {
             None
         };
 
-        let ashti_results = self.route_to_ashti(token, hint);
+        let ashti_results = self.route_to_ashti(token, hint, 8);
 
         // 4. Консолидация через MAYA с confidence + multi-pass (Cognitive Depth 13A)
         let (max_passes, min_coherence_f) = self.maya_multipass_params();
@@ -371,7 +371,7 @@ impl Arbiter {
                 if let Some(ref cons) = consolidated {
                     cur_pat.temperature = cur_pat.temperature.saturating_add(cons.temperature / 2);
                 }
-                let extra_ashti = self.route_to_ashti(cur_pat, None);
+                let extra_ashti = self.route_to_ashti(cur_pat, None, 8);
                 let (extra_cons, extra_conf) =
                     self.route_to_maya_with_confidence(extra_ashti.clone());
                 if extra_conf > confidence {
@@ -419,11 +419,11 @@ impl Arbiter {
         }
     }
 
-    /// Маршрутизация через все ASHTI 1-8 домены
-    fn route_to_ashti(&self, token: Token, hint: Option<&ExperienceTrace>) -> Vec<Token> {
+    /// Маршрутизация через ASHTI домены 1..=max_role (S5: layer priority gate).
+    fn route_to_ashti(&self, token: Token, hint: Option<&ExperienceTrace>, max_role: u8) -> Vec<Token> {
         let mut results = Vec::new();
 
-        for role in 1..=8 {
+        for role in 1..=(max_role.min(8) as usize) {
             if let Some(domain_id) = self.registry.ashti[role - 1] {
                 if let Some(domain) = self.domains.get(&domain_id) {
                     let result = AshtiProcessor::process_token(&token, domain, hint);
@@ -433,6 +433,60 @@ impl Arbiter {
         }
 
         results
+    }
+
+    /// Маршрутизация с ограниченным набором ролей (S5: TickBudget layer priority).
+    ///
+    /// Используется когда бюджет тика > 80% — пропускаем роли 4–8, выполняем 1–3.
+    /// Без resonance search (уже выполнен caller-ом). Без multi-pass.
+    pub fn route_token_limited(
+        &mut self,
+        token: Token,
+        pool: Option<&rayon::ThreadPool>,
+        max_role: u8,
+    ) -> RoutingResult {
+        let event_id = self.com.next_event_id(9);
+
+        let resonance = match pool {
+            Some(p) => self.experience.resonance_search_parallel(&token, p),
+            None => self.experience.resonance_search(&token),
+        };
+
+        let reflex = if resonance.level == ResonanceLevel::Reflex {
+            resonance.trace.as_ref().map(|t| t.pattern)
+        } else {
+            None
+        };
+        let hint = if resonance.level == ResonanceLevel::Association {
+            resonance.trace.as_ref()
+        } else {
+            None
+        };
+
+        let ashti_results = self.route_to_ashti(token, hint, max_role);
+        let (consolidated, confidence) = self.route_to_maya_with_confidence(ashti_results.clone());
+
+        self.pending_comparisons.insert(
+            event_id,
+            PendingComparison {
+                input_pattern: token,
+                reflex_prediction: reflex,
+                ashti_results: ashti_results.clone(),
+                consolidated_result: consolidated,
+                created_at: event_id,
+                trace_index: None,
+            },
+        );
+
+        RoutingResult {
+            event_id,
+            reflex,
+            slow_path: ashti_results,
+            consolidated,
+            routed_events: vec![event_id],
+            confidence,
+            passes: 1,
+        }
     }
 
     /// Консолидация результатов ASHTI через MAYA (без confidence)
@@ -511,7 +565,7 @@ impl Arbiter {
         for pass in 0..max_passes {
             passes = pass + 1;
             let hint_this_pass = if pass == 0 { hint } else { None };
-            let ashti_results = self.route_to_ashti(current_pattern, hint_this_pass);
+            let ashti_results = self.route_to_ashti(current_pattern, hint_this_pass, 8);
             let (consolidated, confidence) =
                 self.route_to_maya_with_confidence(ashti_results.clone());
 

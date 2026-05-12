@@ -115,6 +115,18 @@ impl AshtiCore {
         self.arbiter.route_token_parallel(token, 0, pool)
     }
 
+    /// Routing с ограниченным набором ролей (S5 TickBudget layer priority).
+    ///
+    /// `max_role` = 3 → только EXECUTION/SHADOW/CODEX.
+    pub fn process_parallel_limited(
+        &mut self,
+        token: Token,
+        pool: &rayon::ThreadPool,
+        max_role: u8,
+    ) -> RoutingResult {
+        self.arbiter.route_token_limited(token, Some(pool), max_role)
+    }
+
     /// Применить обратную связь после завершения сравнения.
     ///
     /// Усиляет или ослабляет след в Experience в зависимости от совпадения

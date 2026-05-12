@@ -115,6 +115,12 @@ pub struct TickSchedule {
     /// Порог давления памяти: при превышении — немедленный horizon GC минуя интервал (S2).
     /// 0 = отключено. Default: 1_932_735_283 (1.8 GiB).
     pub memory_pressure_threshold_bytes: u64,
+    /// Включить приоритет семантических слоёв (S5). Default: false (обратная совместимость).
+    /// При true: когда budget_used_fraction > 0.8, роли 4–8 пропускаются.
+    pub enable_layer_priority: bool,
+    /// Целевая длительность тика в наносекундах для TickBudget (S5).
+    /// Default: 1_000_000 (1 ms = 1000 Hz max rate).
+    pub target_tick_ns: u64,
 }
 
 impl Default for TickSchedule {
@@ -132,6 +138,8 @@ impl Default for TickSchedule {
             weaver_scan_intervals: HashMap::new(),
             weaver_promotion_intervals: HashMap::new(),
             memory_pressure_threshold_bytes: 1_932_735_283,
+            enable_layer_priority: false,
+            target_tick_ns: 1_000_000,
         }
     }
 }
@@ -195,6 +203,8 @@ pub struct AxiomEngine {
     /// true — в этом тике был внешний ввод (InjectToken через process_and_observe).
     /// Сбрасывается в начале каждого handle_tick_forward.
     pub(crate) had_intake_this_tick: bool,
+    /// Момент начала текущего тика для TickBudget (S5).
+    pub(crate) tick_budget_start: std::time::Instant,
 }
 
 impl AxiomEngine {
@@ -233,6 +243,7 @@ impl AxiomEngine {
             falling_asleep_trigger: None,
             falling_asleep_fatigue: 0,
             had_intake_this_tick: false,
+            tick_budget_start: std::time::Instant::now(),
         })
     }
 
@@ -270,6 +281,28 @@ impl AxiomEngine {
     /// true — если в текущем тике был внешний ввод (InjectToken через process_and_observe).
     pub fn had_intake_this_tick(&self) -> bool {
         self.had_intake_this_tick
+    }
+
+    /// Доля использованного бюджета текущего тика (S5).
+    /// 0.0 = только начали, 1.0 = целевое время истекло.
+    pub fn budget_used_fraction(&self) -> f32 {
+        let target = self.tick_schedule.target_tick_ns;
+        if target == 0 {
+            return 0.0;
+        }
+        let elapsed = self.tick_budget_start.elapsed().as_nanos() as f64;
+        (elapsed / target as f64).min(1.0) as f32
+    }
+
+    /// Максимальная роль для импульсов в текущем тике (S5 layer priority gate).
+    /// Возвращает 3 если бюджет > 80% и gate включён, иначе 8 (все роли).
+    #[inline]
+    fn layer_priority_max_role(&self) -> u8 {
+        if self.tick_schedule.enable_layer_priority && self.budget_used_fraction() > 0.8 {
+            3
+        } else {
+            8
+        }
     }
 
     /// true — если в буфере прерывания есть Critical-команды.
@@ -1004,6 +1037,9 @@ impl AxiomEngine {
         let t = self.tick_count;
         let s = self.tick_schedule.clone();
 
+        // Сброс бюджета тика (S5: TickBudget)
+        self.tick_budget_start = std::time::Instant::now();
+
         // Hot path: физика всех 11 доменов каждый тик
         let events = self.ashti.tick();
         let count = events.len() as u16;
@@ -1014,7 +1050,12 @@ impl AxiomEngine {
             let impulses = self.ashti.arbiter_heartbeat_pulse(t, true);
             for mut token in impulses {
                 token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
-                let _ = orchestrator::route_token(self, token);
+                let max_role = self.layer_priority_max_role();
+                if max_role < 8 {
+                    let _ = orchestrator::route_token_limited(self, token, max_role);
+                } else {
+                    let _ = orchestrator::route_token(self, token);
+                }
             }
         }
 
@@ -1026,7 +1067,12 @@ impl AxiomEngine {
             for impulse in goals {
                 let mut token = impulse.pattern;
                 token.type_flags |= axiom_core::TOKEN_FLAG_IMPULSE;
-                let _ = orchestrator::route_token(self, token);
+                let max_role = self.layer_priority_max_role();
+                if max_role < 8 {
+                    let _ = orchestrator::route_token_limited(self, token, max_role);
+                } else {
+                    let _ = orchestrator::route_token(self, token);
+                }
             }
         }
 
