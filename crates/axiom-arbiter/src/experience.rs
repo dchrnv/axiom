@@ -69,6 +69,8 @@ pub struct Experience {
     /// Число следов, прошедших хэш-фильтр при последнем resonance_search (диагностика).
     /// Cell позволяет обновлять поле через &self не нарушая API.
     pub last_traces_matched: Cell<u32>,
+    /// Монотонный счётчик добавленных следов (S2). Используется для триггера экспорта.
+    traces_seen_total: u64,
 }
 
 impl Experience {
@@ -82,6 +84,7 @@ impl Experience {
             index: AssociativeIndex::new(4), // shift=4: ячейки 16 квантов
             tension_traces: Vec::new(),
             last_traces_matched: Cell::new(0),
+            traces_seen_total: 0,
         }
     }
 
@@ -294,8 +297,25 @@ impl Experience {
         }
     }
 
+    /// Установить максимальное число следов (S2).
+    pub fn set_max_traces(&mut self, n: usize) {
+        self.max_traces = n.max(1);
+    }
+
+    /// true если `traces_seen_total` кратен 5000 — сигнал запустить экспорт навыков (S2).
+    pub fn should_trigger_export(&self) -> bool {
+        self.traces_seen_total > 0 && self.traces_seen_total % 5000 == 0
+    }
+
+    /// Оценка потребления памяти трейсами (~нижняя граница, без heap-аллокаций inside Token).
+    pub fn estimate_memory_bytes(&self) -> usize {
+        self.traces.len() * std::mem::size_of::<ExperienceTrace>()
+            + self.tension_traces.len() * std::mem::size_of::<TensionTrace>()
+    }
+
     /// Добавить след опыта. Если лимит достигнут, вытесняет след с наименьшим весом.
     pub fn add_trace(&mut self, pattern: Token, weight: f32, created_at: u64) {
+        self.traces_seen_total += 1;
         if self.traces.len() >= self.max_traces {
             // Evict lowest weight trace — удаляем из индекса ДО удаления из Vec
             if let Some(min_idx) = self

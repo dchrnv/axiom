@@ -112,6 +112,9 @@ pub struct TickSchedule {
     /// Интервалы проверки промоции Weavers (WeaverId → тики между проверками).
     /// Promotion check реже, чем scan (тяжёлая операция с вовлечением CODEX).
     pub weaver_promotion_intervals: HashMap<WeaverId, u32>,
+    /// Порог давления памяти: при превышении — немедленный horizon GC минуя интервал (S2).
+    /// 0 = отключено. Default: 1_932_735_283 (1.8 GiB).
+    pub memory_pressure_threshold_bytes: u64,
 }
 
 impl Default for TickSchedule {
@@ -128,6 +131,7 @@ impl Default for TickSchedule {
             adaptive_tick: AdaptiveTickRate::default(),
             weaver_scan_intervals: HashMap::new(),
             weaver_promotion_intervals: HashMap::new(),
+            memory_pressure_threshold_bytes: 1_932_735_283,
         }
     }
 }
@@ -1034,6 +1038,19 @@ impl AxiomEngine {
         // Cold path: адаптация порогов
         if s.adaptation_interval > 0 && t.is_multiple_of(s.adaptation_interval as u64) {
             let _ = self.run_adaptation();
+        }
+
+        // Cold path: memory pressure GC — срабатывает немедленно, минуя horizon_gc_interval (S2)
+        let pressure = s.memory_pressure_threshold_bytes;
+        if pressure > 0
+            && self.ashti.experience().estimate_memory_bytes() as u64 > pressure
+        {
+            let _ = self.run_horizon_gc();
+        }
+
+        // Cold path: экспорт навыков при накоплении опыта (S2)
+        if self.ashti.experience().should_trigger_export() {
+            let _ = self.export_skills();
         }
 
         // Cold path: horizon GC
