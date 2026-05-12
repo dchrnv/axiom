@@ -1,6 +1,8 @@
-// Этап 12B — SIMD batch-обработка гравитации
+// Этап 12B — SIMD batch-обработка гравитации; SENT-S4b — AVX2
 
-use axiom_space::{apply_accelerations_to_velocities, apply_gravity_batch, GravityModel};
+use axiom_space::{
+    apply_accelerations_to_velocities, apply_gravity_batch, apply_gravity_batch_avx2, GravityModel,
+};
 
 // ─── apply_gravity_batch ──────────────────────────────────────────────────────
 
@@ -105,4 +107,118 @@ fn test_apply_accelerations_zero() {
 #[should_panic]
 fn test_batch_length_mismatch_panics() {
     apply_gravity_batch(&[[0i16, 0, 0]], &[], 24, GravityModel::Linear);
+}
+
+// ─── apply_gravity_batch_avx2 ─────────────────────────────────────────────────
+
+#[test]
+fn test_avx2_empty() {
+    let result = apply_gravity_batch_avx2(&[], &[], 8, GravityModel::Linear);
+    assert!(result.accelerations.is_empty());
+}
+
+#[test]
+fn test_avx2_shift24_all_zeros() {
+    // Для shift=24 и i16 позиций force всегда 0 — ранний выход.
+    let positions: Vec<[i16; 3]> = (0..16).map(|i| [(i * 100) as i16, 0, 0]).collect();
+    let masses = vec![1000u16; 16];
+    let result = apply_gravity_batch_avx2(&positions, &masses, 24, GravityModel::Linear);
+    assert!(result.accelerations.iter().all(|&a| a == (0, 0, 0)));
+}
+
+#[test]
+fn test_avx2_at_anchor_gives_zero() {
+    let positions = vec![[0i16, 0, 0]; 8];
+    let masses = vec![500u16; 8];
+    let result = apply_gravity_batch_avx2(&positions, &masses, 8, GravityModel::Linear);
+    assert!(result.accelerations.iter().all(|&a| a == (0, 0, 0)));
+}
+
+#[test]
+fn test_avx2_direction_correct() {
+    // Токен правее якоря → ax < 0 (притяжение влево)
+    let positions = vec![[256i16, 0, 0]; 8];
+    let masses = vec![1000u16; 8];
+    let result = apply_gravity_batch_avx2(&positions, &masses, 8, GravityModel::Linear);
+    // dist=256, force=256>>8=1, ax = 1 * (-256) / 256 = -1
+    for &(ax, ay, az) in &result.accelerations {
+        assert_eq!(ax, -1, "ax must be -1");
+        assert_eq!(ay, 0);
+        assert_eq!(az, 0);
+    }
+}
+
+#[test]
+fn test_avx2_matches_scalar_shift8() {
+    // Для shift=8 и этих позиций результат AVX2 совпадает со scalar (±1 допускается).
+    let positions: Vec<[i16; 3]> = [
+        [256i16, 0, 0],   // dist=256, force=1, ax=-1
+        [512, 0, 0],      // dist=512, force=2, ax=-2
+        [1000, 0, 0],     // dist=1000, force=3, ax=-3
+        [-256, 0, 0],     // ax=+1
+        [-512, 0, 0],     // ax=+2
+        [0, 256, 0],      // ay=-1
+        [0, 0, 512],      // az=-2
+        [300, 400, 0],    // dist=500, force=1, ax=1*(-300)/500=-0→0 ay=1*(-400)/500=-0→0
+        [0, 0, 0],        // anchor
+        [1000, 0, 100],   // dist≈1005, force=3, ax≈-3
+        [32000, 32000, 0],// near max i16
+        [100, 200, 300],  // mixed
+        [256, 256, 0],    // dist≈362, force=1, ax=-1*256/362=0
+        [512, 512, 0],    // dist≈724, force=2, ax=-2*512/724=-1
+        [-1000, 500, 200],
+        [0, 0, 1],
+    ]
+    .to_vec();
+    let masses = vec![1000u16; 16];
+    let avx2 = apply_gravity_batch_avx2(&positions, &masses, 8, GravityModel::Linear);
+    let scalar = apply_gravity_batch(&positions, &masses, 8, GravityModel::Linear);
+    assert_eq!(avx2.accelerations.len(), scalar.accelerations.len());
+    for (i, (&a, &s)) in avx2.accelerations.iter().zip(scalar.accelerations.iter()).enumerate() {
+        let dx = (a.0 as i32 - s.0 as i32).abs();
+        let dy = (a.1 as i32 - s.1 as i32).abs();
+        let dz = (a.2 as i32 - s.2 as i32).abs();
+        assert!(
+            dx <= 1 && dy <= 1 && dz <= 1,
+            "index {i}: avx2={a:?} scalar={s:?}"
+        );
+    }
+}
+
+#[test]
+fn test_avx2_inverse_square_falls_back() {
+    // InverseSquare → делегирует в scalar, результат идентичен.
+    let positions: Vec<[i16; 3]> = (0..8).map(|i| [0i16, (i * 100 + 100) as i16, 0]).collect();
+    let masses = vec![2000u16; 8];
+    let avx2 = apply_gravity_batch_avx2(&positions, &masses, 12, GravityModel::InverseSquare);
+    let scalar = apply_gravity_batch(&positions, &masses, 12, GravityModel::InverseSquare);
+    assert_eq!(avx2.accelerations, scalar.accelerations);
+}
+
+#[test]
+fn test_avx2_large_n_divisible_by_8() {
+    let n = 1024usize;
+    let positions: Vec<[i16; 3]> = (0..n)
+        .map(|i| [((i % 500) as i16) * 60, ((i % 300) as i16) * 80, 0])
+        .collect();
+    let masses = vec![500u16; n];
+    let result = apply_gravity_batch_avx2(&positions, &masses, 8, GravityModel::Linear);
+    assert_eq!(result.accelerations.len(), n);
+}
+
+#[test]
+fn test_avx2_n_not_multiple_of_8() {
+    // Проверка remainder path (последние токены через scalar).
+    let n = 19usize;
+    let positions: Vec<[i16; 3]> = (0..n).map(|i| [(i as i16) * 200, 0, 0]).collect();
+    let masses = vec![1000u16; n];
+    let avx2 = apply_gravity_batch_avx2(&positions, &masses, 8, GravityModel::Linear);
+    let scalar = apply_gravity_batch(&positions, &masses, 8, GravityModel::Linear);
+    assert_eq!(avx2.accelerations.len(), n);
+    for (i, (&a, &s)) in avx2.accelerations.iter().zip(scalar.accelerations.iter()).enumerate() {
+        let dx = (a.0 as i32 - s.0 as i32).abs();
+        let dy = (a.1 as i32 - s.1 as i32).abs();
+        let dz = (a.2 as i32 - s.2 as i32).abs();
+        assert!(dx <= 1 && dy <= 1 && dz <= 1, "index {i}: avx2={a:?} scalar={s:?}");
+    }
 }

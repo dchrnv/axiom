@@ -7,7 +7,7 @@
 
 use axiom_arbiter::ExperienceModule;
 use axiom_core::Token;
-use axiom_space::{apply_gravity_batch, GravityModel, SpatialHashGrid};
+use axiom_space::{apply_gravity_batch, apply_gravity_batch_avx2, GravityModel, SpatialHashGrid};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 
@@ -56,6 +56,32 @@ fn bench_gravity_stress(c: &mut Criterion) {
                     black_box(&positions),
                     black_box(&masses),
                     24,
+                    GravityModel::Linear,
+                ))
+            })
+        });
+    }
+    group.finish();
+}
+
+// ─── 1b. apply_gravity_batch_avx2: shift=8, 10K → 1M ────────────────────────
+// Реальная нагрузка: shift=8 даёт ненулевые силы, AVX2 path активен.
+
+fn bench_gravity_avx2_stress(c: &mut Criterion) {
+    let mut group = c.benchmark_group("stress/apply_gravity_batch_avx2");
+    group.measurement_time(Duration::from_secs(10));
+    group.sample_size(10);
+
+    for &n in &[10_000usize, 100_000, 1_000_000] {
+        let positions = make_positions(n);
+        let masses = make_masses(n);
+
+        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
+            b.iter(|| {
+                black_box(apply_gravity_batch_avx2(
+                    black_box(&positions),
+                    black_box(&masses),
+                    8,
                     GravityModel::Linear,
                 ))
             })
@@ -114,6 +140,7 @@ fn bench_resonance_stress(c: &mut Criterion) {
 criterion_group!(
     stress,
     bench_gravity_stress,
+    bench_gravity_avx2_stress,
     bench_grid_stress,
     bench_resonance_stress,
 );

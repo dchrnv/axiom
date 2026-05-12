@@ -6,8 +6,8 @@
 
 pub mod simd;
 pub use simd::{
-    apply_accelerations_to_velocities, apply_gravity_batch, apply_gravity_batch_chunked,
-    GravityBatchResult, L2_CHUNK_TOKENS,
+    apply_accelerations_to_velocities, apply_gravity_batch, apply_gravity_batch_avx2,
+    apply_gravity_batch_chunked, GravityBatchResult, L2_CHUNK_TOKENS,
 };
 
 use serde::{Deserialize, Serialize};

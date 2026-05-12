@@ -9,7 +9,7 @@ license.workspace = true
 criterion = { version = "0.5", features = ["html_reports"] }
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
-axiom-space = { path = "../axiom-space" }
+axiom-space = { path = "../axiom-space", features = ["simd"] }
 axiom-shell = { path = "../axiom-shell" }
 axiom-domain = { path = "../axiom-domain" }
 axiom-arbiter = { path = "../axiom-arbiter" }
