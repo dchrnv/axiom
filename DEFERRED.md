@@ -1,7 +1,31 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 41.0
-**Обновлён:** 2026-05-07
+**Версия:** 42.0
+**Обновлён:** 2026-05-12
+
+---
+
+## Axiom Sentinel
+
+### SENT-S6 — Speculative Layer (после бенчей S0–S5)
+
+**Где:** `crates/axiom-space/src/lib.rs`, `crates/axiom-domain/src/domain_state.rs`, `crates/axiom-runtime/src/engine.rs`
+
+Пока Arbiter обрабатывает тик N, свободные воркеры предвычисляют 2–3 вероятных состояния `SpatialHashGrid` для тика N+1. Zero-cost switch при совпадении (~9 µs vs ~40 µs полный rebuild).
+
+**Что нужно:** отделить `SpatialHashGrid` от `DomainState` как самостоятельную speculatable единицу, добавить `SpatialHashGrid::snapshot/restore_from_grid_snapshot`. Высокая сложность — затрагивает ownership ~200+ тестов.
+
+**Когда:** после верификации бенчей S0–S5 и подтверждения что auto-vectorization не достигает цели 8–10 ms gravity 1M.
+
+---
+
+### SENT-S4b — Явные AVX2 intrinsics (если нужно)
+
+**Где:** `crates/axiom-space/src/simd.rs`
+
+S4 включил `target-cpu=native` для авто-векторизации. Если бенч `apply_gravity_batch` 1M токенов не достигает 8–10 ms — шаг 2: явные AVX2 intrinsics в `#[cfg(feature = "simd")]` через `std::arch::x86_64`. Scalar fallback остаётся.
+
+**Когда:** после запуска `cargo bench --bench stress_bench` и сравнения с целью.
 
 ---
 

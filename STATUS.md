@@ -1,6 +1,6 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-06
+**Обновлено:** 2026-05-12
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
@@ -77,9 +77,20 @@ axiom-agent:
 axiom-runtime:
   ├── process_and_observe() — обёртка process_command() с диагностикой (ProcessingResult)
   ├── Orchestrator — параллельная маршрутизация + Guardian check + apply_feedback
+  │   route_token_limited (S5): routing через роли 1–N вместо 1–8
   ├── AdaptiveTickRate — Variable Tick Rate (min_hz=60, max_hz=1000, cooldown=50)
   ├── domain_name(id: u16) — pub fn, экспортируется без feature-gate
-  ├── Over-Domain Layer (over_domain/): OverDomainComponent, Weaver traits; FrameWeaver V1.1
+  ├── Axiom Sentinel V1.1 ✅ (2026-05-12):
+  │   S0: thread_pool → Arc<rayon::ThreadPool> в global OnceLock; AxiomEngine::new < 800 µs
+  │   S1: inject_token_direct — bypass UCL-парсинга; ~20 ns vs ~35 ns для сенсорных данных
+  │   S2: Experience::set_max_traces / should_trigger_export (×5000) / estimate_memory_bytes;
+  │       TickSchedule::memory_pressure_threshold_bytes (1.8 GiB) → немедленный horizon GC
+  │   S3: apply_gravity_batch_chunked + L2_CHUNK_TOKENS=65536 (512 KB / 8 B per token)
+  │   S4: .cargo/config.toml target-cpu=native → авто-векторизация AVX2 в release/bench
+  │   S5: TickBudget (tick_budget_start / budget_used_fraction); enable_layer_priority gate;
+  │       при budget>80% роли 4–8 пропускаются (process_parallel_limited / route_token_limited)
+  ├── TickSchedule: enable_layer_priority, target_tick_ns, memory_pressure_threshold_bytes
+  ├── Over-Domain Layer (over_domain/): OverDomainComponent, Weaver traits; FrameWeaver V1.3
   │   BondTokens + ReinforceFrame + InjectFrameAnchor + UnfoldFrame handlers в engine.rs
   │   restore_frame_from_anchor (pub fn, over_domain::weavers::frame)
   └── Broadcast types (--features adapters): BroadcastSnapshot, DomainSummary,
@@ -100,7 +111,8 @@ axiom-persist (D-04):
   └── exchange: export/import traces+skills (bincode), GUARDIAN-валидация
 
 axiom-space:
-  └── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
+  ├── apply_gravity_batch — batch-физика, авто-векторизация (feature "simd")
+  └── apply_gravity_batch_chunked + L2_CHUNK_TOKENS — L2-cache-friendly batch для N>1M (S3)
 
 Workstation V1.0 ✅ (2026-05-05):
   axiom-protocol — типы Engine ↔ Workstation: EngineCommand(15 incl. RunBench), EngineEvent(14),

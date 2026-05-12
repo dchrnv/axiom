@@ -65,3 +65,29 @@
 | **Gravity Batch (1M токенов)** | 25 ms                                       | **~8-10 ms**                  | AVX2 + Chunks                               |
 | **Resonance Search (10K)**            | 12 µs                                      | **~3-5 µs**                  | Распределение по ядрам  |
 | **Полный цикл мысли**  | ~40 µs                                     | **20 актов/тик**      | Пакетная обработка         |
+
+---
+
+## 6. Статус реализации (2026-05-12)
+
+### Реализовано в V1.1 ✅
+
+| Этап | Что сделано | Файлы |
+|---|---|---|
+| **S0** | `Arc<rayon::ThreadPool>` в `static SHARED_POOL: OnceLock` — pool строится один раз | `engine.rs` |
+| **S1** | `inject_token_direct(domain_id, token)` — bypass UCL (~20 ns) | `engine.rs` |
+| **S2** | `traces_seen_total`, `should_trigger_export()`, `estimate_memory_bytes()`, `set_max_traces()`; `memory_pressure_threshold_bytes` в TickSchedule | `experience.rs`, `engine.rs` |
+| **S3** | `L2_CHUNK_TOKENS=65536`, `apply_gravity_batch_chunked` | `simd.rs`, `lib.rs` |
+| **S4** | `.cargo/config.toml` `target-cpu=native` → авто-векторизация AVX2 | `.cargo/config.toml` |
+| **S5** | `TickBudget` (`tick_budget_start`, `budget_used_fraction()`), `enable_layer_priority`, `route_token_limited`, `process_parallel_limited`, `route_token_limited` в Arbiter | `engine.rs`, `orchestrator.rs`, `lib.rs`, `ashti_core.rs` |
+
+### Было реализовано ранее (V1.0, не входит в S0–S5)
+
+- **Hardware-Aware Topology** — `available_parallelism()`, worker pool, `thread_pool`
+- **resonance_search_parallel** — Phase 2 параллельный поиск через rayon
+- **AdaptiveTickRate** — Variable Tick Rate 60–1000 Hz
+
+### Отложено → DEFERRED.md
+
+- **S6 (Speculative Layer)** — предвычисление `SpatialHashGrid` для тика N+1. Высокая сложность, требует декомпозиции `DomainState`. После верификации бенчей.
+- **S4b (явные AVX2 intrinsics)** — если авто-векторизация не достигает цели 8–10 ms для gravity 1M.
