@@ -90,6 +90,7 @@
 | **S2** | `traces_seen_total`, `should_trigger_export()`, `estimate_memory_bytes()`, `set_max_traces()`; `memory_pressure_threshold_bytes` в TickSchedule | `experience.rs`, `engine.rs` |
 | **S3** | `L2_CHUNK_TOKENS=65536`, `apply_gravity_batch_chunked` | `simd.rs`, `lib.rs` |
 | **S4** | `.cargo/config.toml` `target-cpu=native` → авто-векторизация AVX2 | `.cargo/config.toml` |
+| **S4b** | `apply_gravity_batch_avx2` — явные AVX2 intrinsics (VSQRTPS + VDIVPS), 8 токенов/итерацию, Linear; **6.74 ms @ 1M** (цель 8–10 ms ✅) | `simd.rs`, `lib.rs` |
 | **S5** | `TickBudget` (`tick_budget_start`, `budget_used_fraction()`), `enable_layer_priority`, `route_token_limited`, `process_parallel_limited`, `route_token_limited` в Arbiter | `engine.rs`, `orchestrator.rs`, `lib.rs`, `ashti_core.rs` |
 
 ### Было реализовано ранее (V1.0, не входит в S0–S5)
@@ -101,4 +102,3 @@
 ### Отложено → DEFERRED.md
 
 - **S6 (Speculative Layer)** — предвычисление `SpatialHashGrid` для тика N+1. Высокая сложность, требует декомпозиции `DomainState`. После верификации бенчей.
-- **S4b (явные AVX2 intrinsics)** — если авто-векторизация не достигает цели 8–10 ms для gravity 1M.
