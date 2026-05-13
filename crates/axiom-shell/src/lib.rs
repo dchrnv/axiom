@@ -232,7 +232,10 @@ impl SemanticContributionTable {
     /// - 0x06: Temporal (Precedes, Follows, During...)
     /// - 0x07: Motor (Used_For, Performed_By, Requires_Action...)
     /// - 0x08: Syntactic (SUBJECT, PREDICATE, DIRECT_OBJECT... — FrameWeaver V1.1)
-    pub fn default_ashti_core() -> Self {
+    pub fn default_ashti_core() -> &'static Self {
+        use std::sync::OnceLock;
+        static TABLE: OnceLock<SemanticContributionTable> = OnceLock::new();
+        TABLE.get_or_init(|| {
         let mut table = Self::new();
 
         // 0x01: Structural - высокий Physical, немного Cognitive
@@ -270,6 +273,7 @@ impl SemanticContributionTable {
         );
 
         table
+        })
     }
 
     /// Загрузить таблицу вкладов из YAML файла

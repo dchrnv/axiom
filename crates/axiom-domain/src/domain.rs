@@ -50,7 +50,7 @@ pub struct Domain {
     pub shell_cache: axiom_shell::DomainShellCache,
 
     /// Semantic Contribution Table для Shell вычислений
-    pub semantic_table: axiom_shell::SemanticContributionTable,
+    pub semantic_table: &'static axiom_shell::SemanticContributionTable,
 }
 
 impl Domain {

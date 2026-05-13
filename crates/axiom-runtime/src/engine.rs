@@ -433,7 +433,7 @@ impl AxiomEngine {
     ) -> Option<crate::broadcast::DomainDetailSnapshot> {
         let idx = self.ashti.index_of(domain_id)?;
         let state = self.ashti.state(idx)?;
-        let table = self.ashti.domain(idx).map(|d| &d.semantic_table);
+        let table = self.ashti.domain(idx).map(|d| d.semantic_table);
         let tokens = state
             .tokens
             .iter()
