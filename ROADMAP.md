@@ -25,9 +25,11 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
 
 ## Фазы работы
 
-### Фаза A — axiom-node: Живая Workstation 🔑
+### Фаза A — axiom-node: Живая Workstation ✅
 
-**Главный приоритет.** Разблокирует BRD-TD-07, WS4-TD-03/04, BRD-TD-05, OBS-01.
+**Реализовано 2026-05-13.** A1–A6 завершены. axiom-node запускается,
+восстанавливает состояние с диска, принимает WebSocket-соединения на :9876,
+тикает 60 Hz, graceful shutdown с сохранением. BRD-TD-07 закрыт.
 
 Самодостаточный бинарный crate — живой Axiom без CLI. Собственный tick loop,
 полная инициализация модели, graceful shutdown.

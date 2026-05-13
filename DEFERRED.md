@@ -86,13 +86,11 @@
 
 ---
 
-### BRD-TD-07 — Engine tick-loop → BroadcastHandle интеграция
+### ~~BRD-TD-07~~ — Engine tick-loop → BroadcastHandle интеграция ✅ ЗАКРЫТ 2026-05-13
 
-**Где:** axiom-runtime (Engine), axiom-broadcasting (BroadcastHandle)
-
-Спека предписывала `broadcasting` feature в axiom-runtime, который зависит от axiom-broadcasting. Невозможно: axiom-broadcasting уже зависит от axiom-runtime → цикл зависимостей. Правильный подход: интеграция делается на уровне бинарного crate (будущий `axiom-node` или демо-бинарник) который зависит на оба crate и вызывает `handle.publish(...)` из хука тик-цикла. Engine к этому готов: `snapshot_for_broadcast()` уже экспортируется через `BroadcastSnapshot`.
-
-**Когда:** При добавлении `axiom-node` бинарника, который зависит на оба crate.
+Реализовано в `axiom-node/src/tick.rs`: tick loop вызывает `handle.publish` и
+`handle.update_snapshot` через `Arc<BroadcastHandle>`. Циклическая зависимость
+обошлась на уровне бинарного crate, как и предполагалось.
 
 ---
 
