@@ -79,13 +79,23 @@ pub async fn run(
             }
         }
 
-        // 2. Tick ядра
+        // 2. Speculative grids (S6) — параллельная предсборка до reconcile
+        {
+            let pool = engine.thread_pool.clone();
+            engine.ashti.prepare_speculative_grids(&pool);
+        }
+
+        // 3. Tick ядра
         let t0 = Instant::now();
         engine.process_command(&tick_cmd);
         last_tick_ns = t0.elapsed().as_nanos() as u64;
         let tick = engine.tick_count;
 
-        debug!("tick={tick} ns={last_tick_ns}");
+        debug!(
+            "tick={tick} ns={last_tick_ns} spec_hits={} spec_misses={}",
+            engine.ashti.speculative_stats().0,
+            engine.ashti.speculative_stats().1,
+        );
 
         // Адаптивный tick rate
         if cfg.adaptive_tick() {
