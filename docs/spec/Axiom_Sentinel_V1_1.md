@@ -2,7 +2,7 @@
 
 **Статус:** Актуальная спецификация (performance)
 **Версия:** 1.1.0
-**Дата:** 2026-05-12
+**Дата:** 2026-05-13
 **Заменяет:** Axiom Sentinel V1.0 (docs/architecture/)
 **Назначение:** Адаптивный когнитивный движок — аппаратная самодиагностика, параллелизм, бюджет тика, SIMD
 **Связанные спеки:** Arbiter_V2_1, Orchestrator_V1_1, Ashti_Core_V2_2, SPACE_V6_1
@@ -79,7 +79,7 @@
 
 ---
 
-## 6. Статус реализации (2026-05-12)
+## 6. Статус реализации (2026-05-13)
 
 ### Реализовано в V1.1 ✅
 
@@ -92,13 +92,10 @@
 | **S4** | `.cargo/config.toml` `target-cpu=native` → авто-векторизация AVX2 | `.cargo/config.toml` |
 | **S4b** | `apply_gravity_batch_avx2` — явные AVX2 intrinsics (VSQRTPS + VDIVPS), 8 токенов/итерацию, Linear; **6.74 ms @ 1M** (цель 8–10 ms ✅) | `simd.rs`, `lib.rs` |
 | **S5** | `TickBudget` (`tick_budget_start`, `budget_used_fraction()`), `enable_layer_priority`, `route_token_limited`, `process_parallel_limited`, `route_token_limited` в Arbiter | `engine.rs`, `orchestrator.rs`, `lib.rs`, `ashti_core.rs` |
+| **S6** | `prepare_speculative_grids(pool)` — параллельная pre-build `SpatialHashGrid` через rayon; `speculative_grids: Vec<Option<SpatialHashGrid>>`, hits/misses; `reconcile_all()` использует pre-built грид (~9 µs swap vs ~40 µs rebuild) | `ashti_core.rs` |
 
-### Было реализовано ранее (V1.0, не входит в S0–S5)
+### Было реализовано ранее (V1.0, не входит в S0–S6)
 
 - **Hardware-Aware Topology** — `available_parallelism()`, worker pool, `thread_pool`
 - **resonance_search_parallel** — Phase 2 параллельный поиск через rayon
 - **AdaptiveTickRate** — Variable Tick Rate 60–1000 Hz
-
-### Отложено → DEFERRED.md
-
-- **S6 (Speculative Layer)** — предвычисление `SpatialHashGrid` для тика N+1. Высокая сложность, требует декомпозиции `DomainState`. После верификации бенчей.

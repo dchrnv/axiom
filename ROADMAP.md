@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 49.0  
-**Дата:** 2026-05-12
+**Версия:** 50.0  
+**Дата:** 2026-05-13
 
 ---
 
@@ -31,7 +31,7 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
 
 ### Фаза S — Axiom Sentinel V1.1 ✅
 
-**Реализовано 2026-05-12.** S0–S5 + S4b завершены. Gravity 1M: 6.74 ms (цель 8–10 ms ✅). S6 → DEFERRED.md.
+**Реализовано 2026-05-13.** S0–S5 + S4b + S6 завершены. Gravity 1M: 6.74 ms (цель 8–10 ms ✅). Speculative Layer реализован.
 
 ---
 

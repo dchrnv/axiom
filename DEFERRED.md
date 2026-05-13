@@ -1,21 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 43.0
-**Обновлён:** 2026-05-12
-
----
-
-## Axiom Sentinel
-
-### SENT-S6 — Speculative Layer (после бенчей S0–S5)
-
-**Где:** `crates/axiom-space/src/lib.rs`, `crates/axiom-domain/src/domain_state.rs`, `crates/axiom-runtime/src/engine.rs`
-
-Пока Arbiter обрабатывает тик N, свободные воркеры предвычисляют 2–3 вероятных состояния `SpatialHashGrid` для тика N+1. Zero-cost switch при совпадении (~9 µs vs ~40 µs полный rebuild).
-
-**Что нужно:** отделить `SpatialHashGrid` от `DomainState` как самостоятельную speculatable единицу, добавить `SpatialHashGrid::snapshot/restore_from_grid_snapshot`. Высокая сложность — затрагивает ownership ~200+ тестов.
-
-**Когда:** после закрытия SENT-S4b. Gravity 1M достигла цели (6.74 ms ✅), разблокировано.
+**Версия:** 44.0
+**Обновлён:** 2026-05-13
 
 ---
 

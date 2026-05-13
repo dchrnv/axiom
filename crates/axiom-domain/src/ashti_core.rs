@@ -14,6 +14,7 @@ use crate::{CausalHorizon, Domain, DomainState};
 use axiom_arbiter::{Arbiter, RoutingResult, COM};
 use axiom_config::DomainConfig;
 use axiom_core::{Event, Token};
+use axiom_space::SpatialHashGrid;
 use std::collections::HashMap;
 
 /// Один фрактальный уровень Ashti_Core: 11 доменов + маршрутизатор.
@@ -41,6 +42,12 @@ pub struct AshtiCore {
     level_id: u16,
     /// Текущий пульс (для handle_heartbeat)
     pulse: u64,
+    /// S6: Speculative Layer — предвычисленные гриды для reconcile_all
+    speculative_grids: Vec<Option<SpatialHashGrid>>,
+    /// S6: число успешных подмен грида (speculative hit)
+    speculative_hits: u64,
+    /// S6: число обычных перестроек (speculative miss)
+    speculative_misses: u64,
 }
 
 impl AshtiCore {
@@ -95,6 +102,9 @@ impl AshtiCore {
             arbiter,
             level_id,
             pulse: 0,
+            speculative_grids: vec![None; 11],
+            speculative_hits: 0,
+            speculative_misses: 0,
         }
     }
 
@@ -176,9 +186,67 @@ impl AshtiCore {
         self.arbiter.experience_mut()
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // S6: Speculative Layer
+    // ──────────────────────────────────────────────────────────────
+
+    /// S6: Предвычислить spatial grid для доменов, которым скоро нужен rebuild.
+    ///
+    /// Клонирует позиции токенов и параллельно перестраивает грид через `pool`.
+    /// Результаты хранятся до ближайшего `reconcile_all()`, где используются
+    /// вместо синхронного rebuild (~9 µs swap vs ~40 µs полный rebuild).
+    pub fn prepare_speculative_grids(&mut self, pool: &rayon::ThreadPool) {
+        use rayon::prelude::*;
+
+        let work: Vec<(usize, usize, Vec<(i16, i16, i16)>)> = (0..11)
+            .filter(|&i| self.domains[i].should_rebuild_spatial_grid())
+            .map(|i| {
+                let n = self.domains[i].active_tokens;
+                let positions: Vec<(i16, i16, i16)> = self.states[i]
+                    .tokens
+                    .iter()
+                    .take(n)
+                    .map(|t| (t.position[0], t.position[1], t.position[2]))
+                    .collect();
+                (i, n, positions)
+            })
+            .collect();
+
+        if work.is_empty() {
+            return;
+        }
+
+        let results: Vec<(usize, SpatialHashGrid)> = pool.install(|| {
+            work.into_par_iter()
+                .map(|(i, n, positions)| {
+                    let mut grid = SpatialHashGrid::new();
+                    grid.rebuild(n, |idx| {
+                        positions.get(idx).copied().unwrap_or((0, 0, 0))
+                    });
+                    (i, grid)
+                })
+                .collect()
+        });
+
+        for (i, grid) in results {
+            self.speculative_grids[i] = Some(grid);
+        }
+    }
+
+    /// S6: Статистика (hits, misses) — число раз, когда speculative grid был использован
+    /// vs. когда пришлось делать синхронный rebuild.
+    pub fn speculative_stats(&self) -> (u64, u64) {
+        (self.speculative_hits, self.speculative_misses)
+    }
+
     /// Доступ к Domain (физика поля) по его позиции (0–10).
     pub fn domain(&self, index: usize) -> Option<&Domain> {
         self.domains.get(index)
+    }
+
+    /// Mutable доступ к Domain по его позиции (0–10).
+    pub fn domain_mut(&mut self, index: usize) -> Option<&mut Domain> {
+        self.domains.get_mut(index)
     }
 
     /// Доступ к состоянию домена по его позиции (0–10).
@@ -455,10 +523,17 @@ impl AshtiCore {
         for i in 0..11 {
             let domain_id = self.domains[i].config.domain_id;
 
-            // 1. Spatial grid rebuild — клонируем токены чтобы избежать двойного заимствования
+            // 1. Spatial grid rebuild
             if self.domains[i].should_rebuild_spatial_grid() {
-                let tokens = self.states[i].tokens.clone();
-                self.domains[i].rebuild_spatial_grid(&tokens);
+                if let Some(speculative) = self.speculative_grids[i].take() {
+                    self.domains[i].spatial_grid = speculative;
+                    self.domains[i].events_since_rebuild = 0;
+                    self.speculative_hits += 1;
+                } else {
+                    let tokens = self.states[i].tokens.clone();
+                    self.domains[i].rebuild_spatial_grid(&tokens);
+                    self.speculative_misses += 1;
+                }
             }
 
             // 2. Удалить осиротевшие связи

@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-12
+**Обновлено:** 2026-05-13
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1192 тестов, 0 failures**
+**1201 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -91,6 +91,8 @@ axiom-runtime:
   │        6.74 ms @ 1M токенов (цель 8–10 ms ✅); early exit shift≥16; scalar fallback
   │   S5: TickBudget (tick_budget_start / budget_used_fraction); enable_layer_priority gate;
   │       при budget>80% роли 4–8 пропускаются (process_parallel_limited / route_token_limited)
+  │   S6: prepare_speculative_grids(pool) — параллельная pre-build SpatialHashGrid для reconcile_all;
+  │       speculative_grids[11] + hits/misses счётчики; ~9 µs swap vs ~40 µs rebuild при hit ✅
   ├── TickSchedule: enable_layer_priority, target_tick_ns, memory_pressure_threshold_bytes
   ├── Over-Domain Layer (over_domain/): OverDomainComponent, Weaver traits; FrameWeaver V1.3
   │   BondTokens + ReinforceFrame + InjectFrameAnchor + UnfoldFrame handlers в engine.rs
@@ -159,7 +161,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
-| axiom-domain | 117 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain |
+| axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-runtime | 288 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3 ✅), DREAM Phase V1.0 (DreamScheduler, FatigueTracker, DreamCycle, DreamProposal), Gateway (with_config, check_config_reload), Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 133 (156 telegram,opensearch) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
