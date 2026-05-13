@@ -66,13 +66,11 @@
 
 ## Broadcasting
 
-### BRD-TD-05 — Полнота полей build_system_snapshot()
+### ~~BRD-TD-05~~ — Полнота полей build_system_snapshot() ✅ ЗАКРЫТ 2026-05-13
 
-**Где:** `crates/axiom-broadcasting/src/snapshot.rs`
-
-Многие поля `SystemSnapshot` заполнены нулями/пустыми значениями: `capacity`, `temperature_decay`, `temperature_avg`, `recent_activity`, `layer_activations`, `guardian_stats`, `last_dream_report`, `adapter_progress`. Расширяется по мере добавления публичного API в axiom-runtime.
-
-**Когда:** Постепенно, по мере интеграции Engine (axiom-node).
+Все основные поля заполнены. Остаются нулями: `cross_domain_events_recent`,
+`fatigue.history`, `guardian.last_veto_reason`, `adapter_progress` — требуют
+отдельного трекинга, отложено.
 
 ---
 
