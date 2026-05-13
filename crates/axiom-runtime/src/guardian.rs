@@ -118,6 +118,8 @@ pub struct GuardianStats {
     pub thresholds_adapted: u64,
     /// Число DREAM-предложений (Этап 6)
     pub dream_proposals: u64,
+    /// Вето с момента последнего Wake (сбрасывается при переходе в Wake)
+    pub vetoes_since_wake: u64,
 }
 
 // ============================================================================
@@ -216,6 +218,7 @@ impl Guardian {
         let allowed = self.genome_index.check_access(module, resource, operation);
         if !allowed {
             self.stats.access_denied += 1;
+            self.stats.vetoes_since_wake += 1;
             self.violation_count += 1;
         }
         allowed
@@ -226,6 +229,7 @@ impl Guardian {
         let allowed = self.genome_index.check_protocol(source, target);
         if !allowed {
             self.stats.protocol_denied += 1;
+            self.stats.vetoes_since_wake += 1;
             self.violation_count += 1;
         }
         allowed
@@ -278,6 +282,7 @@ impl Guardian {
         ) {
             self.violation_count += 1;
             self.stats.reflex_vetoed += 1;
+            self.stats.vetoes_since_wake += 1;
             return ReflexDecision::Veto(VetoReason::GenomeDenied);
         }
 
@@ -285,6 +290,7 @@ impl Guardian {
         if token.state == STATE_LOCKED {
             self.violation_count += 1;
             self.stats.reflex_vetoed += 1;
+            self.stats.vetoes_since_wake += 1;
             return ReflexDecision::Veto(VetoReason::TokenLocked);
         }
 
@@ -292,6 +298,7 @@ impl Guardian {
         if token.valence != 0 && token.mass == 0 {
             self.violation_count += 1;
             self.stats.reflex_vetoed += 1;
+            self.stats.vetoes_since_wake += 1;
             return ReflexDecision::Veto(VetoReason::ValenceWithoutMass);
         }
 
@@ -299,6 +306,7 @@ impl Guardian {
         if token.sutra_id == 0 {
             self.violation_count += 1;
             self.stats.reflex_vetoed += 1;
+            self.stats.vetoes_since_wake += 1;
             return ReflexDecision::Veto(VetoReason::ZeroSutraId);
         }
 
@@ -492,6 +500,10 @@ impl Guardian {
     /// Статистика операций GUARDIAN.
     pub fn stats(&self) -> &GuardianStats {
         &self.stats
+    }
+
+    pub fn reset_wake_stats(&mut self) {
+        self.stats.vetoes_since_wake = 0;
     }
 
     /// Ссылка на активный Genome.

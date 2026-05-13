@@ -39,7 +39,8 @@ pub use adapters::{DirectAdapter, Effector, EventBus, EventObserver, Perceptor, 
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
 #[cfg(feature = "adapters")]
 pub use broadcast::{
-    BroadcastSnapshot, ConnectionSnapshot, DomainDetailSnapshot, DomainSummary, TokenSnapshot,
+    BroadcastSnapshot, ConnectionSnapshot, DomainDetailSnapshot, DomainSummary,
+    LastDreamSummary, TokenSnapshot,
 };
 pub use channel::{Channel, ChannelBatchResult};
 pub use engine::{domain_name, AxiomEngine, AxiomError, TickSchedule};

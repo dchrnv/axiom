@@ -205,6 +205,14 @@ pub struct AxiomEngine {
     pub(crate) had_intake_this_tick: bool,
     /// Момент начала текущего тика для TickBudget (S5).
     pub(crate) tick_budget_start: std::time::Instant,
+    /// Тик последней кристаллизации Frame (0 — ни одной).
+    pub last_crystallization_tick: u64,
+    /// Базовые счётчики FrameWeaver на момент начала сна (для вычисления дельты в DreamReport).
+    pub(crate) fw_base_at_dream_start: (u64, u64, u64),
+    /// Тик начала текущего/последнего dream-цикла.
+    pub(crate) dream_started_at: u64,
+    /// Последний завершённый dream-отчёт (сохраняется в BroadcastSnapshot).
+    pub(crate) last_dream_summary: Option<crate::broadcast::LastDreamSummary>,
 }
 
 impl AxiomEngine {
@@ -244,6 +252,10 @@ impl AxiomEngine {
             falling_asleep_fatigue: 0,
             had_intake_this_tick: false,
             tick_budget_start: std::time::Instant::now(),
+            last_crystallization_tick: 0,
+            fw_base_at_dream_start: (0, 0, 0),
+            dream_started_at: 0,
+            last_dream_summary: None,
         })
     }
 
@@ -407,6 +419,9 @@ impl AxiomEngine {
             domain_summaries: self.domain_summaries(),
             frame_weaver_stats: Some(self.frame_weaver.stats.clone()),
             dream_phase: Some(dream_snap),
+            last_crystallization_tick: self.last_crystallization_tick,
+            guardian_vetoes_since_wake: self.guardian.stats().vetoes_since_wake,
+            last_dream_summary: self.last_dream_summary.clone(),
         }
     }
 
@@ -1127,7 +1142,11 @@ impl AxiomEngine {
         // FrameWeaver
         let fw_interval = self.frame_weaver.on_tick_interval();
         if fw_interval > 0 && t.is_multiple_of(fw_interval as u64) {
+            let before = self.frame_weaver.stats.crystallizations_approved;
             let _ = self.frame_weaver.on_tick(t, &self.ashti);
+            if self.frame_weaver.stats.crystallizations_approved > before {
+                self.last_crystallization_tick = t;
+            }
             let fw_commands = self.frame_weaver.drain_commands();
             for fw_cmd in fw_commands {
                 let _ = self.process_command(&fw_cmd);
@@ -1226,8 +1245,25 @@ impl AxiomEngine {
         let tick = self.tick_count;
         self.dream_scheduler.on_dream_finished(tick);
         self.dream_phase_stats.last_wake_tick = tick;
+
+        let (base_approved, base_vetoed, base_sutra) = self.fw_base_at_dream_start;
+        self.last_dream_summary = Some(crate::broadcast::LastDreamSummary {
+            cycle_id: self.dream_phase_stats.total_sleeps,
+            started_at_tick: self.dream_started_at,
+            ended_at_tick: tick,
+            proposals_accepted: self.frame_weaver.stats.crystallizations_approved
+                .saturating_sub(base_approved) as u32,
+            proposals_rejected: self.frame_weaver.stats.crystallizations_vetoed
+                .saturating_sub(base_vetoed) as u32,
+            sutra_written: self.frame_weaver.stats.frames_in_sutra
+                .saturating_sub(base_sutra) as u32,
+            fatigue_before: self.falling_asleep_fatigue,
+            fatigue_after: self.dream_scheduler.current_fatigue(),
+        });
+
         self.dream_phase_state = DreamPhaseState::Wake;
         self.frame_weaver.on_dream_wake();
+        self.guardian.reset_wake_stats();
 
         count
     }
@@ -1240,6 +1276,12 @@ impl AxiomEngine {
         self.falling_asleep_fatigue = fatigue;
         self.dream_phase_state = DreamPhaseState::FallingAsleep;
         self.dream_phase_stats.total_sleeps += 1;
+        self.dream_started_at = self.tick_count;
+        self.fw_base_at_dream_start = (
+            self.frame_weaver.stats.crystallizations_approved,
+            self.frame_weaver.stats.crystallizations_vetoed,
+            self.frame_weaver.stats.frames_in_sutra,
+        );
     }
 
     fn transition_to_waking(&mut self, reason: WakeReason) {

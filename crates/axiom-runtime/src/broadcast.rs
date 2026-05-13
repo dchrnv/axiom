@@ -30,6 +30,25 @@ pub struct BroadcastSnapshot {
     pub frame_weaver_stats: Option<FrameWeaverStats>,
     /// Snapshot DREAM Phase (состояние + статистика)
     pub dream_phase: Option<DreamPhaseSnapshot>,
+    /// Тик последней кристаллизации Frame (0 — ни одной)
+    pub last_crystallization_tick: u64,
+    /// Вето Guardian с момента последнего Wake
+    pub guardian_vetoes_since_wake: u64,
+    /// Последний завершённый dream-цикл
+    pub last_dream_summary: Option<LastDreamSummary>,
+}
+
+/// Сводка последнего завершённого dream-цикла.
+#[derive(Serialize, Clone)]
+pub struct LastDreamSummary {
+    pub cycle_id: u64,
+    pub started_at_tick: u64,
+    pub ended_at_tick: u64,
+    pub proposals_accepted: u32,
+    pub proposals_rejected: u32,
+    pub sutra_written: u32,
+    pub fatigue_before: u8,
+    pub fatigue_after: u8,
 }
 
 /// Snapshot состояния DREAM-фазы для BroadcastSnapshot.
