@@ -23,6 +23,7 @@ members = [
     "crates/axiom-protocol",
     "crates/axiom-broadcasting",
     "crates/axiom-workstation",
+    "crates/axiom-node",
 ]
 
 [workspace.package]

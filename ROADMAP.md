@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 50.0  
+**Версия:** 51.0  
 **Дата:** 2026-05-13
 
 ---
@@ -19,15 +19,64 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1192 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S5 + S4b) завершены.
+**1201 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S6) завершены.
 
 ---
 
 ## Фазы работы
 
-### Фаза A — «Живая Workstation» 🔑
+### Фаза A — axiom-node: Живая Workstation 🔑
 
-**Главный приоритет.** Все остальные фазы либо разблокируются после A, либо независимы от него.
+**Главный приоритет.** Разблокирует BRD-TD-07, WS4-TD-03/04, BRD-TD-05, OBS-01.
+
+Самодостаточный бинарный crate — живой Axiom без CLI. Собственный tick loop,
+полная инициализация модели, graceful shutdown.
+
+#### A1 — Каркас crate
+
+- `crates/axiom-node` в workspace
+- `Cargo.toml`: axiom-runtime, axiom-broadcasting, axiom-agent, axiom-persist,
+  axiom-config, tokio (full), tracing + tracing-subscriber, clap
+- `config.rs` — `NodeConfig`: port, data_dir, tick_hz, log_level, adaptive_tick
+
+#### A2 — Startup
+
+- `startup.rs` — полная последовательность инициализации:
+  1. Загрузить `axiom.yaml` → Genome + DomainConfig + DreamConfig + HeartbeatConfig
+  2. Загрузить `AnchorSet` из `config/anchors/`
+  3. Создать `AxiomEngine` из конфига
+  4. `inject_anchor_tokens` — якоря в пространство
+  5. Восстановить состояние из persist (EXPERIENCE + SKILLSET)
+- Ошибки старта — явные, с контекстом
+
+#### A3 — Tick loop
+
+- `tick.rs` — чистый loop без CLI-состояния:
+  - tick engine (TickForward) → drain events → Dream phase → FrameWeaver
+  - adaptive tick rate (TickBudget + AdaptiveTickRate)
+  - каждые N тиков: `build_system_snapshot` → `handle.update_snapshot` + `handle.publish`
+  - `speculate_grids` между тиком и reconcile
+  - `auto_saver.tick`
+
+#### A4 — Обработка команд Workstation
+
+- `commands.rs` — `handle_engine_command(cmd, engine, handle, perceptor)`:
+  - `SubmitText` → TextPerceptor → process → `CommandResult`
+  - `RequestFullSnapshot` → `build_system_snapshot` → `handle.publish`
+  - `RunBench` → запуск встроенных бенчмарков → `BenchProgress` events
+  - `ForceSync`, `CancelAdapter`, прочие из axiom-protocol
+
+#### A5 — Graceful shutdown
+
+- `shutdown.rs` — перехват SIGINT/SIGTERM
+- `force_save` состояния перед выходом
+- Чистое завершение BroadcastServer
+
+#### A6 — Smoke test + закрытие долгов
+
+- Запустить axiom-node, подключить Workstation → убедиться что данные идут
+- Закрыть BRD-TD-07 (Engine → BroadcastHandle интеграция ✅)
+- Проверить WS4-TD-03/04 на живых данных → закрыть или уточнить
 
 ### Фаза S — Axiom Sentinel V1.1 ✅
 
