@@ -126,7 +126,7 @@ impl<'a> canvas::Program<Message> for SystemMapCanvas<'a> {
         match self.snapshot {
             Some(snap) => {
                 let state_color = engine_state_color(snap.engine_state);
-                let has_vetoes = snap.guardian_stats.total_vetoes > 0;
+                let has_vetoes = snap.guardian_stats.vetoes_since_wake > 0;
 
                 draw_sector_fills(&mut dyn_frame, center, mandala_r, snap, state_color, self.phase);
                 draw_mandala(&mut dyn_frame, center, mandala_r, state_color, self.phase, has_vetoes);

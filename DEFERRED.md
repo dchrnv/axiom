@@ -64,36 +64,6 @@
 
 ---
 
-## Workstation
-
-### WS4-TD-03 — System Map: неполные визуальные фичи спеки
-
-**Где:** `crates/axiom-workstation/src/ui/system_map.rs`
-
-Не реализованы три элемента из спеки (Документ 3A, раздел 2.4):
-- **ASHTI sector fill** — активные домены должны заливать соответствующий сектор среднего кольца мандалы (цвет состояния). Сейчас только линии-разделители.
-- **Flow lines** — линии между доменами должны подсвечиваться при `EngineEvent::DomainActivity` за последние ~500ms. Сейчас статические линии к центру.
-- **Alert ring** — при `guardian_stats.vetoes_since_wake > 0` снаружи мандалы появляется тонкое красное кольцо. Не реализовано.
-
-**Когда:** При наличии живых данных от Engine (axiom-node).
-
----
-
-### WS4-TD-04 — SystemSnapshot: поля bottom-panel из спеки отсутствуют в протоколе
-
-**Где:** `crates/axiom-protocol/src/snapshot.rs`, `crates/axiom-workstation/src/ui/system_map.rs`
-
-Спека (Документ 3A, раздел 4.5) описывает в bottom-panel поля `last_hot_path_ns` (время горячего пути) и `promotions_today` / `last_dream_ago`. В `SystemSnapshot` их нет. Bottom-panel сейчас показывает state, fatigue%, tick, frames, events — всё что есть в протоколе.
-
-**Что нужно:** Добавить в `SystemSnapshot`:
-- `hot_path_ns: u64` — измеряется в tick-loop
-- `promotions_today: u32` — счётчик в FrameWeaverStats
-- `dream_phase_stats.last_dream_ended_at_tick` — для вычисления ago
-
-**Когда:** При интеграции живого Engine (axiom-node).
-
----
-
 ## Ждут конкретного триггера
 
 ### Anchor-Fill — Наполнение якорных YAML-файлов
