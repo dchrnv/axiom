@@ -19,7 +19,7 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1201 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S6) завершены.
+**1200 тестов, 0 failures.** FrameWeaver V1.3, Workstation V1.0 + UI polish, protocol extensions, Axiom Sentinel V1.1 (S0–S6) завершены.
 
 ---
 
