@@ -26,15 +26,9 @@
 
 ## FrameWeaver
 
-### FW-TD-00 — lineage_hash дуальность не задокументирована в спеке
+### ~~FW-TD-00~~ ✅ ЗАКРЫТ 2026-05-13 — lineage_hash дуальность задокументирована в Token V5.3
 
-**Где:** `docs/spec/Token V5.2.md`, `crates/axiom-runtime/src/over_domain/weavers/frame.rs`
-
-`lineage_hash` в Token выполняет две функции: (1) идентификация семантической линии для deduplication при кристаллизации Frame (ReinforceFrame vs новый якорь), (2) связь кристаллизованного анкора с его источником. Это implicit поведение в коде — в Token V5.2 spec оно не описано.
-
-**Что нужно:** добавить раздел в Token V5.2 (или выпустить V5.3) с явным описанием семантики `lineage_hash`: как вычисляется, какие два сценария использования, как FrameWeaver принимает решение на основе совпадения.
-
-**Когда:** при следующем редактировании Token spec или перед Frame V1.4.
+Семантика `lineage_hash` описана в `docs/spec/Token V5.2.md` (V5.3, раздел 3.4 и Инвариант 7): для обычных токенов — хэш истории пути, для Frame-анкеров (`TOKEN_FLAG_FRAME_ANCHOR`) — FNV-1a от sorted `sutra_id` участников. Детали в эррате `docs/spec/Weaver/erratas/Token_lineage_hash_duality.md`.
 
 ---
 
