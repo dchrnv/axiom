@@ -31,7 +31,7 @@ FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel
 
 ---
 
-### Фаза C — Knowledge Subsystems ✅ C1+C2
+### Фаза C — Knowledge Subsystems ✅ C1+C2+C3+C4
 
 Цель: семантическая инфраструктура — оценка смысла, подсистемы знания,
 философские оси как активный оценщик.
@@ -76,7 +76,7 @@ AxialEvaluator нужен до ContextRecognizer). C2 независим.
 
 ---
 
-#### C4 — ContextRecognizer
+#### C4 — ContextRecognizer ✅
 
 Четвёртый над-доменный модуль. Отвечает на вопрос "что мы понимаем и в каком режиме".
 Спека: `docs/architecture/ContextRecognizer_V5_0.md`.
