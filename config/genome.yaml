@@ -45,6 +45,15 @@ access_rules:
   - { module: FrameWeaver,  resource: SutraTokens,       permission: Control   }
   - { module: FrameWeaver,  resource: AshtiField,        permission: Read      }
   - { module: FrameWeaver,  resource: GenomeConfig,      permission: Read      }
+  # AxialEvaluator — читает EXPERIENCE для оценки Frame по философским осям
+  - { module: AxialEvaluator, resource: ExperienceMemory, permission: Read      }
+  - { module: AxialEvaluator, resource: MayaOutput,       permission: Read      }
+  - { module: AxialEvaluator, resource: AshtiField,       permission: Read      }
+  # ContextRecognizer — читает EXPERIENCE и MAYA; предлагает обновления через UCL
+  - { module: ContextRecognizer, resource: ExperienceMemory, permission: Read      }
+  - { module: ContextRecognizer, resource: MayaOutput,       permission: Read      }
+  - { module: ContextRecognizer, resource: AshtiField,       permission: Read      }
+  - { module: ContextRecognizer, resource: SutraTokens,      permission: Read      }
 
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }

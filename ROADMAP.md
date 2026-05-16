@@ -41,6 +41,7 @@ AxialEvaluator нужен до ContextRecognizer). C2 независим.
 
 #### C1 — axiom-experience ✅
 #### C2 — AnchorSet: архитектура подсистем ✅
+#### C3 — AxialEvaluator ✅
 
 ---
 

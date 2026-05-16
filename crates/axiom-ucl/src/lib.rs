@@ -46,6 +46,9 @@ pub enum OpCode {
     UnfoldFrame = 4002,          // Развернуть Frame из EXPERIENCE в целевой домен
     ReinforceFrame = 4003,       // Усилить существующий Frame-анкер по lineage_hash
 
+    // --- Семантическая оценка (5000+) ---
+    ProposeAxialAdjustment = 5000, // AxialEvaluator: предложить скорректировать позицию токена
+
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000, // Остановка реактора
     CoreReset = 9001,    // Сброс состояния
@@ -229,6 +232,23 @@ pub struct ReinforceFramePayload {
     pub delta_mass: u8,        // 1b | приращение mass
     pub delta_temperature: u8, // 1b | приращение temperature
     pub reserved: [u8; 42],    // 42b | Резерв
+}
+
+/// Payload для ProposeAxialAdjustment (5000)
+///
+/// AxialEvaluator предлагает скорректировать позицию токена на основе накопленных
+/// осевых оценок. GUARDIAN проверяет право AxialEvaluator на запись позиции.
+/// Выполняется только в DREAMING-фазе.
+///
+/// Layout: 4+6+1+1+36 = 48 байт.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ProposeAxialAdjustmentPayload {
+    pub sutra_id: u32,             // 4b | sutra_id целевого токена
+    pub suggested_position: [i16; 3], // 6b | предлагаемая позиция [x, y, z]
+    pub reason: u8,                // 1b | код причины (0=accumulated_eval, 1=conflict_resolved)
+    pub confidence: u8,            // 1b | уверенность предложения (0..255)
+    pub reserved: [u8; 36],        // 36b | резерв
 }
 
 impl UclCommand {

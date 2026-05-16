@@ -29,7 +29,7 @@ pub struct AxialConflict {
 }
 
 /// Способ разрешения конфликта анализа и синтеза.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ConflictResolution {
     /// Побеждает формальная оценка по осям

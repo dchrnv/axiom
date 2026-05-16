@@ -11,12 +11,16 @@
 //   Weavers     — кристаллизация узоров в EXPERIENCE, промоция в SUTRA через DREAM
 //   DreamPhase  — дискретный прерываемый режим переработки опыта (DREAM Phase V1.0)
 
+/// AxialEvaluator — оценка Frame по философским осям X/Y/Z
+pub mod axial_evaluator;
 /// DREAM Phase — машина состояний сна, DreamScheduler, DreamCycle
 pub mod dream_phase;
 /// Базовые trait'ы Over-Domain компонентов
 pub mod traits;
 /// Weavers — кристаллизация реляционных структур
 pub mod weavers;
+
+pub use axial_evaluator::{AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_TICK_INTERVAL};
 
 pub use traits::{
     CrystallizationProposal, OverDomainComponent, OverDomainError, PromotionProposal, Weaver,

@@ -24,9 +24,11 @@ pub enum ModuleId {
     Shell = 14,
     Adapters = 15,
     FrameWeaver = 16,
+    AxialEvaluator = 17,
+    ContextRecognizer = 18,
 }
 
-pub const MAX_MODULES: usize = 17;
+pub const MAX_MODULES: usize = 19;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
