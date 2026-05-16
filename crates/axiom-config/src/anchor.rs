@@ -7,14 +7,18 @@
 // смысл координат X/Y/Z и Shell-профилей. TextPerceptor позиционирует новые
 // токены относительно якорей.
 //
-// Три уровня якорей:
-//   axes    — 6 полюсов (X+/X-/Y+/Y-/Z+/Z-)
-//   layers  — по набору на каждый Shell-слой L1..L8
-//   domains — по набору на каждый ASHTI-домен D1..D8
+// Пять уровней якорей:
+//   axes             — 6 полюсов (X+/X-/Y+/Y-/Z+/Z-)
+//   layers           — по набору на каждый Shell-слой L1..L8
+//   domains          — по набору на каждый ASHTI-домен D1..D8
+//   octants          — 8 архетипов октантов (octants.yaml)
+//   semantic_centers — универсальные центры смысла (semantic_centers.yaml)
+//   subsystems       — подсистемы знания: writing/, mathematics/, ... (subdirs)
 
 use crate::loader::ConfigError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 
 // ─── Основные структуры ──────────────────────────────────────────────────────
@@ -107,14 +111,27 @@ struct DomainFile {
     anchors: Vec<Anchor>,
 }
 
+/// Универсальный файл с плоским списком якорей (octants.yaml, semantic_centers.yaml,
+/// и все файлы внутри subsystem-директорий writing/, mathematics/, ...).
+#[derive(Debug, Deserialize)]
+struct FlatAnchorFile {
+    #[serde(default)]
+    #[allow(dead_code)]
+    description: String,
+    anchors: Vec<Anchor>,
+}
+
 // ─── AnchorSet ────────────────────────────────────────────────────────────────
 
-/// Полный набор якорей: осевые + слоевые + доменные.
+/// Полный набор якорей: осевые + слоевые + доменные + октанты + семцентры + подсистемы.
 ///
 /// Загружается из `config/anchors/`:
-///   axes.yaml          — 6 осевых якорей
-///   layers/L1_*.yaml   — якоря Shell-слоя L1, ...L8
-///   domains/D1_*.yaml  — якоря ASHTI-домена D1=EXECUTION, ...D8
+///   axes.yaml                — 6 осевых якорей (±30000, исключение из правила +only)
+///   octants.yaml             — 8 архетипов октантов
+///   semantic_centers.yaml    — универсальные центры: истина/ложь/жизнь/смерть и др.
+///   layers/L{n}_*.yaml       — якоря Shell-слоёв L1..L8
+///   domains/D{n}_*.yaml      — якоря ASHTI-доменов D1..D8
+///   {name}/*.yaml            — подсистемы знания (writing, mathematics, ...)
 pub struct AnchorSet {
     /// 6 осевых якорей (X+/X-/Y+/Y-/Z+/Z-)
     pub axes: Vec<Anchor>,
@@ -122,6 +139,12 @@ pub struct AnchorSet {
     pub layers: Vec<Vec<Anchor>>,
     /// Доменные якоря [0..7] = D1..D8 (EXECUTION..D8)
     pub domains: Vec<Vec<Anchor>>,
+    /// 8 архетипов октантов (из octants.yaml)
+    pub octants: Vec<Anchor>,
+    /// Универсальные семантические центры (из semantic_centers.yaml)
+    pub semantic_centers: Vec<Anchor>,
+    /// Подсистемы знания: "writing" → примитивы письма, "mathematics" → мат. примитивы, ...
+    pub subsystems: HashMap<String, Vec<Anchor>>,
 }
 
 impl AnchorSet {
@@ -131,7 +154,16 @@ impl AnchorSet {
             axes: Vec::new(),
             layers: vec![Vec::new(); 8],
             domains: vec![Vec::new(); 8],
+            octants: Vec::new(),
+            semantic_centers: Vec::new(),
+            subsystems: HashMap::new(),
         }
+    }
+
+    /// Якоря конкретной подсистемы (например, "writing" или "mathematics").
+    /// Возвращает пустой срез если подсистема не загружена.
+    pub fn get_subsystem(&self, name: &str) -> &[Anchor] {
+        self.subsystems.get(name).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
     /// Загрузить из `config_dir/anchors/`. Возвращает empty если директории нет.
@@ -177,14 +209,80 @@ impl AnchorSet {
             }
         }
 
+        let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
+        let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
+        let subsystems = Self::load_subsystems(&anchors_dir)?;
+
         Ok(Self {
             axes,
             layers,
             domains,
+            octants,
+            semantic_centers,
+            subsystems,
         })
     }
 
     // ─── Private loaders ─────────────────────────────────────────────────────
+
+    /// Загрузить плоский файл с якорями (octants.yaml, semantic_centers.yaml,
+    /// или любой файл в subsystem-директории). Возвращает пустой Vec если файл не существует.
+    fn load_flat(path: &Path) -> Result<Vec<Anchor>, ConfigError> {
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let content = std::fs::read_to_string(path).map_err(ConfigError::IoError)?;
+        let file: FlatAnchorFile =
+            serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
+        Ok(file.anchors)
+    }
+
+    /// Сканировать поддиректории `anchors_dir` как подсистемы знания.
+    /// Пропускает `layers/` и `domains/` — они обрабатываются отдельно.
+    fn load_subsystems(anchors_dir: &Path) -> Result<HashMap<String, Vec<Anchor>>, ConfigError> {
+        let mut result: HashMap<String, Vec<Anchor>> = HashMap::new();
+        let skip = ["layers", "domains"];
+
+        let entries = match std::fs::read_dir(anchors_dir) {
+            Ok(e) => e,
+            Err(_) => return Ok(result),
+        };
+
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+            if skip.contains(&name.as_str()) {
+                continue;
+            }
+            // Загрузить все *.yaml из этой поддиректории
+            let mut anchors = Vec::new();
+            let yamls = match std::fs::read_dir(&path) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let mut yaml_paths: Vec<_> = yamls
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml"))
+                .collect();
+            yaml_paths.sort(); // детерминированный порядок
+            for yaml_path in yaml_paths {
+                let loaded = Self::load_flat(&yaml_path)?;
+                anchors.extend(loaded);
+            }
+            if !anchors.is_empty() {
+                result.insert(name, anchors);
+            }
+        }
+
+        Ok(result)
+    }
 
     fn load_axes(anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
         let path = anchors_dir.join("axes.yaml");
@@ -228,6 +326,9 @@ impl AnchorSet {
         self.axes.len()
             + self.layers.iter().map(|l| l.len()).sum::<usize>()
             + self.domains.iter().map(|d| d.len()).sum::<usize>()
+            + self.octants.len()
+            + self.semantic_centers.len()
+            + self.subsystems.values().map(|v| v.len()).sum::<usize>()
     }
 
     /// Returns `true` if the registry contains no anchors.
@@ -317,6 +418,9 @@ impl AnchorSet {
             .iter()
             .chain(self.layers.iter().flatten())
             .chain(self.domains.iter().flatten())
+            .chain(self.octants.iter())
+            .chain(self.semantic_centers.iter())
+            .chain(self.subsystems.values().flatten())
     }
 
     // ─── Position / weight computation ───────────────────────────────────────
@@ -460,5 +564,106 @@ mod tests {
     fn test_load_nonexistent_dir() {
         let s = AnchorSet::load_or_empty(Path::new("/nonexistent/dir/that/does/not/exist"));
         assert!(s.is_empty());
+    }
+
+    #[test]
+    fn test_get_subsystem_empty() {
+        let s = AnchorSet::empty();
+        assert!(s.get_subsystem("writing").is_empty());
+        assert!(s.get_subsystem("mathematics").is_empty());
+    }
+
+    #[test]
+    fn test_get_subsystem_insert_get() {
+        let mut s = AnchorSet::empty();
+        let a = make_anchor("точка", &["dot"], [0, 0, 6000]);
+        s.subsystems.insert("writing".to_string(), vec![a]);
+        let ws = s.get_subsystem("writing");
+        assert_eq!(ws.len(), 1);
+        assert_eq!(ws[0].word, "точка");
+        assert!(s.get_subsystem("mathematics").is_empty());
+    }
+
+    #[test]
+    fn test_total_count_includes_octants_and_subsystems() {
+        let mut s = AnchorSet::empty();
+        s.octants.push(make_anchor("октант1", &[], [20000, 18000, 22000]));
+        s.semantic_centers.push(make_anchor("истина", &[], [22000, 15000, 18000]));
+        s.subsystems.insert(
+            "writing".to_string(),
+            vec![
+                make_anchor("точка", &[], [0, 0, 6000]),
+                make_anchor("вертикаль", &[], [10000, 3000, 12000]),
+            ],
+        );
+        // 1 octant + 1 semantic_center + 2 subsystem = 4
+        assert_eq!(s.total_count(), 4);
+    }
+
+    #[test]
+    fn test_octants_included_in_match() {
+        let mut s = AnchorSet::empty();
+        s.octants.push(make_anchor("утверждение", &["affirmation"], [20000, 18000, 22000]));
+        let m = s.match_text("утверждение");
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].match_type, MatchType::Exact);
+    }
+
+    #[test]
+    fn test_semantic_centers_included_in_match() {
+        let mut s = AnchorSet::empty();
+        s.semantic_centers.push(make_anchor("истина", &["правда"], [22000, 15000, 18000]));
+        let m = s.match_text("правда");
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].match_type, MatchType::Alias);
+    }
+
+    #[test]
+    fn test_subsystem_anchors_included_in_match() {
+        let mut s = AnchorSet::empty();
+        s.subsystems.insert(
+            "mathematics".to_string(),
+            vec![make_anchor("функция", &["отображение"], [12000, 10000, 9000])],
+        );
+        let m = s.match_text("функция");
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].match_type, MatchType::Exact);
+    }
+
+    #[test]
+    fn test_load_flat_missing_file_returns_empty() {
+        let result = AnchorSet::load_flat(Path::new("/nonexistent/octants.yaml"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_load_subsystems_missing_dir_returns_empty() {
+        let result = AnchorSet::load_subsystems(Path::new("/nonexistent/anchors/"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_integration_load_config_dir() {
+        // Integration test: load from actual config directory if present.
+        let config_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("config"));
+        let Some(config_dir) = config_dir else { return };
+        if !config_dir.exists() { return }
+
+        let s = AnchorSet::load_or_empty(&config_dir);
+        // writing/primitives.yaml → 7 anchors
+        assert_eq!(s.get_subsystem("writing").len(), 7, "writing primitives");
+        // mathematics/primitives.yaml → 7 anchors
+        assert_eq!(s.get_subsystem("mathematics").len(), 7, "mathematics primitives");
+        // octants.yaml → 8 anchors
+        assert_eq!(s.octants.len(), 8, "octants");
+        // semantic_centers.yaml → 10 anchors
+        assert_eq!(s.semantic_centers.len(), 10, "semantic centers");
+        // all axes loaded
+        assert_eq!(s.axes.len(), 6, "axes");
     }
 }

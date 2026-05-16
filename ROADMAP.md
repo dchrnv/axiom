@@ -31,7 +31,7 @@ FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel
 
 ---
 
-### Фаза C — Knowledge Subsystems
+### Фаза C — Knowledge Subsystems ✅ C1+C2
 
 Цель: семантическая инфраструктура — оценка смысла, подсистемы знания,
 философские оси как активный оценщик.
@@ -39,58 +39,8 @@ FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel
 **Зависимости:** C1 → C3 → C4 (axiom-experience нужен до AxialEvaluator,
 AxialEvaluator нужен до ContextRecognizer). C2 независим.
 
----
-
-#### C1 — axiom-experience: хранилища семантических данных
-
-Новый крейт. Чистые data-структуры без сложной логики. Нужен как C3, так и C4.
-
-**Зависимости:** только axiom-core (sutra_id: u32)
-
-**Файлы:**
-
-`crates/axiom-experience/src/`
-- `lib.rs`
-- `sutra_depth_store.rs` — `SutraDepthEntry { sutra_id, depth_per_octant: [u16; 8], last_settle_event: u64, reactivation_count: u32 }` + `SutraDepthStore (HashMap<u32, SutraDepthEntry>)`
-- `axial_store.rs` — `AxialEvaluation`, `AxialScore`, `AxialDominant`, `Octant`, `AxialConflict`, `ConflictResolution`, `EvaluationLevel`, `AxialStore (HashMap<u32, Vec<AxialEvaluation>>)`
-- `interpretation_profile_store.rs` — `InterpretationProfile`, `FrameComposition (C0..C5_Plus)`, `InterpretationProfileStore`
-- `emergent_primitive_store.rs` — `EmergentPrimitive`, `EmergentPrimitiveStore`
-
-**Тесты:** unit-тесты для каждого store (insert/get/update/remove)
-
----
-
-#### C2 — AnchorSet: архитектура подсистем
-
-Расширить `axiom-config::AnchorSet` для поддержки нескольких знаниевых подсистем.
-Параллельно с C1 — не зависит от него.
-
-**Изменения в коде:**
-
-`crates/axiom-config/src/anchor.rs`:
-- Добавить `subsystems: HashMap<String, Vec<Anchor>>` в `AnchorSet`
-- `load_subsystems(anchors_dir)` — сканирует `anchors/{name}/` директории,
-  загружает все `*.yaml` с ключом `anchors:`
-- `all_anchors()` и `total_count()` включают subsystem-якоря
-- `get_subsystem(name) -> &[Anchor]` — доступ по имени подсистемы
-
-**Новые YAML-файлы:**
-
-`config/anchors/writing/primitives.yaml` — 7 графических примитивов
-(из `Writing_V1_0.md`): dot, vline, hline, dslash, bslash, hook, arc.
-Позиции [0..32767]³, Вариант Б.
-
-`config/anchors/mathematics/primitives.yaml` — 7 математических примитивов
-(из `Mathematics_V1_0.md`): element, function, relation, operation, limit, group, fractal.
-
-`config/anchors/octants.yaml` — 8 архетипов октантов (Величие, Мудрость,
-Власть, Равновесие, Экстаз, Мечта, Ярость, Потенциал). Живут в SUTRA.
-
-`config/anchors/semantic_centers.yaml` — ~10 якорей: Истина [15000,15000,15000],
-Ложь [500,500,500], Жизнь, Смерть, Бытие, Небытие и т.д.
-
-**Тесты:** загрузка subsystem-директории, total_count включает subsystems,
-match_text находит primitve-якоря.
+#### C1 — axiom-experience ✅
+#### C2 — AnchorSet: архитектура подсистем ✅
 
 ---
 

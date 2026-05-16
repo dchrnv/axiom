@@ -1,0 +1,75 @@
+# Октанты — 8 архетипических квадрантов трёхмерного семантического пространства.
+# Каждый октант — пересечение трёх бинарных осей:
+#   X: Аполлон (порядок) vs Дионис (хаос/малое положительное)
+#   Y: Эрос (жизнь) vs Танатос (смерть/малое положительное)
+#   Z: Воля (сила) vs Ничто (тишина/малое положительное)
+#
+# Позиции content anchors: [0..32767]³ (positive-only, Variant B для dionysian).
+# Октанты располагаются в своих «угловых» зонах пространства.
+
+description: "8 архетипических октантов: семантические полюса пространства"
+
+anchors:
+  - id: "oct_creative_affirmation"
+    word: "творческое_утверждение"
+    aliases: ["apollo_eros_will", "порядок_жизнь_сила", "creative_affirmation"]
+    tags: ["octant", "apollo", "eros", "will"]
+    position: [20000, 18000, 22000]
+    shell: [60, 100, 150, 200, 180, 150, 80, 40]
+    description: "Аполлон+Эрос+Воля: структурное созидание, упорядоченная жизненная сила."
+
+  - id: "oct_ecstatic_affirmation"
+    word: "экстатическое_утверждение"
+    aliases: ["dionysus_eros_will", "хаос_жизнь_сила", "ecstatic_affirmation"]
+    tags: ["octant", "dionysus", "eros", "will"]
+    position: [3000, 18000, 20000]
+    shell: [80, 120, 160, 180, 150, 120, 60, 30]
+    description: "Дионис+Эрос+Воля: буйство жизни, стихийная созидательная мощь."
+
+  - id: "oct_heroic_fatal"
+    word: "героическое_роковое"
+    aliases: ["apollo_thanatos_will", "порядок_смерть_сила", "heroic_fatal"]
+    tags: ["octant", "apollo", "thanatos", "will"]
+    position: [20000, 3000, 22000]
+    shell: [40, 60, 120, 200, 200, 160, 90, 50]
+    description: "Аполлон+Танатос+Воля: героическая борьба на краю гибели, трагическое величие."
+
+  - id: "oct_destructive_activating"
+    word: "деструктивное_активирующее"
+    aliases: ["dionysus_thanatos_will", "хаос_смерть_сила", "destructive_activating"]
+    tags: ["octant", "dionysus", "thanatos", "will"]
+    position: [3000, 3000, 20000]
+    shell: [30, 40, 100, 190, 210, 170, 100, 60]
+    description: "Дионис+Танатос+Воля: разрушительная энергия, хаос без созидания."
+
+  - id: "oct_idealized_consoling"
+    word: "идеализированное_утешительное"
+    aliases: ["apollo_eros_nothing", "порядок_жизнь_тишина", "idealized_consoling"]
+    tags: ["octant", "apollo", "eros", "nothing"]
+    position: [20000, 18000, 2000]
+    shell: [50, 80, 120, 180, 200, 180, 120, 80]
+    description: "Аполлон+Эрос+Ничто: идеализированная тишина, совершенный покой жизни."
+
+  - id: "oct_passive_sentimental"
+    word: "пассивное_сентиментальное"
+    aliases: ["dionysus_eros_nothing", "хаос_жизнь_тишина", "passive_sentimental"]
+    tags: ["octant", "dionysus", "eros", "nothing"]
+    position: [3000, 18000, 2000]
+    shell: [60, 90, 130, 170, 190, 170, 110, 70]
+    description: "Дионис+Эрос+Ничто: ностальгия, нежная меланхолия, бездеятельная любовь."
+
+  - id: "oct_formal_denying"
+    word: "формальное_отрицающее"
+    aliases: ["apollo_thanatos_nothing", "порядок_смерть_тишина", "formal_denying"]
+    tags: ["octant", "apollo", "thanatos", "nothing"]
+    position: [20000, 3000, 2000]
+    shell: [30, 50, 100, 180, 210, 180, 110, 70]
+    description: "Аполлон+Танатос+Ничто: формальное отрицание, холодная пустая структура."
+
+  - id: "oct_self_destructive_apathic"
+    word: "саморазрушительное_апатичное"
+    aliases: ["dionysus_thanatos_nothing", "хаос_смерть_тишина", "self_destructive_apathic"]
+    tags: ["octant", "dionysus", "thanatos", "nothing"]
+    position: [3000, 3000, 2000]
+    shell: [20, 30, 70, 150, 200, 190, 130, 90]
+    description: "Дионис+Танатос+Ничто: апатия, саморазрушение без действия, распад в тишине."

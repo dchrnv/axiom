@@ -8,7 +8,9 @@
 //
 // Источник: `docs/architecture/AxialEvaluator_V1_0.md §5, §7`
 
-use crate::types::{AxialDominant, AxialScore, EvaluationLevel, Octant};
+use crate::types::{AxialScore, EvaluationLevel, Octant};
+#[cfg(test)]
+use crate::types::AxialDominant;
 use std::collections::HashMap;
 
 /// Конфликт между аналитической и синтетической оценкой октанта.
