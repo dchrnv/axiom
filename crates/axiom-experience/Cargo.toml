@@ -1,0 +1,15 @@
+[package]
+name = "axiom-experience"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+serde = ["dep:serde"]
+
+[dependencies]
+
+[dependencies.serde]
+workspace = true
+optional = true
