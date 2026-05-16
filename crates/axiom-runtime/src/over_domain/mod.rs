@@ -13,6 +13,8 @@
 
 /// AxialEvaluator — оценка Frame по философским осям X/Y/Z
 pub mod axial_evaluator;
+/// ContextRecognizer — классификатор семантического контекста
+pub mod context_recognizer;
 /// DREAM Phase — машина состояний сна, DreamScheduler, DreamCycle
 pub mod dream_phase;
 /// Базовые trait'ы Over-Domain компонентов
@@ -21,6 +23,11 @@ pub mod traits;
 pub mod weavers;
 
 pub use axial_evaluator::{AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_TICK_INTERVAL};
+
+pub use context_recognizer::{
+    ContextRecognizer, DepthRange, FractalLevel, ScanningPlan, SubsystemConflict, SubsystemEnergy,
+    SubsystemTransition, TransitionDetector, CONTEXT_RECOGNIZER_TICK_INTERVAL,
+};
 
 pub use traits::{
     CrystallizationProposal, OverDomainComponent, OverDomainError, PromotionProposal, Weaver,

@@ -95,7 +95,7 @@ impl AxialEvaluation {
 /// Хранилище всех осевых оценок.
 ///
 /// Ключ — `sutra_id` Frame-анкера. Значение — все оценки (по разным уровням).
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AxialStore {
     evaluations: HashMap<u32, Vec<AxialEvaluation>>,

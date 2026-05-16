@@ -47,7 +47,12 @@ pub enum OpCode {
     ReinforceFrame = 4003,       // Усилить существующий Frame-анкер по lineage_hash
 
     // --- Семантическая оценка (5000+) ---
-    ProposeAxialAdjustment = 5000, // AxialEvaluator: предложить скорректировать позицию токена
+    ProposeAxialAdjustment = 5000,  // AxialEvaluator: предложить скорректировать позицию токена
+
+    // --- ContextRecognizer (5100+) ---
+    RefreshPrimitiveScan = 5100,       // Принудительное сканирование на уровне примитивов
+    QueryDepthDistribution = 5101,     // Запрос распределения глубин по октанту (Workstation)
+    ResetDepthForFrame = 5102,         // Сбросить SutraDepth для Frame (debug, GUARDIAN)
 
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000, // Остановка реактора
@@ -249,6 +254,22 @@ pub struct ProposeAxialAdjustmentPayload {
     pub reason: u8,                // 1b | код причины (0=accumulated_eval, 1=conflict_resolved)
     pub confidence: u8,            // 1b | уверенность предложения (0..255)
     pub reserved: [u8; 36],        // 36b | резерв
+}
+
+/// Payload для QueryDepthDistribution (5101) — запрос распределения глубин по октанту.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct QueryDepthDistributionPayload {
+    pub octant: u8,          // 1b | индекс октанта 0..7
+    pub reserved: [u8; 47],  // 47b | резерв
+}
+
+/// Payload для ResetDepthForFrame (5102) — сброс SutraDepth (debug).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ResetDepthForFramePayload {
+    pub sutra_id: u32,       // 4b | sutra_id Frame для сброса
+    pub reserved: [u8; 44],  // 44b | резерв
 }
 
 impl UclCommand {
