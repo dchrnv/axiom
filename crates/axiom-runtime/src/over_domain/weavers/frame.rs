@@ -843,7 +843,7 @@ impl OverDomainComponent for FrameWeaver {
         self.config.scan_interval_ticks
     }
 
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError> {
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError> {
         let level = ashti.level_id();
         let maya_domain_id = level * 100 + 10;
         let exp_domain_id = level * 100 + 9;
@@ -943,7 +943,7 @@ impl OverDomainComponent for FrameWeaver {
         // Сбрасываем флаг после первого скана, который его увидел
         self.dream_cycle_completed = false;
 
-        Ok(())
+        Ok(vec![])
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> {

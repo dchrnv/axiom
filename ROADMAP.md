@@ -104,7 +104,6 @@ AxialEvaluator нужен до ContextRecognizer). C2 независим.
 - `depth_bridge.rs` — мост к `SutraDepthStore`
 - `snapshot.rs` — `ContextSnapshot` для записи в EXPERIENCE
 - `emergent/` — детектор эмерджентных примитивов (stub в V1)
-- `advisors/` — `NeuralAdvisor` trait (stub в V1)
 
 **UCL:**
 - `RefreshPrimitiveScan`

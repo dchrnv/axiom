@@ -270,13 +270,13 @@ impl OverDomainComponent for NeuralAdvisor {
         NEURAL_ADVISOR_TICK_INTERVAL
     }
 
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError> {
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError> {
         let level = ashti.level_id();
         let exp_domain_id = level * 100 + EXPERIENCE_ROLE;
 
         let exp_state = match ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i)) {
             Some(s) => s,
-            None => return Ok(()),
+            None => return Ok(vec![]),
         };
 
         // Список активных Frame-анкеров
@@ -333,13 +333,7 @@ impl OverDomainComponent for NeuralAdvisor {
             self.result_store.insert(result);
         }
 
-        // Сохраняем команды — on_shutdown вернёт их (упрощение V1)
-        // В полной интеграции on_tick должен возвращать Vec<UclCommand>.
-        // Сейчас возвращаем через on_shutdown как компромисс архитектуры.
-        // TODO V2: изменить сигнатуру on_tick на возврат Vec<UclCommand>.
-        let _ = ucl_commands;
-
-        Ok(())
+        Ok(ucl_commands)
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> {

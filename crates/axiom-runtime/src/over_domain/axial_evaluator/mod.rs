@@ -143,13 +143,13 @@ impl OverDomainComponent for AxialEvaluator {
         AXIAL_EVALUATOR_TICK_INTERVAL
     }
 
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError> {
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError> {
         let level = ashti.level_id();
         let exp_domain_id = level * 100 + 9;
 
         let exp_state = match ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i)) {
             Some(s) => s,
-            None => return Ok(()),
+            None => return Ok(vec![]),
         };
 
         // Найти Frame-анкеры ещё не оценённые
@@ -183,7 +183,7 @@ impl OverDomainComponent for AxialEvaluator {
             self.evaluate_frame(&anchor, &participants, &exp_state.connections, tick);
         }
 
-        Ok(())
+        Ok(vec![])
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> {

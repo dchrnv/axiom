@@ -161,18 +161,18 @@ impl OverDomainComponent for ContextRecognizer {
         CONTEXT_RECOGNIZER_TICK_INTERVAL
     }
 
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError> {
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError> {
         let level = ashti.level_id();
         let maya_domain_id = level * 100 + MAYA_ROLE;
         let exp_domain_id = level * 100 + 9;
 
         let maya_state = match ashti.index_of(maya_domain_id).and_then(|i| ashti.state(i)) {
             Some(s) => s,
-            None => return Ok(()),
+            None => return Ok(vec![]),
         };
         let exp_state = match ashti.index_of(exp_domain_id).and_then(|i| ashti.state(i)) {
             Some(s) => s,
-            None => return Ok(()),
+            None => return Ok(vec![]),
         };
 
         // Обновить список Frame-анкеров
@@ -253,7 +253,7 @@ impl OverDomainComponent for ContextRecognizer {
             );
         }
 
-        Ok(())
+        Ok(vec![])
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> {

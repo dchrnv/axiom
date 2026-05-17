@@ -101,9 +101,9 @@ pub trait OverDomainComponent: Send {
     /// - `tick` — текущий tick_count AxiomEngine
     /// - `ashti` — read-only доступ к состоянию всех доменов
     ///
-    /// Компонент обновляет внутреннее состояние (кандидаты, статистику).
-    /// Для генерации UCL-команд используется on_shutdown или отдельные методы.
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError>;
+    /// Возвращает UCL-команды для немедленного исполнения Engine-ом.
+    /// Компонент также обновляет внутреннее состояние (кандидаты, статистику).
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError>;
 
     /// Вызывается при shutdown AxiomEngine.
     ///

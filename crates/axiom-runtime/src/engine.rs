@@ -1134,7 +1134,11 @@ impl AxiomEngine {
         for component in &mut components {
             let interval = component.on_tick_interval();
             if interval > 0 && t.is_multiple_of(interval as u64) {
-                let _ = component.on_tick(t, &self.ashti);
+                if let Ok(cmds) = component.on_tick(t, &self.ashti) {
+                    for cmd in cmds {
+                        let _ = self.process_command(&cmd);
+                    }
+                }
             }
         }
         self.over_domain_components = components;
