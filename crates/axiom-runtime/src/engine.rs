@@ -12,9 +12,9 @@ use crate::adaptive::AdaptiveTickRate;
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::orchestrator;
 use crate::over_domain::{
-    restore_frame_from_anchor, DreamCycle, DreamPhaseState, DreamPhaseStats, DreamScheduler,
-    FatigueSnapshot, FrameWeaver, GatewayPriority, OverDomainComponent, SleepDecision,
-    SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
+    restore_frame_from_anchor, AxialEvaluator, ContextRecognizer, DreamCycle, DreamPhaseState,
+    DreamPhaseStats, DreamScheduler, FatigueSnapshot, FrameWeaver, GatewayPriority, NeuralAdvisor,
+    OverDomainComponent, SleepDecision, SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
@@ -181,6 +181,12 @@ pub struct AxiomEngine {
     pub over_domain_components: Vec<Box<dyn OverDomainComponent>>,
     /// FrameWeaver — хранится по значению (не через dyn) для доступа к drain_commands().
     pub frame_weaver: FrameWeaver,
+    /// AxialEvaluator — оценивает Frame по осям X/Y/Z (tick=5).
+    pub axial_evaluator: AxialEvaluator,
+    /// ContextRecognizer — классифицирует активные подсистемы знания (tick=7).
+    pub context_recognizer: ContextRecognizer,
+    /// NeuralAdvisor — advisory-only советник, детектирует эмерджентные примитивы (tick=11).
+    pub neural_advisor: NeuralAdvisor,
     /// Текущее состояние DREAM-фазы (Wake / FallingAsleep / Dreaming / Waking).
     pub dream_phase_state: DreamPhaseState,
     /// Счётчики DREAM-фазы (дополняются в этапах 2–4).
@@ -241,6 +247,9 @@ impl AxiomEngine {
             thread_pool: get_shared_pool(worker_count),
             over_domain_components: Vec::new(),
             frame_weaver: FrameWeaver::with_default_config(),
+            axial_evaluator: AxialEvaluator::new(),
+            context_recognizer: ContextRecognizer::new(std::collections::HashMap::new()),
+            neural_advisor: NeuralAdvisor::with_default_v1(),
             dream_phase_state: DreamPhaseState::default(),
             dream_phase_stats: DreamPhaseStats::default(),
             dream_priority_buffer: VecDeque::new(),
@@ -606,6 +615,12 @@ impl AxiomEngine {
             OpCode::BondTokens => self.handle_bond_tokens(cmd),
             OpCode::ReinforceFrame => self.handle_reinforce_frame(cmd),
             OpCode::UnfoldFrame => self.handle_unfold_frame(cmd),
+            OpCode::ApproveEmergentCandidate => {
+                let sutra_id =
+                    u32::from_le_bytes([cmd.payload[0], cmd.payload[1], cmd.payload[2], cmd.payload[3]]);
+                self.neural_advisor.approve_emergent(sutra_id);
+                make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+            }
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
             OpCode::LockMembrane
             | OpCode::ReshapeDomain
@@ -1157,6 +1172,36 @@ impl AxiomEngine {
             }
         }
 
+        // Phase C coordinator: AE → sync → CR → sync → NA
+        if t % 5 == 0 {
+            if let Ok(cmds) = self.axial_evaluator.on_tick(t, &self.ashti) {
+                for cmd in cmds {
+                    let _ = self.process_command(&cmd);
+                }
+            }
+            let axial = self.axial_evaluator.storage().store().clone();
+            self.context_recognizer.sync_axial_store(&axial);
+            self.neural_advisor.sync_axial_store(&axial);
+        }
+        if t % 7 == 0 {
+            if let Ok(cmds) = self.context_recognizer.on_tick(t, &self.ashti) {
+                for cmd in cmds {
+                    let _ = self.process_command(&cmd);
+                }
+            }
+            self.neural_advisor
+                .sync_profile_store(self.context_recognizer.profile_store());
+            self.neural_advisor
+                .sync_depth_store(self.context_recognizer.depth_store());
+        }
+        if t % 11 == 0 {
+            if let Ok(cmds) = self.neural_advisor.on_tick(t, &self.ashti) {
+                for cmd in cmds {
+                    let _ = self.process_command(&cmd);
+                }
+            }
+        }
+
         // DreamScheduler: проверить триггеры засыпания
         let snapshot = self.collect_fatigue_snapshot();
         let decision = self.dream_scheduler.on_wake_tick(t, snapshot, had_intake);
@@ -1650,6 +1695,7 @@ fn opcode_from_u16(raw: u16) -> Option<OpCode> {
         9001 => Some(OpCode::CoreReset),
         9002 => Some(OpCode::BackupState),
         9003 => Some(OpCode::RestoreState),
+        5201 => Some(OpCode::ApproveEmergentCandidate),
         _ => None,
     }
 }

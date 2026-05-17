@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1332 тестов, 0 failures**
+**1341 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -167,7 +167,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 28 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 383 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V1.0, ContextRecognizer V1.0, NeuralAdvisor V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-runtime | 392 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V1.0, ContextRecognizer V1.0, NeuralAdvisor V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 133 (156 telegram,opensearch) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip |
@@ -247,3 +247,5 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase C3 | AxialEvaluator V1.0 (ModuleId=17, tick=5): X/Y/Z axes, 8 EvaluationLevels, Corpus Callosum conflict | ✅ |
 | Phase C4 | ContextRecognizer V1.0 (ModuleId=18, tick=7): ScanningPlan, SubsystemEnergy, InterpretationProfile | ✅ |
 | Phase C5 | NeuralAdvisor V1.0 (ModuleId=19, tick=11): advisory-only, 5 трейтов, RuleBasedCorpusCallosumResolver, DepthThresholdEmergentDetector; on_tick → Vec<UclCommand> | ✅ |
+| Phase I1 | Engine coordinator: axial_evaluator/context_recognizer/neural_advisor — конкретные поля AxiomEngine, tick % 5/7/11, snapshot sync AE→CR→NA; opcode_from_u16 расширен; 9 тестов | ✅ |
+| Phase I4 | ApproveEmergentCandidate (UCL 5201) handler в Engine → neural_advisor.approve_emergent(sutra_id) | ✅ |
