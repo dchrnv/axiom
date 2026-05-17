@@ -116,6 +116,33 @@ impl InterpretationProfileStore {
             .values()
             .filter(move |p| p.primary == subsystem)
     }
+
+    /// Most common primary subsystem as u8. Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Unknown=5.
+    pub fn dominant_primary_as_u8(&self) -> Option<u8> {
+        if self.profiles.is_empty() {
+            return None;
+        }
+        let mut counts = [0u32; 6];
+        for p in self.profiles.values() {
+            counts[subsystem_to_u8(p.primary) as usize] += 1;
+        }
+        counts
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, &v)| v)
+            .map(|(i, _)| i as u8)
+    }
+}
+
+fn subsystem_to_u8(s: SubsystemId) -> u8 {
+    match s {
+        SubsystemId::Writing => 0,
+        SubsystemId::Mathematics => 1,
+        SubsystemId::Music => 2,
+        SubsystemId::Time => 3,
+        SubsystemId::Logic => 4,
+        SubsystemId::Unknown => 5,
+    }
 }
 
 #[cfg(test)]

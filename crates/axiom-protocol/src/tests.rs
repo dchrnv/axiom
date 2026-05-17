@@ -74,6 +74,7 @@ fn make_snapshot() -> SystemSnapshot {
             last_transition_tick: 30,
         },
         adapter_progress: vec![],
+        phase_c: None,
     }
 }
 

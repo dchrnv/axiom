@@ -68,4 +68,9 @@ pub enum EngineCommand {
     RunBench {
         spec: BenchSpec,
     },
+
+    // Phase C
+    ApproveEmergentCandidate {
+        sutra_id: u32,
+    },
 }

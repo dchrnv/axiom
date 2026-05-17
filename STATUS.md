@@ -124,10 +124,11 @@ axiom-space:
   └── apply_gravity_batch_chunked + L2_CHUNK_TOKENS — L2-cache-friendly batch для N>1M (S3)
 
 Workstation V1.0 ✅ (2026-05-05):
-  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(15 incl. RunBench), EngineEvent(14),
+  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(16 incl. RunBench, ApproveEmergentCandidate), EngineEvent(14),
     EngineMessage/ClientMessage (handshake), SystemSnapshot, ConfigSchema, BenchSpec;
     TokenFieldPoint + token_field: Vec<TokenFieldPoint> в DomainSnapshot;
     FrameWeaverStats: syntactic_layer_activations [u8; 8];
+    PhaseCSnapshot (dominant_octant/subsystem, emergent_candidates) + EmergentCandidateSnapshot в SystemSnapshot;
     postcard сериализация; PROTOCOL_VERSION = 0x01_00_00_00
   axiom-broadcasting — WebSocket-сервер (tokio-tungstenite 0.24): BroadcastServer/Handle,
     subscription filter (event_category bits + tick_event_interval + domain_activity_threshold),
@@ -142,7 +143,7 @@ Workstation V1.0 ✅ (2026-05-05):
     │             RunBench подключён к протоколу (BenchStarted/Progress/Finished events)
     └── ui/ — header, tabs, welcome (fade-in анимация), system_map(canvas::Cache),
               config(schema-driven), conversation(multi-line text_editor, Ctrl+Enter),
-              patterns(sparklines L1-L8, syntactic_layer_activations, show-more pagination),
+              patterns(sparklines L1-L8, Phase C panel: октант+подсистема+emergent candidates, show-more pagination),
               dream_state(show-more pagination), files(rfd AsyncFileDialog Browse button),
               benchmarks, live_field(3D canvas, реальный token_field из DomainSnapshot)
 ```
@@ -250,3 +251,4 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase I1 | Engine coordinator: axial_evaluator/context_recognizer/neural_advisor — конкретные поля AxiomEngine, tick % 5/7/11, snapshot sync AE→CR→NA; opcode_from_u16 расширен; 9 тестов | ✅ |
 | Phase I4 | ApproveEmergentCandidate (UCL 5201) handler в Engine → neural_advisor.approve_emergent(sutra_id) | ✅ |
 | Phase I2 | ContextRecognizer::from_anchor_set(AnchorSet): build_subsystem_refs по именам подсистем; AxiomEngine::apply_anchor_set; axiom-node/startup вызывает при старте; 3 теста | ✅ |
+| Phase I6 | Workstation Phase C visibility: PhaseCSnapshot в SystemSnapshot (dominant_octant/subsystem, emergent_candidates); ApproveEmergentCandidate в EngineCommand + axiom-node handler; Patterns tab — Phase C panel (октант+подсистема с цветом, emergent candidates с кнопкой Approve) | ✅ |

@@ -2,8 +2,9 @@
 use axiom_protocol::{
     events::EngineState,
     snapshot::{
-        DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport, FatigueSnapshot,
-        FrameWeaverStats, GuardianStats, OverDomainSnapshot, SystemSnapshot, TokenFieldPoint,
+        DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport, EmergentCandidateSnapshot,
+        FatigueSnapshot, FrameWeaverStats, GuardianStats, OverDomainSnapshot, PhaseCSnapshot,
+        SystemSnapshot, TokenFieldPoint,
     },
 };
 use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
@@ -60,6 +61,31 @@ fn build_layer_activations(engine: &AxiomEngine, domain_id: u16) -> [u8; 8] {
         out[i] = ((buckets[i] as u64 * 255) / max as u64) as u8;
     }
     out
+}
+
+fn build_phase_c_snapshot(engine: &AxiomEngine) -> Option<PhaseCSnapshot> {
+    let dominant_octant = engine.axial_evaluator.storage().store().most_common_octant();
+    let dominant_subsystem = engine
+        .context_recognizer
+        .profile_store()
+        .dominant_primary_as_u8();
+    let emergent_store = engine.neural_advisor.emergent_store();
+    let candidates: Vec<EmergentCandidateSnapshot> = emergent_store
+        .get_pending()
+        .take(20)
+        .map(|p| EmergentCandidateSnapshot {
+            sutra_id: p.sutra_id,
+            discovery_octant: p.discovery_octant as u8,
+            initial_depth: p.initial_depth,
+        })
+        .collect();
+    let pending_emergent_count = emergent_store.get_pending().count() as u32;
+    Some(PhaseCSnapshot {
+        dominant_octant,
+        dominant_subsystem,
+        pending_emergent_count,
+        emergent_candidates: candidates,
+    })
 }
 
 pub fn engine_state_from(s: &BroadcastSnapshot) -> EngineState {
@@ -205,5 +231,6 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64) -> SystemS
         },
         dream_phase_stats,
         adapter_progress: vec![],
+        phase_c: build_phase_c_snapshot(engine),
     }
 }

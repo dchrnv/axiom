@@ -21,6 +21,8 @@ pub struct SystemSnapshot {
     pub dream_phase_stats: DreamPhaseStats,
 
     pub adapter_progress: Vec<AdapterProgress>,
+
+    pub phase_c: Option<PhaseCSnapshot>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -110,6 +112,28 @@ pub struct GuardianStats {
 pub struct DreamPhaseStats {
     pub cycles_completed: u64,
     pub last_transition_tick: u64,
+}
+
+/// Pending emergent primitive candidate (for Workstation approval panel).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct EmergentCandidateSnapshot {
+    pub sutra_id: u32,
+    /// Octant as u8 (0=CreativeAffirmation … 7=SelfDestructiveApathic).
+    pub discovery_octant: u8,
+    pub initial_depth: u16,
+}
+
+/// Phase C state snapshot — AxialEvaluator + ContextRecognizer + NeuralAdvisor.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct PhaseCSnapshot {
+    /// Most common octant across all frame evaluations (None = no evaluations yet).
+    pub dominant_octant: Option<u8>,
+    /// Most common primary subsystem as u8 (0=Writing…5=Unknown). None = no profiles yet.
+    pub dominant_subsystem: Option<u8>,
+    /// Total number of pending emergent primitive candidates.
+    pub pending_emergent_count: u32,
+    /// Top-20 pending candidates for the Workstation approval panel.
+    pub emergent_candidates: Vec<EmergentCandidateSnapshot>,
 }
 
 /// Returned by RequestFrameDetails command.

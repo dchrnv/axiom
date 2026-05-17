@@ -11,7 +11,7 @@ use axiom_protocol::{
     config::{ConfigSchema, ConfigSection, ConfigValue},
     events::EngineEvent,
     messages::CommandResultData,
-    snapshot::{DreamReport, SystemSnapshot},
+    snapshot::{DreamReport, EmergentCandidateSnapshot, SystemSnapshot},
 };
 
 use crate::connection::ws_subscription;
@@ -154,6 +154,12 @@ pub struct PatternsState {
     pub layer_history: [VecDeque<u8>; 8],
     pub recent_frames: VecDeque<FrameEvent>,
     pub show_all_frames: bool,
+    /// Most common octant u8 (0–7), None = no AE data yet.
+    pub dominant_octant: Option<u8>,
+    /// Most common subsystem u8 (0=Writing…5=Unknown), None = no CR data yet.
+    pub dominant_subsystem: Option<u8>,
+    pub pending_emergent_count: u32,
+    pub emergent_candidates: Vec<EmergentCandidateSnapshot>,
 }
 
 impl Default for PatternsState {
@@ -162,6 +168,10 @@ impl Default for PatternsState {
             layer_history: std::array::from_fn(|_| VecDeque::with_capacity(30)),
             recent_frames: VecDeque::with_capacity(100),
             show_all_frames: false,
+            dominant_octant: None,
+            dominant_subsystem: None,
+            pending_emergent_count: 0,
+            emergent_candidates: Vec::new(),
         }
     }
 }
@@ -435,6 +445,8 @@ pub enum Message {
     // Patterns / Dream State pagination
     PatternsShowMore,
     DreamsShowMore,
+    // Phase C
+    ApprovePrimitive(u32),
     // Benchmarks tab
     BenchIterationsChanged(String),
     BenchRun,
@@ -602,6 +614,13 @@ impl WorkstationApp {
                     .map(|fw| fw.syntactic_layer_activations)
                     .unwrap_or(snap.over_domain.layer_activations);
                 self.patterns.push_layer_snapshot(layer_data);
+                // Phase C state
+                if let Some(ref pc) = snap.phase_c {
+                    self.patterns.dominant_octant = pc.dominant_octant;
+                    self.patterns.dominant_subsystem = pc.dominant_subsystem;
+                    self.patterns.pending_emergent_count = pc.pending_emergent_count;
+                    self.patterns.emergent_candidates = pc.emergent_candidates.clone();
+                }
                 // Accumulate DreamReports
                 if let Some(report) = &snap.last_dream_report {
                     let is_new = self
@@ -904,6 +923,16 @@ impl WorkstationApp {
             }
             Message::PatternsShowMore => {
                 self.patterns.show_all_frames = true;
+            }
+            Message::ApprovePrimitive(sutra_id) => {
+                self.patterns
+                    .emergent_candidates
+                    .retain(|c| c.sutra_id != sutra_id);
+                self.patterns.pending_emergent_count =
+                    self.patterns.pending_emergent_count.saturating_sub(1);
+                let id = self.next_id();
+                return self
+                    .send_command_task(id, EngineCommand::ApproveEmergentCandidate { sutra_id });
             }
             Message::DreamsShowMore => {
                 self.dream_state.show_all_dreams = true;

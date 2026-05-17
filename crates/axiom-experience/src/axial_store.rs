@@ -154,6 +154,26 @@ impl AxialStore {
     pub fn is_empty(&self) -> bool {
         self.evaluations.is_empty()
     }
+
+    /// Most common octant across all frames' latest evaluations, as u8 (0–7).
+    pub fn most_common_octant(&self) -> Option<u8> {
+        let mut counts = [0u32; 8];
+        let mut total = 0u32;
+        for evals in self.evaluations.values() {
+            if let Some(latest) = evals.iter().max_by_key(|e| e.computed_at_event) {
+                counts[latest.octant as usize] += 1;
+                total += 1;
+            }
+        }
+        if total == 0 {
+            return None;
+        }
+        counts
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, &v)| v)
+            .map(|(i, _)| i as u8)
+    }
 }
 
 #[cfg(test)]

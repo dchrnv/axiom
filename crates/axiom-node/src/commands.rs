@@ -15,6 +15,7 @@ use axiom_protocol::{
     messages::{CommandResultData, EngineMessage},
 };
 use axiom_runtime::{AxiomEngine, DreamPhaseState};
+use axiom_ucl::{OpCode, UclCommand};
 
 use crate::shutdown::ShutdownSignal;
 
@@ -104,6 +105,16 @@ pub fn handle_engine_command(
             handle.update_snapshot(snap.clone());
             handle.publish(EngineMessage::Snapshot(snap));
             debug!("RequestFrameDetails anchor_id={}: sent full snapshot", anchor_id);
+        }
+
+        EngineCommand::ApproveEmergentCandidate { sutra_id } => {
+            let ucl = UclCommand::new(OpCode::ApproveEmergentCandidate, 0, 100, 0)
+                .with_payload(&sutra_id);
+            engine.process_command(&ucl);
+            handle.publish(EngineMessage::CommandResult {
+                command_id: cmd_id,
+                result: Ok(CommandResultData::None),
+            });
         }
 
         other => {

@@ -16,12 +16,116 @@ const SEMANTIC_LAYERS: &[(&str, &str)] = &[
     ("L8", "abstract"),
 ];
 
+const OCTANT_NAMES: &[&str] = &[
+    "Creative Affirmation",  // 0 +++
+    "Ecstatic Affirmation",  // 1 -++
+    "Heroic Fatal",          // 2 +-+
+    "Destructive Activating",// 3 --+
+    "Idealized Consoling",   // 4 ++-
+    "Passive Sentimental",   // 5 -+-
+    "Formal Denying",        // 6 +--
+    "Self-Destructive",      // 7 ---
+];
+
+const SUBSYSTEM_NAMES: &[&str] = &[
+    "Writing", "Mathematics", "Music", "Time", "Logic", "Unknown",
+];
+
 pub fn patterns_view<'a>(state: &'a PatternsState) -> Element<'a, Message> {
     column![
         active_layers_panel(state),
+        phase_c_panel(state),
         recent_frames_panel(state),
     ]
     .into()
+}
+
+// ── Phase C state ─────────────────────────────────────────────────────────
+
+fn phase_c_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
+    let octant_label = state
+        .dominant_octant
+        .and_then(|o| OCTANT_NAMES.get(o as usize).copied())
+        .unwrap_or("—");
+    let subsystem_label = state
+        .dominant_subsystem
+        .and_then(|s| SUBSYSTEM_NAMES.get(s as usize).copied())
+        .unwrap_or("—");
+
+    let octant_color = state
+        .dominant_octant
+        .map(octant_color)
+        .unwrap_or(Color::from_rgb(0.4, 0.4, 0.4));
+
+    let state_row = row![
+        text("Octant").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)).width(60),
+        text(octant_label).size(12).color(octant_color).width(180),
+        text("Subsystem").size(11).color(Color::from_rgb(0.5, 0.5, 0.5)).width(75),
+        text(subsystem_label).size(12).color(Color::from_rgb(0.6, 0.8, 1.0)),
+    ]
+    .spacing(4);
+
+    let mut content = column![
+        text("Phase C")
+            .size(13)
+            .color(Color::from_rgb(0.6, 0.6, 0.6)),
+        state_row,
+    ]
+    .spacing(6);
+
+    // Emergent candidates panel
+    if state.pending_emergent_count > 0 || !state.emergent_candidates.is_empty() {
+        let header = row![
+            text(format!(
+                "Emergent candidates  ({})",
+                state.pending_emergent_count
+            ))
+            .size(12)
+            .color(Color::from_rgb(0.9, 0.75, 0.3)),
+        ];
+        content = content.push(header);
+
+        for candidate in &state.emergent_candidates {
+            let oct_name = OCTANT_NAMES
+                .get(candidate.discovery_octant as usize)
+                .copied()
+                .unwrap_or("?");
+            let row = row![
+                text(format!("#{}", candidate.sutra_id))
+                    .size(11)
+                    .color(Color::from_rgb(0.65, 0.65, 0.65))
+                    .width(70),
+                text(format!("oct:{oct_name}  depth:{}", candidate.initial_depth))
+                    .size(11)
+                    .color(Color::from_rgb(0.55, 0.55, 0.55))
+                    .width(Length::Fill),
+                button(text("Approve").size(11))
+                    .on_press(Message::ApprovePrimitive(candidate.sutra_id))
+                    .style(button::secondary),
+            ]
+            .spacing(6)
+            .align_y(iced::Alignment::Center);
+            content = content.push(row);
+        }
+    }
+
+    container(content)
+        .padding([8u16, 12u16])
+        .into()
+}
+
+fn octant_color(octant: u8) -> Color {
+    match octant {
+        0 => Color::from_rgb(0.3, 0.85, 0.5),   // CreativeAffirmation — green
+        1 => Color::from_rgb(0.4, 0.7, 1.0),    // EcstaticAffirmation — blue
+        2 => Color::from_rgb(0.95, 0.65, 0.2),  // HeroicFatal — amber
+        3 => Color::from_rgb(0.85, 0.35, 0.35), // DestructiveActivating — red
+        4 => Color::from_rgb(0.7, 0.5, 0.9),    // IdealizedConsoling — purple
+        5 => Color::from_rgb(0.55, 0.75, 0.65), // PassiveSentimental — teal
+        6 => Color::from_rgb(0.6, 0.6, 0.75),   // FormalDenying — cool grey
+        7 => Color::from_rgb(0.45, 0.45, 0.5),  // SelfDestructiveApathic — dark grey
+        _ => Color::from_rgb(0.5, 0.5, 0.5),
+    }
 }
 
 // ── Active layers ──────────────────────────────────────────────────────────
