@@ -1,9 +1,9 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-13  
-**Тесты:** 1200, 0 failures  
-**Последний коммит:** 7f07e72
+**Обновлено:** 2026-05-17  
+**Тесты:** 1332, 0 failures  
+**Последний коммит:** a9e4acc
 
 ---
 
@@ -13,6 +13,8 @@
 axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(64)))
 axiom-ucl        — UclCommand, OpCode, UclResult
 axiom-genome     — Genome (конституция, frozen в Arc после boot)
+axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
+                   Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней)
 axiom-frontier   — CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection
 axiom-config     — DomainConfig, AnchorSet, ConfigWatcher, HeartbeatConfig, JsonSchema
 axiom-space      — SpatialHashGrid, apply_gravity_batch (SIMD-ready, feature "simd")
@@ -142,6 +144,7 @@ InjectToken=2000, ApplyForce=2001, AnnihilateToken=2002, BondTokens=2003, SplitT
 InjectFrameAnchor=2010, ReinforceFrame=2011
 TickForward=3000, ChangeTemperature=3001, ApplyGravity=3002, PhaseTransition=3003
 ProcessTokenDualPath=4000, FinalizeComparison=4001
+NotifyEmergentCandidate=5200, ApproveEmergentCandidate=5201
 CoreShutdown=9000, CoreReset=9001, BackupState=9002, RestoreState=9003
 ```
 
@@ -149,6 +152,8 @@ CoreShutdown=9000, CoreReset=9001, BackupState=9002, RestoreState=9003
 - `InjectFrameAnchorPayload` — lineage_hash, proposed_sutra_id, target_domain_id, type_flags, position, state, mass, temperature
 - `BondTokensPayload` — source_id, target_id, domain_id, link_type, strength, origin_domain (stored in reserved_gate[0..2])
 - `ReinforceFramePayload` — anchor_id, delta_mass, delta_temperature
+- `NotifyEmergentCandidatePayload` — sutra_id(u32), octant(u8), confidence_scaled(u8), depth(u16), reserved([u8;40])
+- `ApproveEmergentCandidatePayload` — sutra_id(u32), reserved([u8;44])
 
 ---
 
@@ -362,6 +367,16 @@ event_id: u64
 - FrameWeaver V1.3 — синтаксические/реляционные Frame ✅
 - Deferred: CausalWeaver, SpatialWeaver, TemporalWeaver, AnalogyWeaver, NarrativeWeaver
 
+**Phase C — Knowledge Subsystems:**
+- AxialEvaluator V1.0 (tick=5, ModuleId=17) — оценка Frame по осям X/Y/Z (Apollo/Dionysus,
+  Eros/Thanatos, Will/Nothing), 8 EvaluationLevel, Corpus Callosum conflict (analytic vs synthetic octant)
+- ContextRecognizer V1.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
+  ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates)
+- NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
+  OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
+  V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector;
+  on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата
+
 ### Инварианты Over-Domain
 
 - Нет собственного хранилища (пишут в EXPERIENCE/SUTRA через UCL)
@@ -377,7 +392,7 @@ pub trait OverDomainComponent: Send {
     fn module_id(&self) -> ModuleId;
     fn on_boot(&mut self, genome: &Arc<Genome>) -> Result<(), OverDomainError>;
     fn on_tick_interval(&self) -> u32 { 1 }
-    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<(), OverDomainError>;
+    fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError>;
     fn on_shutdown(&mut self) -> Vec<UclCommand>;
 }
 
