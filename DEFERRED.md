@@ -1,26 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 50.0
+**Версия:** 57.0
 **Обновлён:** 2026-05-17
-
----
-
-## Live Observation
-
-### OBS-01 — Live Observation Plan (первая неделя после Фазы A)
-
-**Когда:** сразу после запуска живого движка (axiom-node + Workstation).
-
-Запустить систему, подавать разнообразные тексты через TextPerceptor, наблюдать через Workstation. Зафиксировать:
-
-1. На каких текстах FrameWeaver кристаллизует Frame? (простые, сложные, вопросы, метафоры)
-2. Какие семантические слои реально активируются в Shell? (если L4–L8 пустые — тюнить SemanticContributionTable)
-3. Какие синтаксические подтипы реально появляются в `link_type`? (38 подтипов — реально ли используются?)
-4. Какие домены нагружены? (все 8 ASHTI или 2–3?)
-5. Что в DreamReport? Сколько Frame → SUTRA, что отвергает GUARDIAN. **Первая реальная промоция — момент проверки** правильности порогов PromotionRule; возможен Frame V1.4 errata по результатам.
-6. Сколько fatigue накапливается? (дефолты FatigueWeights взяты из головы)
-7. Идёт ли реактивация Frame? (один Frame от разных текстов — правильное поведение)
-8. Первый реальный DreamReport на живых данных: правильно ли работают триггеры, правильно ли DREAM-instance обрабатывает proposals, проходит ли промоция через CODEX.
 
 ---
 
@@ -51,44 +32,6 @@
 **Когда:** при проектировании CausalWeaver или AnalogyWeaver.
 
 > Структуру не выбирать заранее — форма данных (пары счётчиков, скользящее окно тиков, матрица вероятностей) зависит от первого потребителя. Реализовать сейчас = угадать API и переделывать.
-
----
-
-## Ждут конкретного триггера
-
-### Anchor-Fill — Наполнение якорных YAML-файлов
-
-**Где:** `config/anchors/`
-
-Сейчас загружены только:
-
-- `axes.yaml` — 6 осевых якорей (X/Y/Z полюса)
-- `layers/L5_cognitive.yaml` — 10 якорей когнитивного слоя
-- `domains/D1_execution.yaml` — 6 якорей домена EXECUTION
-
-Для полного семантического покрытия нужно заполнить:
-
-| Файл                       | Слой / Домен | Рекомендуемых якорей |
-|----------------------------|--------------|----------------------|
-| `layers/L1_physical.yaml`  | L1 Physical  | 7+                   |
-| `layers/L2_sensory.yaml`   | L2 Sensory   | 10+                  |
-| `layers/L3_motor.yaml`     | L3 Motor     | 7+                   |
-| `layers/L4_emotional.yaml` | L4 Emotional | 7+                   |
-| `layers/L6_social.yaml`    | L6 Social    | 7+                   |
-| `layers/L7_temporal.yaml`  | L7 Temporal  | 7+                   |
-| `layers/L8_abstract.yaml`  | L8 Abstract  | 7+                   |
-| `domains/D2_shadow.yaml`   | SHADOW       | 5+                   |
-| `domains/D3_codex.yaml`    | CODEX        | 5+                   |
-| `domains/D4_map.yaml`      | MAP          | 5+                   |
-| `domains/D5_probe.yaml`    | PROBE        | 5+                   |
-| `domains/D6_logic.yaml`    | LOGIC        | 5+                   |
-| `domains/D7_dream.yaml`    | DREAM        | 6 (пример в спеке)   |
-| `domains/D8_ethics.yaml`   | ETHICS       | 5+                   |
-
-Формат: [docs/spec/Anchor_Tokens_V1_0.md](docs/spec/Anchor_Tokens_V1_0.md), раздел 7.
-Диагностика через CLI: `:match "текст"` — показывает совпадения и вычисленную позицию.
-
-**Когда:** По мере накопления понимания семантики системы (chrnv). Система работает без них — FNV-1a fallback.
 
 ---
 
