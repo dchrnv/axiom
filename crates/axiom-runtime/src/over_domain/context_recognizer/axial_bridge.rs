@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// Результат отсортирован по частоте встречаемости (наиболее частые — первые).
 pub fn current_active_octants(_store: &AxialStore, since_event: u64, window: u64) -> Vec<Octant> {
     let cutoff = since_event.saturating_sub(window);
-    let mut counts = [0u32; 8];
+    let counts = [0u32; 8];
 
     // Собираем частоты октантов из всех оценок в окне
     // AxialStore::frame_count() + iter через get_all — обходим через known sutra_ids

@@ -218,6 +218,7 @@ pub struct AxiomEngine {
     /// Тик начала текущего/последнего dream-цикла.
     pub(crate) dream_started_at: u64,
     /// Последний завершённый dream-отчёт (сохраняется в BroadcastSnapshot).
+    #[cfg(feature = "adapters")]
     pub(crate) last_dream_summary: Option<crate::broadcast::LastDreamSummary>,
 }
 
@@ -264,6 +265,7 @@ impl AxiomEngine {
             last_crystallization_tick: 0,
             fw_base_at_dream_start: (0, 0, 0),
             dream_started_at: 0,
+            #[cfg(feature = "adapters")]
             last_dream_summary: None,
         })
     }
@@ -1296,19 +1298,24 @@ impl AxiomEngine {
         self.dream_phase_stats.last_wake_tick = tick;
 
         let (base_approved, base_vetoed, base_sutra) = self.fw_base_at_dream_start;
-        self.last_dream_summary = Some(crate::broadcast::LastDreamSummary {
-            cycle_id: self.dream_phase_stats.total_sleeps,
-            started_at_tick: self.dream_started_at,
-            ended_at_tick: tick,
-            proposals_accepted: self.frame_weaver.stats.crystallizations_approved
-                .saturating_sub(base_approved) as u32,
-            proposals_rejected: self.frame_weaver.stats.crystallizations_vetoed
-                .saturating_sub(base_vetoed) as u32,
-            sutra_written: self.frame_weaver.stats.frames_in_sutra
-                .saturating_sub(base_sutra) as u32,
-            fatigue_before: self.falling_asleep_fatigue,
-            fatigue_after: self.dream_scheduler.current_fatigue(),
-        });
+        #[cfg(feature = "adapters")]
+        {
+            self.last_dream_summary = Some(crate::broadcast::LastDreamSummary {
+                cycle_id: self.dream_phase_stats.total_sleeps,
+                started_at_tick: self.dream_started_at,
+                ended_at_tick: tick,
+                proposals_accepted: self.frame_weaver.stats.crystallizations_approved
+                    .saturating_sub(base_approved) as u32,
+                proposals_rejected: self.frame_weaver.stats.crystallizations_vetoed
+                    .saturating_sub(base_vetoed) as u32,
+                sutra_written: self.frame_weaver.stats.frames_in_sutra
+                    .saturating_sub(base_sutra) as u32,
+                fatigue_before: self.falling_asleep_fatigue,
+                fatigue_after: self.dream_scheduler.current_fatigue(),
+            });
+        }
+        #[cfg(not(feature = "adapters"))]
+        let _ = (base_approved, base_vetoed, base_sutra);
 
         self.dream_phase_state = DreamPhaseState::Wake;
         self.frame_weaver.on_dream_wake();
