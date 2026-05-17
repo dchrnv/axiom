@@ -144,6 +144,22 @@ impl DreamScheduler {
         self.idle.idle_ticks()
     }
 
+    pub fn min_wake_ticks(&self) -> u32 {
+        self.config.min_wake_ticks
+    }
+
+    pub fn idle_threshold(&self) -> u32 {
+        self.config.idle_threshold
+    }
+
+    pub fn fatigue_threshold(&self) -> u8 {
+        self.config.fatigue_threshold
+    }
+
+    pub fn fatigue_weights(&self) -> &FatigueWeights {
+        self.fatigue.weights()
+    }
+
     fn record(&mut self, kind: SleepTriggerKind) {
         self.stats.sleep_decisions += 1;
         match kind {

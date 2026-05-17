@@ -1138,7 +1138,9 @@ impl WorkstationApp {
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         if Some(id) == self.main_window {
             match self.phase {
-                AppPhase::Welcome => welcome::welcome_view(&self.connection, self.welcome_opacity),
+                AppPhase::Welcome => {
+                    welcome::welcome_view(&self.connection, self.welcome_opacity, self.animation_phase)
+                }
                 AppPhase::Main => self.main_window_view(),
             }
         } else if let Some(&tab) = self.detached_windows.get(&id) {

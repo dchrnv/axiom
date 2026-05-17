@@ -187,6 +187,10 @@ impl DreamCycle {
         Self::new(DreamCycleConfig::default())
     }
 
+    pub fn config(&self) -> &DreamCycleConfig {
+        &self.config
+    }
+
     /// Добавить proposal в очередь (вызывается из WAKE или в начале DREAMING).
     pub fn submit(&mut self, proposal: DreamProposal) {
         self.queue.push(proposal);

@@ -3,9 +3,13 @@ use iced::{Color, Element, Length};
 
 use crate::app::{ConnectionState, Message, TabKind};
 
-pub fn welcome_view<'a>(connection: &'a ConnectionState, opacity: f32) -> Element<'a, Message> {
+pub fn welcome_view<'a>(
+    connection: &'a ConnectionState,
+    opacity: f32,
+    phase: f32,
+) -> Element<'a, Message> {
     let a = opacity.clamp(0.0, 1.0);
-    let status = connection_status(connection, a);
+    let status = connection_status(connection, a, phase);
 
     container(
         column![
@@ -27,15 +31,25 @@ pub fn welcome_view<'a>(connection: &'a ConnectionState, opacity: f32) -> Elemen
     .into()
 }
 
-fn connection_status<'a>(connection: &'a ConnectionState, a: f32) -> Element<'a, Message> {
+fn spinner_frame(phase: f32) -> &'static str {
+    const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+    let idx = (phase * FRAMES.len() as f32) as usize % FRAMES.len();
+    FRAMES[idx]
+}
+
+fn connection_status<'a>(
+    connection: &'a ConnectionState,
+    a: f32,
+    phase: f32,
+) -> Element<'a, Message> {
     match connection {
         ConnectionState::Connecting => column![
             text("Connecting to engine…")
                 .size(14)
                 .color(Color { a, ..Color::from_rgb(0.5, 0.5, 0.5) }),
-            text("◐  ◐  ◐  ◐  ◐")
-                .size(12)
-                .color(Color { a, ..Color::from_rgb(0.4, 0.4, 0.4) }),
+            text(spinner_frame(phase))
+                .size(18)
+                .color(Color { a, ..Color::from_rgb(0.4, 0.5, 0.7) }),
         ]
         .spacing(8)
         .align_x(iced::Alignment::Center)
@@ -44,12 +58,18 @@ fn connection_status<'a>(connection: &'a ConnectionState, a: f32) -> Element<'a,
         ConnectionState::Reconnecting {
             attempt,
             next_retry_secs,
-        } => column![text(format!(
-            "Reconnecting… (attempt {}, retry in {}s)",
-            attempt, next_retry_secs
-        ))
-        .size(13)
-        .color(Color { a, ..Color::from_rgb(0.75, 0.6, 0.3) }),]
+        } => column![
+            text(format!(
+                "Reconnecting… (attempt {}, retry in {}s)",
+                attempt, next_retry_secs
+            ))
+            .size(13)
+            .color(Color { a, ..Color::from_rgb(0.75, 0.6, 0.3) }),
+            text(spinner_frame(phase))
+                .size(18)
+                .color(Color { a, ..Color::from_rgb(0.7, 0.55, 0.3) }),
+        ]
+        .spacing(6)
         .align_x(iced::Alignment::Center)
         .into(),
 

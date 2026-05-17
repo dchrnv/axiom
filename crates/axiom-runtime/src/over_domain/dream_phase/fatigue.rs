@@ -76,6 +76,10 @@ impl FatigueTracker {
         self.last_score
     }
 
+    pub fn weights(&self) -> &FatigueWeights {
+        &self.weights
+    }
+
     fn compute_score(&self) -> u8 {
         let total = self.weights.total();
         if total == 0 {

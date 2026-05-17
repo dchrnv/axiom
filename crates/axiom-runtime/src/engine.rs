@@ -1597,6 +1597,42 @@ impl AxiomEngine {
         injected
     }
 
+    pub fn dream_scheduler_min_wake_ticks(&self) -> u32 {
+        self.dream_scheduler.min_wake_ticks()
+    }
+
+    pub fn dream_scheduler_idle_threshold(&self) -> u32 {
+        self.dream_scheduler.idle_threshold()
+    }
+
+    pub fn dream_scheduler_fatigue_threshold(&self) -> u8 {
+        self.dream_scheduler.fatigue_threshold()
+    }
+
+    pub fn current_dream_config(&self) -> axiom_config::DreamConfig {
+        use axiom_config::{CycleConfig, DreamConfig, FatigueWeightsConfig, SchedulerConfig};
+        let fw = self.dream_scheduler.fatigue_weights();
+        let cc = self.dream_cycle.config();
+        DreamConfig {
+            scheduler: SchedulerConfig {
+                min_wake_ticks: self.dream_scheduler.min_wake_ticks(),
+                idle_threshold: self.dream_scheduler.idle_threshold(),
+                fatigue_threshold: self.dream_scheduler.fatigue_threshold(),
+            },
+            fatigue_weights: FatigueWeightsConfig {
+                uncrystallized_candidates: fw.uncrystallized_candidates,
+                experience_pressure: fw.experience_pressure,
+                pending_heavy_proposals: fw.pending_heavy_proposals,
+                causal_horizon_growth_rate: fw.causal_horizon_growth_rate,
+            },
+            cycle: CycleConfig {
+                max_dream_duration_ticks: cc.max_dream_duration_ticks,
+                max_proposals_per_cycle: cc.max_proposals_per_cycle as u32,
+                batch_size: cc.batch_size as u32,
+            },
+        }
+    }
+
     /// Применить DreamConfig к engine — обновляет DreamScheduler, DreamCycle и FatigueWeights.
     ///
     /// Безопасно вызывать в любом состоянии WAKE. Вызов в DREAMING/WAKING/FALLING_ASLEEP
