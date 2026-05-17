@@ -178,6 +178,39 @@ impl AnchorSet {
         }
     }
 
+    /// Загрузить напрямую из директории якорей (уже содержит axes.yaml, writing/, ...).
+    /// Используется когда путь к директории уже указывает на anchors/, а не на config/.
+    pub fn load_dir(anchors_dir: &Path) -> Result<Self, ConfigError> {
+        if !anchors_dir.exists() {
+            return Ok(Self::empty());
+        }
+        let axes = Self::load_axes(anchors_dir)?;
+        let mut layers = vec![Vec::new(); 8];
+        let layers_dir = anchors_dir.join("layers");
+        if layers_dir.exists() {
+            for (i, layer) in layers.iter_mut().enumerate() {
+                let prefix = format!("L{}_", i + 1);
+                if let Some(path) = Self::find_yaml_prefix(&layers_dir, &prefix) {
+                    *layer = Self::parse_layer(&path)?;
+                }
+            }
+        }
+        let mut domains = vec![Vec::new(); 8];
+        let domains_dir = anchors_dir.join("domains");
+        if domains_dir.exists() {
+            for (i, domain) in domains.iter_mut().enumerate() {
+                let prefix = format!("D{}_", i + 1);
+                if let Some(path) = Self::find_yaml_prefix(&domains_dir, &prefix) {
+                    *domain = Self::parse_domain(&path)?;
+                }
+            }
+        }
+        let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
+        let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
+        let subsystems = Self::load_subsystems(anchors_dir)?;
+        Ok(Self { axes, layers, domains, octants, semantic_centers, subsystems })
+    }
+
     /// Загрузить из `config_dir/anchors/`. Возвращает ошибку при YAML-синтаксических проблемах.
     pub fn load(config_dir: &Path) -> Result<Self, ConfigError> {
         let anchors_dir = config_dir.join("anchors");

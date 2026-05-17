@@ -99,9 +99,17 @@ fn load_anchors(cfg: &NodeConfig) -> Result<Option<Arc<AnchorSet>>> {
         return Ok(None);
     }
 
-    match AnchorSet::load(&cfg.anchors_dir) {
+    match AnchorSet::load_dir(&cfg.anchors_dir) {
         Ok(anchors) => {
-            info!("loaded {} anchors from {:?}", anchors.axes.len(), cfg.anchors_dir);
+            info!(
+                "loaded {} anchors from {:?} (axes={} layers={} writing={} math={})",
+                anchors.total_count(),
+                cfg.anchors_dir,
+                anchors.axes.len(),
+                anchors.layers.iter().map(|l| l.len()).sum::<usize>(),
+                anchors.get_subsystem("writing").len(),
+                anchors.get_subsystem("mathematics").len(),
+            );
             Ok(Some(Arc::new(anchors)))
         }
         Err(e) => {
