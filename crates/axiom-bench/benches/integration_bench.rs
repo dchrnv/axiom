@@ -68,9 +68,7 @@ fn schedule_hot_only() -> TickSchedule {
         goal_check_interval: 0,
         reconcile_interval: 0,
         persist_check_interval: 0,
-        adaptive_tick: axiom_runtime::AdaptiveTickRate::default(),
-        weaver_scan_intervals: std::collections::HashMap::new(),
-        weaver_promotion_intervals: std::collections::HashMap::new(),
+        ..TickSchedule::default()
     }
 }
 
@@ -85,9 +83,7 @@ fn schedule_max_load() -> TickSchedule {
         goal_check_interval: 1,
         reconcile_interval: 1,
         persist_check_interval: 0,
-        adaptive_tick: axiom_runtime::AdaptiveTickRate::default(),
-        weaver_scan_intervals: std::collections::HashMap::new(),
-        weaver_promotion_intervals: std::collections::HashMap::new(),
+        ..TickSchedule::default()
     }
 }
 
@@ -503,6 +499,47 @@ fn bench_stress_sustained(c: &mut Criterion) {
     group.finish();
 }
 
+// ─── periodic/phase_c_overhead: стоимость тиков с AE/CR/NA ──────────────────
+
+fn bench_phase_c_overhead(c: &mut Criterion) {
+    let mut group = c.benchmark_group("periodic/phase_c_overhead");
+    group.measurement_time(Duration::from_secs(10));
+    group.sample_size(50);
+
+    // Тик с разными tick_count — проверяем overhead в момент срабатывания AE/CR/NA.
+    // Координатор: t%5=AE, t%7=CR, t%11=NA. LCM(5,7,11)=385.
+    let ticks_to_test: &[(&str, u64)] = &[
+        ("tick_mod1_baseline", 1),
+        ("tick_mod5_ae_fires", 5),
+        ("tick_mod7_cr_fires", 7),
+        ("tick_mod35_ae_cr_fires", 35),
+        ("tick_mod385_all_fire", 385),
+    ];
+
+    let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+
+    for &(label, target_tick) in ticks_to_test {
+        group.bench_function(label, |b| {
+            b.iter_batched(
+                || {
+                    // Привести engine к tick_count = target_tick - 1
+                    let mut engine = engine_loaded(20, 20);
+                    // Пропускаем до target_tick-1, потом измеряем один тик
+                    let pre_ticks = target_tick.saturating_sub(1);
+                    for _ in 0..pre_ticks {
+                        engine.process_command(&tick_cmd);
+                    }
+                    engine
+                },
+                |mut e| black_box(e.process_command(&tick_cmd)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+    }
+
+    group.finish();
+}
+
 // ─── criterion_main ───────────────────────────────────────────────────────────
 
 criterion_group!(
@@ -517,6 +554,7 @@ criterion_group!(
     bench_reconcile_all,
     bench_snapshot_restore_with_tick_count,
     bench_compare_tokens,
+    bench_phase_c_overhead,
 );
 criterion_group!(benches_stress, bench_stress_sustained,);
 
