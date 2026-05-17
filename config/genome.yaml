@@ -55,6 +55,10 @@ access_rules:
   - { module: ContextRecognizer, resource: AshtiField,       permission: Read      }
   - { module: ContextRecognizer, resource: SutraTokens,      permission: Read      }
 
+  # NeuralAdvisor — advisory-only; читает EXPERIENCE и AshtiField
+  - { module: NeuralAdvisor, resource: ExperienceMemory, permission: Read }
+  - { module: NeuralAdvisor, resource: AshtiField,       permission: Read }
+
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }
   - { source: Experience, target: Arbiter,    data_type: ResonanceResponse, mandatory: true  }

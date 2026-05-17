@@ -15,6 +15,8 @@
 pub mod axial_evaluator;
 /// ContextRecognizer — классификатор семантического контекста
 pub mod context_recognizer;
+/// NeuralAdvisor — advisory-only советник над семантическим слоем
+pub mod neural_advisor;
 /// DREAM Phase — машина состояний сна, DreamScheduler, DreamCycle
 pub mod dream_phase;
 /// Базовые trait'ы Over-Domain компонентов
@@ -27,6 +29,13 @@ pub use axial_evaluator::{AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_TICK
 pub use context_recognizer::{
     ContextRecognizer, DepthRange, FractalLevel, ScanningPlan, SubsystemConflict, SubsystemEnergy,
     SubsystemTransition, TransitionDetector, CONTEXT_RECOGNIZER_TICK_INTERVAL,
+};
+
+pub use neural_advisor::{
+    AdvisoryResult, AdvisoryResultStore, ConflictAdvisorInput, ConflictDiagnosis,
+    ConflictResolutionHint, CorpusCallosumResolver, DepthHint, DepthThresholdEmergentDetector,
+    NeuralAdvisor, NeuralAdvisorRegistry, OctantSuggestion, RuleBasedCorpusCallosumResolver,
+    NEURAL_ADVISOR_TICK_INTERVAL,
 };
 
 pub use traits::{

@@ -54,6 +54,10 @@ pub enum OpCode {
     QueryDepthDistribution = 5101,     // Запрос распределения глубин по октанту (Workstation)
     ResetDepthForFrame = 5102,         // Сбросить SutraDepth для Frame (debug, GUARDIAN)
 
+    // --- NeuralAdvisor (5200+) ---
+    NotifyEmergentCandidate = 5200,  // NeuralAdvisor → Workstation: Frame-кандидат в примитивы
+    ApproveEmergentCandidate = 5201, // chrnv → NeuralAdvisor: одобрить кандидата
+
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000, // Остановка реактора
     CoreReset = 9001,    // Сброс состояния
@@ -270,6 +274,25 @@ pub struct QueryDepthDistributionPayload {
 pub struct ResetDepthForFramePayload {
     pub sutra_id: u32,       // 4b | sutra_id Frame для сброса
     pub reserved: [u8; 44],  // 44b | резерв
+}
+
+/// Payload для NotifyEmergentCandidate (5200).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct NotifyEmergentCandidatePayload {
+    pub sutra_id: u32,          // 4b | sutra_id Frame-кандидата
+    pub octant: u8,             // 1b | октант в котором обнаружен
+    pub confidence_scaled: u8,  // 1b | confidence * 255
+    pub depth: u16,             // 2b | текущая глубина в октанте
+    pub reserved: [u8; 40],     // 40b | резерв
+}
+
+/// Payload для ApproveEmergentCandidate (5201).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ApproveEmergentCandidatePayload {
+    pub sutra_id: u32,      // 4b | sutra_id для одобрения
+    pub reserved: [u8; 44], // 44b | резерв
 }
 
 impl UclCommand {

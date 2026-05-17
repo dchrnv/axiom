@@ -75,7 +75,7 @@ impl SutraDepthEntry {
 /// Хранилище глубины укоренённости.
 ///
 /// Обновляется только в DREAMING — горячий путь не трогает.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SutraDepthStore {
     entries: HashMap<u32, SutraDepthEntry>,

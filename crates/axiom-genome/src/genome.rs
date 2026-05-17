@@ -178,6 +178,54 @@ impl Genome {
                 resource: R::GenomeConfig,
                 permission: P::Read,
             },
+            // AxialEvaluator — читает EXPERIENCE для оценки Frame по философским осям
+            AccessRule {
+                module: M::AxialEvaluator,
+                resource: R::ExperienceMemory,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::AxialEvaluator,
+                resource: R::MayaOutput,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::AxialEvaluator,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
+            // ContextRecognizer — читает EXPERIENCE и MAYA; предлагает обновления через UCL
+            AccessRule {
+                module: M::ContextRecognizer,
+                resource: R::ExperienceMemory,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::ContextRecognizer,
+                resource: R::MayaOutput,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::ContextRecognizer,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::ContextRecognizer,
+                resource: R::SutraTokens,
+                permission: P::Read,
+            },
+            // NeuralAdvisor — advisory-only; читает EXPERIENCE и AshtiField
+            AccessRule {
+                module: M::NeuralAdvisor,
+                resource: R::ExperienceMemory,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::NeuralAdvisor,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
         ];
 
         let protocol_rules = vec![

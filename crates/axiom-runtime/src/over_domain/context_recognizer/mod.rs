@@ -21,7 +21,6 @@ use axiom_ucl::UclCommand;
 
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
-pub mod advisors;
 pub mod axial_bridge;
 pub mod conflicts;
 pub mod depth_bridge;
