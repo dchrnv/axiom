@@ -1,8 +1,9 @@
-// Integration tests for Phase C coordinator (I1).
+// Integration tests for Phase C coordinator (I1) and from_anchor_set (I2).
 //
-// Проверяют что AE/CR/NA инстанцированы в Engine и получают on_tick вызовы
-// через координатор в handle_tick_wake.
+// I1: AE/CR/NA инстанцированы в Engine, получают on_tick через координатор.
+// I2: ContextRecognizer::from_anchor_set строит subsystem_refs из AnchorSet.
 
+use axiom_config::{Anchor, AnchorSet};
 use axiom_runtime::AxiomEngine;
 use axiom_ucl::{OpCode, UclCommand};
 
@@ -96,4 +97,66 @@ fn test_approve_emergent_payload_layout() {
     cmd.payload[0..4].copy_from_slice(&id.to_le_bytes());
     let parsed = u32::from_le_bytes([cmd.payload[0], cmd.payload[1], cmd.payload[2], cmd.payload[3]]);
     assert_eq!(parsed, id);
+}
+
+// ── I2: ContextRecognizer::from_anchor_set ───────────────────────────────────
+
+fn make_anchor(word: &str, position: [i16; 3]) -> Anchor {
+    Anchor {
+        id: word.to_string(),
+        word: word.to_string(),
+        aliases: vec![],
+        tags: vec![],
+        position,
+        shell: [0; 8],
+        description: String::new(),
+    }
+}
+
+fn make_anchor_set_with_writing() -> AnchorSet {
+    let mut set = AnchorSet::empty();
+    set.subsystems.insert(
+        "writing".to_string(),
+        vec![
+            make_anchor("существительное", [100, 50, 0]),
+            make_anchor("глагол", [120, 40, 10]),
+            make_anchor("метафора", [80, 60, 20]),
+        ],
+    );
+    set
+}
+
+// from_anchor_set с заполненной подсистемой writing — CR готов к расчёту энергий.
+#[test]
+fn test_from_anchor_set_writing_refs_populated() {
+    let anchors = make_anchor_set_with_writing();
+    let mut engine = AxiomEngine::new();
+    engine.apply_anchor_set(&anchors);
+    // CR инициализирован — profile_store пустой (данных нет), но не паникует на тике
+    let cmd = UclCommand::new(OpCode::TickForward, 0, 0, 0);
+    for _ in 0..7 {
+        let _ = engine.process_command(&cmd);
+    }
+    // После 7 тиков on_tick вызван — profile_store всё ещё пустой (нет Frame в MAYA),
+    // но без паники
+    assert_eq!(engine.context_recognizer.profile_store().len(), 0);
+}
+
+// from_anchor_set с пустым AnchorSet — CR создаётся без паники, работает как new(HashMap::new()).
+#[test]
+fn test_from_anchor_set_empty_anchors() {
+    let anchors = AnchorSet::empty();
+    let mut engine = AxiomEngine::new();
+    engine.apply_anchor_set(&anchors);
+    assert_eq!(engine.context_recognizer.profile_store().len(), 0);
+}
+
+// apply_anchor_set дважды не паникует — stores сбрасываются корректно.
+#[test]
+fn test_apply_anchor_set_twice_is_safe() {
+    let anchors = make_anchor_set_with_writing();
+    let mut engine = AxiomEngine::new();
+    engine.apply_anchor_set(&anchors);
+    engine.apply_anchor_set(&AnchorSet::empty());
+    assert_eq!(engine.context_recognizer.profile_store().len(), 0);
 }

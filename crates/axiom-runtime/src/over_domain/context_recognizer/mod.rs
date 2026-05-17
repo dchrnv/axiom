@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use axiom_config::AnchorSet;
 use axiom_core::{Token, STATE_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR};
 use axiom_domain::AshtiCore;
 use axiom_experience::{
@@ -78,6 +79,16 @@ impl ContextRecognizer {
         }
     }
 
+    /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
+    ///
+    /// Группирует якоря по имени подсистемы ("writing", "mathematics", ...)
+    /// и извлекает их позиции как опорные точки для расчёта SubsystemEnergy.
+    /// Подсистемы без якорей в AnchorSet — не добавляются (CR игнорирует их).
+    pub fn from_anchor_set(anchors: &AnchorSet) -> Self {
+        let subsystem_refs = build_subsystem_refs(anchors);
+        Self::new(subsystem_refs)
+    }
+
     /// Синхронизировать снапшот AxialStore с результатами AxialEvaluator.
     ///
     /// Вызывается координатором рантайма после каждого цикла AxialEvaluator.
@@ -123,6 +134,28 @@ impl ContextRecognizer {
             .filter_map(|&id| self.depth_store.get(id).map(|e| (id, e.clone())))
             .collect()
     }
+}
+
+fn build_subsystem_refs(anchors: &AnchorSet) -> HashMap<SubsystemId, Vec<[i16; 3]>> {
+    let known = [
+        SubsystemId::Writing,
+        SubsystemId::Mathematics,
+        SubsystemId::Music,
+        SubsystemId::Time,
+        SubsystemId::Logic,
+    ];
+    let mut refs = HashMap::new();
+    for id in known {
+        let positions: Vec<[i16; 3]> = anchors
+            .get_subsystem(id.name())
+            .iter()
+            .map(|a| a.position)
+            .collect();
+        if !positions.is_empty() {
+            refs.insert(id, positions);
+        }
+    }
+    refs
 }
 
 impl Default for ContextRecognizer {

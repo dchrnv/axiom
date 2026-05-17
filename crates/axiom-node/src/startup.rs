@@ -46,11 +46,12 @@ pub fn init(cfg: &NodeConfig) -> Result<NodeState> {
         }
     };
 
-    // 2. Load AnchorSet and inject tokens
+    // 2. Load AnchorSet, inject tokens, init ContextRecognizer subsystem refs
     let anchor_set = load_anchors(cfg)?;
     if let Some(ref anchors) = anchor_set {
         let injected = engine.inject_anchor_tokens(anchors);
         info!("injected {} anchor tokens", injected);
+        engine.apply_anchor_set(anchors);
     }
 
     let auto_saver = AutoSaver::new(PersistenceConfig::new(1000));

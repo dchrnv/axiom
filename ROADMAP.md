@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 54.0  
+**Версия:** 55.0  
 **Дата:** 2026-05-17
 
 ---
@@ -19,9 +19,9 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1341 тестов, 0 failures.**
+**1344 тестов, 0 failures.**
 FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel V1.1, Phase C (C1..C5) завершены.
-Phase I: I1 (Engine coordinator) + I4 (ApproveEmergentCandidate handler) готовы.
+Phase I: I1, I2, I4 готовы.
 
 ---
 
@@ -131,29 +131,9 @@ SutraDepth обновляется только в DREAMING, конфликт д�
 
 ---
 
-#### I2 — ContextRecognizer: from_anchor_set конструктор
+#### I2 — ContextRecognizer: from_anchor_set конструктор ✅
 
-**Проблема:** `ContextRecognizer::new(HashMap::new())` — субсистем нет, энергии не считаются, все профили `SubsystemId::Unknown`.
-
-**Что сделать:**
-
-```rust
-impl ContextRecognizer {
-    pub fn from_anchor_set(anchors: &AnchorSet) -> Self {
-        let subsystem_refs = build_subsystem_refs(anchors);
-        Self::new(subsystem_refs)
-    }
-}
-```
-
-`build_subsystem_refs` группирует якоря из AnchorSet по тегам (subsystem_id: writing/mathematics/…)
-и извлекает их позиции как опорные точки.
-
-Движок использует этот конструктор при старте: `ContextRecognizer::from_anchor_set(&anchor_set)`.
-
-Закрывает: CR-TD-03.
-
-**Файлы:** `context_recognizer/mod.rs`, `engine.rs`.
+Закрыто: CR-TD-03.
 
 ---
 

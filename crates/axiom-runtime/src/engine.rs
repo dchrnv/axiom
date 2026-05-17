@@ -1537,6 +1537,16 @@ impl AxiomEngine {
 
     // --- Внутренние хелперы ---
 
+    /// Инициализировать ContextRecognizer из AnchorSet.
+    ///
+    /// Строит subsystem_refs из позиций якорей подсистем ("writing", "mathematics", ...).
+    /// Заменяет текущий ContextRecognizer новым — stores (depth, profile) сбрасываются.
+    /// Вызывать один раз при старте, после load_anchors и до первого тика.
+    pub fn apply_anchor_set(&mut self, anchor_set: &axiom_config::AnchorSet) {
+        use crate::over_domain::ContextRecognizer;
+        self.context_recognizer = ContextRecognizer::from_anchor_set(anchor_set);
+    }
+
     /// Инжектировать набор якорных токенов в движок.
     ///
     /// Якоря — конфигурационные объекты: mass=255, temperature=0, state=Locked.
