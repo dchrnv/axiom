@@ -27,7 +27,26 @@ cargo build --release    # production build (~7 мин первый раз)
 
 ---
 
-## Запуск CLI
+## Запуск
+
+### Workstation (рекомендуется)
+
+```bash
+./run.sh          # собирает если нужно, запускает node + workstation
+./run.sh --build  # принудительная пересборка
+```
+
+При закрытии окна Workstation нода останавливается автоматически.
+
+### CLI
+
+```bash
+cargo run --bin axiom-cli --release
+```
+
+---
+
+## Запуск CLI — подробно
 
 ```bash
 cargo run --bin axiom-cli --release
