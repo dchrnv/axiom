@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1183%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1332%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1183 tests passing.**
+**Axiom is in active development — core architecture complete, 1332 tests passing.**
 
 ---
 
@@ -51,7 +51,7 @@
 - **AshtiCore** — 11 доменов с трёхчастной онтологией: **SUTRA** (первичные истины, вечные сущности) → домены ASHTI 1–8 → **EXPERIENCE** (накопленный опыт) → **MAYA** (живое состояние «сейчас»). Каждый домен — физическое поле со своей конфигурацией.
 - **Arbiter** — двойная маршрутизация: быстрый рефлекс через Experience или медленный проход по всем доменам. Как System 1 / System 2 — только без нейронов.
 - **Guardian** — CODEX-проверки и GENOME-ограничения. Системные правила, которые нельзя обойти.
-- **Over-Domain Layer** — слой компонентов над доменами. **FrameWeaver** сканирует синтаксические узоры в MAYA, кристаллизует стабильные структуры в EXPERIENCE и предлагает промоцию фундаментальных паттернов в SUTRA через CODEX.
+- **Over-Domain Layer** — слой компонентов над доменами. **FrameWeaver** сканирует синтаксические узоры в MAYA, кристаллизует стабильные структуры в EXPERIENCE и предлагает промоцию фундаментальных паттернов в SUTRA через CODEX. **AxialEvaluator** оценивает каждый Frame по философским осям (Apollo/Dionysus, Eros/Thanatos, Will/Nothing) — трёхмерная семантическая система координат. **ContextRecognizer** определяет активные подсистемы знания и строит InterpretationProfile. **NeuralAdvisor** даёт второй голос: advisory-only рекомендации поверх детерминированных результатов, детектирование эмерджентных примитивов.
 - **DREAM Phase** — когнитивный сон. Система циклически переходит в состояние `Dreaming`, где FrameWeaver предлагает промоцию устойчивых Frame в SUTRA через `DreamCycle`. Три триггера входа: бездействие, усталость (composite fatigue score 0–255), явная команда. Запись в SUTRA разрешена только в `DREAMING` — онтологический инвариант системы.
 - **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
 - **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
@@ -116,10 +116,16 @@
                     │    adapt_thresholds, dream_propose           │
                     │                                              │
                     │  Over-Domain Layer ──────────────────────    │
-                    │    FrameWeaver V1.2: MAYA→scan→EXPERIENCE    │
+                    │    FrameWeaver V1.3: MAYA→scan→EXPERIENCE    │
                     │      синтаксические узоры (0x08 Syntactic)  │
                     │      кристаллизация / ReinforceFrame /       │
                     │      промоция в SUTRA через CODEX (DREAMING) │
+                    │    AxialEvaluator (tick=5): X/Y/Z оси,       │
+                    │      8 уровней абстракции, Corpus Callosum   │
+                    │    ContextRecognizer (tick=7): SubsystemEnergy│
+                    │      InterpretationProfile, SutraDepthStore  │
+                    │    NeuralAdvisor (tick=11): advisory-only,   │
+                    │      EmergentPatternDetector → UCL 5200      │
                     │                                              │
                     │  DREAM Phase ────────────────────────────    │
                     │    Wake → FallingAsleep → Dreaming → Waking  │
