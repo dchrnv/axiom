@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 52.0  
-**Дата:** 2026-05-16
+**Версия:** 53.0  
+**Дата:** 2026-05-17
 
 ---
 
@@ -19,8 +19,8 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1202 тестов, 0 failures.**
-FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel V1.1 завершены.
+**1332 тестов, 0 failures.**
+FrameWeaver V1.3, DREAM Phase V1.0, Workstation V1.0, axiom-node, Axiom Sentinel V1.1, Phase C (C1..C5) завершены.
 
 ---
 
@@ -112,6 +112,148 @@ AxialEvaluator нужен до ContextRecognizer). C2 независим.
 
 **Тесты:** ScanningPlan формируется корректно, scan_region фильтрует по depth_range,
 SutraDepth обновляется только в DREAMING, конфликт двух активных подсистем.
+
+---
+
+### Фаза I — Integration Sprint («подтянуть хвосты»)
+
+Цель: замкнуть петлю. Phase C построила компоненты — Phase I заставляет их работать вместе.
+Без этой фазы AE/CR/NA существуют в vacuum: не запускаются, не видят друг друга, не дают данных.
+
+**Зависимости:** Phase C полностью завершена.
+
+---
+
+#### I1 — Engine: подключить Phase C компоненты
+
+**Проблема:** `over_domain_components: Vec::new()` — AE, CR, NA нигде не инстанцированы и не вызываются.
+
+**Что сделать:**
+
+Добавить конкретные поля в `AxiomEngine` (аналогично `frame_weaver`):
+
+```rust
+axial_evaluator: AxialEvaluator,
+context_recognizer: ContextRecognizer,
+neural_advisor: NeuralAdvisor,
+```
+
+В tick loop после соответствующих интервалов — вызывать `on_tick` и **синхронизировать снапшоты**:
+
+```
+tick % 5 == 0 → ae.on_tick() → cr.sync_axial_store(ae.axial_store())
+                                na.sync_axial_store(ae.axial_store())
+tick % 7 == 0 → cr.on_tick() → na.sync_profile_store(cr.profile_store())
+                                na.sync_depth_store(cr.depth_store())
+tick % 11 == 0 → na.on_tick() → process ucl_commands
+```
+
+Закрывает: CR-TD-01, NA-TD-01.
+
+**Файлы:** `engine.rs`, `engine/new()`.
+
+---
+
+#### I2 — ContextRecognizer: from_anchor_set конструктор
+
+**Проблема:** `ContextRecognizer::new(HashMap::new())` — субсистем нет, энергии не считаются, все профили `SubsystemId::Unknown`.
+
+**Что сделать:**
+
+```rust
+impl ContextRecognizer {
+    pub fn from_anchor_set(anchors: &AnchorSet) -> Self {
+        let subsystem_refs = build_subsystem_refs(anchors);
+        Self::new(subsystem_refs)
+    }
+}
+```
+
+`build_subsystem_refs` группирует якоря из AnchorSet по тегам (subsystem_id: writing/mathematics/…)
+и извлекает их позиции как опорные точки.
+
+Движок использует этот конструктор при старте: `ContextRecognizer::from_anchor_set(&anchor_set)`.
+
+Закрывает: CR-TD-03.
+
+**Файлы:** `context_recognizer/mod.rs`, `engine.rs`.
+
+---
+
+#### I3 — Якорный контент: примитивы подсистем
+
+**Проблема:** без семантических примитивов Writing/Mathematics — ContextRecognizer не распознаёт подсистемы.
+
+**Что сделать:**
+
+Создать YAML-файлы якорных примитивов для двух подсистем:
+- `config/anchors/subsystems/writing_primitives.yaml` — существительное, глагол, метафора, нарратив, образ, ритм, смысл...
+- `config/anchors/subsystems/mathematics_primitives.yaml` — число, операция, доказательство, множество, функция, граф, аксиома...
+
+Каждый примитив: id, position ([i16;3] в семантическом пространстве), subsystem_id, описание.
+
+Параллельно: заполнить оставшиеся слоевые якоря (L1–L4, L6–L8) из DEFERRED Anchor-Fill — они нужны TextPerceptor для осмысленного позиционирования токенов.
+
+**Файлы:** `config/anchors/subsystems/`, `config/anchors/layers/`.
+
+---
+
+#### I4 — Engine: ApproveEmergentCandidate handler
+
+**Проблема:** UCL 5201 определён, но Engine его игнорирует — оператор не может одобрить кандидата.
+
+**Что сделать:**
+
+```rust
+OpCode::ApproveEmergentCandidate => {
+    let payload = ApproveEmergentCandidatePayload::from_bytes(&cmd.payload);
+    self.neural_advisor.approve_emergent(payload.sutra_id);
+}
+```
+
+Закрывает: NA-TD-03.
+
+**Файлы:** `engine.rs`.
+
+---
+
+#### I5 — OBS-01: живое наблюдение
+
+**Проблема:** система никогда не запускалась с Phase C активной на живых данных.
+
+**Что сделать:**
+
+После I1–I4 — запустить `axiom-node` + Workstation. Подавать тексты через TextPerceptor.
+Зафиксировать (из DEFERRED OBS-01):
+
+1. Какие Frame кристаллизуются? На каких текстах?
+2. Какие SubsystemId определяет ContextRecognizer? Правильно ли?
+3. Есть ли конфликты octant analytic vs synthetic в AxialEvaluator?
+4. Появляются ли emergent-кандидаты в NeuralAdvisor?
+5. Первый `NotifyEmergentCandidate` в UCL — при каких условиях?
+6. Корректно ли работают пороги DepthThresholdEmergentDetector (8000/30/100)?
+
+Результат: список наблюдений → tuning порогов → возможные errata по компонентам.
+
+Закрывает: OBS-01 из DEFERRED.
+
+---
+
+#### I6 — Workstation: Phase C visibility
+
+**Проблема:** оператор не видит что происходит в AE/CR/NA — только Frame в EXPERIENCE.
+
+**Что сделать:**
+
+Расширить существующие вкладки Workstation минимально:
+
+- **Patterns tab**: добавить текущий октант Frame (из AxialStore) и dominant SubsystemId (из InterpretationProfileStore)
+- **Dream State tab** или отдельная панель: список emergent-кандидатов из EmergentPrimitiveStore с кнопкой Approve (→ UCL 5201)
+- **System Map**: цвет домена EXPERIENCE отражает доминирующую подсистему
+
+**Файлы:** `axiom-workstation/src/ui/patterns.rs`, `axiom-broadcasting`, `axiom-protocol`.
+
+Зависимость: I1 (данные должны течь), I5 (OBS-01 покажет что важно отображать).
 
 ---
 
