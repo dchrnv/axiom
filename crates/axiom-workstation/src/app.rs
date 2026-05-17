@@ -867,6 +867,15 @@ impl WorkstationApp {
                 let now = current_timestamp_secs();
                 self.alerts
                     .retain(|a| now.saturating_sub(a.timestamp_secs) < 10);
+                // Release send lock if no CommandResult arrived within 5 s
+                if self.conversation.sending {
+                    if let Some(t) = self.conversation.last_submit_at {
+                        if t.elapsed().as_secs() >= 5 {
+                            self.conversation.sending = false;
+                            self.conversation.pending_submit_id = None;
+                        }
+                    }
+                }
             }
             Message::ConfigSectionSelected(section_id) => {
                 self.config.active_section_id = section_id;
