@@ -456,8 +456,26 @@ fn draw_domain_points(
             };
             frame.fill(&Path::circle(screen, radius), color);
         }
+    } else if domain.token_count > 0 && active {
+        // Tokens exist but position data not yet in snapshot — show label
+        let label_y = size.height * 0.72;
+        frame.fill_text(canvas::Text {
+            content: format!("{} tokens — field data pending", domain.token_count),
+            position: Point::new(size.width / 2.0, label_y),
+            color: Color::from_rgba(0.5, 0.5, 0.55, base_alpha * 0.6),
+            size: iced::Pixels(12.0),
+            horizontal_alignment: iced::alignment::Horizontal::Center,
+            vertical_alignment: iced::alignment::Vertical::Center,
+            ..canvas::Text::default()
+        });
     } else {
-        // Fallback: pseudo-random scatter until engine provides token data
+        // Truly empty domain — nothing to show
+        if domain.token_count == 0 {
+            // silence unused warning: conn_stroke defined above
+            let _ = conn_stroke;
+            return;
+        }
+        // dead branch kept for the old fallback, now unreachable
         let n = domain.token_count.min(MAX_POINTS);
         if n == 0 {
             return;

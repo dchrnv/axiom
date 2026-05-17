@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use iced::widget::{
     button, column, container, horizontal_space, row, scrollable, text, text_input,
 };
-use iced::{Element, Length, Padding};
+use iced::{Color, Element, Length, Padding};
 
 use axiom_protocol::config::{ConfigField, ConfigFieldType, ConfigSection, ConfigValue};
 
@@ -26,8 +26,16 @@ pub fn config_view<'a>(
         .pending_changes
         .contains_key(&config.active_section_id);
 
+    let just_applied = config.last_applied_section.as_deref()
+        == Some(config.active_section_id.as_str());
+
     let bottom = row![
         horizontal_space(),
+        if just_applied {
+            text("✓ Applied").size(13).color(Color::from_rgb(0.35, 0.7, 0.45))
+        } else {
+            text("").size(13)
+        },
         button(text("Discard").size(13))
             .on_press_maybe(if has_pending {
                 Some(Message::ConfigDiscard)
@@ -46,6 +54,7 @@ pub fn config_view<'a>(
             .style(button::primary),
     ]
     .spacing(8)
+    .align_y(iced::Alignment::Center)
     .padding([8u16, 12u16]);
 
     column![

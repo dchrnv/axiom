@@ -1,7 +1,7 @@
 use iced::widget::{button, column, container, text};
 use iced::{Color, Element, Length};
 
-use crate::app::{ConnectionState, Message, TabKind};
+use crate::app::{ConnectionState, Message};
 
 pub fn welcome_view<'a>(
     connection: &'a ConnectionState,
@@ -81,7 +81,7 @@ fn connection_status<'a>(
                 .size(13)
                 .color(Color { a, ..Color::from_rgb(0.55, 0.55, 0.55) }),
             button(text("Configure connection").size(13))
-                .on_press(Message::TabSelected(TabKind::Configuration))
+                .on_press(Message::GoToConfiguration)
                 .style(button::secondary),
             button(text("Wait for engine").size(13))
                 .on_press(Message::SkipToMain)

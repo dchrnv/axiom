@@ -329,6 +329,8 @@ pub struct ConfigurationState {
     pub active_section_id: String,
     pub pending_changes: HashMap<String, HashMap<String, ConfigValue>>,
     pub validation_errors: HashMap<String, String>,
+    /// Section that was last successfully applied (shown as ✓ until next change).
+    pub last_applied_section: Option<String>,
 }
 
 // ── TabKind ────────────────────────────────────────────────────────────────
@@ -459,6 +461,7 @@ pub enum Message {
     BenchRun,
     // Welcome screen
     SkipToMain,
+    GoToConfiguration,
     // Connection details popup
     ToggleConnectionDetails,
     // Alert system
@@ -817,7 +820,10 @@ impl WorkstationApp {
                         self.config.engine_schema = Some(schema);
                         self.rebuild_sections();
                     }
-                    Ok(CommandResultData::ConfigUpdateApplied { .. }) => {}
+                    Ok(CommandResultData::ConfigUpdateApplied { .. }) => {
+                        self.config.last_applied_section =
+                            Some(self.config.active_section_id.clone());
+                    }
                     Ok(CommandResultData::ConfigValidationError { field_id, message }) => {
                         self.config.validation_errors.insert(field_id, message);
                     }
@@ -897,6 +903,9 @@ impl WorkstationApp {
                 value,
             } => {
                 self.config.validation_errors.remove(&field_id);
+                if self.config.last_applied_section.as_deref() == Some(section_id.as_str()) {
+                    self.config.last_applied_section = None;
+                }
                 self.config
                     .pending_changes
                     .entry(section_id)
@@ -1071,6 +1080,11 @@ impl WorkstationApp {
             }
             Message::SkipToMain => {
                 self.phase = AppPhase::Main;
+                save_settings(&self.settings);
+            }
+            Message::GoToConfiguration => {
+                self.phase = AppPhase::Main;
+                self.active_tab_in_main = TabKind::Configuration;
                 save_settings(&self.settings);
             }
             Message::ToggleConnectionDetails => {

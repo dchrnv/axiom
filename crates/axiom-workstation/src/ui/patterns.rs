@@ -135,9 +135,15 @@ fn phase_c_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
                     .width(60),
                 text(hints.trim().to_string())
                     .size(11)
-                    .color(Color::from_rgb(0.55, 0.7, 0.45)),
+                    .color(Color::from_rgb(0.55, 0.7, 0.45))
+                    .width(Length::Fill),
+                button(text("details").size(10))
+                    .on_press(Message::RequestFrameDetails(af.anchor_id))
+                    .style(button::secondary)
+                    .padding([2u16, 6u16]),
             ]
-            .spacing(6);
+            .spacing(6)
+            .align_y(iced::Alignment::Center);
             content = content.push(row);
         }
     }
