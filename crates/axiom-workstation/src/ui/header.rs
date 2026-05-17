@@ -26,8 +26,10 @@ pub fn header_view<'a>(
         } => (
             "●",
             format!(
-                "Connected  v{:#010x}  ({}s)",
-                engine_version,
+                "Connected  v{}.{}.{}  ({}s)",
+                (engine_version >> 24) & 0xFF,
+                (engine_version >> 16) & 0xFF,
+                (engine_version >> 8) & 0xFF,
                 connected_at.elapsed().as_secs()
             ),
         ),
@@ -111,7 +113,12 @@ fn connection_details<'a>(
             text(format!("Engine address:  {}", engine_address))
                 .size(12)
                 .color(Color::from_rgb(0.6, 0.6, 0.6)),
-            text(format!("Engine version:  v{:#010x}", engine_version))
+            text(format!(
+                "Engine version:  v{}.{}.{}",
+                (engine_version >> 24) & 0xFF,
+                (engine_version >> 16) & 0xFF,
+                (engine_version >> 8) & 0xFF,
+            ))
                 .size(12)
                 .color(Color::from_rgb(0.6, 0.6, 0.6)),
             text(format!(

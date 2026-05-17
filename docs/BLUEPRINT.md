@@ -171,7 +171,7 @@ CoreShutdown=9000, CoreReset=9001, BackupState=9002, RestoreState=9003
 105 — PROBE      (role 5)  — активное зондирование
 106 — LOGIC      (role 6)  — чистая дедукция
 107 — DREAM      (role 7)  — фоновая оптимизация
-108 — ETHICS     (role 8)  — коллектор аномалий
+108 — VOID       (role 8)  — коллектор аномалий, шум, нераспознанное (этика → CODEX)
 109 — EXPERIENCE (role 9)  — ассоциативная память, рефлексы, Frame-анкеры
 110 — MAYA       (role 10) — выходная проекция; FrameWeaver сканирует отсюда
 ```

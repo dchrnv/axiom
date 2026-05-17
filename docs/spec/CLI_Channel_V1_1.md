@@ -237,7 +237,7 @@ fn domain_name(id: u16) -> &'static str {
         5 => "PROBE",
         6 => "LOGIC",
         7 => "DREAM",
-        8 => "ETHICS",
+        8 => "VOID",
         9 => "EXPERIENCE",
         10 => "MAYA",
         _ => "UNKNOWN",

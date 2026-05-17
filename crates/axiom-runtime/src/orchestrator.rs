@@ -55,7 +55,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
 /// Routing с ограниченным набором ролей (S5: TickBudget layer priority).
 ///
 /// Вызывается из tick_wake когда budget > 80% и enable_layer_priority = true.
-/// Выполняет только роли 1..=max_role, пропуская MAP/PROBE/LOGIC/DREAM/ETHICS.
+/// Выполняет только роли 1..=max_role, пропуская MAP/PROBE/LOGIC/DREAM/VOID.
 pub(crate) fn route_token_limited(engine: &mut AxiomEngine, token: Token, max_role: u8) -> RoutingResult {
     let pool = engine.thread_pool.as_ref();
     let mut result = engine.ashti.process_parallel_limited(token, pool, max_role);
