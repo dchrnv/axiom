@@ -321,6 +321,8 @@ pub struct FrameWeaver {
     pending_commands: Vec<UclCommand>,
     /// Счётчики реактиваций: anchor_id → count
     reactivation_counts: HashMap<u32, u32>,
+    /// Тик последней реактивации: anchor_id → tick
+    last_reactivation_tick: HashMap<u32, u64>,
     /// Флаг: dream-цикл только что завершился (для RuleTrigger::DreamCycle).
     /// Сбрасывается после первого скана, который его увидит.
     dream_cycle_completed: bool,
@@ -334,6 +336,7 @@ impl FrameWeaver {
             candidates: HashMap::new(),
             pending_commands: Vec::new(),
             reactivation_counts: HashMap::new(),
+            last_reactivation_tick: HashMap::new(),
             dream_cycle_completed: false,
             stats: FrameWeaverStats::default(),
         }
@@ -359,6 +362,14 @@ impl FrameWeaver {
     /// Число накопленных Frame-кандидатов (ещё не кристаллизованных).
     pub fn candidates_count(&self) -> usize {
         self.candidates.len()
+    }
+
+    pub fn reactivation_count(&self, anchor_id: u32) -> u32 {
+        self.reactivation_counts.get(&anchor_id).copied().unwrap_or(0)
+    }
+
+    pub fn last_reactivation_tick_for(&self, anchor_id: u32) -> Option<u64> {
+        self.last_reactivation_tick.get(&anchor_id).copied()
     }
 
     /// Синтаксический слой из link_type: S1=0 … S8=7 (соответствует (link_type & 0x00F0) >> 4).
@@ -900,6 +911,7 @@ impl OverDomainComponent for FrameWeaver {
                 let reinforce_cmd = self.build_reinforce_command(anchor_id);
                 self.pending_commands.push(reinforce_cmd);
                 *self.reactivation_counts.entry(anchor_id).or_insert(0) += 1;
+                self.last_reactivation_tick.insert(anchor_id, tick);
                 self.stats.frame_reactivations += 1;
             } else {
                 // Новая кристаллизация в EXPERIENCE

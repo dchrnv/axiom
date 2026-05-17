@@ -2,9 +2,9 @@
 use axiom_protocol::{
     events::EngineState,
     snapshot::{
-        DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport, EmergentCandidateSnapshot,
-        FatigueSnapshot, FrameWeaverStats, GuardianStats, OverDomainSnapshot, PhaseCSnapshot,
-        SystemSnapshot, TokenFieldPoint,
+        AdvisoryFrameSnapshot, DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport,
+        EmergentCandidateSnapshot, FatigueSnapshot, FrameWeaverStats, GuardianStats,
+        OverDomainSnapshot, PhaseCSnapshot, SystemSnapshot, TokenFieldPoint,
     },
 };
 use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
@@ -80,11 +80,24 @@ fn build_phase_c_snapshot(engine: &AxiomEngine) -> Option<PhaseCSnapshot> {
         })
         .collect();
     let pending_emergent_count = emergent_store.get_pending().count() as u32;
+    let advisory_frames: Vec<AdvisoryFrameSnapshot> = engine
+        .neural_advisor
+        .result_store()
+        .frames_with_advice()
+        .map(|r| AdvisoryFrameSnapshot {
+            anchor_id: r.sutra_id,
+            has_octant_suggestion: r.octant_suggestion.is_some(),
+            has_conflict: r.conflict_diagnosis.is_some(),
+            has_subsystem_suggestion: r.subsystem_suggestion.is_some(),
+            has_depth_hint: r.depth_hint.is_some(),
+        })
+        .collect();
     Some(PhaseCSnapshot {
         dominant_octant,
         dominant_subsystem,
         pending_emergent_count,
         emergent_candidates: candidates,
+        advisory_frames,
     })
 }
 

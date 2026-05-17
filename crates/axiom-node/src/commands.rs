@@ -16,6 +16,7 @@ use axiom_protocol::{
         ConfigCategory, ConfigField, ConfigFieldType, ConfigSchema, ConfigSection, ConfigValue,
     },
     messages::{CommandResultData, EngineMessage},
+    snapshot::FrameDetails,
 };
 use axiom_runtime::{AxiomEngine, DreamPhaseState};
 use axiom_ucl::{OpCode, UclCommand};
@@ -104,10 +105,42 @@ pub fn handle_engine_command(
         }
 
         EngineCommand::RequestFrameDetails { anchor_id } => {
-            let snap = build_system_snapshot(engine, last_tick_ns);
-            handle.update_snapshot(snap.clone());
-            handle.publish(EngineMessage::Snapshot(snap));
-            debug!("RequestFrameDetails anchor_id={}: sent full snapshot", anchor_id);
+            const TOKEN_FLAG_FRAME_ANCHOR: u16 = 0x0010;
+            let level = engine.ashti.level_id();
+            let exp_domain_id = level * 100 + 9;
+            let details = engine.ashti
+                .index_of(exp_domain_id)
+                .and_then(|i| engine.ashti.state(i))
+                .and_then(|state| {
+                    let token = state.tokens.iter().find(|t| {
+                        t.sutra_id == anchor_id && (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0
+                    })?;
+                    let participant_conns: Vec<_> = state.connections.iter()
+                        .filter(|c| c.source_id == anchor_id)
+                        .collect();
+                    let participant_count = participant_conns.len().min(255) as u8;
+                    let mut layer_mask: u8 = 0;
+                    for c in &participant_conns {
+                        let layer_idx = ((c.link_type & 0x00F0) >> 4) as u8;
+                        if layer_idx < 8 {
+                            layer_mask |= 1 << layer_idx;
+                        }
+                    }
+                    Some(FrameDetails {
+                        anchor_id,
+                        layers_present: layer_mask,
+                        participant_count,
+                        temperature: token.temperature,
+                        crystallized_at_tick: token.last_event_id,
+                        last_reactivated_at_tick: engine.frame_weaver.last_reactivation_tick_for(anchor_id),
+                        promotion_rule: None,
+                    })
+                });
+            let result = match details {
+                Some(d) => Ok(CommandResultData::FrameDetails(d)),
+                None => Err(format!("Frame #{anchor_id} not found in EXPERIENCE")),
+            };
+            handle.publish(EngineMessage::CommandResult { command_id: cmd_id, result });
         }
 
         EngineCommand::ApproveEmergentCandidate { sutra_id } => {

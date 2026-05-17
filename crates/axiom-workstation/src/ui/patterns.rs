@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use iced::widget::{button, column, container, row, scrollable, text};
+use iced::widget::{button, column, container, horizontal_rule, row, scrollable, text};
 use iced::{Color, Element, Length};
 
 use crate::app::{FrameEvent, Message, PatternsState};
@@ -32,12 +32,18 @@ const SUBSYSTEM_NAMES: &[&str] = &[
 ];
 
 pub fn patterns_view<'a>(state: &'a PatternsState) -> Element<'a, Message> {
-    column![
+    let mut col = column![
         active_layers_panel(state),
         phase_c_panel(state),
-        recent_frames_panel(state),
     ]
-    .into()
+    .spacing(0);
+
+    if let Some(ref details) = state.selected_frame_details {
+        col = col.push(frame_details_panel(details));
+    }
+
+    col = col.push(recent_frames_panel(state));
+    col.into()
 }
 
 // ── Phase C state ─────────────────────────────────────────────────────────
@@ -109,6 +115,74 @@ fn phase_c_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
         }
     }
 
+    // Advisory frames
+    if !state.advisory_frames.is_empty() {
+        content = content.push(
+            text(format!("Advisory  ({})", state.advisory_frames.len()))
+                .size(12)
+                .color(Color::from_rgb(0.7, 0.85, 0.55)),
+        );
+        for af in &state.advisory_frames {
+            let mut hints = String::new();
+            if af.has_octant_suggestion { hints.push_str("oct "); }
+            if af.has_conflict { hints.push_str("conflict "); }
+            if af.has_subsystem_suggestion { hints.push_str("sys "); }
+            if af.has_depth_hint { hints.push_str("depth"); }
+            let row = row![
+                text(format!("#{}", af.anchor_id))
+                    .size(11)
+                    .color(Color::from_rgb(0.65, 0.65, 0.65))
+                    .width(60),
+                text(hints.trim().to_string())
+                    .size(11)
+                    .color(Color::from_rgb(0.55, 0.7, 0.45)),
+            ]
+            .spacing(6);
+            content = content.push(row);
+        }
+    }
+
+    container(content)
+        .padding([8u16, 12u16])
+        .into()
+}
+
+fn frame_details_panel<'a>(d: &'a axiom_protocol::snapshot::FrameDetails) -> Element<'a, Message> {
+    let layers_str = format_layers(d.layers_present);
+    let reactivated = d.last_reactivated_at_tick
+        .map(|t| format!("tick {t}"))
+        .unwrap_or_else(|| "—".to_string());
+    let content = column![
+        text("Frame details")
+            .size(13)
+            .color(Color::from_rgb(0.6, 0.6, 0.6)),
+        row![
+            text("anchor").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(format!("#{}", d.anchor_id)).size(12),
+        ].spacing(4),
+        row![
+            text("crystallized").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(format!("tick {}", d.crystallized_at_tick)).size(12),
+        ].spacing(4),
+        row![
+            text("last react.").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(reactivated).size(12),
+        ].spacing(4),
+        row![
+            text("temperature").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(format!("{}", d.temperature)).size(12),
+        ].spacing(4),
+        row![
+            text("participants").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(format!("{}", d.participant_count)).size(12),
+        ].spacing(4),
+        row![
+            text("layers").size(11).color(Color::from_rgb(0.5,0.5,0.5)).width(90),
+            text(layers_str).size(12),
+        ].spacing(4),
+        horizontal_rule(1),
+    ]
+    .spacing(3);
     container(content)
         .padding([8u16, 12u16])
         .into()
@@ -271,8 +345,14 @@ fn frame_card<'a>(ev: &'a FrameEvent) -> Element<'a, Message> {
                     text(format!(
                         " Frame #{anchor_id}  syntactic  {participant_count} participants"
                     ))
-                    .size(13),
-                ],
+                    .size(13)
+                    .width(Length::Fill),
+                    button(text("details").size(10))
+                        .on_press(Message::RequestFrameDetails(*anchor_id))
+                        .style(button::secondary)
+                        .padding([2u16, 6u16]),
+                ]
+                .align_y(iced::Alignment::Center),
                 text(format!(
                     "  layers: {}  {}",
                     layers_str,
@@ -295,8 +375,14 @@ fn frame_card<'a>(ev: &'a FrameEvent) -> Element<'a, Message> {
                 text(format!(
                     " Frame #{anchor_id}  reactivated  temp→{new_temperature}"
                 ))
-                .size(13),
-            ],
+                .size(13)
+                .width(Length::Fill),
+                button(text("details").size(10))
+                    .on_press(Message::RequestFrameDetails(*anchor_id))
+                    .style(button::secondary)
+                    .padding([2u16, 6u16]),
+            ]
+            .align_y(iced::Alignment::Center),
             text(format!("  {}", format_ago(*timestamp_secs)))
                 .size(11)
                 .color(Color::from_rgb(0.55, 0.55, 0.55)),

@@ -123,6 +123,16 @@ pub struct EmergentCandidateSnapshot {
     pub initial_depth: u16,
 }
 
+/// NeuralAdvisor summary for one Frame (advisory-only, read-only).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AdvisoryFrameSnapshot {
+    pub anchor_id: u32,
+    pub has_octant_suggestion: bool,
+    pub has_conflict: bool,
+    pub has_subsystem_suggestion: bool,
+    pub has_depth_hint: bool,
+}
+
 /// Phase C state snapshot — AxialEvaluator + ContextRecognizer + NeuralAdvisor.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PhaseCSnapshot {
@@ -134,6 +144,8 @@ pub struct PhaseCSnapshot {
     pub pending_emergent_count: u32,
     /// Top-20 pending candidates for the Workstation approval panel.
     pub emergent_candidates: Vec<EmergentCandidateSnapshot>,
+    /// Frames with at least one active NeuralAdvisor recommendation.
+    pub advisory_frames: Vec<AdvisoryFrameSnapshot>,
 }
 
 /// Returned by RequestFrameDetails command.

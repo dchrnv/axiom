@@ -11,7 +11,7 @@ use axiom_protocol::{
     config::{ConfigSchema, ConfigSection, ConfigValue},
     events::EngineEvent,
     messages::CommandResultData,
-    snapshot::{DreamReport, EmergentCandidateSnapshot, SystemSnapshot},
+    snapshot::{AdvisoryFrameSnapshot, DreamReport, EmergentCandidateSnapshot, FrameDetails, SystemSnapshot},
 };
 
 use crate::connection::ws_subscription;
@@ -160,6 +160,10 @@ pub struct PatternsState {
     pub dominant_subsystem: Option<u8>,
     pub pending_emergent_count: u32,
     pub emergent_candidates: Vec<EmergentCandidateSnapshot>,
+    /// Last fetched FrameDetails (populated after RequestFrameDetails).
+    pub selected_frame_details: Option<FrameDetails>,
+    /// Frames with active NeuralAdvisor recommendations.
+    pub advisory_frames: Vec<AdvisoryFrameSnapshot>,
 }
 
 impl Default for PatternsState {
@@ -172,6 +176,8 @@ impl Default for PatternsState {
             dominant_subsystem: None,
             pending_emergent_count: 0,
             emergent_candidates: Vec::new(),
+            selected_frame_details: None,
+            advisory_frames: Vec::new(),
         }
     }
 }
@@ -447,6 +453,7 @@ pub enum Message {
     DreamsShowMore,
     // Phase C
     ApprovePrimitive(u32),
+    RequestFrameDetails(u32),
     // Benchmarks tab
     BenchIterationsChanged(String),
     BenchRun,
@@ -620,6 +627,7 @@ impl WorkstationApp {
                     self.patterns.dominant_subsystem = pc.dominant_subsystem;
                     self.patterns.pending_emergent_count = pc.pending_emergent_count;
                     self.patterns.emergent_candidates = pc.emergent_candidates.clone();
+                    self.patterns.advisory_frames = pc.advisory_frames.clone();
                 }
                 // Accumulate DreamReports
                 if let Some(report) = &snap.last_dream_report {
@@ -817,6 +825,9 @@ impl WorkstationApp {
                         self.files.available_adapters = adapters;
                         self.files.adapters_fetched = true;
                     }
+                    Ok(CommandResultData::FrameDetails(details)) => {
+                        self.patterns.selected_frame_details = Some(details);
+                    }
                     _ => {}
                 }
             }
@@ -942,6 +953,14 @@ impl WorkstationApp {
                 let id = self.next_id();
                 return self
                     .send_command_task(id, EngineCommand::ApproveEmergentCandidate { sutra_id });
+            }
+            Message::RequestFrameDetails(anchor_id) => {
+                self.patterns.selected_frame_details = None;
+                let id = self.next_id();
+                return self.send_command_task(
+                    id,
+                    EngineCommand::RequestFrameDetails { anchor_id },
+                );
             }
             Message::DreamsShowMore => {
                 self.dream_state.show_all_dreams = true;

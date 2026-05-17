@@ -229,11 +229,18 @@ impl OverDomainComponent for ContextRecognizer {
             AXIAL_WINDOW,
         );
 
-        // Если октанты неизвестны — сканируем поверхностный регион CreativeAffirmation
-        let plan = if active_octants.is_empty() {
+        // Warm start: если окно пусто но история есть — использовать все известные октанты.
+        // Иначе (истинный холодный старт) — fallback на CreativeAffirmation.
+        let effective_octants = if active_octants.is_empty() {
+            axial_bridge::all_octants_in_store(&self.axial_store_snapshot, &frame_ids)
+        } else {
+            active_octants
+        };
+
+        let plan = if effective_octants.is_empty() {
             ScanningPlan::empty(tick).with_surface_region(Octant::CreativeAffirmation)
         } else {
-            ScanningPlan::from_octants(&active_octants, tick)
+            ScanningPlan::from_octants(&effective_octants, tick)
         };
 
         let depth_cache = self.build_depth_cache();
@@ -251,7 +258,7 @@ impl OverDomainComponent for ContextRecognizer {
         let weights = energy::energies_to_weights(&energies);
 
         // Первичный октант: наиболее активный из плана, либо fallback
-        let primary_octant = active_octants
+        let primary_octant = effective_octants
             .first()
             .copied()
             .unwrap_or(Octant::CreativeAffirmation);
