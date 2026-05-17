@@ -18,7 +18,7 @@ serde = { workspace = true }
 futures-util = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-iced = { version = "0.13", features = ["canvas", "tokio"] }
+iced = { version = "0.13", default-features = false, features = ["canvas", "tokio", "tiny-skia", "multi-window", "image"] }
 rfd = { version = "0.14", default-features = false, features = ["xdg-portal", "tokio"] }
 dirs = "5"
 toml = "0.8"
