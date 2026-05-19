@@ -1,6 +1,6 @@
 # Axiom — Справочник инвариантов
 
-**Версия:** 6.0 (2026-05-15)  
+**Версия:** 7.0 (2026-05-19)  
 **Правило:** Значения помеченные **HARD** менять запрещено — они фиксированы в коде compile-time assert-ами, бинарным форматом или фундаментальной логикой. Всё остальное — soft (настраиваемый дефолт).
 
 ---
@@ -334,7 +334,90 @@ config/anchors/
 
 ---
 
-## 15. Известные расхождения спека vs код
+## 15. Over-Domain Layer — Phase C модули
+
+### ModuleId (axiom-genome)
+
+`ModuleId` — `#[repr(u8)]`, значения HARD (зафиксированы в GenomeIndex и GENOME rules).  
+`MAX_MODULES = 21`.
+
+| ModuleId | u8 | Описание |
+|----------|----|----------|
+| Sutra..Maya | 0–10 | Доменные роли AshtiCore |
+| Arbiter | 11 | Внутренний маршрутизатор AshtiCore |
+| Guardian | 12 | Конституционный фильтр |
+| Heartbeat | 13 | Генератор импульсов |
+| Shell | 14 | Shell-профили |
+| Adapters | 15 | Внешние адаптеры |
+| FrameWeaver | **16** | Кристаллизация Frame из MAYA → EXPERIENCE |
+| AxialEvaluator | **17** | Оценка Frame по осям X/Y/Z (8 октантов) |
+| ContextRecognizer | **18** | SubsystemEnergy, InterpretationProfile, SutraDepthStore |
+| NeuralAdvisor | **19** | Advisory-only; 5 советников; poll_advisories() |
+| OverDomainArbiter | **20** | Координатор advisory-источников; TrustConfig; PendingQueue |
+
+### Тик-интервалы Phase C (on_tick_interval)
+
+Простые числа — не совпадают между собой и не создают кратных пиков нагрузки.
+
+| Модуль | Интервал | Константа |
+|--------|----------|-----------|
+| AxialEvaluator | **5** тиков | — |
+| ContextRecognizer | **7** тиков | — |
+| NeuralAdvisor | **11** тиков | — |
+| OverDomainArbiter | **13** тиков | `ARBITER_TICK_INTERVAL` |
+
+### SutraDepthStore — константы глубины
+
+Хранит `depth_per_octant: [u16; 8]` на каждый Frame (sutra_id).
+
+| Константа | Значение | Смысл |
+|-----------|----------|-------|
+| `PRIMITIVE_DEPTH` | **65535** (`u16::MAX`) | Frame является зарегистрированным примитивом — не меняется советниками |
+| `PROMOTED_DEPTH` | **30000** | Глубина при промоции Frame в SUTRA |
+| `DEPTH_FLOOR` | **50** | Минимальный пол для «мёртвых» фреймов (AgeDecayAdvisor) — не обнуляет |
+
+> **Правило:** советники НЕ трогают Frame с `depth == PRIMITIVE_DEPTH`.  
+> Советники предлагают глубину, Arbiter применяет через `set_promoted_depth`.
+
+### DepthHint советники (NeuralAdvisor)
+
+| Советник | Условие срабатывания | Suggested depth |
+|----------|----------------------|-----------------|
+| `ReactivationDepthAdvisor` | reactivations ≥ 20, age > 50, current_depth < 500 | min(count×15, 3000) |
+| `SubsystemAffinityDepthAdvisor` | affinity_octant_depth < 800 | 1500 |
+| `AgeDecayAdvisor` | age > 200, reactivations == 0, current > DEPTH_FLOOR | DEPTH_FLOOR (50) |
+
+### OverDomainArbiter — константы и SourceId
+
+| Параметр | Значение |
+|----------|----------|
+| `NEURAL_ADVISOR_SOURCE_ID` | **0** |
+| `ARBITER_TICK_INTERVAL` | **13** |
+| `ArbiterLog` max entries | **500** (ring buffer) |
+| Advisory ID scheme | `(sutra_id as u64) << 8 \| type_index` |
+| `auto_apply_allowed` default | **false** до `on_boot` |
+
+### TrustConfig default V1 (NeuralAdvisor, source=0)
+
+| AdvisoryType | Режим | min_confidence |
+|--------------|-------|----------------|
+| DepthHint | **AutoApply** | 0.75 |
+| OctantCorrection | RequireConfirmation | 0.60 |
+| ConflictDiagnosis | Ignore | — |
+| SubsystemAttribution | Ignore | — |
+| EmergentCandidate | RequireConfirmation | 0.60 |
+
+### EmergentPatternAdvisor пороги (DepthThresholdEmergentDetector)
+
+| Константа | Значение | Настраивается после |
+|-----------|----------|---------------------|
+| `EMERGENT_CANDIDATE_MIN_DEPTH` | **8000** | OBS-01 |
+| `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` | **30** | OBS-01 |
+| `EMERGENT_CANDIDATE_MIN_AGE_TICKS` | **100** | OBS-01 |
+
+---
+
+## 16. Известные расхождения спека vs код
 
 | Место | Расхождение | Источник истины |
 |-------|-------------|-----------------|
