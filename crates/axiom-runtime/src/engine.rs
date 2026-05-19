@@ -1182,6 +1182,8 @@ impl AxiomEngine {
 
         // Phase C coordinator: AE → sync → CR → sync → NA
         if t % 5 == 0 {
+            self.axial_evaluator
+                .sync_primary_subsystem(self.context_recognizer.profile_store().dominant_primary());
             if let Ok(cmds) = self.axial_evaluator.on_tick(t, &self.ashti) {
                 for cmd in cmds {
                     let _ = self.process_command(&cmd);
@@ -1210,7 +1212,8 @@ impl AxiomEngine {
             }
         }
         if t % 13 == 0 {
-            let advisories = self.neural_advisor.poll_advisories();
+            let mut advisories = self.neural_advisor.poll_advisories();
+            advisories.extend(self.axial_evaluator.drain_pending_advisories());
             self.over_domain_arbiter.tick_with_stores(
                 t,
                 &advisories,

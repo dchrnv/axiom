@@ -26,7 +26,9 @@ pub mod traits;
 /// Weavers — кристаллизация реляционных структур
 pub mod weavers;
 
-pub use axial_evaluator::{AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_TICK_INTERVAL};
+pub use axial_evaluator::{
+    AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_SOURCE_ID, AXIAL_EVALUATOR_TICK_INTERVAL,
+};
 
 pub use context_recognizer::{
     ContextRecognizer, DepthRange, FractalLevel, ScanningPlan, SubsystemConflict, SubsystemEnergy,

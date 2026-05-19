@@ -21,13 +21,18 @@ impl EvaluatorStorage {
         Self::default()
     }
 
-    /// Записать оценку. Увеличивает счётчик конфликтов если есть.
+    /// Максимальное число оценок на один Frame (V2).
+pub const MAX_EVALUATIONS_PER_FRAME: usize = 20;
+
+    /// Записать оценку. Обрезает историю Frame до MAX_EVALUATIONS_PER_FRAME.
     pub fn record(&mut self, eval: AxialEvaluation) {
         if eval.has_conflict() {
             self.total_conflicts += 1;
         }
         self.total_evaluated += 1;
+        let sutra_id = eval.frame_anchor_sutra_id;
         self.store.add(eval);
+        self.store.cap_frame(sutra_id, Self::MAX_EVALUATIONS_PER_FRAME);
     }
 
     pub fn store(&self) -> &AxialStore {

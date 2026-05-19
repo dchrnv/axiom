@@ -5,35 +5,49 @@
 // Оценивает Frame по трём философским осям (X/Y/Z) на 8 уровнях абстракции.
 // Результаты хранятся в EvaluatorStorage (AxialStore).
 //
-// Источник: docs/architecture/AxialEvaluator_V1_0.md
+// Источник: docs/architecture/AxialEvaluator_V2_0.md
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use axiom_core::{Token, STATE_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR};
 use axiom_domain::AshtiCore;
-use axiom_experience::{AxialEvaluation, AxialScore};
+use axiom_experience::{AxialEvaluation, AxialScore, SubsystemId};
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::UclCommand;
 
+use crate::over_domain::arbiter::source::{Advisory, AdvisoryAction, AdvisoryType, SourceId};
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod conflict;
 pub mod levels;
 pub mod metrics;
+pub mod persistence;
+pub mod stability;
 pub mod storage;
 pub mod synthesis;
 
 pub use storage::EvaluatorStorage;
+use persistence::ConflictPersistenceTracker;
+use stability::OctantStabilityTracker;
 
 /// Интервал срабатывания: каждые 5 тиков.
 pub const AXIAL_EVALUATOR_TICK_INTERVAL: u32 = 5;
+
+/// source_id для OverDomainArbiter (AxialEvaluator — второй источник, id=1).
+pub const AXIAL_EVALUATOR_SOURCE_ID: SourceId = 1;
 
 /// AxialEvaluator — над-доменный оценщик философских осей.
 pub struct AxialEvaluator {
     storage: EvaluatorStorage,
     /// sutra_id Frame-анкеров, уже оценённых (не оцениваем повторно без события).
     evaluated_frames: HashSet<u32>,
+    stability_tracker: OctantStabilityTracker,
+    conflict_tracker: ConflictPersistenceTracker,
+    pending_advisories: Vec<Advisory>,
+    /// Доминирующая подсистема из ContextRecognizer; синхронизируется через sync_primary_subsystem.
+    primary_subsystem: Option<SubsystemId>,
+    next_advisory_id: u64,
 }
 
 impl AxialEvaluator {
@@ -41,6 +55,11 @@ impl AxialEvaluator {
         Self {
             storage: EvaluatorStorage::new(),
             evaluated_frames: HashSet::new(),
+            stability_tracker: OctantStabilityTracker::new(),
+            conflict_tracker: ConflictPersistenceTracker::new(),
+            pending_advisories: Vec::new(),
+            primary_subsystem: None,
+            next_advisory_id: 0,
         }
     }
 
@@ -53,6 +72,22 @@ impl AxialEvaluator {
         self.evaluated_frames.remove(&sutra_id);
     }
 
+    /// V2: обновить доминирующую подсистему перед следующим on_tick.
+    pub fn sync_primary_subsystem(&mut self, s: Option<SubsystemId>) {
+        self.primary_subsystem = s;
+    }
+
+    /// V2: забрать накопленные рекомендации (очищает буфер).
+    pub fn drain_pending_advisories(&mut self) -> Vec<Advisory> {
+        std::mem::take(&mut self.pending_advisories)
+    }
+
+    fn next_id(&mut self) -> u64 {
+        let id = self.next_advisory_id;
+        self.next_advisory_id += 1;
+        id
+    }
+
     /// Оценить один Frame по всем применимым уровням.
     fn evaluate_frame(
         &mut self,
@@ -61,9 +96,12 @@ impl AxialEvaluator {
         all_connections: &[axiom_core::Connection],
         event_id: u64,
     ) {
-        // Shell-профиль из связей анкера
+        // Shell-профиль из связей анкера; V2: учитываем доминирующую подсистему
         let shell_profile = levels::build_shell_from_connections(anchor.sutra_id, all_connections);
-        let applicable_levels = levels::determine_applicable_levels(&shell_profile);
+        let applicable_levels = levels::determine_applicable_levels_with_subsystem(
+            &shell_profile,
+            self.primary_subsystem,
+        );
 
         // Позиции участников для метрик
         let positions: Vec<[i16; 3]> = participants.iter().map(|t| t.position).collect();
@@ -89,6 +127,9 @@ impl AxialEvaluator {
         // Синтетический октант через центр масс позиций
         let synthetic_octant = synthesis::synthesize_octant(participants, anchor);
 
+        let mut last_analytic_octant = None;
+        let mut last_conflict = None;
+
         for level in applicable_levels {
             let eval = AxialEvaluation::new(
                 anchor.sutra_id,
@@ -99,11 +140,61 @@ impl AxialEvaluator {
                 event_id,
             );
             let analytic_octant = eval.octant;
+            last_analytic_octant = Some(analytic_octant);
             let eval = match conflict::detect_conflict(analytic_octant, synthetic_octant) {
-                Some(c) => eval.with_conflict(c),
+                Some(c) => {
+                    last_conflict = Some(c.clone());
+                    eval.with_conflict(c)
+                }
                 None => eval,
             };
             self.storage.record(eval);
+        }
+
+        // V2: OctantStabilityTracker → OctantCorrection advisory
+        if let Some(octant) = last_analytic_octant {
+            if let Some((stable_octant, confidence)) =
+                self.stability_tracker.push(anchor.sutra_id, octant)
+            {
+                let id = self.next_id();
+                self.pending_advisories.push(Advisory {
+                    id,
+                    source: AXIAL_EVALUATOR_SOURCE_ID,
+                    advisory_type: AdvisoryType::OctantCorrection,
+                    subject_id: anchor.sutra_id,
+                    confidence,
+                    action: AdvisoryAction::NotifyWorkstation {
+                        label: format!(
+                            "#{} stable octant → {:?} ({:.2})",
+                            anchor.sutra_id, stable_octant, confidence
+                        ),
+                    },
+                    created_at_event: event_id,
+                });
+            }
+        }
+
+        // V2: ConflictPersistenceTracker → ConflictDiagnosis advisory
+        if let Some(pc) = self.conflict_tracker.push(anchor.sutra_id, last_conflict.as_ref()) {
+            let id = self.next_id();
+            self.pending_advisories.push(Advisory {
+                id,
+                source: AXIAL_EVALUATOR_SOURCE_ID,
+                advisory_type: AdvisoryType::ConflictDiagnosis,
+                subject_id: anchor.sutra_id,
+                confidence: pc.confidence,
+                action: AdvisoryAction::NotifyWorkstation {
+                    label: format!(
+                        "#{} conflict {:?}↔{:?} streak={} ({:.2})",
+                        anchor.sutra_id,
+                        pc.analytic_octant,
+                        pc.synthetic_octant,
+                        pc.streak,
+                        pc.confidence
+                    ),
+                },
+                created_at_event: event_id,
+            });
         }
 
         self.evaluated_frames.insert(anchor.sutra_id);

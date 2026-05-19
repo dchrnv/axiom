@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1349 тестов, 0 failures**
+**1356 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -21,7 +21,10 @@ AxiomEngine
         ├── OverDomainComponent trait (object-safe, on_tick → Result<Vec<UclCommand>, OverDomainError>)
         ├── Weaver trait (type Pattern, scan, propose_to_dream, check_promotion(tick))
         ├── FrameWeaver V1.3 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
-        ├── AxialEvaluator V1.0 ✅ (tick=5, ModuleId=17) — Frame по осям X/Y/Z; 8 уровней; Corpus Callosum
+        ├── AxialEvaluator V2.0 ✅ (tick=5, ModuleId=17) — Frame по осям X/Y/Z; 8 уровней; Corpus Callosum;
+        │     V2: OctantStabilityTracker (ring 10, threshold 70%, min 5), ConflictPersistenceTracker (streak≥5);
+        │     subsystem-aware level selection (subsystem_to_level); drain_pending_advisories() → Vec<Advisory>;
+        │     AXIAL_EVALUATOR_SOURCE_ID=1; TrustConfig: OctantCorrection(0.70)/ConflictDiagnosis(0.60)
         ├── ContextRecognizer V1.0 ✅ (tick=7, ModuleId=18) — SubsystemEnergy, InterpretationProfile, SutraDepthStore
         ├── NeuralAdvisor V1.0 ✅ (tick=11, ModuleId=19) — advisory-only; RuleBasedCorpusCallosumResolver,
         │     DepthThresholdEmergentDetector; on_tick → NotifyEmergentCandidate (UCL 5200);
@@ -252,6 +255,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase C1 | axiom-experience: AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore; Octant×8 | ✅ |
 | Phase C2 | AnchorSet: subsystem architecture, writing/mathematics primitives, FlatAnchorFile YAML | ✅ |
 | Phase C3 | AxialEvaluator V1.0 (ModuleId=17, tick=5): X/Y/Z axes, 8 EvaluationLevels, Corpus Callosum conflict | ✅ |
+| Phase C6 | AxialEvaluator V2.0: subsystem-aware level selection, OctantStabilityTracker, ConflictPersistenceTracker, drain_pending_advisories, AXIAL_EVALUATOR_SOURCE_ID=1; TrustConfig расширен source=1 | ✅ |
 | Phase C4 | ContextRecognizer V1.0 (ModuleId=18, tick=7): ScanningPlan, SubsystemEnergy, InterpretationProfile | ✅ |
 | Phase C5 | NeuralAdvisor V1.0 (ModuleId=19, tick=11): advisory-only, 5 трейтов, RuleBasedCorpusCallosumResolver, DepthThresholdEmergentDetector; on_tick → Vec<UclCommand> | ✅ |
 | Phase I1 | Engine coordinator: axial_evaluator/context_recognizer/neural_advisor — конкретные поля AxiomEngine, tick % 5/7/11, snapshot sync AE→CR→NA; opcode_from_u16 расширен; 9 тестов | ✅ |

@@ -2,15 +2,14 @@
 // Copyright (C) 2024-2026 Chernov Denys
 //
 // Определение применимых уровней оценки для Frame.
-// Источник: AxialEvaluator_V1_0.md §3, §7.2
+// V1: прямое соответствие Shell L1..L8 ↔ EvaluationLevel 1..8.
+// V2: primary_subsystem из ContextRecognizer влияет на выбор уровня.
 //
-// В V1: прямое соответствие Shell L1..L8 ↔ EvaluationLevel 1..8.
 // Shell Frame — вычисляется из link_type его связей: (link_type & 0x00F0) >> 4 = слой 0..7.
-//
 // Синтаксические связи: link_type >> 8 == 0x08.
 
 use axiom_core::Connection;
-use axiom_experience::EvaluationLevel;
+use axiom_experience::{EvaluationLevel, SubsystemId};
 
 const SHELL_WEIGHT_THRESHOLD: u8 = 1;
 
@@ -35,7 +34,38 @@ pub fn build_shell_from_connections(anchor_id: u32, connections: &[Connection]) 
     profile
 }
 
-/// Определить применимые уровни оценки из Shell-профиля.
+/// V2: Определить уровень по доминирующей подсистеме ContextRecognizer.
+///
+/// SubsystemId → EvaluationLevel маппинг по смысловой аффинности.
+/// `None` или `Unknown` → Shell-fallback.
+pub fn subsystem_to_level(subsystem: SubsystemId) -> Option<EvaluationLevel> {
+    match subsystem {
+        SubsystemId::Mathematics => Some(EvaluationLevel::Conceptual),
+        SubsystemId::Logic => Some(EvaluationLevel::Conceptual),
+        SubsystemId::Writing => Some(EvaluationLevel::Imaginal),
+        SubsystemId::Music => Some(EvaluationLevel::Imaginal),
+        SubsystemId::Time => Some(EvaluationLevel::Action),
+        SubsystemId::Unknown => None,
+    }
+}
+
+/// V2: Определить применимые уровни с учётом подсистемы.
+///
+/// Если `primary_subsystem` известна и маппируется — возвращает [mapped_level].
+/// Иначе — fallback на Shell-профиль.
+pub fn determine_applicable_levels_with_subsystem(
+    shell_profile: &[u8; 8],
+    primary_subsystem: Option<SubsystemId>,
+) -> Vec<EvaluationLevel> {
+    if let Some(subsystem) = primary_subsystem {
+        if let Some(level) = subsystem_to_level(subsystem) {
+            return vec![level];
+        }
+    }
+    determine_applicable_levels(shell_profile)
+}
+
+/// V1: Определить применимые уровни оценки из Shell-профиля.
 ///
 /// Возвращает уровни где счётчик превышает порог.
 /// Fallback: [Conceptual] если ни один слой не активен.

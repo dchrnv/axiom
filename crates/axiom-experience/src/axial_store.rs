@@ -151,6 +151,17 @@ impl AxialStore {
         self.evaluations.remove(&sutra_id);
     }
 
+    /// Обрезать историю Frame до `max` последних записей (по computed_at_event).
+    pub fn cap_frame(&mut self, sutra_id: u32, max: usize) {
+        if let Some(evals) = self.evaluations.get_mut(&sutra_id) {
+            if evals.len() > max {
+                evals.sort_unstable_by_key(|e| e.computed_at_event);
+                let remove = evals.len() - max;
+                evals.drain(..remove);
+            }
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.evaluations.is_empty()
     }

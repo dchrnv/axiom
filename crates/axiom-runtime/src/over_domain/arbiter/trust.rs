@@ -53,7 +53,7 @@ impl TrustConfig {
         self.entries.get(&(source, advisory_type))
     }
 
-    /// Дефолтная конфигурация V1 для NeuralAdvisor (source_id=0).
+    /// Дефолтная конфигурация V1 для NeuralAdvisor (source_id=0) и AxialEvaluator (source_id=1).
     /// ARB-TD-01: в V2 вынести в config/genome.yaml.
     pub fn default_v1(neural_advisor_source_id: SourceId) -> Self {
         let mut cfg = Self::new();
@@ -67,6 +67,12 @@ impl TrustConfig {
         cfg.set(s, AdvisoryType::SubsystemAttribution,
             TrustEntry::new(TrustMode::Ignore, 0.0));
         cfg.set(s, AdvisoryType::EmergentCandidate,
+            TrustEntry::new(TrustMode::RequireConfirmation, 0.60));
+        // AxialEvaluator (source_id=1)
+        let ae: SourceId = 1;
+        cfg.set(ae, AdvisoryType::OctantCorrection,
+            TrustEntry::new(TrustMode::RequireConfirmation, 0.70));
+        cfg.set(ae, AdvisoryType::ConflictDiagnosis,
             TrustEntry::new(TrustMode::RequireConfirmation, 0.60));
         cfg
     }

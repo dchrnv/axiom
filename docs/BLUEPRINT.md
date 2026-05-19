@@ -368,8 +368,11 @@ event_id: u64
 - Deferred: CausalWeaver, SpatialWeaver, TemporalWeaver, AnalogyWeaver, NarrativeWeaver
 
 **Phase C — Knowledge Subsystems:**
-- AxialEvaluator V1.0 (tick=5, ModuleId=17) — оценка Frame по осям X/Y/Z (Apollo/Dionysus,
-  Eros/Thanatos, Will/Nothing), 8 EvaluationLevel, Corpus Callosum conflict (analytic vs synthetic octant)
+- AxialEvaluator V2.0 (tick=5, ModuleId=17) — оценка Frame по осям X/Y/Z (Apollo/Dionysus,
+  Eros/Thanatos, Will/Nothing), 8 EvaluationLevel, Corpus Callosum conflict (analytic vs synthetic octant);
+  V2: subsystem-aware level selection (SubsystemId→EvaluationLevel mapping), OctantStabilityTracker
+  (ring=10, threshold=0.70, min_history=5 → OctantCorrection advisory), ConflictPersistenceTracker
+  (streak≥5 → ConflictDiagnosis advisory); AXIAL_EVALUATOR_SOURCE_ID=1; drain_pending_advisories()
 - ContextRecognizer V1.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
   ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates)
 - NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,

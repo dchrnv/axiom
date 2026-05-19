@@ -117,6 +117,18 @@ impl InterpretationProfileStore {
             .filter(move |p| p.primary == subsystem)
     }
 
+    /// Доминирующая подсистема (по числу Frame с таким primary).
+    pub fn dominant_primary(&self) -> Option<SubsystemId> {
+        self.dominant_primary_as_u8().map(|v| match v {
+            0 => SubsystemId::Writing,
+            1 => SubsystemId::Mathematics,
+            2 => SubsystemId::Music,
+            3 => SubsystemId::Time,
+            4 => SubsystemId::Logic,
+            _ => SubsystemId::Unknown,
+        })
+    }
+
     /// Most common primary subsystem as u8. Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Unknown=5.
     pub fn dominant_primary_as_u8(&self) -> Option<u8> {
         if self.profiles.is_empty() {

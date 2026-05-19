@@ -350,7 +350,7 @@ config/anchors/
 | Shell | 14 | Shell-профили |
 | Adapters | 15 | Внешние адаптеры |
 | FrameWeaver | **16** | Кристаллизация Frame из MAYA → EXPERIENCE |
-| AxialEvaluator | **17** | Оценка Frame по осям X/Y/Z (8 октантов) |
+| AxialEvaluator | **17** | Оценка Frame по осям X/Y/Z (8 октантов); V2: stability/persistence trackers; source_id=1 |
 | ContextRecognizer | **18** | SubsystemEnergy, InterpretationProfile, SutraDepthStore |
 | NeuralAdvisor | **19** | Advisory-only; 5 советников; poll_advisories() |
 | OverDomainArbiter | **20** | Координатор advisory-источников; TrustConfig; PendingQueue |
@@ -392,12 +392,15 @@ config/anchors/
 | Параметр | Значение |
 |----------|----------|
 | `NEURAL_ADVISOR_SOURCE_ID` | **0** |
+| `AXIAL_EVALUATOR_SOURCE_ID` | **1** |
 | `ARBITER_TICK_INTERVAL` | **13** |
 | `ArbiterLog` max entries | **500** (ring buffer) |
 | Advisory ID scheme | `(sutra_id as u64) << 8 \| type_index` |
 | `auto_apply_allowed` default | **false** до `on_boot` |
 
-### TrustConfig default V1 (NeuralAdvisor, source=0)
+### TrustConfig default V1 (NeuralAdvisor source=0, AxialEvaluator source=1)
+
+**NeuralAdvisor (source=0):**
 
 | AdvisoryType | Режим | min_confidence |
 |--------------|-------|----------------|
@@ -406,6 +409,27 @@ config/anchors/
 | ConflictDiagnosis | Ignore | — |
 | SubsystemAttribution | Ignore | — |
 | EmergentCandidate | RequireConfirmation | 0.60 |
+
+**AxialEvaluator (source=1):**
+
+| AdvisoryType | Режим | min_confidence |
+|--------------|-------|----------------|
+| OctantCorrection | RequireConfirmation | 0.70 |
+| ConflictDiagnosis | RequireConfirmation | 0.60 |
+
+### AxialEvaluator V2 — трекеры и константы
+
+| Параметр | Значение | Смысл |
+|----------|----------|-------|
+| `AXIAL_EVALUATOR_SOURCE_ID` | **1** | SourceId для OverDomainArbiter |
+| `STABILITY_HISTORY_DEPTH` | **10** | Длина кольцевого буфера OctantStabilityTracker |
+| `STABILITY_THRESHOLD` | **0.70** | Порог доли доминирующего октанта для fire |
+| `STABILITY_MIN_HISTORY` | **5** | Минимум записей перед проверкой стабильности |
+| `CONFLICT_PERSISTENCE_THRESHOLD` | **5** | Подряд-конфликтов до ConflictDiagnosis advisory |
+| `MAX_EVALUATIONS_PER_FRAME` | **20** | Ограничение истории AxialStore на один Frame |
+
+> После fire OctantStabilityTracker очищает историю Frame.  
+> После fire ConflictPersistenceTracker сбрасывает streak в 0.
 
 ### EmergentPatternAdvisor пороги (DepthThresholdEmergentDetector)
 
