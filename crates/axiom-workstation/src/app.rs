@@ -164,6 +164,10 @@ pub struct PatternsState {
     pub selected_frame_details: Option<FrameDetails>,
     /// Frames with active NeuralAdvisor recommendations.
     pub advisory_frames: Vec<AdvisoryFrameSnapshot>,
+    /// Average SutraDepth per octant (0–65535). Index 0 = CreativeAffirmation … 7 = SelfDestructiveApathic.
+    pub octant_depth_avg: [u32; 8],
+    /// Очередь OverDomainArbiter — рекомендации ждущие подтверждения chrnv.
+    pub pending_advisories: Vec<axiom_protocol::snapshot::PendingAdvisorySnapshot>,
 }
 
 impl Default for PatternsState {
@@ -178,6 +182,8 @@ impl Default for PatternsState {
             emergent_candidates: Vec::new(),
             selected_frame_details: None,
             advisory_frames: Vec::new(),
+            octant_depth_avg: [0; 8],
+            pending_advisories: Vec::new(),
         }
     }
 }
@@ -456,6 +462,9 @@ pub enum Message {
     // Phase C
     ApprovePrimitive(u32),
     RequestFrameDetails(u32),
+    // OverDomainArbiter queue
+    ArbiterConfirm(u64),
+    ArbiterReject(u64),
     // Benchmarks tab
     BenchIterationsChanged(String),
     BenchRun,
@@ -631,6 +640,8 @@ impl WorkstationApp {
                     self.patterns.pending_emergent_count = pc.pending_emergent_count;
                     self.patterns.emergent_candidates = pc.emergent_candidates.clone();
                     self.patterns.advisory_frames = pc.advisory_frames.clone();
+                    self.patterns.octant_depth_avg = pc.octant_depth_avg;
+                    self.patterns.pending_advisories = pc.pending_advisories.clone();
                 }
                 // Accumulate DreamReports
                 if let Some(report) = &snap.last_dream_report {
@@ -970,6 +981,12 @@ impl WorkstationApp {
                     id,
                     EngineCommand::RequestFrameDetails { anchor_id },
                 );
+            }
+            Message::ArbiterConfirm(advisory_id) => {
+                self.patterns.pending_advisories.retain(|p| p.advisory_id != advisory_id);
+            }
+            Message::ArbiterReject(advisory_id) => {
+                self.patterns.pending_advisories.retain(|p| p.advisory_id != advisory_id);
             }
             Message::DreamsShowMore => {
                 self.dream_state.show_all_dreams = true;

@@ -146,6 +146,22 @@ pub struct PhaseCSnapshot {
     pub emergent_candidates: Vec<EmergentCandidateSnapshot>,
     /// Frames with at least one active NeuralAdvisor recommendation.
     pub advisory_frames: Vec<AdvisoryFrameSnapshot>,
+    /// Average SutraDepth per octant (0–65535) across all entries in SutraDepthStore.
+    /// Index 0 = CreativeAffirmation … 7 = SelfDestructiveApathic.
+    pub octant_depth_avg: [u32; 8],
+    /// Рекомендации в очереди OverDomainArbiter — ждут подтверждения chrnv.
+    pub pending_advisories: Vec<PendingAdvisorySnapshot>,
+}
+
+/// Снапшот одной рекомендации из очереди OverDomainArbiter (для Workstation).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct PendingAdvisorySnapshot {
+    pub advisory_id: u64,
+    pub advisory_type: u8,   // 0=DepthHint, 1=OctantCorrection, 4=EmergentCandidate
+    pub subject_id: u32,
+    pub confidence: f32,
+    pub label: String,
+    pub queued_at_event: u64,
 }
 
 /// Returned by RequestFrameDetails command.

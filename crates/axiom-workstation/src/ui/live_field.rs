@@ -1,7 +1,7 @@
 use iced::mouse;
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Stroke};
 use iced::widget::{button, column, row, text};
-use iced::{Color, Element, Length, Point, Rectangle, Size};
+use iced::{Color, Element, Length, Point, Rectangle, Size, Vector};
 
 use axiom_protocol::snapshot::{DomainSnapshot, SystemSnapshot};
 
@@ -326,14 +326,15 @@ fn draw_scene(
     }
 
     if domains.is_empty() {
-        frame.fill_text(canvas::Text {
-            content: "Waiting for Engine data…".to_string(),
-            position: Point::new(size.width / 2.0, size.height / 2.0),
-            color: Color::from_rgba(0.5, 0.5, 0.6, 0.6),
-            size: iced::Pixels(14.0),
-            horizontal_alignment: iced::alignment::Horizontal::Center,
-            vertical_alignment: iced::alignment::Vertical::Center,
-            ..canvas::Text::default()
+        frame.with_save(|frame| {
+            frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+            frame.fill_text(canvas::Text {
+                content: "Waiting for Engine data…".to_string(),
+                position: Point::new(size.width / 2.0 - 87.0, size.height / 2.0 - 8.0),
+                color: Color::from_rgba(0.5, 0.5, 0.6, 0.6),
+                size: iced::Pixels(14.0),
+                ..canvas::Text::default()
+            });
         });
     }
 }
@@ -459,14 +460,15 @@ fn draw_domain_points(
     } else if domain.token_count > 0 && active {
         // Tokens exist but position data not yet in snapshot — show label
         let label_y = size.height * 0.72;
-        frame.fill_text(canvas::Text {
-            content: format!("{} tokens — field data pending", domain.token_count),
-            position: Point::new(size.width / 2.0, label_y),
-            color: Color::from_rgba(0.5, 0.5, 0.55, base_alpha * 0.6),
-            size: iced::Pixels(12.0),
-            horizontal_alignment: iced::alignment::Horizontal::Center,
-            vertical_alignment: iced::alignment::Vertical::Center,
-            ..canvas::Text::default()
+        frame.with_save(|frame| {
+            frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+            frame.fill_text(canvas::Text {
+                content: format!("{} tokens — field data pending", domain.token_count),
+                position: Point::new(size.width / 2.0 - 100.0, label_y - 6.0),
+                color: Color::from_rgba(0.5, 0.5, 0.55, base_alpha * 0.6),
+                size: iced::Pixels(12.0),
+                ..canvas::Text::default()
+            });
         });
     } else {
         // Truly empty domain — nothing to show

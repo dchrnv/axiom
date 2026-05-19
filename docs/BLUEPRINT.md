@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-17  
-**Тесты:** 1332, 0 failures  
+**Обновлено:** 2026-05-19  
+**Тесты:** 1349, 0 failures  
 **Последний коммит:** a9e4acc
 
 ---
@@ -374,8 +374,17 @@ event_id: u64
   ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates)
 - NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
-  V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector;
+  V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector +
+  ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (DEPTH_FLOOR=50);
+  implements AdvisorySource → poll_advisories() → Vec<Advisory>;
   on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата
+- OverDomainArbiter V1.0 (tick=13, ModuleId=20) — координатор advisory-источников;
+  AdvisorySource трейт: poll_advisories() / on_feedback(); Advisory { id, source, advisory_type,
+  subject_id, confidence, action, created_at_event }; AdvisoryAction: ApplyDepth{octant,depth} /
+  NotifyWorkstation{label}; TrustConfig: HashMap<(SourceId,AdvisoryType), TrustEntry{mode,min_confidence}>;
+  TrustMode: Ignore / AutoApply / RequireConfirmation; on_boot устанавливает auto_apply_allowed
+  (ExperienceMemory/Control из генома); PendingQueue → PhaseCSnapshot.pending_advisories →
+  Workstation (confirm/reject); ArbiterLog ring-buffer 500 записей
 
 ### Инварианты Over-Domain
 
@@ -539,6 +548,26 @@ frame_weaver_stats: Option<FrameWeaverStats>
 guardian_stats: GuardianStats
 dream_phase_stats: DreamPhaseStats
 adapter_progress: Vec<AdapterProgress>
+phase_c: Option<PhaseCSnapshot>
+```
+
+### PhaseCSnapshot
+
+```
+dominant_octant: u8
+dominant_subsystem: u8
+pending_emergent_count: u32
+emergent_candidates: Vec<EmergentCandidateSnapshot>
+advisory_frames: Vec<AdvisoryFrameSnapshot>
+octant_depth_avg: [u32; 8]              — средняя глубина по октантам из SutraDepthStore
+pending_advisories: Vec<PendingAdvisorySnapshot>
+```
+
+### PendingAdvisorySnapshot
+
+```
+advisory_id: u64, advisory_type: u8 (0=DepthHint..4=EmergentCandidate)
+subject_id: u32, confidence: f32, label: String, queued_at_event: u64
 ```
 
 ### DomainSnapshot

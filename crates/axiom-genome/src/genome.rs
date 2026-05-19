@@ -226,6 +226,17 @@ impl Genome {
                 resource: R::AshtiField,
                 permission: P::Read,
             },
+            // OverDomainArbiter — применяет DepthHint (Control), читает AshtiField
+            AccessRule {
+                module: M::OverDomainArbiter,
+                resource: R::ExperienceMemory,
+                permission: P::Control,
+            },
+            AccessRule {
+                module: M::OverDomainArbiter,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
         ];
 
         let protocol_rules = vec![

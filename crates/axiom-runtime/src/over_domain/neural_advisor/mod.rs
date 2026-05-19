@@ -17,6 +17,9 @@ use axiom_experience::{
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::{NotifyEmergentCandidatePayload, OpCode, UclCommand};
 
+use crate::over_domain::arbiter::source::{
+    Advisory, AdvisoryAction, AdvisoryId, AdvisoryOutcome, AdvisorySource, AdvisoryType, SourceId,
+};
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod implementations;
@@ -70,9 +73,7 @@ impl NeuralAdvisor {
         }
     }
 
-    pub fn with_default_v1() -> Self {
-        Self::new(NeuralAdvisorRegistry::default_v1())
-    }
+
 
     // ─── Синхронизация снапшотов ─────────────────────────────────────────────
     // Вызываются координатором после тиков соответствующих компонентов.
@@ -237,6 +238,10 @@ impl NeuralAdvisor {
         UclCommand::new(OpCode::NotifyEmergentCandidate, sutra_id, 120, 0)
             .with_payload(&payload)
     }
+
+    pub fn with_default_v1() -> Self {
+        Self::new(NeuralAdvisorRegistry::default_v1())
+    }
 }
 
 impl Default for NeuralAdvisor {
@@ -341,6 +346,72 @@ impl OverDomainComponent for NeuralAdvisor {
     }
 }
 
+// ── AdvisorySource для Arbiter ────────────────────────────────────────────────
+
+/// source_id NeuralAdvisor в OverDomainArbiter.
+pub const NEURAL_ADVISOR_SOURCE_ID: SourceId = 0;
+
+impl AdvisorySource for NeuralAdvisor {
+    fn source_id(&self) -> SourceId {
+        NEURAL_ADVISOR_SOURCE_ID
+    }
+
+    fn poll_advisories(&self) -> Vec<Advisory> {
+        let mut out = Vec::new();
+        for result in self.result_store.frames_with_advice() {
+            // DepthHint → ApplyDepth
+            if let Some(ref hint) = result.depth_hint {
+                out.push(Advisory {
+                    id: advisory_id(result.sutra_id, AdvisoryType::DepthHint),
+                    source: NEURAL_ADVISOR_SOURCE_ID,
+                    advisory_type: AdvisoryType::DepthHint,
+                    subject_id: result.sutra_id,
+                    confidence: hint.confidence,
+                    action: AdvisoryAction::ApplyDepth {
+                        octant: hint.target_octant.index(),
+                        depth: hint.suggested_depth,
+                    },
+                    created_at_event: result.computed_at_event,
+                });
+            }
+            // OctantCorrection → NotifyWorkstation
+            if let Some(ref sug) = result.octant_suggestion {
+                out.push(Advisory {
+                    id: advisory_id(result.sutra_id, AdvisoryType::OctantCorrection),
+                    source: NEURAL_ADVISOR_SOURCE_ID,
+                    advisory_type: AdvisoryType::OctantCorrection,
+                    subject_id: result.sutra_id,
+                    confidence: sug.confidence,
+                    action: AdvisoryAction::NotifyWorkstation {
+                        label: format!(
+                            "#{} octant → {:?} ({})",
+                            result.sutra_id, sug.octant, sug.confidence
+                        ),
+                    },
+                    created_at_event: result.computed_at_event,
+                });
+            }
+        }
+        out
+    }
+
+    fn on_feedback(&mut self, _id: AdvisoryId, _outcome: AdvisoryOutcome) {
+        // V2: логировать применение/отклонение для калибровки советников
+    }
+}
+
+/// Стабильный AdvisoryId: (sutra_id << 8) | type_index.
+fn advisory_id(sutra_id: u32, t: AdvisoryType) -> AdvisoryId {
+    let type_index = match t {
+        AdvisoryType::DepthHint => 0u64,
+        AdvisoryType::OctantCorrection => 1,
+        AdvisoryType::ConflictDiagnosis => 2,
+        AdvisoryType::SubsystemAttribution => 3,
+        AdvisoryType::EmergentCandidate => 4,
+    };
+    ((sutra_id as u64) << 8) | type_index
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,7 +421,7 @@ mod tests {
         let na = NeuralAdvisor::with_default_v1();
         assert!(na.registry.conflict.is_some());
         assert!(na.registry.emergent.is_some());
-        assert!(na.registry.depth.is_none());
+        assert!(na.registry.depth.is_some());
         assert!(na.registry.octant.is_none());
         assert!(na.registry.subsystem.is_none());
     }

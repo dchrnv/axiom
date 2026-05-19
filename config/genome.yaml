@@ -59,6 +59,10 @@ access_rules:
   - { module: NeuralAdvisor, resource: ExperienceMemory, permission: Read }
   - { module: NeuralAdvisor, resource: AshtiField,       permission: Read }
 
+  # OverDomainArbiter — исполняет AutoApply (Control) и читает advisory-источники
+  - { module: OverDomainArbiter, resource: ExperienceMemory, permission: Control }
+  - { module: OverDomainArbiter, resource: AshtiField,       permission: Read    }
+
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }
   - { source: Experience, target: Arbiter,    data_type: ResonanceResponse, mandatory: true  }

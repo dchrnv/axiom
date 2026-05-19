@@ -100,6 +100,10 @@ impl ContextRecognizer {
         &self.depth_store
     }
 
+    pub fn depth_store_mut(&mut self) -> &mut SutraDepthStore {
+        &mut self.depth_store
+    }
+
     pub fn profile_store(&self) -> &InterpretationProfileStore {
         &self.profile_store
     }

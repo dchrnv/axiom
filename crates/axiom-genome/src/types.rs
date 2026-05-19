@@ -27,9 +27,10 @@ pub enum ModuleId {
     AxialEvaluator = 17,
     ContextRecognizer = 18,
     NeuralAdvisor = 19,
+    OverDomainArbiter = 20,
 }
 
-pub const MAX_MODULES: usize = 20;
+pub const MAX_MODULES: usize = 21;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

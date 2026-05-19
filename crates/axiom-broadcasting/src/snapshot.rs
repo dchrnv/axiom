@@ -4,9 +4,10 @@ use axiom_protocol::{
     snapshot::{
         AdvisoryFrameSnapshot, DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport,
         EmergentCandidateSnapshot, FatigueSnapshot, FrameWeaverStats, GuardianStats,
-        OverDomainSnapshot, PhaseCSnapshot, SystemSnapshot, TokenFieldPoint,
+        OverDomainSnapshot, PendingAdvisorySnapshot, PhaseCSnapshot, SystemSnapshot, TokenFieldPoint,
     },
 };
+use axiom_runtime::over_domain::AdvisoryAction;
 use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
 
 fn build_token_field(engine: &AxiomEngine, domain_id: u16, max: usize) -> Vec<TokenFieldPoint> {
@@ -92,12 +93,46 @@ fn build_phase_c_snapshot(engine: &AxiomEngine) -> Option<PhaseCSnapshot> {
             has_depth_hint: r.depth_hint.is_some(),
         })
         .collect();
+    let octant_depth_avg = engine.context_recognizer.depth_store().avg_depths();
+
+    let pending_advisories: Vec<PendingAdvisorySnapshot> = engine
+        .over_domain_arbiter
+        .pending_snapshot()
+        .iter()
+        .take(20)
+        .map(|p| {
+            let type_index = match p.advisory.advisory_type {
+                axiom_runtime::over_domain::AdvisoryType::DepthHint => 0u8,
+                axiom_runtime::over_domain::AdvisoryType::OctantCorrection => 1,
+                axiom_runtime::over_domain::AdvisoryType::ConflictDiagnosis => 2,
+                axiom_runtime::over_domain::AdvisoryType::SubsystemAttribution => 3,
+                axiom_runtime::over_domain::AdvisoryType::EmergentCandidate => 4,
+            };
+            let label = match &p.advisory.action {
+                AdvisoryAction::NotifyWorkstation { label } => label.clone(),
+                AdvisoryAction::ApplyDepth { octant, depth } => {
+                    format!("#{} depth oct{octant}→{depth}", p.advisory.subject_id)
+                }
+            };
+            PendingAdvisorySnapshot {
+                advisory_id: p.advisory.id,
+                advisory_type: type_index,
+                subject_id: p.advisory.subject_id,
+                confidence: p.advisory.confidence,
+                label,
+                queued_at_event: p.queued_at_event,
+            }
+        })
+        .collect();
+
     Some(PhaseCSnapshot {
         dominant_octant,
         dominant_subsystem,
         pending_emergent_count,
         emergent_candidates: candidates,
         advisory_frames,
+        octant_depth_avg,
+        pending_advisories,
     })
 }
 

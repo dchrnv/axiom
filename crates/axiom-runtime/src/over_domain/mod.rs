@@ -17,6 +17,8 @@ pub mod axial_evaluator;
 pub mod context_recognizer;
 /// NeuralAdvisor — advisory-only советник над семантическим слоем
 pub mod neural_advisor;
+/// OverDomainArbiter — слушатель и исполнитель advisory-рекомендаций
+pub mod arbiter;
 /// DREAM Phase — машина состояний сна, DreamScheduler, DreamCycle
 pub mod dream_phase;
 /// Базовые trait'ы Over-Domain компонентов
@@ -35,7 +37,13 @@ pub use neural_advisor::{
     AdvisoryResult, AdvisoryResultStore, ConflictAdvisorInput, ConflictDiagnosis,
     ConflictResolutionHint, CorpusCallosumResolver, DepthHint, DepthThresholdEmergentDetector,
     NeuralAdvisor, NeuralAdvisorRegistry, OctantSuggestion, RuleBasedCorpusCallosumResolver,
-    NEURAL_ADVISOR_TICK_INTERVAL,
+    NEURAL_ADVISOR_SOURCE_ID, NEURAL_ADVISOR_TICK_INTERVAL,
+};
+
+pub use arbiter::{
+    Advisory, AdvisoryAction, AdvisoryId, AdvisoryOutcome, AdvisorySource, AdvisoryType,
+    ArbiterLog, ArbiterLogEntry, ArbiterOutcome, OverDomainArbiter, PendingAdvisory,
+    SourceId, TrustConfig, TrustEntry, TrustMode, ARBITER_TICK_INTERVAL,
 };
 
 pub use traits::{

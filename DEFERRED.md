@@ -1,7 +1,45 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 58.0
-**Обновлён:** 2026-05-17
+**Версия:** 59.0
+**Обновлён:** 2026-05-19
+
+---
+
+## OverDomainArbiter
+
+### ARB-TD-01 — TrustConfig задаётся в коде, не в конфиге
+
+**Где:** `crates/axiom-runtime/src/over_domain/arbiter/trust.rs` → `TrustConfig::default_v1()`
+
+Пороги и режимы (AutoApply/RequireConfirmation) захардкожены. Нет возможности менять без перекомпиляции.
+
+**Что нужно:** вынести в `config/genome.yaml` секцию `[arbiter.trust]`; `min_confidence` калибруется автоматически по `ArbiterLog` (confirmed / confirmed+rejected).
+
+**Когда:** V2, после накопления данных от OBS-01.
+
+---
+
+### ARB-TD-02 — PendingQueue не протухает
+
+**Где:** `crates/axiom-runtime/src/over_domain/arbiter/mod.rs` → `pending: VecDeque<PendingAdvisory>`
+
+Непринятые рекомендации копятся бесконечно. При долгом бездействии оператора очередь может вырасти неограниченно.
+
+**Что нужно:** добавить `expires_at_event: Option<u64>` в `PendingAdvisory`; TTL ~1000 event_id; при истечении → `ArbiterOutcome::Expired` + `on_feedback(Expired)`.
+
+**Когда:** V2, после наблюдения реального поведения очереди в OBS-01.
+
+---
+
+### ARB-TD-03 — AutoApply только для DepthHint
+
+**Где:** `crates/axiom-runtime/src/over_domain/arbiter/mod.rs` → `execute()`
+
+`OctantCorrection` не может применяться автономно — требует записи в `AxialStore`, что сейчас невозможно без пересчёта позиции (AxialEvaluator пересчитает на следующем тике и перетрёт).
+
+**Что нужно:** `AxialStore::override_octant(sutra_id, octant)` с пометкой "advisory override"; AxialEvaluator уважает флаг.
+
+**Когда:** V2+, вместе с расширением advisory-действий в `AdvisoryAction`.
 
 ---
 

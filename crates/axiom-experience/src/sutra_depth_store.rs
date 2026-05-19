@@ -165,6 +165,26 @@ impl SutraDepthStore {
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
+
+    /// Average SutraDepth per octant across all entries (non-primitives included).
+    /// Returns [0; 8] if the store is empty.
+    pub fn avg_depths(&self) -> [u32; 8] {
+        if self.entries.is_empty() {
+            return [0; 8];
+        }
+        let mut sums = [0u64; 8];
+        let count = self.entries.len() as u64;
+        for entry in self.entries.values() {
+            for i in 0..8 {
+                sums[i] += entry.depth_per_octant[i] as u64;
+            }
+        }
+        let mut out = [0u32; 8];
+        for i in 0..8 {
+            out[i] = (sums[i] / count) as u32;
+        }
+        out
+    }
 }
 
 #[cfg(test)]

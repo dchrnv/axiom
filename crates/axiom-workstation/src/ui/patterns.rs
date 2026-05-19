@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 use iced::widget::{button, column, container, horizontal_rule, row, scrollable, text};
 use iced::{Color, Element, Length};
 
+const PRIMITIVE_DEPTH: u32 = 65535;
+
 use crate::app::{FrameEvent, Message, PatternsState};
 
 const SEMANTIC_LAYERS: &[(&str, &str)] = &[
@@ -35,6 +37,8 @@ pub fn patterns_view<'a>(state: &'a PatternsState) -> Element<'a, Message> {
     let mut col = column![
         active_layers_panel(state),
         phase_c_panel(state),
+        octant_depth_panel(state),
+        arbiter_queue_panel(state),
     ]
     .spacing(0);
 
@@ -149,6 +153,142 @@ fn phase_c_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
     }
 
     container(content)
+        .padding([8u16, 12u16])
+        .into()
+}
+
+// ── OverDomainArbiter Queue ───────────────────────────────────────────────
+
+const ADVISORY_TYPE_NAMES: &[&str] = &[
+    "DepthHint", "OctantCorrection", "ConflictDiagnosis", "SubsystemAttribution", "EmergentCandidate",
+];
+
+fn arbiter_queue_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
+    if state.pending_advisories.is_empty() {
+        return iced::widget::Space::new(0, 0).into();
+    }
+
+    let mut content = column![
+        text(format!("Arbiter Queue  ({})", state.pending_advisories.len()))
+            .size(13)
+            .color(Color::from_rgb(0.75, 0.6, 0.9)),
+    ]
+    .spacing(4);
+
+    for adv in &state.pending_advisories {
+        let type_name = ADVISORY_TYPE_NAMES
+            .get(adv.advisory_type as usize)
+            .copied()
+            .unwrap_or("?");
+        let advisory_id = adv.advisory_id;
+        let row = row![
+            text(type_name)
+                .size(11)
+                .color(Color::from_rgb(0.6, 0.5, 0.8))
+                .width(120),
+            text(adv.label.clone())
+                .size(11)
+                .color(Color::from_rgb(0.55, 0.55, 0.6))
+                .width(Length::Fill),
+            text(format!("{:.0}%", adv.confidence * 100.0))
+                .size(11)
+                .color(Color::from_rgb(0.5, 0.5, 0.55))
+                .width(35),
+            button(text("✓").size(11))
+                .on_press(Message::ArbiterConfirm(advisory_id))
+                .style(button::secondary)
+                .padding([2u16, 6u16]),
+            button(text("✗").size(11))
+                .on_press(Message::ArbiterReject(advisory_id))
+                .style(button::secondary)
+                .padding([2u16, 6u16]),
+        ]
+        .spacing(6)
+        .align_y(iced::Alignment::Center);
+        content = content.push(row);
+    }
+
+    container(content)
+        .padding([8u16, 12u16])
+        .into()
+}
+
+// ── Octant Depth Distribution ─────────────────────────────────────────────
+
+fn octant_depth_panel<'a>(state: &'a PatternsState) -> Element<'a, Message> {
+    let all_zero = state.octant_depth_avg.iter().all(|&d| d == 0);
+
+    let mut rows = column![
+        text("Octant Depth Distribution")
+            .size(13)
+            .color(Color::from_rgb(0.6, 0.6, 0.6)),
+    ]
+    .spacing(4);
+
+    for (i, &avg) in state.octant_depth_avg.iter().enumerate() {
+        let name = OCTANT_NAMES.get(i).copied().unwrap_or("?");
+        let frac = avg as f32 / PRIMITIVE_DEPTH as f32;
+        let pct = (frac * 100.0) as u32;
+
+        let bar_max: f32 = 160.0;
+        let bar_fill = (frac * bar_max).max(if all_zero { 0.0 } else { 1.0 });
+
+        let depth_color = if avg == 0 {
+            Color::from_rgba(0.25, 0.25, 0.3, 0.6)
+        } else if avg >= 30000 {
+            Color::from_rgba(0.85, 0.65, 0.2, 0.9)
+        } else if avg >= 1000 {
+            Color::from_rgba(0.4, 0.7, 0.9, 0.85)
+        } else {
+            Color::from_rgba(0.35, 0.55, 0.75, 0.7)
+        };
+
+        let bar_bg = container(iced::widget::Space::new(bar_fill, 10.0))
+            .style(move |_theme| iced::widget::container::Style {
+                background: Some(iced::Background::Color(depth_color)),
+                border: iced::Border {
+                    radius: iced::border::Radius::new(2.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+
+        let bar_track = container(bar_bg)
+            .width(bar_max)
+            .style(move |_theme| iced::widget::container::Style {
+                background: Some(iced::Background::Color(Color::from_rgba(0.15, 0.15, 0.2, 0.5))),
+                border: iced::Border {
+                    radius: iced::border::Radius::new(2.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+
+        let oct_color = octant_color(i as u8);
+        let pct_label = if avg == 0 {
+            "—".to_string()
+        } else {
+            format!("{pct}%")
+        };
+
+        let depth_row = row![
+            text(format!("{:2}. {}", i + 1, name))
+                .size(11)
+                .color(oct_color)
+                .width(175),
+            bar_track,
+            text(pct_label)
+                .size(11)
+                .color(Color::from_rgb(0.5, 0.5, 0.55))
+                .width(35),
+        ]
+        .spacing(8)
+        .align_y(iced::Alignment::Center);
+
+        rows = rows.push(depth_row);
+    }
+
+    container(rows)
         .padding([8u16, 12u16])
         .into()
 }

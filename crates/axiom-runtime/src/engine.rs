@@ -12,9 +12,10 @@ use crate::adaptive::AdaptiveTickRate;
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::orchestrator;
 use crate::over_domain::{
-    restore_frame_from_anchor, AxialEvaluator, ContextRecognizer, DreamCycle, DreamPhaseState,
-    DreamPhaseStats, DreamScheduler, FatigueSnapshot, FrameWeaver, GatewayPriority, NeuralAdvisor,
-    OverDomainComponent, SleepDecision, SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
+    restore_frame_from_anchor, AdvisorySource, AxialEvaluator, ContextRecognizer, DreamCycle,
+    DreamPhaseState, DreamPhaseStats, DreamScheduler, FatigueSnapshot, FrameWeaver,
+    GatewayPriority, NeuralAdvisor, OverDomainArbiter, OverDomainComponent, SleepDecision,
+    SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
@@ -187,6 +188,8 @@ pub struct AxiomEngine {
     pub context_recognizer: ContextRecognizer,
     /// NeuralAdvisor — advisory-only советник, детектирует эмерджентные примитивы (tick=11).
     pub neural_advisor: NeuralAdvisor,
+    /// OverDomainArbiter — слушает advisory-источники, действует по TrustConfig (tick=13).
+    pub over_domain_arbiter: OverDomainArbiter,
     /// Текущее состояние DREAM-фазы (Wake / FallingAsleep / Dreaming / Waking).
     pub dream_phase_state: DreamPhaseState,
     /// Счётчики DREAM-фазы (дополняются в этапах 2–4).
@@ -235,6 +238,8 @@ impl AxiomEngine {
         let worker_count = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
+        let mut over_domain_arbiter = OverDomainArbiter::default_v1();
+        let _ = over_domain_arbiter.on_boot(&genome);
         Ok(Self {
             genome: Arc::clone(&genome),
             ashti: AshtiCore::new(1),
@@ -251,6 +256,7 @@ impl AxiomEngine {
             axial_evaluator: AxialEvaluator::new(),
             context_recognizer: ContextRecognizer::new(std::collections::HashMap::new()),
             neural_advisor: NeuralAdvisor::with_default_v1(),
+            over_domain_arbiter,
             dream_phase_state: DreamPhaseState::default(),
             dream_phase_stats: DreamPhaseStats::default(),
             dream_priority_buffer: VecDeque::new(),
@@ -1202,6 +1208,14 @@ impl AxiomEngine {
                     let _ = self.process_command(&cmd);
                 }
             }
+        }
+        if t % 13 == 0 {
+            let advisories = self.neural_advisor.poll_advisories();
+            self.over_domain_arbiter.tick_with_stores(
+                t,
+                &advisories,
+                self.context_recognizer.depth_store_mut(),
+            );
         }
 
         // DreamScheduler: проверить триггеры засыпания

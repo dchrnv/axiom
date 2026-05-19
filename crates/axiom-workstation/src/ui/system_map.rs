@@ -2,11 +2,10 @@ use std::cell::Cell;
 use std::f32::consts::PI;
 use std::time::{Duration, Instant};
 
-use iced::alignment;
 use iced::mouse;
 use iced::widget::canvas::path::Arc;
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Stroke};
-use iced::{Color, Element, Length, Point, Radians, Rectangle, Size};
+use iced::{Color, Element, Length, Point, Radians, Rectangle, Size, Vector};
 
 use axiom_protocol::events::EngineState;
 use axiom_protocol::snapshot::SystemSnapshot;
@@ -282,14 +281,18 @@ fn draw_domain_labels(frame: &mut Frame, center: Point, ring_radius: f32, snap: 
         let angle = (i as f32 / n as f32) * 2.0 * PI - PI / 2.0;
         let x = center.x + ring_radius * angle.cos();
         let y = center.y + ring_radius * angle.sin();
-        frame.fill_text(canvas::Text {
-            content: domain.name.clone(),
-            position: Point::new(x, y + 16.0),
-            color: LABEL_COLOR,
-            size: iced::Pixels(11.0),
-            horizontal_alignment: alignment::Horizontal::Center,
-            vertical_alignment: alignment::Vertical::Top,
-            ..canvas::Text::default()
+        // Wrap in with_save+scale_nonuniform to force draw_with path.
+        // Text::Cached stores INFINITY bounds; 0.0*INF=NaN in Size*Transformation
+        // causes damage::group sort to panic (iced 0.13 tiny-skia bug).
+        frame.with_save(|frame| {
+            frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+            frame.fill_text(canvas::Text {
+                content: domain.name.clone(),
+                position: Point::new(x - 35.0, y + 16.0),
+                color: LABEL_COLOR,
+                size: iced::Pixels(11.0),
+                ..canvas::Text::default()
+            });
         });
     }
 }
@@ -395,21 +398,26 @@ fn draw_bottom_labels(frame: &mut Frame, snap: &SystemSnapshot, bounds: Rectangl
         )
     };
 
-    frame.fill_text(canvas::Text {
-        content: left,
-        position: Point::new(12.0, bounds.height - 24.0),
-        color: LABEL_COLOR,
-        size: iced::Pixels(12.0),
-        ..canvas::Text::default()
+    frame.with_save(|frame| {
+        frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+        frame.fill_text(canvas::Text {
+            content: left,
+            position: Point::new(12.0, bounds.height - 24.0),
+            color: LABEL_COLOR,
+            size: iced::Pixels(12.0),
+            ..canvas::Text::default()
+        });
     });
 
-    frame.fill_text(canvas::Text {
-        content: right,
-        position: Point::new(bounds.width - 12.0, bounds.height - 24.0),
-        color: LABEL_COLOR,
-        size: iced::Pixels(12.0),
-        horizontal_alignment: alignment::Horizontal::Right,
-        ..canvas::Text::default()
+    frame.with_save(|frame| {
+        frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+        frame.fill_text(canvas::Text {
+            content: right,
+            position: Point::new(bounds.width * 0.45, bounds.height - 24.0),
+            color: LABEL_COLOR,
+            size: iced::Pixels(12.0),
+            ..canvas::Text::default()
+        });
     });
 }
 
@@ -439,13 +447,16 @@ fn draw_loading(frame: &mut Frame, center: Point, r: f32, phase: f32) {
             .with_width(2.0),
     );
 
-    frame.fill_text(canvas::Text {
-        content: "Waiting for Engine...".to_string(),
-        position: Point::new(center.x, center.y + r * 1.4),
-        color: LABEL_COLOR,
-        size: iced::Pixels(13.0),
-        horizontal_alignment: alignment::Horizontal::Center,
-        vertical_alignment: alignment::Vertical::Top,
-        ..canvas::Text::default()
+    // Center alignment would produce NaN damage bounds in iced 0.13 tiny-skia.
+    // Manually offset ~70px left to approximate visual centering (text ≈ 140px wide).
+    frame.with_save(|frame| {
+        frame.scale_nonuniform(Vector::new(1.0, 1.0 + f32::EPSILON));
+        frame.fill_text(canvas::Text {
+            content: "Waiting for Engine...".to_string(),
+            position: Point::new(center.x - 70.0, center.y + r * 1.4),
+            color: LABEL_COLOR,
+            size: iced::Pixels(13.0),
+            ..canvas::Text::default()
+        });
     });
 }

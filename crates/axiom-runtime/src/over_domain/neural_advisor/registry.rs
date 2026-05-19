@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::over_domain::neural_advisor::{
     implementations::{
         DepthThresholdEmergentDetector, NullConflictResolver, NullDepthAdvisor,
-        NullEmergentAdvisor, NullOctantAdvisor, NullSubsystemAdvisor,
+        NullEmergentAdvisor, NullOctantAdvisor, NullSubsystemAdvisor, ReactivationDepthAdvisor,
         RuleBasedCorpusCallosumResolver,
     },
     traits::{
@@ -33,11 +33,11 @@ pub struct NeuralAdvisorRegistry {
 impl NeuralAdvisorRegistry {
     /// Конфигурация по умолчанию для V1.
     ///
-    /// Активны: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector.
+    /// Активны: ReactivationDepthAdvisor + RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector.
     /// Остальные слоты: None.
     pub fn default_v1() -> Self {
         Self {
-            depth: None,
+            depth: Some(Arc::new(ReactivationDepthAdvisor)),
             octant: None,
             conflict: Some(Arc::new(RuleBasedCorpusCallosumResolver)),
             subsystem: None,

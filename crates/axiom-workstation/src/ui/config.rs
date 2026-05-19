@@ -29,33 +29,38 @@ pub fn config_view<'a>(
     let just_applied = config.last_applied_section.as_deref()
         == Some(config.active_section_id.as_str());
 
-    let bottom = row![
-        horizontal_space(),
-        if just_applied {
-            text("✓ Applied").size(13).color(Color::from_rgb(0.35, 0.7, 0.45))
-        } else {
-            text("").size(13)
-        },
-        button(text("Discard").size(13))
-            .on_press_maybe(if has_pending {
-                Some(Message::ConfigDiscard)
-            } else {
-                None
-            })
-            .style(button::secondary),
-        button(text("Apply").size(13))
-            .on_press_maybe(if has_pending {
-                Some(Message::ConfigApply {
-                    section_id: config.active_section_id.clone(),
+    let mut bottom = row![horizontal_space()]
+        .spacing(8)
+        .align_y(iced::Alignment::Center)
+        .padding([8u16, 12u16]);
+    if just_applied {
+        bottom = bottom.push(
+            text("✓ Applied")
+                .size(13)
+                .color(Color::from_rgb(0.35, 0.7, 0.45)),
+        );
+    }
+    let bottom = bottom
+        .push(
+            button(text("Discard").size(13))
+                .on_press_maybe(if has_pending {
+                    Some(Message::ConfigDiscard)
+                } else {
+                    None
                 })
-            } else {
-                None
-            })
-            .style(button::primary),
-    ]
-    .spacing(8)
-    .align_y(iced::Alignment::Center)
-    .padding([8u16, 12u16]);
+                .style(button::secondary),
+        )
+        .push(
+            button(text("Apply").size(13))
+                .on_press_maybe(if has_pending {
+                    Some(Message::ConfigApply {
+                        section_id: config.active_section_id.clone(),
+                    })
+                } else {
+                    None
+                })
+                .style(button::primary),
+        );
 
     column![
         row![

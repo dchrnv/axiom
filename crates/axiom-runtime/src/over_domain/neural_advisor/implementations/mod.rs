@@ -2,10 +2,12 @@
 // Copyright (C) 2024-2026 Chernov Denys
 
 pub mod conflict;
+pub mod depth;
 pub mod emergent;
 pub mod null;
 
 pub use conflict::RuleBasedCorpusCallosumResolver;
+pub use depth::{AgeDecayAdvisor, ReactivationDepthAdvisor, SubsystemAffinityDepthAdvisor, DEPTH_FLOOR};
 pub use emergent::{
     DepthThresholdEmergentDetector, EMERGENT_CANDIDATE_MIN_AGE_TICKS,
     EMERGENT_CANDIDATE_MIN_DEPTH, EMERGENT_CANDIDATE_MIN_REACTIVATIONS,

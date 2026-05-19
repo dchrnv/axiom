@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-17
+**Обновлено:** 2026-05-19
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1344 тестов, 0 failures**
+**1349 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -23,8 +23,14 @@ AxiomEngine
         ├── FrameWeaver V1.3 ✅ — scan MAYA (0x08 Syntactic) → кристаллизация EXPERIENCE (109)
         ├── AxialEvaluator V1.0 ✅ (tick=5, ModuleId=17) — Frame по осям X/Y/Z; 8 уровней; Corpus Callosum
         ├── ContextRecognizer V1.0 ✅ (tick=7, ModuleId=18) — SubsystemEnergy, InterpretationProfile, SutraDepthStore
-        └── NeuralAdvisor V1.0 ✅ (tick=11, ModuleId=19) — advisory-only; RuleBasedCorpusCallosumResolver,
-              DepthThresholdEmergentDetector; on_tick → NotifyEmergentCandidate (UCL 5200)
+        ├── NeuralAdvisor V1.0 ✅ (tick=11, ModuleId=19) — advisory-only; RuleBasedCorpusCallosumResolver,
+        │     DepthThresholdEmergentDetector; on_tick → NotifyEmergentCandidate (UCL 5200);
+        │     ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (depth.rs);
+        │     implements AdvisorySource → poll_advisories() → Vec<Advisory>
+        └── OverDomainArbiter V1.0 ✅ (tick=13, ModuleId=20) — координатор advisory-источников;
+              TrustConfig (Ignore/AutoApply/RequireConfirmation × min_confidence);
+              AutoApply DepthHint при Control в геноме; PendingQueue → Workstation;
+              ArbiterLog (ring buffer 500); on_boot читает ExperienceMemory/Control из генома
               scan_state (confidence из avg connection.strength), build_crystallization_commands,
               ReinforceFrame (lineage_hash dedup), build_promotion_commands (→ SUTRA STATE_LOCKED),
               CycleStrategy::Allow (default); restore_frame_from_anchor; UnfoldFrame handler;
@@ -157,7 +163,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 34 | Token, Connection, Event |
-| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21 |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
 | axiom-space | 119 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
@@ -168,7 +174,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 28 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 392 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V1.0, ContextRecognizer V1.0, NeuralAdvisor V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-runtime | 397 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V1.0, ContextRecognizer V1.0, NeuralAdvisor V1.0, OverDomainArbiter V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 133 (156 telegram,opensearch) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip |
@@ -176,7 +182,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1315** | |
+| **Итого** | **1349** | |
 
 ---
 
@@ -253,3 +259,4 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase I2 | ContextRecognizer::from_anchor_set(AnchorSet): build_subsystem_refs по именам подсистем; AxiomEngine::apply_anchor_set; axiom-node/startup вызывает при старте; 3 теста | ✅ |
 | Phase I3 | Якорный контент: config/anchors/writing/primitives.yaml (7 графических примитивов) + config/anchors/mathematics/primitives.yaml (7 структурных примитивов); ContextRecognizer подхватывает через get_subsystem(); integration test в anchor.rs | ✅ |
 | Phase I6 | Workstation Phase C visibility: PhaseCSnapshot в SystemSnapshot (dominant_octant/subsystem, emergent_candidates); ApproveEmergentCandidate в EngineCommand + axiom-node handler; Patterns tab — Phase C panel (октант+подсистема с цветом, emergent candidates с кнопкой Approve) | ✅ |
+| Phase I7 | OverDomainArbiter V1.0 (ModuleId=20, tick=13): AdvisorySource трейт, TrustConfig, PendingQueue, ArbiterLog; NeuralAdvisor реализует AdvisorySource; on_boot в try_new; PhaseCSnapshot расширен (octant_depth_avg, pending_advisories); Workstation: octant depth panel + arbiter queue panel; три DepthHint советника: ReactivationDepth, SubsystemAffinity, AgeDecay(DEPTH_FLOOR=50) | ✅ |
