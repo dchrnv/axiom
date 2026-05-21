@@ -1,0 +1,21 @@
+[package]
+name = "axiom-observe"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Automated Phase C observation — feeds corpus texts through AxiomEngine and reports metrics"
+
+[[bin]]
+name = "axiom-observe"
+path = "src/main.rs"
+
+[dependencies]
+axiom-genome = { path = "../axiom-genome" }
+axiom-config = { path = "../axiom-config" }
+axiom-runtime = { path = "../axiom-runtime" }
+axiom-agent = { path = "../axiom-agent" }
+axiom-ucl = { path = "../axiom-ucl" }
+axiom-experience = { path = "../axiom-experience" }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
