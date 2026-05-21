@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1358 тестов, 0 failures**
+**1387 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -25,7 +25,12 @@ AxiomEngine
         │     V2: OctantStabilityTracker (ring 10, threshold 70%, min 5), ConflictPersistenceTracker (streak≥5);
         │     subsystem-aware level selection (subsystem_to_level); drain_pending_advisories() → Vec<Advisory>;
         │     AXIAL_EVALUATOR_SOURCE_ID=1; TrustConfig: OctantCorrection(0.70)/ConflictDiagnosis(0.60)
-        ├── ContextRecognizer V1.0 ✅ (tick=7, ModuleId=18) — SubsystemEnergy, InterpretationProfile, SutraDepthStore
+        ├── ContextRecognizer V6.0 ✅ (tick=7, ModuleId=18) — SubsystemEnergy, InterpretationProfile, SutraDepthStore;
+        │     V6 A: ActivityTrace (short=16/mid=64/long=256 ring-буферы), ActivityDynamics (entropy_gradient,
+        │           oscillation_score, cascade_score, dominant_persistence), ActivitySignature classifier,
+        │           ActivityAnalyzer (переименован из TransitionDetector);
+        │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
+        │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35
         ├── NeuralAdvisor V1.0 ✅ (tick=11, ModuleId=19) — advisory-only; RuleBasedCorpusCallosumResolver,
         │     DepthThresholdEmergentDetector; on_tick → NotifyEmergentCandidate (UCL 5200);
         │     ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (depth.rs);
@@ -177,7 +182,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 28 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 397 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V1.0, ContextRecognizer V1.0, NeuralAdvisor V1.0, OverDomainArbiter V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-runtime | 418 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V2.0, ContextRecognizer V6.0, NeuralAdvisor V1.0, OverDomainArbiter V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
 | axiom-agent | 133 (156 telegram,opensearch) | TextPerceptor (anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip |
@@ -185,7 +190,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1349** | |
+| **Итого** | **1370** | |
 
 ---
 
@@ -265,3 +270,5 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase I6 | Workstation Phase C visibility: PhaseCSnapshot в SystemSnapshot (dominant_octant/subsystem, emergent_candidates); ApproveEmergentCandidate в EngineCommand + axiom-node handler; Patterns tab — Phase C panel (октант+подсистема с цветом, emergent candidates с кнопкой Approve) | ✅ |
 | Phase I7 | OverDomainArbiter V1.0 (ModuleId=20, tick=13): AdvisorySource трейт, TrustConfig, PendingQueue, ArbiterLog; NeuralAdvisor реализует AdvisorySource; on_boot в try_new; PhaseCSnapshot расширен (octant_depth_avg, pending_advisories); Workstation: octant depth panel + arbiter queue panel; три DepthHint советника: ReactivationDepth, SubsystemAffinity, AgeDecay(DEPTH_FLOOR=50) | ✅ |
 | CR-V6 Фаза 0 | SyntacticBridge: bridge_to_maya + domain_position_hash в orchestrator.rs; MAYA получает 8 0x08-связей на каждый routing; FrameWeaver кристаллизует Frame-анкеры; 2 integration-теста | ✅ |
+| CR-V6 Фаза A | ActivityTrace (3 кольцевых буфера short=16/mid=64/long=256), ActivityDynamics (4 метрики), ActivitySignature classifier (6 сигнатур, приоритет Steady→Oscillating→Cascading→Converging→Diverging), ActivityAnalyzer (переименован из TransitionDetector); 15 unit-тестов | ✅ |
+| CR-V6 Фаза B | SubsystemFatigue { activation_load, recovery_debt }, FatigueStore; decay=0.90/tick, equilibrium=10.0; DREAM: activation_load *= 0.35; apply_to_weights() снижает вес уставших подсистем; 12 unit-тестов + integration | ✅ |

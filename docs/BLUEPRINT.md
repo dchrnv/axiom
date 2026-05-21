@@ -1,9 +1,9 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-19  
-**Тесты:** 1349, 0 failures  
-**Последний коммит:** a9e4acc
+**Обновлено:** 2026-05-21  
+**Тесты:** 1387, 0 failures  
+**Последний коммит:** 11085f9
 
 ---
 
@@ -373,8 +373,16 @@ event_id: u64
   V2: subsystem-aware level selection (SubsystemId→EvaluationLevel mapping), OctantStabilityTracker
   (ring=10, threshold=0.70, min_history=5 → OctantCorrection advisory), ConflictPersistenceTracker
   (streak≥5 → ConflictDiagnosis advisory); AXIAL_EVALUATOR_SOURCE_ID=1; drain_pending_advisories()
-- ContextRecognizer V1.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
-  ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates)
+- ContextRecognizer V6.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
+  ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates);
+  V6A: ActivityTrace { short: RingBuf[16], mid: RingBuf[64], long: RingBuf[256] } → ActivityDynamics
+  { entropy_gradient, oscillation_score, cascade_score, dominant_persistence, fill_count };
+  classify(dynamics) → Vec<ActivitySignature> (Uncertain/Steady/Oscillating/Cascading/Converging/Diverging);
+  ActivityAnalyzer (переименован из TransitionDetector; compat alias сохранён);
+  V6B: SubsystemFatigue { activation_load: f32, recovery_debt: f32 }; FatigueStore (HashMap);
+  update(dominant): decay all × 0.90, active += 1.0; apply_dream_recovery(): load *= 0.35;
+  apply_to_weights(&mut HashMap<SubsystemId, u8>): in-place penalty при усталости;
+  ContextRecognizer::activity_dynamics(), activity_signatures(), fatigue_store()
 - NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
   V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector +

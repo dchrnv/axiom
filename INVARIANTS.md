@@ -1,6 +1,6 @@
 # Axiom — Справочник инвариантов
 
-**Версия:** 7.0 (2026-05-19)  
+**Версия:** 8.0 (2026-05-21)  
 **Правило:** Значения помеченные **HARD** менять запрещено — они фиксированы в коде compile-time assert-ами, бинарным форматом или фундаментальной логикой. Всё остальное — soft (настраиваемый дефолт).
 
 ---
@@ -438,6 +438,23 @@ config/anchors/
 | `EMERGENT_CANDIDATE_MIN_DEPTH` | **8000** | OBS-01 |
 | `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` | **30** | OBS-01 |
 | `EMERGENT_CANDIDATE_MIN_AGE_TICKS` | **100** | OBS-01 |
+
+### ContextRecognizer V6 — ActivityTrace + SubsystemFatigue
+
+| Константа | Значение | Смысл |
+|-----------|----------|-------|
+| `SHORT_CAP` | **16** | Размер короткого кольцевого буфера (oscillation window) |
+| `MID_CAP` | **64** | Размер среднего буфера (convergence / cascade window) |
+| `LONG_CAP` | **256** | Размер длинного буфера (fatigue / persistence window) |
+| `MIN_WINDOW_FILL` | **16** | Минимум записей до выхода из холодного старта (Uncertain) |
+| `MAX_ACTIVATION_LOAD` | **10.0** | Равновесная нагрузка при непрерывной активности (1/(1-DECAY)) |
+| `DECAY_FACTOR` | **0.90** | Затухание `activation_load` за один on_tick |
+| `DEBT_RATE` | **0.05** | Прирост `recovery_debt` за один on_tick при активной подсистеме |
+| `DEBT_DECAY` | **0.998** | Затухание `recovery_debt` (медленно, lingers при смене primary) |
+| `DREAM_RECOVERY` | **0.35** | Коэффициент частичного восстановления при DREAM-пробуждении |
+
+> `effective_weight = base * (1.0 - 0.5 * min(1.0, activation_load / MAX_ACTIVATION_LOAD))`  
+> При max load вес уполовинивается. `recovery_debt` не сбрасывается DREAM-ом.
 
 ---
 

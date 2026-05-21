@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 57.0  
-**Дата:** 2026-05-17
+**Версия:** 58.0  
+**Дата:** 2026-05-21
 
 ---
 
@@ -19,8 +19,9 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1344 тестов, 0 failures.**  
+**1387 тестов, 0 failures.**  
 Phase C (C1–C5), Phase I (I1–I4, I6), Phase E (E1) завершены.  
+CR-V6 Фазы A и B завершены.  
 Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 
 ---
@@ -30,25 +31,6 @@ Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 ### CR-V6 — ContextRecognizer V6: Meta-level Recognition
 
 Спек: `docs/architecture/ContextRecognizer_Roadmap_V6_V9.md §1`
-
-**Фаза A — ActivityTrace + Dynamics Layer** *(фундамент)*
-- `ActivityTrace` — три кольцевых буфера `(SubsystemId, event_id)`:
-  short=16 (oscillation), mid=64 (convergence), long=256 (fatigue)
-- `ActivityDynamics` — непрерывные метрики по всем трём окнам:
-  `entropy_gradient` (smoothed, по третям), `oscillation_score`, `cascade_score`, `dominant_persistence`
-- `classify(dynamics) -> Vec<ActivitySignature>` — лейблы выводятся поверх метрик, не напрямую
-- Холодный старт: `Uncertain` до `MIN_WINDOW_FILL=16` (short window)
-- Cascading: строго новая подсистема в каждом шаге цепочки (≥3 runs)
-  *(known limitation: не отличает directed propagation — TransitionGraph в V7)*
-- Приоритет классификации: Steady → Oscillating → Cascading → Converging → Diverging
-- `TransitionDetector` остаётся (lightweight), переименовывается в `ActivityAnalyzer`
-
-**Фаза B — SubsystemFatigue**
-- `SubsystemFatigue { activation_load: f32, recovery_debt: f32 }` — два компонента
-- Накопление по `event_id` дельте; `recovery_debt` lingers при смене primary (не обнуляется)
-- `effective_weight = base_weight * (1.0 - 0.5 * min(1.0, activation_load / max))`
-- DREAM wake: `fatigue *= 0.35` (partial recovery, не полный сброс)
-- В V6 хранится в CR; перенос в `axiom-experience` — V7 (tech debt)
 
 **Фаза C — MetaSubsystemId + MetaStore**
 - `MetaSubsystemId(u16)` (0x1001–0x1007) в `axiom-experience`
@@ -61,8 +43,7 @@ Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 - При `Converging` с парой подсистем из def → `CompositeActivationSuspected { def, confidence }`
 - Полная детекция composite (TransitionGraph, stable topology) — V7
 
-**Тесты:** unit на каждую сигнатуру + cold start + вытеснение из буфера + смена сигнатуры на лету +
-интеграционный (fatigue → DREAM → partial recovery → новый паттерн)
+**Тесты:** unit на MetaDetector + YAML-загрузка meta_primitives + интеграционный с ActivityDynamics
 
 ---
 
