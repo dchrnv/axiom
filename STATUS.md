@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-19
+**Обновлено:** 2026-05-21
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1356 тестов, 0 failures**
+**1358 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -264,3 +264,4 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase I3 | Якорный контент: config/anchors/writing/primitives.yaml (7 графических примитивов) + config/anchors/mathematics/primitives.yaml (7 структурных примитивов); ContextRecognizer подхватывает через get_subsystem(); integration test в anchor.rs | ✅ |
 | Phase I6 | Workstation Phase C visibility: PhaseCSnapshot в SystemSnapshot (dominant_octant/subsystem, emergent_candidates); ApproveEmergentCandidate в EngineCommand + axiom-node handler; Patterns tab — Phase C panel (октант+подсистема с цветом, emergent candidates с кнопкой Approve) | ✅ |
 | Phase I7 | OverDomainArbiter V1.0 (ModuleId=20, tick=13): AdvisorySource трейт, TrustConfig, PendingQueue, ArbiterLog; NeuralAdvisor реализует AdvisorySource; on_boot в try_new; PhaseCSnapshot расширен (octant_depth_avg, pending_advisories); Workstation: octant depth panel + arbiter queue panel; три DepthHint советника: ReactivationDepth, SubsystemAffinity, AgeDecay(DEPTH_FLOOR=50) | ✅ |
+| CR-V6 Фаза 0 | SyntacticBridge: bridge_to_maya + domain_position_hash в orchestrator.rs; MAYA получает 8 0x08-связей на каждый routing; FrameWeaver кристаллизует Frame-анкеры; 2 integration-теста | ✅ |

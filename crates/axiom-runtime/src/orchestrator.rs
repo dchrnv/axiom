@@ -8,7 +8,7 @@
 use crate::engine::AxiomEngine;
 use axiom_arbiter::RoutingResult;
 use axiom_config::GUARDIAN_CHECK_REQUIRED;
-use axiom_core::Token;
+use axiom_core::{Connection, Token};
 
 /// Выполнить полный цикл маршрутизации токена через Arbiter.
 ///
@@ -49,7 +49,80 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
         let _ = engine.ashti.apply_feedback(result.event_id);
     }
 
+    // Шаг 6 (SyntacticBridge): инжектировать 0x08-связи в MAYA domain state
+    // чтобы FrameWeaver мог кристаллизовать Frame-анкеры.
+    bridge_to_maya(engine, &result);
+
     result
+}
+
+/// SyntacticBridge (Фаза 0 CR-V6): инжектировать синтаксические связи в MAYA domain state.
+///
+/// После каждого routing slow-path FrameWeaver получает 0x08-связи в MAYA, из которых
+/// может кристаллизовать Frame-анкеры в EXPERIENCE (при stability_count ≥ threshold).
+///
+/// `source_id` = position-hash консолидированного результата (стабилен для одного паттерна).
+/// `target_id` = hash(domain_id, position) для каждого ASHTI-результата — уникален по роли.
+/// `link_type`  = 0x0800 | (role << 4) — синтаксический слой.
+///
+/// Игнорирует ошибки ёмкости (best-effort).
+fn bridge_to_maya(engine: &mut AxiomEngine, result: &RoutingResult) {
+    // Нечего мостить если slow_path пустой или консолидации нет
+    let consolidated = match result.consolidated {
+        Some(t) => t,
+        None => return,
+    };
+    if result.slow_path.is_empty() {
+        return;
+    }
+
+    let level = engine.ashti.level_id();
+    let maya_domain_id: u16 = level * 100 + 10;
+
+    // source_id: стабильный хеш консолидированной позиции (один на весь routing)
+    let source_id = position_hash(consolidated.position);
+    let event_id = engine.next_event_id();
+
+    for (i, ashti_tok) in result.slow_path.iter().enumerate() {
+        let role = (i + 1) as u16; // 1..=8
+        // target_id включает domain_id → уникален даже когда позиции совпадают.
+        // Token::new ставит target=position, поэтому apply_spatial не двигает токен
+        // при первом вызове. Включение domain_id гарантирует уникальность по роли.
+        let target_id = domain_position_hash(ashti_tok.domain_id, ashti_tok.position);
+        if target_id == source_id {
+            continue; // коллизия хеша — крайне редко
+        }
+        let mut conn = Connection::new(source_id, target_id, maya_domain_id, event_id);
+        conn.link_type = 0x0800 | (role << 4);
+        conn.strength = consolidated.mass as f32 / 255.0;
+        let _ = engine.ashti.inject_connection(maya_domain_id, conn);
+    }
+}
+
+/// Стабильный u32-идентификатор из позиции токена (FNV-1a по трём координатам).
+fn position_hash(pos: [i16; 3]) -> u32 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for &v in &pos {
+        h ^= (v as u16) as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let id = (h & 0x0FFF_FFFF) as u32; // 28 бит — не конфликтует с SUTRA anchor IDs
+    if id == 0 { 1 } else { id }
+}
+
+/// Стабильный u32-идентификатор из domain_id + позиции токена (FNV-1a).
+///
+/// Включение domain_id гарантирует уникальность по ASHTI-роли даже когда позиции совпадают.
+fn domain_position_hash(domain_id: u16, pos: [i16; 3]) -> u32 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    h ^= domain_id as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    for &v in &pos {
+        h ^= (v as u16) as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let id = (h & 0x0FFF_FFFF) as u32;
+    if id == 0 { 1 } else { id }
 }
 
 /// Routing с ограниченным набором ролей (S5: TickBudget layer priority).
@@ -74,6 +147,8 @@ pub(crate) fn route_token_limited(engine: &mut AxiomEngine, token: Token, max_ro
     if result.event_id > 0 {
         let _ = engine.ashti.apply_feedback(result.event_id);
     }
+
+    bridge_to_maya(engine, &result);
 
     result
 }

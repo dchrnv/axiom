@@ -31,17 +31,6 @@ Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 
 Спек: `docs/architecture/ContextRecognizer_Roadmap_V6_V9.md §1`
 
-**Фаза 0 — SyntacticBridge** *(блокирует всё остальное)*
-- Проблема (найдена в OBS-01): FrameWeaver кристаллизует Frame-анкеры из `0x08`-связей в домене MAYA,
-  но роутинговый пайплайн (`route_token`) туда ничего **не пишет** — consolidated токен вычисляется,
-  но в состояние домена не попадает. Итог: Frames = 0, CR profiles = 0, AE evaluations = 0.
-- Решение: после `orchestrator::route_token` инжектировать в MAYA domain state синтаксические связи:
-  `source_id` = hash стабильного ID консолидированного результата,
-  `target_id` = sutra_id каждого из 8 ASHTI-результатов,
-  `link_type = 0x0800 | (role << 4)` где role = 1..8.
-- Место: `axiom-runtime/src/orchestrator.rs` или новый модуль `perceptual_bridge`.
-- После этой фазы: FrameWeaver начнёт видеть паттерны уже после 3-го повторения текста.
-
 **Фаза A — ActivityTrace + Dynamics Layer** *(фундамент)*
 - `ActivityTrace` — три кольцевых буфера `(SubsystemId, event_id)`:
   short=16 (oscillation), mid=64 (convergence), long=256 (fatigue)

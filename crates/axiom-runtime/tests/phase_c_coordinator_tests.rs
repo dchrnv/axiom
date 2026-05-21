@@ -160,3 +160,95 @@ fn test_apply_anchor_set_twice_is_safe() {
     engine.apply_anchor_set(&AnchorSet::empty());
     assert_eq!(engine.context_recognizer.profile_store().len(), 0);
 }
+
+// ── SyntacticBridge (Фаза 0 CR-V6) ──────────────────────────────────────────
+
+// process_and_observe создаёт 0x08-связи в MAYA после каждого routing.
+// После 3+ одинаковых инъекций и достаточного числа тиков FrameWeaver
+// должен кристаллизовать хотя бы один Frame-анкер в EXPERIENCE (domain 109).
+#[test]
+fn test_syntactic_bridge_creates_maya_connections() {
+    use axiom_runtime::FrameWeaver;
+    use axiom_runtime::FrameWeaverConfig;
+
+    let mut engine = AxiomEngine::new();
+    // Агрессивный FrameWeaver: сканирует каждый тик, threshold=3
+    engine.frame_weaver = FrameWeaver::new(FrameWeaverConfig {
+        scan_interval_ticks: 1,
+        stability_threshold: 3,
+        min_participants: 1,
+        ..Default::default()
+    });
+
+    // Создать простой InjectToken с фиксированными координатами
+    let mut cmd = UclCommand::new(OpCode::InjectToken, 100, 100, 0);
+    // position [x=1000, y=2000, z=3000], mass=150, temperature=180
+    cmd.payload[0..2].copy_from_slice(&100u16.to_le_bytes()); // target = SUTRA(100)
+    cmd.payload[4..8].copy_from_slice(&150.0f32.to_le_bytes()); // mass
+    cmd.payload[8..12].copy_from_slice(&1000.0f32.to_le_bytes()); // x
+    cmd.payload[12..16].copy_from_slice(&2000.0f32.to_le_bytes()); // y
+    cmd.payload[16..20].copy_from_slice(&3000.0f32.to_le_bytes()); // z
+    cmd.payload[36..40].copy_from_slice(&180.0f32.to_le_bytes()); // temperature
+
+    // 3 инъекции одного и того же токена → stability_count ≥ 3
+    for _ in 0..3 {
+        let _ = engine.process_and_observe(&cmd);
+    }
+
+    // Проверить что MAYA получила 0x08-связи
+    let maya_idx = engine.ashti.index_of(110).expect("MAYA domain 110 must exist");
+    let maya_state = engine.ashti.state(maya_idx).expect("MAYA state must be accessible");
+    let syn_conn_count = maya_state
+        .connections
+        .iter()
+        .filter(|c| (c.link_type >> 8) == 0x08)
+        .count();
+    assert!(syn_conn_count > 0, "bridge must inject 0x08 connections into MAYA; got 0");
+
+    // После достаточного числа тиков FrameWeaver должен кристаллизовать Frame
+    tick(&mut engine, 10);
+
+    let exp_idx = engine.ashti.index_of(109).expect("EXPERIENCE domain 109 must exist");
+    let exp_state = engine.ashti.state(exp_idx).expect("EXPERIENCE state accessible");
+    let frame_count = exp_state
+        .tokens
+        .iter()
+        .filter(|t| (t.type_flags & axiom_core::TOKEN_FLAG_FRAME_ANCHOR) != 0)
+        .count();
+    assert!(frame_count > 0, "FrameWeaver must crystallize at least one Frame-anchor after 3 injections; got 0");
+}
+
+// Повторная инъекция того же текста увеличивает число кристаллизованных Frame
+// (или как минимум не уменьшает).
+#[test]
+fn test_syntactic_bridge_repeated_injection_stable() {
+    use axiom_runtime::FrameWeaver;
+    use axiom_runtime::FrameWeaverConfig;
+
+    let mut engine = AxiomEngine::new();
+    engine.frame_weaver = FrameWeaver::new(FrameWeaverConfig {
+        scan_interval_ticks: 1,
+        stability_threshold: 3,
+        min_participants: 1,
+        ..Default::default()
+    });
+
+    let mut cmd = UclCommand::new(OpCode::InjectToken, 100, 100, 0);
+    cmd.payload[0..2].copy_from_slice(&100u16.to_le_bytes());
+    cmd.payload[4..8].copy_from_slice(&200.0f32.to_le_bytes());
+    cmd.payload[8..12].copy_from_slice(&5000.0f32.to_le_bytes());
+    cmd.payload[12..16].copy_from_slice(&6000.0f32.to_le_bytes());
+    cmd.payload[16..20].copy_from_slice(&7000.0f32.to_le_bytes());
+    cmd.payload[36..40].copy_from_slice(&200.0f32.to_le_bytes());
+
+    for _ in 0..5 {
+        let _ = engine.process_and_observe(&cmd);
+        tick(&mut engine, 2);
+    }
+
+    tick(&mut engine, 10);
+
+    let frame_count = engine.axial_evaluator.storage().store().frame_count();
+    // Хотя бы один фрейм оценён AxialEvaluator
+    assert!(frame_count > 0, "AE must have evaluated at least one frame after 5 injections + ticks");
+}
