@@ -33,12 +33,14 @@ pub mod learning;
 pub mod profile;
 pub mod scanner;
 pub mod scanning_plan;
+pub mod subsystem_fatigue;
 pub mod transitions;
 
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
 pub use conflicts::SubsystemConflict;
 pub use energy::SubsystemEnergy;
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
+pub use subsystem_fatigue::{FatigueStore, SubsystemFatigue};
 pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector};
 
 /// MAYA domain: role 10 → level_id * 100 + 10.
@@ -66,6 +68,8 @@ pub struct ContextRecognizer {
     activity_trace: ActivityTrace,
     /// Последние вычисленные метрики динамики (обновляются на каждом on_tick).
     activity_dynamics: ActivityDynamics,
+    /// Усталость подсистем (CR-V6 Фаза B).
+    fatigue_store: FatigueStore,
     /// Список известных sutra_id активных Frame-анкеров.
     known_frame_ids: Vec<u32>,
     /// Снапшот AxialStore от AxialEvaluator (обновляется через sync_axial_store).
@@ -88,6 +92,7 @@ impl ContextRecognizer {
                 dominant_persistence: 0.0,
                 fill_count: 0,
             },
+            fatigue_store: FatigueStore::new(),
             known_frame_ids: Vec::new(),
             axial_store_snapshot: AxialStore::new(),
         }
@@ -101,6 +106,11 @@ impl ContextRecognizer {
     /// Текущие лейблы активности (вычисляется из последних dynamics).
     pub fn activity_signatures(&self) -> Vec<ActivitySignature> {
         activity_trace::classify(&self.activity_dynamics)
+    }
+
+    /// Доступ к хранилищу усталости (для диагностики и DREAM-интеграции).
+    pub fn fatigue_store(&self) -> &FatigueStore {
+        &self.fatigue_store
     }
 
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
@@ -137,6 +147,8 @@ impl ContextRecognizer {
     }
 
     /// Применить обновление глубин (только из DREAM Phase).
+    ///
+    /// Также применяет частичное восстановление усталости: `activation_load *= 0.35`.
     pub fn apply_dream_update(
         &mut self,
         activations: &[(u32, Octant, u32)],
@@ -149,6 +161,8 @@ impl ContextRecognizer {
             all_known_ids,
             event_id,
         );
+        // DREAM wake: частичное восстановление усталости (Фаза B)
+        self.fatigue_store.apply_dream_recovery();
     }
 
     /// Одобрить эмерджентный примитив (через UCL от chrnv).
@@ -298,6 +312,13 @@ impl OverDomainComponent for ContextRecognizer {
         self.activity_trace.push(dominant, tick);
         self.activity_dynamics = self.activity_trace.compute_dynamics();
 
+        // Обновить усталость подсистем (CR-V6 Фаза B)
+        self.fatigue_store.update(dominant);
+
+        // Применить усталость к весам
+        let mut fatigued_weights = weights.clone();
+        self.fatigue_store.apply_to_weights(&mut fatigued_weights);
+
         // Детектировать конфликт подсистем (V1: не записываем, только детектируем)
         let _conflict = conflicts::detect_conflict(&energies, SUBSYSTEM_CONFLICT_THRESHOLD);
 
@@ -311,13 +332,13 @@ impl OverDomainComponent for ContextRecognizer {
             );
         }
 
-        // Построить снапшот контекста и обновить InterpretationProfile
+        // Построить снапшот контекста и обновить InterpretationProfile (с учётом усталости)
         let snapshot = profile::build_snapshot(dominant, primary_octant, tick);
         for &frame_id in &frame_ids {
             profile::upsert_profile(
                 &mut self.profile_store,
                 frame_id,
-                weights.clone(),
+                fatigued_weights.clone(),
                 dominant,
                 primary_octant,
                 FrameComposition::C1Atom,
