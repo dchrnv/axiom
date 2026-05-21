@@ -22,6 +22,7 @@ use axiom_ucl::UclCommand;
 
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
+pub mod activity_trace;
 pub mod axial_bridge;
 pub mod conflicts;
 pub mod depth_bridge;
@@ -34,10 +35,11 @@ pub mod scanner;
 pub mod scanning_plan;
 pub mod transitions;
 
+pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
 pub use conflicts::SubsystemConflict;
 pub use energy::SubsystemEnergy;
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
-pub use transitions::{SubsystemTransition, TransitionDetector};
+pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector};
 
 /// MAYA domain: role 10 → level_id * 100 + 10.
 const MAYA_ROLE: u16 = 10;
@@ -58,8 +60,12 @@ pub struct ContextRecognizer {
     profile_store: InterpretationProfileStore,
     /// Эмерджентные примитивы (V1: stub, approve через UCL).
     emergent_store: EmergentPrimitiveStore,
-    /// Детектор переключений между подсистемами.
-    transition_detector: TransitionDetector,
+    /// Лёгкий анализатор переключений (CR-V6: переименован из TransitionDetector).
+    transition_detector: ActivityAnalyzer,
+    /// Три кольцевых буфера активности подсистем (CR-V6 Фаза A).
+    activity_trace: ActivityTrace,
+    /// Последние вычисленные метрики динамики (обновляются на каждом on_tick).
+    activity_dynamics: ActivityDynamics,
     /// Список известных sutra_id активных Frame-анкеров.
     known_frame_ids: Vec<u32>,
     /// Снапшот AxialStore от AxialEvaluator (обновляется через sync_axial_store).
@@ -73,10 +79,28 @@ impl ContextRecognizer {
             depth_store: SutraDepthStore::new(),
             profile_store: InterpretationProfileStore::new(),
             emergent_store: EmergentPrimitiveStore::new(),
-            transition_detector: TransitionDetector::new(),
+            transition_detector: ActivityAnalyzer::new(),
+            activity_trace: ActivityTrace::new(),
+            activity_dynamics: ActivityDynamics {
+                entropy_gradient: 0.0,
+                oscillation_score: 0.0,
+                cascade_score: 0.0,
+                dominant_persistence: 0.0,
+                fill_count: 0,
+            },
             known_frame_ids: Vec::new(),
             axial_store_snapshot: AxialStore::new(),
         }
+    }
+
+    /// Текущие метрики динамики активности (последний on_tick).
+    pub fn activity_dynamics(&self) -> &ActivityDynamics {
+        &self.activity_dynamics
+    }
+
+    /// Текущие лейблы активности (вычисляется из последних dynamics).
+    pub fn activity_signatures(&self) -> Vec<ActivitySignature> {
+        activity_trace::classify(&self.activity_dynamics)
     }
 
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
@@ -269,6 +293,10 @@ impl OverDomainComponent for ContextRecognizer {
 
         // Детектировать переключение подсистемы
         let _transition = self.transition_detector.update(dominant, tick);
+
+        // Обновить ActivityTrace (CR-V6 Фаза A)
+        self.activity_trace.push(dominant, tick);
+        self.activity_dynamics = self.activity_trace.compute_dynamics();
 
         // Детектировать конфликт подсистем (V1: не записываем, только детектируем)
         let _conflict = conflicts::detect_conflict(&energies, SUBSYSTEM_CONFLICT_THRESHOLD);
