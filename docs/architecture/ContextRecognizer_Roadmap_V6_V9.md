@@ -155,9 +155,32 @@ pub struct SubsystemFatigue {
 
 Это **не имитация человеческой усталости**, а механизм против застревания в одном режиме.
 
-### 1.7 Cross-modal preparation (нюанс)
+### 1.7 SyntacticBridge — предпосылка V6 (найдено в OBS-01)
 
-V6 готовит интерфейс для **будущих сенсоров** (зрение, звук, тактильность). Сейчас текст идёт через TextPerceptor → MAYA. В будущем будут VisionPerceptor, AudioPerceptor.
+**Проблема.** FrameWeaver кристаллизует Frame-анкеры из `0x08`-связей в MAYA domain state.
+Однако роутинг (`route_token`) их туда не пишет: consolidated токен вычисляется в памяти,
+в `DomainState.connections` MAYA не попадает. Итог: Frames = 0, CR profiles = 0, ActivityDynamics без данных.
+
+**Решение — SyntacticBridge:**
+После каждого `orchestrator::route_token` (slow path), инжектировать в MAYA domain state 8 связей:
+
+```
+source_id  = stable_id(consolidated_position)   // одинаковый для одного и того же текста
+target_id  = stable_id(ashti_result[role])       // один на каждый ASHTI домен (role 1..8)
+link_type  = 0x0800 | (role << 4)                // синтаксический тип, слой = role
+flags      = FLAG_ACTIVE
+```
+
+После `stability_threshold` (по умолчанию 3) повторений одного текста — FrameWeaver видит паттерн
+и кристаллизует Frame-анкер в EXPERIENCE. С этого момента CR, AE, NA получают данные.
+
+**Место реализации:** `axiom-runtime/src/orchestrator.rs` или новый `perceptual_bridge` модуль.
+
+---
+
+### 1.8 Cross-modal preparation (нюанс)
+
+V6 готовит интерфейс для **будущих сенсоров** (зрение, звук, тактильность). TextPerceptor → SUTRA → (routing) → EXPERIENCE; VisionPerceptor, AudioPerceptor будут делать то же самое через тот же SyntacticBridge. В будущем будут VisionPerceptor, AudioPerceptor.
 
 В V6 ContextRecognizer добавляет поле **modality** в InterpretationProfile:
 
@@ -178,8 +201,9 @@ pub struct InterpretationProfile {
 
 Сейчас всегда `Text` или `Internal`. Архитектурно подготовлено к остальным.
 
-### 1.8 Известные ограничения V6
+### 1.9 Известные ограничения V6
 
+- **SyntacticBridge — простая версия.** Stable ID из position-hash; не учитывает семантическую близость токенов. Точная топология MAYA → V7 (TransitionGraph).
 - **Meta-primitives нужно вручную написать в yaml**. Автоматическое обнаружение — V7.
 - **Композитные подсистемы фиксированные**. Динамическое создание композитов — V7.
 - **Иерархия мета-режимов плоская**. Иерархия более чем в 3 уровня — V8.
