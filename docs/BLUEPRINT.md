@@ -1,9 +1,9 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-21  
+**Обновлено:** 2026-05-22  
 **Тесты:** 1387, 0 failures  
-**Последний коммит:** 11085f9
+**Последний коммит:** f618269
 
 ---
 
@@ -14,7 +14,8 @@ axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(6
 axiom-ucl        — UclCommand, OpCode, UclResult
 axiom-genome     — Genome (конституция, frozen в Arc после boot)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
-                   Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней)
+                   Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);
+                   MetaSubsystemId (0x1001–0x1007), MetaActivation, MetaStore (CR-V6 Фаза C)
 axiom-frontier   — CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection
 axiom-config     — DomainConfig, AnchorSet, ConfigWatcher, HeartbeatConfig, JsonSchema
 axiom-space      — SpatialHashGrid, apply_gravity_batch (SIMD-ready, feature "simd")
@@ -41,6 +42,7 @@ axiom-bench      — Criterion benchmarks
 axiom-workstation — egui/eframe desktop GUI V1.0 (async tungstenite)
 axiom-node       — самостоятельный бинарный узел: tick loop, BroadcastServer :9876,
                    SIGINT/SIGTERM shutdown, axiom.yaml + persistence
+axiom-observe       — автоматизация OBS-01: Corpus, ObsRunner, TickSnapshot V6, report.md
 tools/axiom-dashboard — egui/eframe desktop GUI (sync tungstenite, legacy)
 ```
 
@@ -340,6 +342,7 @@ fn drain_events() -> Vec<Event>
 fn inject_anchor_tokens(&AnchorSet) -> usize
 fn trace_count() -> usize
 pub fn domain_name(id: u16) -> &'static str
+fn apply_meta_detector(&mut self, MetaDetector)   // CR-V6 Фаза C
 ```
 
 ### ProcessingResult
@@ -382,7 +385,20 @@ event_id: u64
   V6B: SubsystemFatigue { activation_load: f32, recovery_debt: f32 }; FatigueStore (HashMap);
   update(dominant): decay all × 0.90, active += 1.0; apply_dream_recovery(): load *= 0.35;
   apply_to_weights(&mut HashMap<SubsystemId, u8>): in-place penalty при усталости;
-  ContextRecognizer::activity_dynamics(), activity_signatures(), fatigue_store()
+  ContextRecognizer::activity_dynamics(), activity_signatures(), fatigue_store();
+  V6C: MetaSubsystemId(u16) 0x1001–0x1007 (Analysis/Synthesis/Reflection/Perception/Recall/Imagination/Dialogue);
+  MetaStore { activate(id, confidence, event_id), dominant() → Option<MetaSubsystemId> };
+  MetaDetector::from_yaml("config/meta_primitives.yaml") → 5 примитивов;
+  SubsystemActivationPattern { required_subsystems: Vec<String>, forbidden_subsystems, activity_signature };
+  MetaPrimitive { id: String, meta_id: u16, triggered_by: Vec<SubsystemActivationPattern> };
+  detect: dominant.name() vs required/forbidden; signature.name() vs activity_signature;
+  confidence = matched_patterns / total_patterns; AxiomEngine::apply_meta_detector();
+  ContextRecognizer::meta_store(), set_meta_detector();
+  V6D: CompositeSubsystemDef { name: &'static str, components: &'static [SubsystemId] };
+  COMPOSITE_DEFS[5]: Calculus(Math+Time), Rhythm(Music+Time), Geometry(Math+Writing),
+  Narrative(Writing+Time), Ethics(Logic) [V7: +Values/Dilemmas/Morality];
+  detect_composite_suspects(recent, signatures) → Vec<CompositeActivationSuspected { name, confidence }>;
+  Converging boost: min(conf * 1.5, 1.0); ContextRecognizer::composite_suspects()
 - NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
   V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector +
@@ -811,7 +827,11 @@ App → tokio runtime (отдельный thread)
 
 | ID | Суть |
 |----|------|
-| **OBS-01** | Live Observation Plan — после запуска axiom-node + Workstation. |
+| **OBS-01 errata** | Первый прогон (3000 тиков, 8 текстов): 12 Frames, 14 traces, 97% coherence. **E1:** CR energy=0 во всех on_tick → dominant=Unknown → V6 ActivityTrace пустой. Причина: EXPERIENCE-Frame-анкеры (FNV-позиции) не пересекаются с MAYA anchor positions в скан-плане. **E2:** 100% AE conflict rate (96/96). **E3:** SutraDepthStore пуст — DREAM не записывает глубины → emergent заблокирован. |
+| **CR-TD-01** | FatigueStore → axiom-experience. V7. |
+| **CR-TD-02** | TransitionGraph для directed Cascading (vs случайного чередования). V7. |
+| **CR-TD-03** | Ethics composite неполный: только Logic. Нет Values/Dilemmas/Morality. V7. |
+| **CR-TD-04** | ActivityTrace не сериализуется. Нужно для V9 NeuralAdvisor. V7. |
 | **FW-TD-01** | RequestFrameDetails не реализован. При Workstation V2.0. |
 | **FW-TD-02** | Per-pair co-activation. Ждёт CausalWeaver. Структуру не выбирать заранее. |
 | **Anchor-Fill** | 14 YAML (L1-L4, L6-L8, D2-D8). FNV-1a fallback активен. |
