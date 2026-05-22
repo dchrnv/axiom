@@ -15,6 +15,7 @@
 pub mod axial_store;
 pub mod emergent_primitive_store;
 pub mod interpretation_profile_store;
+pub mod meta_store;
 pub mod sutra_depth_store;
 pub mod types;
 
@@ -26,6 +27,11 @@ pub use interpretation_profile_store::{InterpretationProfile, InterpretationProf
 pub use sutra_depth_store::{
     SutraDepthEntry, SutraDepthStore, DECAY_PER_CYCLE, MAX_GROWTH_PER_CYCLE, PRIMITIVE_DEPTH,
     PROMOTED_DEPTH,
+};
+pub use meta_store::{
+    MetaActivation, MetaStore, MetaSubsystemId,
+    META_ANALYSIS, META_DIALOGUE, META_IMAGINATION, META_PERCEPTION,
+    META_RECALL, META_REFLECTION, META_SYNTHESIS,
 };
 pub use types::{
     AxialDominant, AxialScore, ContextSnapshot, EvaluationLevel, FrameComposition, Octant,

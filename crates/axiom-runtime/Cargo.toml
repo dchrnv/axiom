@@ -20,11 +20,12 @@ axiom-genome = { path = "../axiom-genome" }
 axiom-experience = { path = "../axiom-experience" }
 
 rayon = { workspace = true }
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_yaml.workspace = true
 
 [features]
 default = []
-adapters = ["serde"]
+adapters = []
 
 [dev-dependencies]
 axiom-genome = { path = "../axiom-genome" }

@@ -20,6 +20,7 @@ pub const MIN_WINDOW_FILL: usize = SHORT_CAP;
 
 /// Лейбл типа активности подсистемной динамики.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum ActivitySignature {
     /// Холодный старт: short-буфер ещё не заполнен.
     Uncertain,
@@ -33,6 +34,19 @@ pub enum ActivitySignature {
     Converging,
     /// Одна подсистема порождает активность нескольких (энтропия растёт).
     Diverging,
+}
+
+impl ActivitySignature {
+    pub fn name(self) -> &'static str {
+        match self {
+            ActivitySignature::Uncertain => "Uncertain",
+            ActivitySignature::Steady => "Steady",
+            ActivitySignature::Oscillating => "Oscillating",
+            ActivitySignature::Cascading => "Cascading",
+            ActivitySignature::Converging => "Converging",
+            ActivitySignature::Diverging => "Diverging",
+        }
+    }
 }
 
 /// Непрерывные метрики активности, вычисляемые из кольцевых буферов.
@@ -118,6 +132,16 @@ impl ActivityTrace {
     /// Итератор по long-буферу (для SubsystemFatigue в Фазе B).
     pub fn long_iter(&self) -> impl Iterator<Item = &(SubsystemId, u64)> {
         self.long.iter()
+    }
+
+    /// Уникальные подсистемы из mid-буфера (для детекции composite co-activation).
+    pub fn unique_subsystems_in_mid(&self) -> Vec<SubsystemId> {
+        let mut seen = HashSet::new();
+        self.mid
+            .iter()
+            .map(|(s, _)| *s)
+            .filter(|s| seen.insert(*s))
+            .collect()
     }
 }
 

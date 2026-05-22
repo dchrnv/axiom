@@ -1,0 +1,44 @@
+# meta_primitives.yaml — мета-режимы второго порядка для ContextRecognizer V6.
+#
+# Источник: ContextRecognizer_Roadmap_V6_V9.md §1.3–1.4
+#
+# Каждый мета-примитив описывает условие активации мета-режима:
+#   meta_id   — числовой ID (0x1001..0x1007)
+#   triggered_by — список паттернов (ИЛИ — достаточно одного)
+#     required_subsystems  — доминирующая подсистема должна быть в списке (пусто = любая)
+#     forbidden_subsystems — доминирующая НЕ должна быть в списке
+#     activity_signature   — Steady/Oscillating/Cascading/Converging/Diverging (пусто = любая)
+
+- id: "meta_analysis"
+  meta_id: 4097   # 0x1001
+  triggered_by:
+    - required_subsystems: ["mathematics", "logic"]
+      activity_signature: "Steady"
+    - required_subsystems: ["mathematics"]
+      activity_signature: "Converging"
+
+- id: "meta_synthesis"
+  meta_id: 4098   # 0x1002
+  triggered_by:
+    - activity_signature: "Converging"
+    - required_subsystems: ["writing"]
+      activity_signature: "Cascading"
+
+- id: "meta_reflection"
+  meta_id: 4099   # 0x1003
+  triggered_by:
+    - activity_signature: "Cascading"
+    - activity_signature: "Diverging"
+
+- id: "meta_perception"
+  meta_id: 4100   # 0x1004
+  triggered_by:
+    - required_subsystems: ["writing"]
+      activity_signature: "Steady"
+    - required_subsystems: ["music"]
+      activity_signature: "Steady"
+
+- id: "meta_dialogue"
+  meta_id: 4103   # 0x1007
+  triggered_by:
+    - activity_signature: "Oscillating"

@@ -14,8 +14,8 @@ use axiom_config::AnchorSet;
 use axiom_core::{Token, STATE_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR};
 use axiom_domain::AshtiCore;
 use axiom_experience::{
-    AxialStore, EmergentPrimitiveStore, FrameComposition, InterpretationProfileStore, Octant,
-    SubsystemId, SutraDepthEntry, SutraDepthStore,
+    AxialStore, EmergentPrimitiveStore, FrameComposition, InterpretationProfileStore, MetaStore,
+    Octant, SubsystemId, SutraDepthEntry, SutraDepthStore,
 };
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::UclCommand;
@@ -24,12 +24,14 @@ use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod activity_trace;
 pub mod axial_bridge;
+pub mod composite;
 pub mod conflicts;
 pub mod depth_bridge;
 pub mod emergent;
 pub mod energy;
 pub mod hot_reload;
 pub mod learning;
+pub mod meta_detector;
 pub mod profile;
 pub mod scanner;
 pub mod scanning_plan;
@@ -37,8 +39,10 @@ pub mod subsystem_fatigue;
 pub mod transitions;
 
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
+pub use composite::{CompositeActivationSuspected, CompositeSubsystemDef, COMPOSITE_DEFS};
 pub use conflicts::SubsystemConflict;
 pub use energy::SubsystemEnergy;
+pub use meta_detector::{MetaDetector, MetaPrimitive, SubsystemActivationPattern};
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
 pub use subsystem_fatigue::{FatigueStore, SubsystemFatigue};
 pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector};
@@ -70,6 +74,12 @@ pub struct ContextRecognizer {
     activity_dynamics: ActivityDynamics,
     /// Усталость подсистем (CR-V6 Фаза B).
     fatigue_store: FatigueStore,
+    /// Детектор мета-подсистем (CR-V6 Фаза C).
+    meta_detector: MetaDetector,
+    /// Активные мета-подсистемы (CR-V6 Фаза C).
+    meta_store: MetaStore,
+    /// Подозреваемые composite co-activations (CR-V6 Фаза D).
+    composite_suspects: Vec<CompositeActivationSuspected>,
     /// Список известных sutra_id активных Frame-анкеров.
     known_frame_ids: Vec<u32>,
     /// Снапшот AxialStore от AxialEvaluator (обновляется через sync_axial_store).
@@ -93,6 +103,9 @@ impl ContextRecognizer {
                 fill_count: 0,
             },
             fatigue_store: FatigueStore::new(),
+            meta_detector: MetaDetector::new(vec![]),
+            meta_store: MetaStore::new(),
+            composite_suspects: Vec::new(),
             known_frame_ids: Vec::new(),
             axial_store_snapshot: AxialStore::new(),
         }
@@ -111,6 +124,22 @@ impl ContextRecognizer {
     /// Доступ к хранилищу усталости (для диагностики и DREAM-интеграции).
     pub fn fatigue_store(&self) -> &FatigueStore {
         &self.fatigue_store
+    }
+
+    /// Активные мета-подсистемы (CR-V6 Фаза C).
+    pub fn meta_store(&self) -> &MetaStore {
+        &self.meta_store
+    }
+
+    /// Подозреваемые composite co-activations (CR-V6 Фаза D).
+    pub fn composite_suspects(&self) -> &[CompositeActivationSuspected] {
+        &self.composite_suspects
+    }
+
+    /// Установить MetaDetector с загруженными примитивами.
+    pub fn with_meta_detector(mut self, detector: MetaDetector) -> Self {
+        self.meta_detector = detector;
+        self
     }
 
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
@@ -314,6 +343,21 @@ impl OverDomainComponent for ContextRecognizer {
 
         // Обновить усталость подсистем (CR-V6 Фаза B)
         self.fatigue_store.update(dominant);
+
+        // Детектировать мета-подсистемы (CR-V6 Фаза C)
+        let signatures = activity_trace::classify(&self.activity_dynamics);
+        self.meta_detector.detect(
+            &self.activity_dynamics,
+            &signatures,
+            dominant,
+            tick,
+            &mut self.meta_store,
+        );
+
+        // Детектировать composite co-activations (CR-V6 Фаза D)
+        let recent_subs = self.activity_trace.unique_subsystems_in_mid();
+        self.composite_suspects =
+            composite::detect_composite_suspects(&recent_subs, &signatures);
 
         // Применить усталость к весам
         let mut fatigued_weights = weights.clone();
