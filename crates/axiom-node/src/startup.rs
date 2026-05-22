@@ -12,6 +12,7 @@ use tracing::{info, warn};
 
 use axiom_config::{AnchorSet, ConfigLoader, LoadedAxiomConfig};
 use axiom_persist::{AutoSaver, PersistenceConfig};
+use axiom_runtime::over_domain::context_recognizer::MetaDetector;
 use axiom_runtime::AxiomEngine;
 
 use crate::config::NodeConfig;
@@ -52,6 +53,21 @@ pub fn init(cfg: &NodeConfig) -> Result<NodeState> {
         let injected = engine.inject_anchor_tokens(anchors);
         info!("injected {} anchor tokens", injected);
         engine.apply_anchor_set(anchors);
+    }
+
+    // 3. Load MetaDetector (meta_primitives.yaml)
+    match MetaDetector::from_yaml(&cfg.meta_primitives_yaml) {
+        Ok(detector) => {
+            info!(
+                "loaded {} meta primitives from {:?}",
+                detector.len(),
+                cfg.meta_primitives_yaml
+            );
+            engine.apply_meta_detector(detector);
+        }
+        Err(e) => {
+            warn!("meta_primitives.yaml not loaded: {} — MetaDetector empty", e);
+        }
     }
 
     let auto_saver = AutoSaver::new(PersistenceConfig::new(1000));

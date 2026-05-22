@@ -28,6 +28,10 @@ pub struct NodeConfig {
     #[arg(long, default_value = "config/anchors")]
     pub anchors_dir: PathBuf,
 
+    /// Путь к meta_primitives.yaml для MetaDetector
+    #[arg(long, default_value = "config/meta_primitives.yaml")]
+    pub meta_primitives_yaml: PathBuf,
+
     /// Целевая частота тиков (Hz)
     #[arg(long, default_value_t = 60)]
     pub tick_hz: u32,

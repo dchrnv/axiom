@@ -1571,6 +1571,16 @@ impl AxiomEngine {
         self.context_recognizer = ContextRecognizer::from_anchor_set(anchor_set);
     }
 
+    /// Установить MetaDetector с загруженными примитивами.
+    ///
+    /// Вызывать после `apply_anchor_set`. Сохраняет текущие stores нетронутыми.
+    pub fn apply_meta_detector(
+        &mut self,
+        detector: crate::over_domain::context_recognizer::MetaDetector,
+    ) {
+        self.context_recognizer.set_meta_detector(detector);
+    }
+
     /// Инжектировать набор якорных токенов в движок.
     ///
     /// Якоря — конфигурационные объекты: mass=255, temperature=0, state=Locked.

@@ -136,10 +136,15 @@ impl ContextRecognizer {
         &self.composite_suspects
     }
 
-    /// Установить MetaDetector с загруженными примитивами.
+    /// Установить MetaDetector с загруженными примитивами (builder).
     pub fn with_meta_detector(mut self, detector: MetaDetector) -> Self {
         self.meta_detector = detector;
         self
+    }
+
+    /// Заменить MetaDetector без пересоздания остальных stores.
+    pub fn set_meta_detector(&mut self, detector: MetaDetector) {
+        self.meta_detector = detector;
     }
 
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
