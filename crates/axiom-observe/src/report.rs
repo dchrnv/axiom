@@ -39,7 +39,17 @@ pub fn generate_markdown(
         out.push_str(&format!("| Emergent pending | {} |\n", last.emergent_pending));
         out.push_str(&format!("| Emergent approved | {} |\n", last.emergent_approved));
         out.push_str(&format!("| Experience traces | {} |\n", last.experience_traces));
-        out.push_str(&format!("| Tension traces | {} |\n\n", last.tension_traces));
+        out.push_str(&format!("| Tension traces | {} |\n", last.tension_traces));
+        out.push_str(&format!("| Activity fill | {} |\n", last.activity_fill));
+        out.push_str(&format!("| Dominant persistence | {:.3} |\n", last.dominant_persistence));
+        out.push_str(&format!("| Entropy gradient | {:.3} |\n", last.entropy_gradient));
+        out.push_str(&format!("| Oscillation score | {:.3} |\n", last.oscillation_score));
+        out.push_str(&format!("| Cascade score | {:.3} |\n", last.cascade_score));
+        out.push_str(&format!("| Fatigue entries | {} |\n", last.fatigue_count));
+        out.push_str(&format!(
+            "| Meta dominant | {} |\n\n",
+            last.meta_dominant.as_deref().unwrap_or("none")
+        ));
     }
 
     // 3. Experience trace growth timeline
@@ -157,16 +167,53 @@ pub fn generate_markdown(
             conflict_rate, last.total_conflicts, last.total_evaluations
         ));
 
-        // Frame gap note
-        if last.frame_count == 0 {
-            out.push_str(
-                "**Note (arch gap):** Frames = 0. FrameWeaver crystallizes from \
-                 MAYA 0x08 syntactic connections, which the routing pipeline does not \
-                 currently inject automatically. Frame-based metrics (AE evaluations, \
-                 CR profiles, NA emergent) will be 0 until a syntactic processing layer \
-                 bridges text → MAYA connections. This is the key finding for I5/OBS-01.\n",
-            );
+    }
+
+    // 8. V6 activity dynamics timeline
+    out.push_str("## V6 Activity Dynamics\n\n");
+    out.push_str("| Tick | Fill | Persistence | Entropy | Oscillation | Cascade | Fatigue | Meta | Signatures |\n");
+    out.push_str("|---|---|---|---|---|---|---|---|---|\n");
+    for snap in snapshots {
+        let sigs = if snap.activity_signatures.is_empty() {
+            "—".to_string()
+        } else {
+            snap.activity_signatures.join(", ")
+        };
+        let meta = snap.meta_dominant.as_deref().unwrap_or("—");
+        out.push_str(&format!(
+            "| {} | {} | {:.2} | {:.2} | {:.2} | {:.2} | {} | {} | {} |\n",
+            snap.tick,
+            snap.activity_fill,
+            snap.dominant_persistence,
+            snap.entropy_gradient,
+            snap.oscillation_score,
+            snap.cascade_score,
+            snap.fatigue_count,
+            meta,
+            sigs,
+        ));
+    }
+    out.push('\n');
+
+    // 9. Composite suspects (final snapshot)
+    if let Some(last) = snapshots.last() {
+        out.push_str("## Composite Co-activation Suspects (final)\n\n");
+        if last.composite_suspects.is_empty() {
+            out.push_str("None detected.\n\n");
+        } else {
+            for s in &last.composite_suspects {
+                out.push_str(&format!("- {s}\n"));
+            }
+            out.push('\n');
         }
+
+        // Meta store (final)
+        out.push_str("## Meta-subsystem Activations (final)\n\n");
+        out.push_str(&format!(
+            "Active: {}  |  Dominant: {}\n\n",
+            last.meta_active_count,
+            last.meta_dominant.as_deref().unwrap_or("none"),
+        ));
     }
 
     out

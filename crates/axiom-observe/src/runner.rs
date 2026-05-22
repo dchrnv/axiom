@@ -5,6 +5,7 @@ use std::sync::Arc;
 use axiom_agent::perceptors::text::TextPerceptor;
 use axiom_config::AnchorSet;
 use axiom_genome::Genome;
+use axiom_runtime::over_domain::context_recognizer::MetaDetector;
 use axiom_runtime::AxiomEngine;
 use axiom_ucl::{OpCode, UclCommand};
 
@@ -40,6 +41,16 @@ impl ObsRunner {
             engine.apply_anchor_set(set);
             let n = engine.inject_anchor_tokens(set);
             eprintln!("[observe] injected {n} anchor tokens");
+        }
+
+        // Load MetaDetector
+        let meta_path = std::path::Path::new("config/meta_primitives.yaml");
+        match MetaDetector::from_yaml(meta_path) {
+            Ok(det) => {
+                eprintln!("[observe] loaded {} meta primitives", det.len());
+                engine.apply_meta_detector(det);
+            }
+            Err(e) => eprintln!("[observe] meta_primitives not loaded: {e}"),
         }
 
         let perceptor = match anchor_set {
@@ -115,12 +126,17 @@ impl ObsRunner {
 
     fn capture_snapshot(&self, tick: u64) -> TickSnapshot {
         let storage = self.engine.axial_evaluator.storage();
-        let profile_store = self.engine.context_recognizer.profile_store();
-        let depth_store = self.engine.context_recognizer.depth_store();
+        let cr = &self.engine.context_recognizer;
+        let profile_store = cr.profile_store();
+        let depth_store = cr.depth_store();
         let emergent_store = self.engine.neural_advisor.emergent_store();
 
         let experience_traces = self.engine.ashti.experience().trace_count();
         let tension_traces = self.engine.ashti.experience().tension_count();
+
+        let dynamics = cr.activity_dynamics();
+        let signatures = cr.activity_signatures();
+        let meta_store = cr.meta_store();
 
         TickSnapshot {
             tick,
@@ -136,6 +152,21 @@ impl ObsRunner {
             emergent_approved: emergent_store.get_approved().count(),
             experience_traces,
             tension_traces,
+            // V6 fields
+            activity_fill: dynamics.fill_count,
+            dominant_persistence: dynamics.dominant_persistence,
+            entropy_gradient: dynamics.entropy_gradient,
+            oscillation_score: dynamics.oscillation_score,
+            cascade_score: dynamics.cascade_score,
+            activity_signatures: signatures.iter().map(|s| s.name().to_string()).collect(),
+            meta_active_count: meta_store.len(),
+            meta_dominant: meta_store.dominant().map(|id| id.name().to_string()),
+            composite_suspects: cr
+                .composite_suspects()
+                .iter()
+                .map(|c| format!("{}({:.2})", c.name, c.confidence))
+                .collect(),
+            fatigue_count: cr.fatigue_store().len(),
         }
     }
 }

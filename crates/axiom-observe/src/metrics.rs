@@ -16,6 +16,17 @@ pub struct TickSnapshot {
     pub experience_traces: usize,
     /// Number of tension traces (low-coherence unresolved patterns)
     pub tension_traces: usize,
+    // V6 fields
+    pub activity_fill: usize,
+    pub dominant_persistence: f32,
+    pub entropy_gradient: f32,
+    pub oscillation_score: f32,
+    pub cascade_score: f32,
+    pub activity_signatures: Vec<String>,
+    pub meta_active_count: usize,
+    pub meta_dominant: Option<String>,
+    pub composite_suspects: Vec<String>,
+    pub fatigue_count: usize,
 }
 
 /// Event recorded when a text is injected, with routing diagnostics.
