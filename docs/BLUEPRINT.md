@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-05-23  
-**Тесты:** 1417, 0 failures
+**Тесты:** 1452, 0 failures
 
 ---
 
@@ -401,20 +401,32 @@ event_id: u64
   Narrative(Writing+Time), Ethics(Logic) [V7: +Values/Dilemmas/Morality];
   detect_composite_suspects(recent, signatures) → Vec<CompositeActivationSuspected { name, confidence }>;
   Converging boost: min(conf * 1.5, 1.0); ContextRecognizer::composite_suspects()
-- NeuralAdvisor V1.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
+- NeuralAdvisor V2.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
-  V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector +
-  ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (DEPTH_FLOOR=50);
-  implements AdvisorySource → poll_advisories() → Vec<Advisory>;
-  on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата;
-  DepthThresholdEmergentDetector пороги (OBS-02): MIN_DEPTH=1000, MIN_REACTIVATIONS=5, MIN_AGE=100
+  V2 реализации (все 5 слотов заполнены):
+    depth: ReactivationDepthAdvisor;
+    octant: DepthHistoryBiasAdvisor — предлагает октант если исторически доминирующий октант
+      (по SutraDepthStore.depth_per_octant[8]) превышает analytic_octant на ≥DHB_MIN_ADVANTAGE=300;
+      DHB_MIN_DEPTH_THRESHOLD=800; confidence = (depth/3000).min(0.85) × reactivation_penalty;
+    conflict: RuleBasedCorpusCallosumResolver;
+    subsystem: AnchorVotingAdvisor — голосует по energy_weights из InterpretationProfile;
+      score(s) = weight × depth_bonus; depth_bonus = (1+depth[AFFINITY[s]]/2000).min(2.0);
+      AV_MIN_ENERGY_WEIGHT=20; dominance≥0.50, иначе confidence×0.7; dual если gap<0.15;
+    emergent: DepthThresholdEmergentDetector (MIN_DEPTH=1000, MIN_REACTIVATIONS=5, MIN_AGE=100);
+  OctantAdvisorInput расширен: depth_per_octant:[u16;8], reactivation_count:u32;
+  AdvisoryHistory: ring-буфер 32 записей per sutra_id (AdvisoryHistoryEntry с outcome);
+  implements AdvisorySource → poll_advisories() → Vec<Advisory> с octant_hint:Option<usize>;
+  on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата
 - OverDomainArbiter V1.0 (tick=13, ModuleId=20) — координатор advisory-источников;
   AdvisorySource трейт: poll_advisories() / on_feedback(); Advisory { id, source, advisory_type,
-  subject_id, confidence, action, created_at_event }; AdvisoryAction: ApplyDepth{octant,depth} /
-  NotifyWorkstation{label}; TrustConfig: HashMap<(SourceId,AdvisoryType), TrustEntry{mode,min_confidence}>;
+  subject_id, confidence, action, created_at_event, octant_hint:Option<usize> };
+  AdvisoryAction: ApplyDepth{octant,depth} / NotifyWorkstation{label};
+  TrustConfig: HashMap<(SourceId,AdvisoryType), TrustEntry{mode,min_confidence}>;
   TrustMode: Ignore / AutoApply / RequireConfirmation; on_boot устанавливает auto_apply_allowed
   (ExperienceMemory/Control из генома); PendingQueue → PhaseCSnapshot.pending_advisories →
-  Workstation (confirm/reject); ArbiterLog ring-buffer 500 записей
+  Workstation (confirm/reject); ArbiterLog ring-buffer 500 записей;
+  CognitiveProfile { octant_weights:[f32;8], init 1.0 } — scale_confidence(octant_idx, raw) → f32×weight;
+  update(idx, accepted): ±LEARNING_RATE=0.05, clamp [0.5, 2.0]; ортогонален TrustConfig
 
 ### Инварианты Over-Domain
 
