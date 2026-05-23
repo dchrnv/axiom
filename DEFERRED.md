@@ -1,7 +1,35 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 61.0
+**Версия:** 62.0
 **Обновлён:** 2026-05-23
+
+---
+
+## CognitiveProfile
+
+### PROFILE-01 — Иерархия важности октантов при принятии решений
+
+**Идея:** ввести `CognitiveProfile` — вектор `octant_weights: [f32; 8]`, загружаемый из YAML, который описывает относительную «ценность» каждого октанта для конкретного агента. Профиль влияет на то, как OverDomainArbiter расставляет приоритеты при принятии решений.
+
+**Где применять:**
+- `OverDomainArbiter` — масштабировать `confidence` advisory-а на `octant_weights[advisory.octant]` перед сравнением с `min_confidence` в TrustConfig
+- Промоция emergent-кандидатов — приоритизировать кандидатов из «важных» для профиля октантов
+- Опционально: TrustConfig переопределяется per-profile (аналитический агент повышает AutoApply для AnalyticGrounding)
+
+**Примеры профилей:**
+- `analytic` — высокий вес ApolloGrounding (X+, Y-, Z+), LogicAnalytic
+- `creative` — высокий вес DionysusSynthetic (X-, Y+, Z+), CreativeAffirmation
+- `balanced` — равномерный вес (текущее поведение по умолчанию)
+
+**Архитектурная заметка:** TrustConfig уже является системой весов по (Source, AdvisoryType). CognitiveProfile добавляет второй ортогональный слой — «куда смотреть» vs «кому доверять». Важно сохранить разделение: TrustConfig = политика доверия источникам, Profile = когнитивная ориентация агента.
+
+**Что нужно:**
+1. `CognitiveProfile` struct в `axiom-experience` или `axiom-config`
+2. `config/profiles/*.yaml` — предустановленные профили
+3. `OverDomainArbiter::set_profile(profile)` — применение при boot или hot-reload
+4. Модификация `evaluate_advisory()`: `effective_confidence = confidence * profile.octant_weights[octant]`
+
+**Когда:** после OBS-03 (накопление данных о реальном распределении октантов), V2 OverDomainArbiter.
 
 ---
 
