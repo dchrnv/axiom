@@ -13,14 +13,15 @@ use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::orchestrator;
 use crate::over_domain::{
     restore_frame_from_anchor, AdvisorySource, AxialEvaluator, ContextRecognizer, DreamCycle,
-    DreamPhaseState, DreamPhaseStats, DreamScheduler, FatigueSnapshot, FrameWeaver,
-    GatewayPriority, NeuralAdvisor, OverDomainArbiter, OverDomainComponent, SleepDecision,
-    SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
+    DreamPhaseState, DreamPhaseStats, DreamProposalKind, DreamScheduler, FatigueSnapshot,
+    FrameWeaver, GatewayPriority, NeuralAdvisor, OverDomainArbiter, OverDomainComponent,
+    SleepDecision, SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
 use axiom_core::{Connection, Event, Token, FLAG_ACTIVE};
 use axiom_domain::AshtiCore;
+use axiom_experience::SubsystemId;
 use axiom_genome::Genome;
 use axiom_ucl::{
     flags as ucl_flags, ucl_preset_to_structural_role, BondTokensPayload, CommandStatus,
@@ -223,6 +224,16 @@ pub struct AxiomEngine {
     /// Последний завершённый dream-отчёт (сохраняется в BroadcastSnapshot).
     #[cfg(feature = "adapters")]
     pub(crate) last_dream_summary: Option<crate::broadcast::LastDreamSummary>,
+    /// Shell-профили vocab-seed токенов (sutra_id → [L1..L8]).
+    /// Заполняется в inject_anchor_tokens шаге 4. Используется FrameWeaver для
+    /// shell-proximity и ContextRecognizer для shell-energy-bonus.
+    pub shell_registry: HashMap<u32, [u8; 8]>,
+    /// Средний Shell-профиль каждой подсистемы (computed from anchor YAML).
+    /// Ключ = SubsystemId, значение = среднеарифметический shell [L1..L8].
+    pub subsystem_shell_templates: HashMap<SubsystemId, [u8; 8]>,
+    /// Окно совместной активации: sutra_id → тик последнего участия в Frame-кандидате.
+    /// Используется для приоритизации DreamProposal (temporal co-activation).
+    pub(crate) co_activation_window: HashMap<u32, u64>,
 }
 
 impl AxiomEngine {
@@ -273,6 +284,9 @@ impl AxiomEngine {
             dream_started_at: 0,
             #[cfg(feature = "adapters")]
             last_dream_summary: None,
+            shell_registry: HashMap::new(),
+            subsystem_shell_templates: HashMap::new(),
+            co_activation_window: HashMap::new(),
         })
     }
 
@@ -1190,6 +1204,12 @@ impl AxiomEngine {
             for fw_cmd in fw_commands {
                 let _ = self.process_command(&fw_cmd);
             }
+            // Обновить окно совместной активации: текущие кандидаты → последний активный тик
+            for id in self.frame_weaver.active_candidate_anchor_ids() {
+                self.co_activation_window.insert(id, t);
+            }
+            // GC: удалить записи старше 500 тиков
+            self.co_activation_window.retain(|_, &mut last| t.saturating_sub(last) < 500);
         }
 
         // Phase C coordinator: AE → sync → CR → sync → NA
@@ -1257,9 +1277,18 @@ impl AxiomEngine {
         let fatigue = self.falling_asleep_fatigue;
         let event_id = self.com_next_id;
 
-        // Собрать proposals от FrameWeaver
-        let proposals = self.frame_weaver.dream_propose(&self.ashti, self.tick_count);
-        for p in proposals {
+        // Собрать proposals от FrameWeaver с учётом temporal co-activation
+        let tick_now = self.tick_count;
+        let proposals = self.frame_weaver.dream_propose(&self.ashti, tick_now);
+        for mut p in proposals {
+            // Приоритет +20 если anchor недавно (< 200 тиков) участвовал в Frame-кандидате
+            if let DreamProposalKind::Promotion { anchor_id, .. } = &p.kind {
+                if let Some(&last_active) = self.co_activation_window.get(anchor_id) {
+                    if tick_now.saturating_sub(last_active) < 200 {
+                        p.priority = p.priority.saturating_add(20);
+                    }
+                }
+            }
             self.dream_cycle.submit(p);
         }
 
@@ -1667,18 +1696,56 @@ impl AxiomEngine {
         //   mass=80  — присутствует, но не доминирует над живым токеном (mass≥128)
         //   temp=15  — чуть тёплый: участвует в резонансе, но не разрастается
         //   state=Active — полноценно участвует в маршрутизации и фреймах
-        for anchors in anchor_set.subsystems.values() {
+        //
+        // Параллельно строим ShellRegistry: sutra_id токена → shell-профиль якоря.
+        // Также вычисляем среднеарифметический shell per subsystem для ShellProximity.
+        let mut shell_accum: HashMap<SubsystemId, ([u32; 8], u32)> = HashMap::new();
+        for (subsystem_name, anchors) in &anchor_set.subsystems {
+            let subsystem_id = match subsystem_name.as_str() {
+                "writing" => SubsystemId::Writing,
+                "mathematics" => SubsystemId::Mathematics,
+                "music" => SubsystemId::Music,
+                "time" => SubsystemId::Time,
+                "logic" => SubsystemId::Logic,
+                "values" => SubsystemId::Values,
+                _ => SubsystemId::Unknown,
+            };
             for anchor in anchors {
                 let event_id = self.next_event_id();
-                let mut token = Token::new(event_id as u32, sutra_id, anchor.position, event_id);
+                let mut token =
+                    Token::new(event_id as u32, sutra_id, anchor.position, event_id);
                 token.mass = 80;
                 token.temperature = 15;
                 token.state = axiom_core::STATE_ACTIVE;
                 if self.ashti.inject_token(sutra_id, token).is_ok() {
                     injected += 1;
+                    // Register shell for this vocab token
+                    self.shell_registry.insert(token.sutra_id, anchor.shell);
+                    // Accumulate shell for subsystem template
+                    if subsystem_id != SubsystemId::Unknown {
+                        let entry = shell_accum.entry(subsystem_id).or_insert(([0u32; 8], 0));
+                        for (acc, &s) in entry.0.iter_mut().zip(anchor.shell.iter()) {
+                            *acc += s as u32;
+                        }
+                        entry.1 += 1;
+                    }
                 }
             }
         }
+
+        // Finalize subsystem shell templates (arithmetic mean, rounded)
+        for (subsystem, (acc, count)) in shell_accum {
+            if count > 0 {
+                let template = acc.map(|v| (v / count).min(255) as u8);
+                self.subsystem_shell_templates.insert(subsystem, template);
+            }
+        }
+
+        // Sync shell data to ContextRecognizer and FrameWeaver
+        self.context_recognizer
+            .set_subsystem_shell_templates(self.subsystem_shell_templates.clone());
+        self.frame_weaver
+            .set_shell_registry(self.shell_registry.clone());
 
         injected
     }

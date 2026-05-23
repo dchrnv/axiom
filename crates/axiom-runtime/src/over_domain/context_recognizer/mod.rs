@@ -17,6 +17,7 @@ use axiom_experience::{
     AxialStore, EmergentPrimitiveStore, FrameComposition, InterpretationProfileStore, MetaStore,
     Octant, SubsystemId, SutraDepthEntry, SutraDepthStore,
 };
+use energy::SubsystemShellRefs;
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::UclCommand;
 
@@ -88,6 +89,12 @@ pub struct ContextRecognizer {
     dream_activation_acc: HashMap<(u32, Octant), u32>,
     /// Снапшот AxialStore от AxialEvaluator (обновляется через sync_axial_store).
     axial_store_snapshot: AxialStore,
+    /// Опорные точки + shell-профили якорей каждой подсистемы.
+    /// Заполняется при from_anchor_set + set_subsystem_shell_templates.
+    /// Если не пусто — on_tick использует compute_energies_with_shell.
+    subsystem_shell_refs: SubsystemShellRefs,
+    /// Средний shell-профиль каждой подсистемы (синхронизируется из engine после boot).
+    subsystem_shell_templates: HashMap<SubsystemId, [u8; 8]>,
 }
 
 impl ContextRecognizer {
@@ -113,6 +120,8 @@ impl ContextRecognizer {
             known_frame_ids: Vec::new(),
             dream_activation_acc: HashMap::new(),
             axial_store_snapshot: AxialStore::new(),
+            subsystem_shell_refs: HashMap::new(),
+            subsystem_shell_templates: HashMap::new(),
         }
     }
 
@@ -169,11 +178,19 @@ impl ContextRecognizer {
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
     ///
     /// Группирует якоря по имени подсистемы ("writing", "mathematics", ...)
-    /// и извлекает их позиции как опорные точки для расчёта SubsystemEnergy.
+    /// и извлекает их позиции + shell как опорные точки для расчёта SubsystemEnergy.
     /// Подсистемы без якорей в AnchorSet — не добавляются (CR игнорирует их).
     pub fn from_anchor_set(anchors: &AnchorSet) -> Self {
         let subsystem_refs = build_subsystem_refs(anchors);
-        Self::new(subsystem_refs)
+        let subsystem_shell_refs = build_subsystem_shell_refs(anchors);
+        let mut cr = Self::new(subsystem_refs);
+        cr.subsystem_shell_refs = subsystem_shell_refs;
+        cr
+    }
+
+    /// Синхронизировать средние shell-профили подсистем из engine (после inject_anchor_tokens).
+    pub fn set_subsystem_shell_templates(&mut self, templates: HashMap<SubsystemId, [u8; 8]>) {
+        self.subsystem_shell_templates = templates;
     }
 
     /// Синхронизировать снапшот AxialStore с результатами AxialEvaluator.
@@ -249,6 +266,29 @@ fn build_subsystem_refs(anchors: &AnchorSet) -> HashMap<SubsystemId, Vec<[i16; 3
             .collect();
         if !positions.is_empty() {
             refs.insert(id, positions);
+        }
+    }
+    refs
+}
+
+fn build_subsystem_shell_refs(anchors: &AnchorSet) -> SubsystemShellRefs {
+    let known = [
+        SubsystemId::Writing,
+        SubsystemId::Mathematics,
+        SubsystemId::Music,
+        SubsystemId::Time,
+        SubsystemId::Logic,
+        SubsystemId::Values,
+    ];
+    let mut refs = HashMap::new();
+    for id in known {
+        let entries: Vec<([i16; 3], [u8; 8])> = anchors
+            .get_subsystem(id.name())
+            .iter()
+            .map(|a| (a.position, a.shell))
+            .collect();
+        if !entries.is_empty() {
+            refs.insert(id, entries);
         }
     }
     refs
@@ -348,8 +388,12 @@ impl OverDomainComponent for ContextRecognizer {
             .flat_map(|region| scanner::scan_region(maya_state, region, &depth_cache).tokens)
             .collect();
 
-        // Вычислить энергии подсистем
-        let energies = energy::compute_energies(&all_tokens, &self.subsystem_refs);
+        // Вычислить энергии подсистем (с shell-бонусом если доступны shell refs)
+        let energies = if !self.subsystem_shell_refs.is_empty() {
+            energy::compute_energies_with_shell(&all_tokens, &self.subsystem_shell_refs)
+        } else {
+            energy::compute_energies(&all_tokens, &self.subsystem_refs)
+        };
         let dominant = energy::dominant_subsystem(&energies);
         let weights = energy::energies_to_weights(&energies);
 

@@ -55,6 +55,9 @@ pub struct FrameCandidate {
     pub lineage_hash: u64,
     /// Средняя сила связей участников (0.0..1.0), используется RuleTrigger::HighConfidence.
     pub confidence: f32,
+    /// Средняя попарная cosine-близость shell-профилей участников (0.0..1.0).
+    /// 0.0 если ни один участник не зарегистрирован в ShellRegistry.
+    pub shell_similarity: f32,
 }
 
 /// Участник Frame — токен с конкретной синтаксической ролью.
@@ -157,6 +160,8 @@ pub enum RuleTrigger {
     DreamCycle,
     RepeatedAssembly { window_ticks: u32 },
     HighConfidence(f32),
+    /// Кристаллизовать если shell_similarity участников ≥ threshold (0.0..1.0).
+    ShellProximity(f32),
 }
 
 #[derive(Debug, Clone)]
@@ -326,6 +331,9 @@ pub struct FrameWeaver {
     /// Флаг: dream-цикл только что завершился (для RuleTrigger::DreamCycle).
     /// Сбрасывается после первого скана, который его увидит.
     dream_cycle_completed: bool,
+    /// Shell-профили vocab-seed токенов (sutra_id → [L1..L8]).
+    /// Синхронизируется из AxiomEngine после inject_anchor_tokens.
+    shell_registry: HashMap<u32, [u8; 8]>,
     pub stats: FrameWeaverStats,
 }
 
@@ -338,8 +346,14 @@ impl FrameWeaver {
             reactivation_counts: HashMap::new(),
             last_reactivation_tick: HashMap::new(),
             dream_cycle_completed: false,
+            shell_registry: HashMap::new(),
             stats: FrameWeaverStats::default(),
         }
+    }
+
+    /// Синхронизировать ShellRegistry из AxiomEngine (после inject_anchor_tokens).
+    pub fn set_shell_registry(&mut self, registry: HashMap<u32, [u8; 8]>) {
+        self.shell_registry = registry;
     }
 
     /// Уведомить FrameWeaver о завершении dream-цикла.
@@ -366,6 +380,16 @@ impl FrameWeaver {
 
     pub fn reactivation_count(&self, anchor_id: u32) -> u32 {
         self.reactivation_counts.get(&anchor_id).copied().unwrap_or(0)
+    }
+
+    /// Derived anchor IDs of all currently active Frame candidates.
+    /// Equivalent to what their EXPERIENCE tokens will receive on crystallization.
+    /// Used by AxiomEngine to maintain co_activation_window for DreamProposal priority.
+    pub fn active_candidate_anchor_ids(&self) -> Vec<u32> {
+        self.candidates
+            .values()
+            .map(|c| Self::proposed_id_from_hash(c.lineage_hash))
+            .collect()
     }
 
     pub fn last_reactivation_tick_for(&self, anchor_id: u32) -> Option<u64> {
@@ -509,6 +533,8 @@ impl FrameWeaver {
                 conns.iter().map(|c| c.strength).sum::<f32>() / conns.len() as f32
             };
 
+            let shell_similarity = Self::compute_shell_similarity(&participants, &self.shell_registry);
+
             candidates.push(FrameCandidate {
                 anchor_position,
                 participants,
@@ -517,6 +543,7 @@ impl FrameWeaver {
                 category: FRAME_CATEGORY_SYNTAX,
                 lineage_hash,
                 confidence,
+                shell_similarity,
             });
         }
 
@@ -674,7 +701,36 @@ impl FrameWeaver {
                 let ticks_assembled = candidate.stability_count as u64 * interval;
                 ticks_assembled >= *window_ticks as u64
             }
+            RuleTrigger::ShellProximity(threshold) => candidate.shell_similarity >= *threshold,
         }
+    }
+
+    /// Вычислить среднюю попарную cosine-близость shell-профилей участников.
+    ///
+    /// Берём только участников, зарегистрированных в shell_registry.
+    /// При < 2 участников с shell → возвращаем 0.0.
+    fn compute_shell_similarity(
+        participants: &[Participant],
+        shell_registry: &HashMap<u32, [u8; 8]>,
+    ) -> f32 {
+        let shells: Vec<[u8; 8]> = participants
+            .iter()
+            .filter_map(|p| shell_registry.get(&p.sutra_id).copied())
+            .collect();
+
+        if shells.len() < 2 {
+            return 0.0;
+        }
+
+        let mut total = 0.0f32;
+        let mut count = 0u32;
+        for i in 0..shells.len() {
+            for j in (i + 1)..shells.len() {
+                total += cosine_sim_shells(shells[i], shells[j]);
+                count += 1;
+            }
+        }
+        if count == 0 { 0.0 } else { total / count as f32 }
     }
 
     fn conditions_met(&self, rule: &CrystallizationRule, candidate: &FrameCandidate) -> bool {
@@ -1092,6 +1148,17 @@ impl FrameWeaver {
 
         proposals
     }
+}
+
+/// Cosine similarity between two 8-dim u8 shell vectors. Returns [0, 1].
+fn cosine_sim_shells(a: [u8; 8], b: [u8; 8]) -> f32 {
+    let dot: f32 = a.iter().zip(b.iter()).map(|(&ai, &bi)| ai as f32 * bi as f32).sum();
+    let norm_a: f32 = a.iter().map(|&ai| (ai as f32).powi(2)).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|&bi| (bi as f32).powi(2)).sum::<f32>().sqrt();
+    if norm_a < 1e-6 || norm_b < 1e-6 {
+        return 0.0;
+    }
+    (dot / (norm_a * norm_b)).clamp(0.0, 1.0)
 }
 
 // ============================================================================
@@ -1577,6 +1644,7 @@ mod tests {
             category: FRAME_CATEGORY_SYNTAX,
             lineage_hash: 1,
             confidence,
+            shell_similarity: 0.0,
         };
 
         assert!(
@@ -1618,6 +1686,7 @@ mod tests {
             category: FRAME_CATEGORY_SYNTAX,
             lineage_hash: 2,
             confidence: 0.0,
+            shell_similarity: 0.0,
         };
 
         // 4 сканов × 20 тиков = 80 < 100 → Defer
@@ -1661,6 +1730,7 @@ mod tests {
             category: FRAME_CATEGORY_SYNTAX,
             lineage_hash: 3,
             confidence: 0.0,
+            shell_similarity: 0.0,
         };
 
         // До on_dream_wake → Defer

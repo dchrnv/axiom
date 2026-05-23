@@ -86,6 +86,96 @@ pub fn energies_to_weights(energies: &[SubsystemEnergy]) -> HashMap<SubsystemId,
         .collect()
 }
 
+/// Shell-boost factor: shell similarity can amplify distance-based energy by up to this fraction.
+const SHELL_FACTOR: f32 = 0.3;
+
+/// Extended subsystem reference: position + shell profile of each anchor.
+pub type SubsystemShellRefs = HashMap<SubsystemId, Vec<([i16; 3], [u8; 8])>>;
+
+/// Вычислить энергии подсистем с учётом Shell-близости.
+///
+/// Идентично `compute_energies`, но для каждого токена добавляется бонус:
+///   `energy *= 1.0 + cosine_sim(nearest_ref_shell, subsystem_template_shell) * SHELL_FACTOR`
+///
+/// `shell_refs`: опорные точки + shell каждой подсистемы.
+pub fn compute_energies_with_shell(
+    maya_tokens: &[Token],
+    shell_refs: &SubsystemShellRefs,
+) -> Vec<SubsystemEnergy> {
+    if shell_refs.is_empty() {
+        return vec![];
+    }
+
+    // Precompute per-subsystem average shell template (f32 for cosine)
+    let templates: HashMap<SubsystemId, [f32; 8]> = shell_refs
+        .iter()
+        .map(|(&ss, refs)| {
+            let mut avg = [0f32; 8];
+            for &(_, shell) in refs {
+                for (a, &s) in avg.iter_mut().zip(shell.iter()) {
+                    *a += s as f32;
+                }
+            }
+            let n = refs.len() as f32;
+            (ss, avg.map(|v| v / n))
+        })
+        .collect();
+
+    let mut energies: HashMap<SubsystemId, (f32, u32)> = HashMap::new();
+
+    for token in maya_tokens {
+        for (&subsystem, refs) in shell_refs {
+            // Find nearest reference by distance AND take its shell
+            let mut min_dist2 = f32::MAX;
+            let mut nearest_shell = [0u8; 8];
+            for &(ref_pos, ref_shell) in refs {
+                let d2 = sq_dist(token.position, ref_pos);
+                if d2 < min_dist2 {
+                    min_dist2 = d2;
+                    nearest_shell = ref_shell;
+                }
+            }
+
+            let base = token.mass as f32 / (min_dist2 + 1.0);
+
+            // Shell bonus: cosine similarity of nearest anchor's shell vs subsystem template
+            let shell_sim = if let Some(tmpl) = templates.get(&subsystem) {
+                cosine_sim_8(nearest_shell, tmpl)
+            } else {
+                0.0
+            };
+            let contribution = base * (1.0 + shell_sim * SHELL_FACTOR);
+
+            let entry = energies.entry(subsystem).or_insert((0.0, 0));
+            entry.0 += contribution;
+            entry.1 += 1;
+        }
+    }
+
+    let mut result: Vec<SubsystemEnergy> = energies
+        .into_iter()
+        .map(|(s, (e, c))| SubsystemEnergy {
+            subsystem: s,
+            energy: e,
+            contributing_tokens: c,
+        })
+        .collect();
+
+    result.sort_by(|a, b| b.energy.partial_cmp(&a.energy).unwrap_or(std::cmp::Ordering::Equal));
+    result
+}
+
+/// Cosine similarity between a u8 shell and an f32 template (both 8-dim). Returns [0, 1].
+fn cosine_sim_8(a: [u8; 8], b: &[f32; 8]) -> f32 {
+    let dot: f32 = a.iter().zip(b.iter()).map(|(&ai, &bi)| ai as f32 * bi).sum();
+    let norm_a: f32 = a.iter().map(|&ai| (ai as f32).powi(2)).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|&bi| bi.powi(2)).sum::<f32>().sqrt();
+    if norm_a < 1e-6 || norm_b < 1e-6 {
+        return 0.0;
+    }
+    (dot / (norm_a * norm_b)).clamp(0.0, 1.0)
+}
+
 fn sq_dist(a: [i16; 3], b: [i16; 3]) -> f32 {
     let dx = (a[0] as f32) - (b[0] as f32);
     let dy = (a[1] as f32) - (b[1] as f32);
