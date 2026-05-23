@@ -119,6 +119,11 @@ pub struct OctantAdvisorInput {
     /// Доминирующая подсистема Frame (из InterpretationProfile)
     pub primary_subsystem: SubsystemId,
     pub event_id: u64,
+    /// Текущие глубины Frame по октантам (из SutraDepthStore snapshot).
+    /// Используется DepthHistoryBiasAdvisor.
+    pub depth_per_octant: [u16; 8],
+    /// Число DREAM-циклов с активностью (из SutraDepthStore snapshot).
+    pub reactivation_count: u32,
 }
 
 /// Вход для CorpusCallosumResolver.

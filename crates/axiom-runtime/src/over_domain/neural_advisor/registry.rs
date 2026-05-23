@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use crate::over_domain::neural_advisor::{
     implementations::{
-        DepthThresholdEmergentDetector, NullConflictResolver, NullDepthAdvisor,
-        NullEmergentAdvisor, NullOctantAdvisor, NullSubsystemAdvisor, ReactivationDepthAdvisor,
-        RuleBasedCorpusCallosumResolver,
+        AnchorVotingAdvisor, DepthHistoryBiasAdvisor, DepthThresholdEmergentDetector,
+        NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor, NullOctantAdvisor,
+        NullSubsystemAdvisor, ReactivationDepthAdvisor, RuleBasedCorpusCallosumResolver,
     },
     traits::{
         CorpusCallosumResolver, DepthPredictionAdvisor, EmergentPatternAdvisor,
@@ -41,6 +41,23 @@ impl NeuralAdvisorRegistry {
             octant: None,
             conflict: Some(Arc::new(RuleBasedCorpusCallosumResolver)),
             subsystem: None,
+            emergent: Some(Arc::new(DepthThresholdEmergentDetector)),
+        }
+    }
+
+    /// Конфигурация V2: все 5 слотов заполнены.
+    ///
+    /// depth: ReactivationDepthAdvisor
+    /// octant: DepthHistoryBiasAdvisor
+    /// conflict: RuleBasedCorpusCallosumResolver
+    /// subsystem: AnchorVotingAdvisor
+    /// emergent: DepthThresholdEmergentDetector
+    pub fn default_v2() -> Self {
+        Self {
+            depth: Some(Arc::new(ReactivationDepthAdvisor)),
+            octant: Some(Arc::new(DepthHistoryBiasAdvisor::default())),
+            conflict: Some(Arc::new(RuleBasedCorpusCallosumResolver)),
+            subsystem: Some(Arc::new(AnchorVotingAdvisor::default())),
             emergent: Some(Arc::new(DepthThresholdEmergentDetector)),
         }
     }

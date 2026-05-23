@@ -177,6 +177,7 @@ impl AxialEvaluator {
                         ),
                     },
                     created_at_event: event_id,
+                    octant_hint: Some(stable_octant.index()),
                 });
             }
         }
@@ -201,6 +202,7 @@ impl AxialEvaluator {
                     ),
                 },
                 created_at_event: event_id,
+                octant_hint: None,
             });
         }
 

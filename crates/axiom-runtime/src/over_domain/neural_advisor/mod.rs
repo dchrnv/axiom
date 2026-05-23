@@ -22,14 +22,17 @@ use crate::over_domain::arbiter::source::{
 };
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
+pub mod history;
 pub mod implementations;
 pub mod registry;
 pub mod results;
 pub mod traits;
 
+pub use history::{AdvisoryHistory, AdvisoryHistoryEntry, AdvisoryHistoryOutcome, AdvisoryRingBuffer};
 pub use implementations::{
-    DepthThresholdEmergentDetector, NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor,
-    NullOctantAdvisor, NullSubsystemAdvisor, RuleBasedCorpusCallosumResolver,
+    AnchorVotingAdvisor, DepthHistoryBiasAdvisor, DepthThresholdEmergentDetector,
+    NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor, NullOctantAdvisor,
+    NullSubsystemAdvisor, RuleBasedCorpusCallosumResolver,
     EMERGENT_CANDIDATE_MIN_AGE_TICKS, EMERGENT_CANDIDATE_MIN_DEPTH,
     EMERGENT_CANDIDATE_MIN_REACTIVATIONS,
 };
@@ -59,6 +62,8 @@ pub struct NeuralAdvisor {
     profile_store_snapshot: InterpretationProfileStore,
     /// Снапшот от ContextRecognizer (sync_depth_store).
     depth_store_snapshot: SutraDepthStore,
+    /// История советов per sutra_id (ring-буфер 32 записи).
+    advisory_history: AdvisoryHistory,
 }
 
 impl NeuralAdvisor {
@@ -70,7 +75,16 @@ impl NeuralAdvisor {
             axial_store_snapshot: AxialStore::new(),
             profile_store_snapshot: InterpretationProfileStore::new(),
             depth_store_snapshot: SutraDepthStore::new(),
+            advisory_history: AdvisoryHistory::new(),
         }
+    }
+
+    pub fn advisory_history(&self) -> &AdvisoryHistory {
+        &self.advisory_history
+    }
+
+    pub fn with_default_v2() -> Self {
+        Self::new(NeuralAdvisorRegistry::default_v2())
     }
 
 
@@ -153,6 +167,8 @@ impl NeuralAdvisor {
                     z_negative_pole: eval.z_axis.negative_pole,
                     primary_subsystem,
                     event_id,
+                    depth_per_octant,
+                    reactivation_count,
                 };
                 result.octant_suggestion = advisor.suggest_octant(&input);
             }
@@ -335,6 +351,16 @@ impl OverDomainComponent for NeuralAdvisor {
                 }
             }
 
+            // Записать в историю советов
+            self.advisory_history.record(*sutra_id, AdvisoryHistoryEntry {
+                computed_at_event: tick,
+                octant_suggestion: result.octant_suggestion.as_ref().map(|s| s.octant),
+                octant_confidence: result.octant_suggestion.as_ref().map(|s| s.confidence).unwrap_or(0.0),
+                subsystem_suggestion: result.subsystem_suggestion.as_ref().map(|s| s.primary),
+                subsystem_confidence: result.subsystem_suggestion.as_ref().map(|s| s.confidence).unwrap_or(0.0),
+                outcome: AdvisoryHistoryOutcome::Pending,
+            });
+
             self.result_store.insert(result);
         }
 
@@ -372,6 +398,7 @@ impl AdvisorySource for NeuralAdvisor {
                         depth: hint.suggested_depth,
                     },
                     created_at_event: result.computed_at_event,
+                    octant_hint: None,
                 });
             }
             // OctantCorrection → NotifyWorkstation
@@ -389,14 +416,23 @@ impl AdvisorySource for NeuralAdvisor {
                         ),
                     },
                     created_at_event: result.computed_at_event,
+                    octant_hint: Some(sug.octant.index()),
                 });
             }
         }
         out
     }
 
-    fn on_feedback(&mut self, _id: AdvisoryId, _outcome: AdvisoryOutcome) {
-        // V2: логировать применение/отклонение для калибровки советников
+    fn on_feedback(&mut self, id: AdvisoryId, outcome: AdvisoryOutcome) {
+        let sutra_id = (id >> 8) as u32;
+        let hist_outcome = match outcome {
+            AdvisoryOutcome::Applied => AdvisoryHistoryOutcome::Applied,
+            AdvisoryOutcome::Confirmed => AdvisoryHistoryOutcome::Confirmed,
+            AdvisoryOutcome::Rejected => AdvisoryHistoryOutcome::Rejected,
+            AdvisoryOutcome::Skipped => AdvisoryHistoryOutcome::Skipped,
+            AdvisoryOutcome::Queued => AdvisoryHistoryOutcome::Pending,
+        };
+        self.advisory_history.update_outcome(sutra_id, id, hist_outcome);
     }
 }
 
@@ -417,13 +453,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_registry_has_conflict_and_emergent() {
+    fn test_default_v1_registry() {
         let na = NeuralAdvisor::with_default_v1();
         assert!(na.registry.conflict.is_some());
         assert!(na.registry.emergent.is_some());
         assert!(na.registry.depth.is_some());
         assert!(na.registry.octant.is_none());
         assert!(na.registry.subsystem.is_none());
+    }
+
+    #[test]
+    fn test_default_v2_registry_all_slots_filled() {
+        let na = NeuralAdvisor::with_default_v2();
+        assert!(na.registry.depth.is_some());
+        assert!(na.registry.octant.is_some());
+        assert!(na.registry.conflict.is_some());
+        assert!(na.registry.subsystem.is_some());
+        assert!(na.registry.emergent.is_some());
+    }
+
+    #[test]
+    fn test_advisory_history_initially_empty() {
+        let na = NeuralAdvisor::with_default_v2();
+        assert!(na.advisory_history().is_empty());
     }
 
     #[test]

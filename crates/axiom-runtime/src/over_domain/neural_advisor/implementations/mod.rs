@@ -5,6 +5,8 @@ pub mod conflict;
 pub mod depth;
 pub mod emergent;
 pub mod null;
+pub mod octant;
+pub mod subsystem;
 
 pub use conflict::RuleBasedCorpusCallosumResolver;
 pub use depth::{AgeDecayAdvisor, ReactivationDepthAdvisor, SubsystemAffinityDepthAdvisor, DEPTH_FLOOR};
@@ -16,3 +18,5 @@ pub use null::{
     NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor, NullOctantAdvisor,
     NullSubsystemAdvisor,
 };
+pub use octant::DepthHistoryBiasAdvisor;
+pub use subsystem::AnchorVotingAdvisor;

@@ -50,7 +50,7 @@ const DECAY_MIN_AGE: u64 = 200;
 // SubsystemId → предпочтительный октант (индекс 0..7).
 // Октанты кодируются как u8: биты XYZ (X=4, Y=2, Z=1).
 // Таблица: 16 подсистем × 1 предпочтительный октант.
-const SUBSYSTEM_AFFINITY: [u8; 16] = [
+pub(crate) const SUBSYSTEM_AFFINITY: [u8; 16] = [
     0, // 0 — Neutral          → oct0 (---) низкая энергия
     4, // 1 — Cognitive        → oct4 (+--)  Apollo
     2, // 2 — Affective        → oct2 (-+-)  Eros

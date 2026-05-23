@@ -41,6 +41,9 @@ pub struct Advisory {
     pub confidence: f32,
     pub action: AdvisoryAction,
     pub created_at_event: u64,
+    /// Индекс октанта (0..7) для OctantCorrection — используется CognitiveProfile scaling.
+    /// None для остальных типов advisory.
+    pub octant_hint: Option<usize>,
 }
 
 /// Исход обработки рекомендации — передаётся источнику через on_feedback.

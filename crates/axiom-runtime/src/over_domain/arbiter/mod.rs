@@ -17,10 +17,12 @@ use axiom_ucl::UclCommand;
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod log;
+pub mod profile;
 pub mod source;
 pub mod trust;
 
 pub use log::{ArbiterLog, ArbiterLogEntry, ArbiterOutcome};
+pub use profile::CognitiveProfile;
 pub use source::{Advisory, AdvisoryAction, AdvisoryId, AdvisoryOutcome, AdvisorySource,
                  AdvisoryType, SourceId};
 pub use trust::{TrustConfig, TrustEntry, TrustMode};
@@ -42,6 +44,8 @@ pub struct OverDomainArbiter {
     log: ArbiterLog,
     /// Permission::Control на ExperienceMemory — разрешает AutoApply.
     auto_apply_allowed: bool,
+    /// Когнитивный профиль: масштабирует confidence OctantCorrection advisory по октанту.
+    cognitive_profile: CognitiveProfile,
 }
 
 impl OverDomainArbiter {
@@ -52,7 +56,16 @@ impl OverDomainArbiter {
             pending: VecDeque::new(),
             log: ArbiterLog::new(),
             auto_apply_allowed: false,
+            cognitive_profile: CognitiveProfile::default(),
         }
+    }
+
+    pub fn cognitive_profile(&self) -> &CognitiveProfile {
+        &self.cognitive_profile
+    }
+
+    pub fn cognitive_profile_mut(&mut self) -> &mut CognitiveProfile {
+        &mut self.cognitive_profile
     }
 
     pub fn default_v1() -> Self {
@@ -77,6 +90,10 @@ impl OverDomainArbiter {
         if let Some(pos) = self.pending.iter().position(|p| p.advisory.id == advisory_id) {
             let pending = self.pending.remove(pos).unwrap();
             Self::execute(&pending.advisory, depth_store);
+            // CognitiveProfile: принятие → увеличить вес октанта
+            if let Some(idx) = pending.advisory.octant_hint {
+                self.cognitive_profile.update(idx, true);
+            }
             self.push_log(&pending.advisory, pending.queued_at_event, ArbiterOutcome::Confirmed);
             self.feedback_source(pending.advisory.source, advisory_id, AdvisoryOutcome::Confirmed);
         }
@@ -85,6 +102,10 @@ impl OverDomainArbiter {
     pub fn reject_pending(&mut self, advisory_id: AdvisoryId) {
         if let Some(pos) = self.pending.iter().position(|p| p.advisory.id == advisory_id) {
             let pending = self.pending.remove(pos).unwrap();
+            // CognitiveProfile: отклонение → уменьшить вес октанта
+            if let Some(idx) = pending.advisory.octant_hint {
+                self.cognitive_profile.update(idx, false);
+            }
             self.push_log(&pending.advisory, pending.queued_at_event, ArbiterOutcome::Rejected);
             self.feedback_source(pending.advisory.source, advisory_id, AdvisoryOutcome::Rejected);
         }
@@ -104,7 +125,18 @@ impl OverDomainArbiter {
                 continue;
             };
 
-            if advisory.confidence < entry.min_confidence {
+            // CognitiveProfile: масштабировать confidence для OctantCorrection по октанту.
+            let effective_confidence = if advisory.advisory_type == AdvisoryType::OctantCorrection {
+                if let Some(idx) = advisory.octant_hint {
+                    self.cognitive_profile.scale_confidence(idx, advisory.confidence)
+                } else {
+                    advisory.confidence
+                }
+            } else {
+                advisory.confidence
+            };
+
+            if effective_confidence < entry.min_confidence {
                 self.push_log(advisory, event_id, ArbiterOutcome::Skipped);
                 self.feedback_source(advisory.source, advisory.id, AdvisoryOutcome::Skipped);
                 continue;
