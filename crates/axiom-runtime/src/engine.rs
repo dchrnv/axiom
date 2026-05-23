@@ -1670,12 +1670,15 @@ impl AxiomEngine {
             }
         }
 
-        // 3. Subsystem anchors → MAYA(10): фиксированные примитивы для compute_energies
+        // 3. Subsystem anchors → MAYA(10): фиксированные примитивы для compute_energies.
+        // V2: sutra_id = fnv1a_anchor_id(anchor.id) — детерминированный, стабильный между запусками.
+        // Диапазон 0x8000_0001..=0xFFFF_FFFF не пересекается с event_ids и domain_position_hash.
         let maya_id: u16 = level * 100 + 10;
         for anchors in anchor_set.subsystems.values() {
             for anchor in anchors {
+                let anchor_sutra_id = fnv1a_anchor_id(&anchor.id);
                 let event_id = self.next_event_id();
-                let mut token = Token::new(event_id as u32, maya_id, anchor.position, event_id);
+                let mut token = Token::new(anchor_sutra_id, maya_id, anchor.position, event_id);
                 token.mass = 200;
                 token.temperature = 0;
                 token.state = axiom_core::STATE_LOCKED;
@@ -1699,6 +1702,8 @@ impl AxiomEngine {
         //
         // Параллельно строим ShellRegistry: sutra_id токена → shell-профиль якоря.
         // Также вычисляем среднеарифметический shell per subsystem для ShellProximity.
+        // Плоский список (position, shell) всех subsystem-якорей — для positional fallback в FrameWeaver.
+        let mut anchor_shell_refs: Vec<([i16; 3], [u8; 8])> = Vec::new();
         let mut shell_accum: HashMap<SubsystemId, ([u32; 8], u32)> = HashMap::new();
         for (subsystem_name, anchors) in &anchor_set.subsystems {
             let subsystem_id = match subsystem_name.as_str() {
@@ -1711,24 +1716,27 @@ impl AxiomEngine {
                 _ => SubsystemId::Unknown,
             };
             for anchor in anchors {
+                // V2: детерминированный sutra_id совпадает с MAYA-токеном шага 3 → registry hit при позиционном совпадении
+                let anchor_sutra_id = fnv1a_anchor_id(&anchor.id);
                 let event_id = self.next_event_id();
-                let mut token =
-                    Token::new(event_id as u32, sutra_id, anchor.position, event_id);
+                let mut token = Token::new(anchor_sutra_id, sutra_id, anchor.position, event_id);
                 token.mass = 80;
                 token.temperature = 15;
                 token.state = axiom_core::STATE_ACTIVE;
                 if self.ashti.inject_token(sutra_id, token).is_ok() {
                     injected += 1;
-                    // Register shell for this vocab token
-                    self.shell_registry.insert(token.sutra_id, anchor.shell);
-                    // Accumulate shell for subsystem template
-                    if subsystem_id != SubsystemId::Unknown {
-                        let entry = shell_accum.entry(subsystem_id).or_insert(([0u32; 8], 0));
-                        for (acc, &s) in entry.0.iter_mut().zip(anchor.shell.iter()) {
-                            *acc += s as u32;
-                        }
-                        entry.1 += 1;
+                }
+                // Регистрируем shell по стабильному anchor sutra_id
+                self.shell_registry.insert(anchor_sutra_id, anchor.shell);
+                // Flat positional list для positional fallback
+                anchor_shell_refs.push((anchor.position, anchor.shell));
+                // Accumulate shell for subsystem template
+                if subsystem_id != SubsystemId::Unknown {
+                    let entry = shell_accum.entry(subsystem_id).or_insert(([0u32; 8], 0));
+                    for (acc, &s) in entry.0.iter_mut().zip(anchor.shell.iter()) {
+                        *acc += s as u32;
                     }
+                    entry.1 += 1;
                 }
             }
         }
@@ -1746,6 +1754,8 @@ impl AxiomEngine {
             .set_subsystem_shell_templates(self.subsystem_shell_templates.clone());
         self.frame_weaver
             .set_shell_registry(self.shell_registry.clone());
+        self.frame_weaver
+            .set_anchor_shell_refs(anchor_shell_refs);
 
         injected
     }
@@ -2068,6 +2078,22 @@ fn build_token_from_inject(p: &InjectTokenPayload, domain_id: u16, event_id: u64
     token.temperature = temperature;
     token.type_flags = p.token_type as u16;
     token
+}
+
+/// Детерминированный u32-идентификатор из строкового ID якоря (FNV-1a).
+///
+/// Диапазон: 0x8000_0001..=0xFFFF_FFFF (старший бит установлен).
+/// Гарантированно не пересекается с:
+///   - sequential event_ids (1, 2, 3, ... — малые значения)
+///   - domain_position_hash (0x0000_0001..0x0FFF_FFFF, 28 бит без старшего бита)
+fn fnv1a_anchor_id(id: &str) -> u32 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in id.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let low = (h & 0x7FFF_FFFF) as u32;
+    0x8000_0000 | if low == 0 { 1 } else { low }
 }
 
 /// Построить SleepTrigger из SleepTriggerKind и текущего состояния DreamScheduler.

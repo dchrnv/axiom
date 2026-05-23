@@ -334,6 +334,9 @@ pub struct FrameWeaver {
     /// Shell-профили vocab-seed токенов (sutra_id → [L1..L8]).
     /// Синхронизируется из AxiomEngine после inject_anchor_tokens.
     shell_registry: HashMap<u32, [u8; 8]>,
+    /// Плоский список (position, shell) всех subsystem-якорей.
+    /// Используется как positional fallback: если участник не в registry — ищем ближайший якорь по позиции.
+    anchor_shell_refs: Vec<([i16; 3], [u8; 8])>,
     pub stats: FrameWeaverStats,
 }
 
@@ -347,6 +350,7 @@ impl FrameWeaver {
             last_reactivation_tick: HashMap::new(),
             dream_cycle_completed: false,
             shell_registry: HashMap::new(),
+            anchor_shell_refs: Vec::new(),
             stats: FrameWeaverStats::default(),
         }
     }
@@ -354,6 +358,11 @@ impl FrameWeaver {
     /// Синхронизировать ShellRegistry из AxiomEngine (после inject_anchor_tokens).
     pub fn set_shell_registry(&mut self, registry: HashMap<u32, [u8; 8]>) {
         self.shell_registry = registry;
+    }
+
+    /// Синхронизировать плоский список anchor (position, shell) для positional fallback.
+    pub fn set_anchor_shell_refs(&mut self, refs: Vec<([i16; 3], [u8; 8])>) {
+        self.anchor_shell_refs = refs;
     }
 
     /// Уведомить FrameWeaver о завершении dream-цикла.
@@ -533,7 +542,12 @@ impl FrameWeaver {
                 conns.iter().map(|c| c.strength).sum::<f32>() / conns.len() as f32
             };
 
-            let shell_similarity = Self::compute_shell_similarity(&participants, &self.shell_registry);
+            let shell_similarity = Self::compute_shell_similarity(
+                &participants,
+                &self.shell_registry,
+                &maya_state.tokens,
+                &self.anchor_shell_refs,
+            );
 
             candidates.push(FrameCandidate {
                 anchor_position,
@@ -707,15 +721,39 @@ impl FrameWeaver {
 
     /// Вычислить среднюю попарную cosine-близость shell-профилей участников.
     ///
-    /// Берём только участников, зарегистрированных в shell_registry.
-    /// При < 2 участников с shell → возвращаем 0.0.
+    /// Двухуровневый lookup:
+    ///   1. Registry hit (sutra_id → shell): точный, для vocab-seed якорей (V2: детерминированные ID).
+    ///   2. Positional fallback: найти позицию участника в tokens, взять shell ближайшего anchor_shell_ref.
+    ///
+    /// При < 2 участников с определённым shell → возвращаем 0.0.
     fn compute_shell_similarity(
         participants: &[Participant],
         shell_registry: &HashMap<u32, [u8; 8]>,
+        tokens: &[axiom_core::Token],
+        anchor_shell_refs: &[([i16; 3], [u8; 8])],
     ) -> f32 {
         let shells: Vec<[u8; 8]> = participants
             .iter()
-            .filter_map(|p| shell_registry.get(&p.sutra_id).copied())
+            .filter_map(|p| {
+                // Level 1: registry hit
+                if let Some(&shell) = shell_registry.get(&p.sutra_id) {
+                    return Some(shell);
+                }
+                // Level 2: positional fallback via anchor proximity
+                if anchor_shell_refs.is_empty() {
+                    return None;
+                }
+                let pos = tokens.iter().find(|t| t.sutra_id == p.sutra_id)?.position;
+                anchor_shell_refs
+                    .iter()
+                    .min_by_key(|(apos, _)| {
+                        let dx = pos[0] as i32 - apos[0] as i32;
+                        let dy = pos[1] as i32 - apos[1] as i32;
+                        let dz = pos[2] as i32 - apos[2] as i32;
+                        dx * dx + dy * dy + dz * dz
+                    })
+                    .map(|(_, shell)| *shell)
+            })
             .collect();
 
         if shells.len() < 2 {
