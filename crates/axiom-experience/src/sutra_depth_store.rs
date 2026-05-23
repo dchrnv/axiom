@@ -127,6 +127,7 @@ impl SutraDepthStore {
             let growth = evidence.min(MAX_GROWTH_PER_CYCLE);
             entry.depth_per_octant[octant] =
                 entry.depth_per_octant[octant].saturating_add(growth);
+            entry.reactivation_count = entry.reactivation_count.saturating_add(1);
         } else {
             entry.depth_per_octant[octant] =
                 entry.depth_per_octant[octant].saturating_sub(DECAY_PER_CYCLE);

@@ -1615,6 +1615,18 @@ impl AxiomEngine {
     /// Строит subsystem_refs из позиций якорей подсистем ("writing", "mathematics", ...).
     /// Заменяет текущий ContextRecognizer новым — stores (depth, profile) сбрасываются.
     /// Вызывать один раз при старте, после load_anchors и до первого тика.
+    /// Snapshot current subsystem energies directly from MAYA tokens.
+    /// Used by axiom-observe for per-text delta detection (before/after injection).
+    pub fn snapshot_subsystem_energies(&self) -> HashMap<SubsystemId, f32> {
+        let maya_domain_id = self.ashti.level_id() * 100 + 10;
+        let maya_tokens = self.ashti
+            .index_of(maya_domain_id)
+            .and_then(|i| self.ashti.state(i))
+            .map(|s| s.tokens.as_slice())
+            .unwrap_or(&[]);
+        self.context_recognizer.compute_raw_energies(maya_tokens)
+    }
+
     pub fn apply_anchor_set(&mut self, anchor_set: &axiom_config::AnchorSet) {
         use crate::over_domain::ContextRecognizer;
         self.context_recognizer = ContextRecognizer::from_anchor_set(anchor_set);

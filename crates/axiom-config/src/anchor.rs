@@ -462,6 +462,30 @@ impl AnchorSet {
             .chain(self.subsystems.values().flatten())
     }
 
+    // ─── Subsystem detection ─────────────────────────────────────────────────
+
+    const SUBSYSTEM_NAMES: &'static [&'static str] =
+        &["mathematics", "writing", "music", "time", "logic", "values"];
+
+    /// Determine the dominant subsystem from anchor matches (by cumulative score).
+    /// Returns None if no subsystem tag found in matches.
+    pub fn dominant_subsystem_of(&self, matches: &[AnchorMatch<'_>]) -> Option<String> {
+        use std::collections::HashMap;
+        let mut scores: HashMap<&str, f32> = HashMap::new();
+        for m in matches {
+            for tag in &m.anchor.tags {
+                if Self::SUBSYSTEM_NAMES.contains(&tag.as_str()) {
+                    *scores.entry(tag.as_str()).or_insert(0.0) += m.score;
+                    break;
+                }
+            }
+        }
+        scores
+            .into_iter()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(name, _)| name.to_string())
+    }
+
     // ─── Position / weight computation ───────────────────────────────────────
 
     /// Вычислить взвешенную позицию на основе совпадений.

@@ -13,6 +13,25 @@
 //            config/anchors/time/primitives.yaml, config/anchors/music/primitives.yaml,
 //            config/anchors/values/primitives.yaml.
 
+/// Определить подсистему из anchor_id по префиксу.
+pub fn subsystem_from_anchor_id(id: &str) -> Option<&'static str> {
+    if id.starts_with("math_") {
+        Some("mathematics")
+    } else if id.starts_with("prim_") {
+        Some("writing")
+    } else if id.starts_with("logic_") {
+        Some("logic")
+    } else if id.starts_with("time_") {
+        Some("time")
+    } else if id.starts_with("music_") {
+        Some("music")
+    } else if id.starts_with("values_") {
+        Some("values")
+    } else {
+        None
+    }
+}
+
 /// Символы → якорные ID с весами.
 /// Возвращает статический срез пар (anchor_id, weight).
 pub fn char_signals(c: char) -> &'static [(&'static str, f32)] {

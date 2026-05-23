@@ -1,59 +1,59 @@
-ticks_total: 3000
-snapshot_every: 100
+ticks_total: 30000
+snapshot_every: 500
 
 texts:
   - id: math_basic
     content: "2 + 2 = 4. Производная x² равна 2x. Интеграл от x² равен x³/3."
     expected_subsystem: mathematics
     inject_every: 200
-    inject_count: 8
+    inject_count: 80
     start_at_tick: 0
 
   - id: math_advanced
     content: "Теорема Пифагора: a² + b² = c². Число π иррационально. Предел последовательности."
     expected_subsystem: mathematics
     inject_every: 300
-    inject_count: 5
+    inject_count: 50
     start_at_tick: 50
 
   - id: writing_narrative
     content: "Однажды в тихом городе жил молодой писатель. Он сочинял рассказы каждый вечер."
     expected_subsystem: writing
     inject_every: 250
-    inject_count: 6
+    inject_count: 60
     start_at_tick: 100
 
   - id: writing_poetry
     content: "Белеет парус одинокий в тумане моря голубом. Что ищет он в стране далёкой?"
     expected_subsystem: writing
     inject_every: 400
-    inject_count: 4
+    inject_count: 40
     start_at_tick: 150
 
   - id: music_theory
     content: "Мажорная гамма состоит из семи нот. Тоника, доминанта, субдоминанта — основные функции."
     expected_subsystem: music
     inject_every: 350
-    inject_count: 5
+    inject_count: 50
     start_at_tick: 200
 
   - id: logic_reasoning
     content: "Если A влечёт B, и B влечёт C, то A влечёт C. Силлогизм — форма дедуктивного вывода."
     expected_subsystem: logic
     inject_every: 300
-    inject_count: 6
+    inject_count: 60
     start_at_tick: 0
 
   - id: time_history
     content: "В XVIII веке произошла промышленная революция. Хронология событий определяет причинность."
     expected_subsystem: time
     inject_every: 450
-    inject_count: 4
+    inject_count: 40
     start_at_tick: 80
 
   - id: values_ethics
     content: "Честность и справедливость — основы морали. Этика изучает природу добра и зла."
     expected_subsystem: values
     inject_every: 500
-    inject_count: 3
+    inject_count: 35
     start_at_tick: 120

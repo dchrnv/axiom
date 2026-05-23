@@ -401,6 +401,16 @@ impl FrameWeaver {
             .collect()
     }
 
+    /// Average shell_similarity across all active Frame candidates.
+    /// Returns 0.0 if no candidates exist.
+    pub fn avg_candidate_shell_similarity(&self) -> f32 {
+        if self.candidates.is_empty() {
+            return 0.0;
+        }
+        let sum: f32 = self.candidates.values().map(|c| c.shell_similarity).sum();
+        sum / self.candidates.len() as f32
+    }
+
     pub fn last_reactivation_tick_for(&self, anchor_id: u32) -> Option<u64> {
         self.last_reactivation_tick.get(&anchor_id).copied()
     }

@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use axiom_config::AnchorSet;
 
-use super::decomposition_table::{char_signals, word_signals};
+use super::decomposition_table::{char_signals, subsystem_from_anchor_id, word_signals};
 
 /// Таблица декомпозиции: кэшированные позиции примитивов по anchor-id.
 ///
@@ -34,6 +34,36 @@ impl AnchorMatchTable {
         }
         // Также оси и слои (axes, layers через all_anchors нет, используем get_by_id fallback)
         Self { id_to_position }
+    }
+
+    /// Определить доминирующую подсистему через декомпозицию (без AnchorSet).
+    ///
+    /// Использует word_signals + char_signals из decomposition_table.
+    /// Возвращает None если текст не содержит ни одного известного термина.
+    pub fn dominant_subsystem(&self, text: &str) -> Option<String> {
+        let mut scores: HashMap<&str, f64> = HashMap::new();
+        let text_lower = text.to_lowercase();
+        for word in text_lower.split(|c: char| !c.is_alphabetic()) {
+            if word.len() < 2 {
+                continue;
+            }
+            for &(anchor_id, weight) in word_signals(word) {
+                if let Some(sub) = subsystem_from_anchor_id(anchor_id) {
+                    *scores.entry(sub).or_insert(0.0) += weight as f64;
+                }
+            }
+        }
+        for c in text.chars() {
+            for &(anchor_id, weight) in char_signals(c) {
+                if let Some(sub) = subsystem_from_anchor_id(anchor_id) {
+                    *scores.entry(sub).or_insert(0.0) += weight as f64 * 0.4;
+                }
+            }
+        }
+        scores
+            .into_iter()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(name, _)| name.to_string())
     }
 
     /// Вычислить позицию токена через декомпозицию текста.

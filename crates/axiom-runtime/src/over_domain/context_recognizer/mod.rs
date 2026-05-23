@@ -193,6 +193,15 @@ impl ContextRecognizer {
         self.subsystem_shell_templates = templates;
     }
 
+    /// Вычислить энергии подсистем прямо сейчас из переданных MAYA-токенов.
+    /// Используется для per-text delta-метрики в axiom-observe: до/после инъекции.
+    pub fn compute_raw_energies(&self, maya_tokens: &[Token]) -> HashMap<SubsystemId, f32> {
+        energy::compute_energies(maya_tokens, &self.subsystem_refs)
+            .into_iter()
+            .map(|e| (e.subsystem, e.energy))
+            .collect()
+    }
+
     /// Синхронизировать снапшот AxialStore с результатами AxialEvaluator.
     ///
     /// Вызывается координатором рантайма после каждого цикла AxialEvaluator.

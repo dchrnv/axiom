@@ -27,6 +27,8 @@ pub struct TickSnapshot {
     pub meta_dominant: Option<String>,
     pub composite_suspects: Vec<String>,
     pub fatigue_count: usize,
+    /// Average shell_similarity across active FrameWeaver candidates.
+    pub avg_shell_similarity: f32,
 }
 
 /// Event recorded when a text is injected, with routing diagnostics.
@@ -44,4 +46,7 @@ pub struct InjectionEvent {
     pub passes: u8,
     /// Cumulative experience traces at injection time
     pub experience_traces_at_injection: usize,
+    /// Per-text detected subsystem (max energy delta before→after injection).
+    /// None if no subsystem refs are loaded or energy didn't change.
+    pub per_text_detected: Option<String>,
 }

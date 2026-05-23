@@ -86,6 +86,8 @@ impl ObsRunner {
                 for &idx in indices {
                     let entry: &CorpusEntry = &corpus.texts[idx];
                     let cmd = self.perceptor.perceive(&entry.content);
+
+                    let per_text_detected = self.perceptor.detect_subsystem(&entry.content);
                     let result = self.engine.process_and_observe(&cmd);
 
                     let detected = self
@@ -105,6 +107,7 @@ impl ObsRunner {
                         reflex_hit: result.reflex_hit,
                         passes: result.passes,
                         experience_traces_at_injection: exp_traces,
+                        per_text_detected,
                     });
                 }
             }
@@ -167,6 +170,7 @@ impl ObsRunner {
                 .map(|c| format!("{}({:.2})", c.name, c.confidence))
                 .collect(),
             fatigue_count: cr.fatigue_store().len(),
+            avg_shell_similarity: self.engine.frame_weaver.avg_candidate_shell_similarity(),
         }
     }
 }

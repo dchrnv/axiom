@@ -12,11 +12,12 @@ use crate::over_domain::neural_advisor::traits::{
 };
 
 /// Минимальная глубина в октанте для статуса кандидата.
-/// ~12% от PRIMITIVE_DEPTH (65535). Подбирается по OBS-01.
-pub const EMERGENT_CANDIDATE_MIN_DEPTH: u16 = 8000;
+/// ~1.5% от PRIMITIVE_DEPTH (65535). Откалибровано по OBS-02: O7 avg=1198.
+pub const EMERGENT_CANDIDATE_MIN_DEPTH: u16 = 1000;
 
-/// Минимальное число реактиваций.
-pub const EMERGENT_CANDIDATE_MIN_REACTIVATIONS: u32 = 30;
+/// Минимальное число реактиваций (DREAM-циклов с активностью).
+/// Откалибровано по OBS-02: ~10-15 циклов за 30k тиков.
+pub const EMERGENT_CANDIDATE_MIN_REACTIVATIONS: u32 = 5;
 
 /// Минимальный возраст Frame в тиках.
 pub const EMERGENT_CANDIDATE_MIN_AGE_TICKS: u64 = 100;

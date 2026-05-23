@@ -838,6 +838,10 @@ App → tokio runtime (отдельный thread)
 | **WS-V2-*** | V2.0 идеи: история чата, Pause/Resume, custom bench, TLS, sync. |
 | **COMP-01** | Vital Signs окно (Companion, ambient display). |
 | **AGENT-TD-01** | TextPerceptor: FNV-1a → embeddings. После OBS-01. |
+| **OBS-TD-01** | per_text_detected через detect_subsystem() работает только для текстов с word-level anchor match. math_basic, writing_poetry → `—` (FNV-fallback, нет совпадений). Корень: TextPerceptor создаёт токен в центроиде совпавших якорей, а не в позиции конкретного якоря. Решение: embeddings (AGENT-TD-01) или расширить словарь корпуса. |
+| **OBS-TD-02** | avg_shell_similarity в TickSnapshot всегда 0.000 при snapshot_every=100: кандидаты FrameWeaver кристаллизуются за ~60 тиков (stability_threshold=3 × scan_interval=20), до момента снапшота уже нет активных кандидатов. Для наблюдения shell_similarity нужно либо уменьшить snapshot_every, либо добавить capture per-crystallization event. |
+| **OBS-TD-03** | delta-energy подход для per-text detection нерабочий: inject_to_maya добавляет токен с позицией = центроид совпавших якорей, sq_dist до индивидуальных опорных точек в миллионах → вклад ≈ 0. ContextRecognizer::compute_raw_energies + AxiomEngine::snapshot_subsystem_energies оставлены в коде, пригодятся если позиции будут выровнены. |
+| **Shell-TD-01** | ShellProximity crystallization rule — opt-in (crystallization_rules: vec![] по умолчанию). При непустом списке правил stability_threshold fallback не работает → все кандидаты остаются в Defer, Frames=0. ShellProximity нужно добавлять вместе с явным StabilityReached-правилом или менять архитектуру evaluate_crystallization_rules. |
 
 ---
 

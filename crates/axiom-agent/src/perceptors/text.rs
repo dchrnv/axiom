@@ -54,6 +54,23 @@ impl TextPerceptor {
         }
     }
 
+    /// Detect the dominant subsystem for a text.
+    ///
+    /// Path 1: word-level AnchorSet match (exact/alias/substring anchor words).
+    /// Path 2: decomposition table (word_signals + char_signals — wider coverage).
+    /// Returns None only if both paths produce no signal.
+    pub fn detect_subsystem(&self, text: &str) -> Option<String> {
+        // Path 1: word-level anchor match
+        if let Some(ref anchors) = self.anchor_set {
+            let matches = anchors.match_text(text);
+            if let Some(sub) = anchors.dominant_subsystem_of(&matches) {
+                return Some(sub);
+            }
+        }
+        // Path 2: decomposition table fallback
+        self.match_table.as_ref()?.dominant_subsystem(text)
+    }
+
     /// Преобразовать текст в UclCommand(InjectToken) для SUTRA(100).
     pub fn perceive(&self, text: &str) -> UclCommand {
         let bytes = text.as_bytes();
