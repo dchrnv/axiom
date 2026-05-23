@@ -266,7 +266,7 @@ impl AxiomEngine {
             frame_weaver: FrameWeaver::with_default_config(),
             axial_evaluator: AxialEvaluator::new(),
             context_recognizer: ContextRecognizer::new(std::collections::HashMap::new()),
-            neural_advisor: NeuralAdvisor::with_default_v1(),
+            neural_advisor: NeuralAdvisor::with_default_v2(),
             over_domain_arbiter,
             dream_phase_state: DreamPhaseState::default(),
             dream_phase_stats: DreamPhaseStats::default(),

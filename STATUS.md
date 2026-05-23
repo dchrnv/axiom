@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1417 тестов, 0 failures**
+**1452 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -34,15 +34,19 @@ AxiomEngine
         │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
-        ├── NeuralAdvisor V1.0 ✅ (tick=11, ModuleId=19) — advisory-only; RuleBasedCorpusCallosumResolver,
-        │     DepthThresholdEmergentDetector; on_tick → NotifyEmergentCandidate (UCL 5200);
-        │     ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (depth.rs);
-        │     implements AdvisorySource → poll_advisories() → Vec<Advisory>;
-        │     пороги откалиброваны по OBS-02: MIN_DEPTH=1000, MIN_REACTIVATIONS=5 (было 8000/30)
+        ├── NeuralAdvisor V2.0 ✅ (tick=11, ModuleId=19) — все 5 слотов заполнены;
+        │     depth: ReactivationDepthAdvisor; octant: DepthHistoryBiasAdvisor (DHB_MIN_DEPTH=800,
+        │     DHB_MIN_ADVANTAGE=300); conflict: RuleBasedCorpusCallosumResolver;
+        │     subsystem: AnchorVotingAdvisor (AV_MIN_ENERGY=20, dominance≥0.50, dual-gap<0.15);
+        │     emergent: DepthThresholdEmergentDetector; AdvisoryHistory (ring 32 per sutra_id);
+        │     OctantAdvisorInput расширен: depth_per_octant[8] + reactivation_count;
+        │     implements AdvisorySource → poll_advisories() → Vec<Advisory> с octant_hint
         └── OverDomainArbiter V1.0 ✅ (tick=13, ModuleId=20) — координатор advisory-источников;
               TrustConfig (Ignore/AutoApply/RequireConfirmation × min_confidence);
               AutoApply DepthHint при Control в геноме; PendingQueue → Workstation;
-              ArbiterLog (ring buffer 500); on_boot читает ExperienceMemory/Control из генома
+              ArbiterLog (ring buffer 500); on_boot читает ExperienceMemory/Control из генома;
+              CognitiveProfile { octant_weights[8], init 1.0 }: scale_confidence(octant_idx, raw),
+              update(idx, accepted) online learning rate=0.05; Advisory.octant_hint: Option<usize>
               scan_state (confidence из avg connection.strength), build_crystallization_commands,
               ReinforceFrame (lineage_hash dedup), build_promotion_commands (→ SUTRA STATE_LOCKED),
               CycleStrategy::Allow (default); restore_frame_from_anchor; UnfoldFrame handler;
@@ -190,7 +194,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 458 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V2.0, ContextRecognizer V6.0, NeuralAdvisor V1.0, OverDomainArbiter V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler |
+| axiom-runtime | 493 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V2.0, ContextRecognizer V6.0, NeuralAdvisor V2.0, OverDomainArbiter V1.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile |
 | axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip |
@@ -198,7 +202,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1417** | |
+| **Итого** | **1452** | |
 
 ---
 
@@ -283,3 +287,4 @@ Workstation V1.0 ✅ (2026-05-05):
 | TextPerceptor 2-path | detect_subsystem(): Path1=AnchorSet.match_text()+dominant_subsystem_of(), Path2=AnchorMatchTable.dominant_subsystem(); word_signals+char_signals×0.4; subsystem_from_anchor_id prefix map; AnchorSet.SUBSYSTEM_NAMES + dominant_subsystem_of() | ✅ |
 | OBS-02 | Автоматизированный прогон: 30k тиков, 8 корпусных текстов, 415 инъекций, 100% per-text accuracy (исправлен "каждый" в logic_quantifier). 312 emergent-кандидатов (все Frame). SutraDepthStore reactivation_count: мёртвое поле исправлено (инкремент при apply_evidence с evidence>0). Пороги DepthThresholdEmergentDetector: MIN_DEPTH 8000→1000, MIN_REACTIVATIONS 30→5 (откалибровано по O7 avg_depth=1198, ~10-15 DREAM-циклов за 30k тиков) | ✅ |
 | OBS-infra | FrameCandidate.shell_similarity: f32; FrameWeaver.avg_candidate_shell_similarity(); ContextRecognizer.compute_raw_energies(); AxiomEngine.snapshot_subsystem_energies() — диагностическая инфраструктура для OBS-снимков | ✅ |
+| NeuralAdvisor V2.0 | Все 5 слотов заполнены: DepthHistoryBiasAdvisor (octant), AnchorVotingAdvisor (subsystem); AdvisoryHistory ring-32; OctantAdvisorInput+depth_per_octant/reactivation_count; CognitiveProfile octant_weights[8] в Arbiter с online learning rate=0.05; Advisory.octant_hint: Option<usize>; engine → with_default_v2() | ✅ |
