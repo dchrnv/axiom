@@ -508,3 +508,26 @@ fn load_domain_anchors(engine: &mut AxiomEngine, anchor_set: &AnchorSet) {
 ## 9. История изменений
 
 - **V1.0**: Первая версия. Три уровня якорей (оси, слои, домены). YAML формат. Интеграция с TextPerceptor. Доменная специализация.
+
+---
+
+## 10. Обновления AnchorSet (2026-05)
+
+### dominant_subsystem_of
+
+В `AnchorSet` добавлен публичный метод:
+
+```rust
+pub fn dominant_subsystem_of(&self, matches: &[AnchorMatch<'_>]) -> Option<String>
+```
+
+Суммирует `score` всех совпадений по тегу подсистемы (`subsystem`), возвращает имя подсистемы с максимальным суммарным весом. Возвращает `None` если ни один матч не содержит subsystem-тега.
+
+Поддерживаемые подсистемы (константа `SUBSYSTEM_NAMES`):
+```rust
+const SUBSYSTEM_NAMES: &[&str] = &[
+    "mathematics", "writing", "music", "time", "logic", "values",
+];
+```
+
+Используется в `TextPerceptor::detect_subsystem` (Path 1 — основной путь через AnchorSet).

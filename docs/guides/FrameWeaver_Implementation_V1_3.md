@@ -129,6 +129,7 @@ pub struct FrameCandidate {
     pub category: u16,               // FRAME_CATEGORY_SYNTAX (единственная категория V1.3)
     pub lineage_hash: u64,           // FNV-1a по sorted sutra_id участников
     pub confidence: f32,             // среднее Connection.strength по syntactic links (не учитывает head)
+    pub shell_similarity: f32,       // avg pairwise cosine-сходство shell-профилей участников
 }
 ```
 
@@ -689,6 +690,18 @@ boot:
   let cmds = engine.frame_weaver.on_shutdown()
   // финальная запись незакристаллизованных данных
 ```
+
+---
+
+## Дополнительные методы FrameWeaver (2026-05)
+
+```rust
+/// Среднее shell_similarity по всем активным кандидатам.
+/// Возвращает 0.0 если кандидатов нет.
+pub fn avg_candidate_shell_similarity(&self) -> f32
+```
+
+Используется для диагностики: позволяет отслеживать насколько семантически однородны собираемые паттерны. Высокое среднее (~0.8+) указывает на тематически связанные Frame; низкое (~0.3 и ниже) — система собирает разнородные структуры.
 
 ---
 

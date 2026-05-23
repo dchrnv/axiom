@@ -474,6 +474,28 @@ crates/axiom-ucl/src/commands.rs:
 
 ---
 
+## 14. Новые методы (2026-05)
+
+### ContextRecognizer::compute_raw_energies
+
+```rust
+pub fn compute_raw_energies(&self, maya_tokens: &[Token]) -> HashMap<SubsystemId, f32>
+```
+
+Вычисляет энергии подсистем для произвольного набора токенов — использует `subsystem_refs` (опорные примитивы) без привязки к текущему ScanningPlan. Предназначен для диагностики: позволяет получить снапшот энергий в любой момент без полного цикла `on_tick`.
+
+Используется из `AxiomEngine::snapshot_subsystem_energies()`.
+
+### AxiomEngine::snapshot_subsystem_energies
+
+```rust
+pub fn snapshot_subsystem_energies(&self) -> HashMap<SubsystemId, f32>
+```
+
+Читает токены MAYA-домена, вызывает `context_recognizer.compute_raw_energies()`. Зарезервирован для диагностики и наблюдения (используется в `axiom-observe`). Не влияет на горячий путь.
+
+---
+
 ## История
 
 - **V1.0**: булевы флаги

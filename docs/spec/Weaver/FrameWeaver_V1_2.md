@@ -111,3 +111,23 @@ dream_propose(ashti) -> Vec<DreamProposal>:
 V1.1 **superseded** (заменена V1.2). Актуальная спека — данный документ.
 
 Архивная копия: `docs/spec/Weaver/FrameWeaver_V1_1.md` — сохраняется как историческая версия.
+
+---
+
+## Обновления FrameCandidate (2026-05)
+
+В структуру `FrameCandidate` добавлено поле:
+
+```rust
+pub shell_similarity: f32,  // avg pairwise cosine-сходство shell-профилей участников
+```
+
+Отражает насколько семантически однородны участники кандидата. Высокое значение (близко к 1.0) — участники из одной семантической области. Низкое — участники из разных слоёв.
+
+Добавлен метод `FrameWeaver`:
+
+```rust
+pub fn avg_candidate_shell_similarity(&self) -> f32
+```
+
+Возвращает среднее `shell_similarity` по всем активным кандидатам в `self.candidates`. Используется для диагностики качества сборки.

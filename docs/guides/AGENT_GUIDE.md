@@ -292,6 +292,55 @@ loop {
 
 ---
 
+---
+
+## TextPerceptor — определение подсистемы
+
+### detect_subsystem
+
+`TextPerceptor` содержит метод:
+
+```rust
+pub fn detect_subsystem(&self, text: &str) -> Option<String>
+```
+
+Два пути (Path 1 — приоритетный, Path 2 — fallback):
+
+- **Path 1** (требует `AnchorSet`): вызывает `anchors.match_text(text)`, затем `anchors.dominant_subsystem_of(&matches)`. Работает через семантические совпадения с весами.
+- **Path 2** (требует `AnchorMatchTable`): вызывает `self.match_table.as_ref()?.dominant_subsystem(text)`. Используется если `AnchorSet` недоступен.
+
+Метод `with_anchors(anchors: Arc<AnchorSet>) -> Self` строит оба объекта: `AnchorSet` хранится напрямую, `AnchorMatchTable` строится из него же.
+
+### AnchorMatchTable::dominant_subsystem
+
+```rust
+pub fn dominant_subsystem(&self, text: &str) -> Option<String>
+```
+
+- Разбивает текст на слова, для каждого слова вызывает `word_signals(word)` из `decomposition_table`
+- Для символов — `char_signals(c)`, вес × 0.4 относительно word-сигналов
+- Для каждого сигнала: `subsystem_from_anchor_id(anchor_id)` → имя подсистемы
+- Возвращает подсистему с максимальным суммарным весом
+
+### decomposition_table::subsystem_from_anchor_id
+
+```rust
+pub fn subsystem_from_anchor_id(id: &str) -> Option<&'static str>
+```
+
+Маппинг по префиксу anchor id:
+
+| Префикс | Подсистема |
+|---------|-----------|
+| `math_*` | `"mathematics"` |
+| `prim_*` | `"writing"` |
+| `logic_*` | `"logic"` |
+| `time_*` | `"time"` |
+| `music_*` | `"music"` |
+| `values_*` | `"values"` |
+
+---
+
 ## Guardian ML-фильтры
 
 Перед тем как токен из ML попадёт в движок, Guardian его проверяет:

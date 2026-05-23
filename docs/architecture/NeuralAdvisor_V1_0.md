@@ -278,13 +278,15 @@ Tick interval: 11 (нечётное, не совпадает с AxialEvaluator=5
 
 Кандидат обнаруживается если Frame:
 - Не является уже известным примитивом (не в `known_primitive_ids`)
-- Имеет глубину в заданном октанте ≥ `EMERGENT_CANDIDATE_MIN_DEPTH` (8000)
-- Имеет `reactivation_count` ≥ `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` (30)
+- Имеет глубину в заданном октанте ≥ `EMERGENT_CANDIDATE_MIN_DEPTH` (~~8000~~ → **1000**)
+- Имеет `reactivation_count` ≥ `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` (~~30~~ → **5**)
 - Старше `EMERGENT_CANDIDATE_MIN_AGE_TICKS` (100 тиков)
 
 Confidence = 0.60. Не претендует на высокую точность — сигнал для chrnv, не решение.
 
-Все пороги — именованные константы, будут откалиброваны по OBS-01.
+**Калибровка порогов (OBS-02, 2026-05):** По данным OBS-02 средняя глубина активных Frame (`O7 avg_depth`) составила ~1198. Исходные пороги (MIN_DEPTH=8000, MIN_REACTIVATIONS=30) никогда не выполнялись — ни один Frame не становился emergent-кандидатом. Дополнительная причина нулевых реактиваций: `reactivation_count` в `SutraDepthEntry` не инкрементировался при поступлении `evidence` (мёртвое поле), исправлено — см. ниже.
+
+Пороги снижены до реалистичных значений: за 30k тиков происходит ~10–15 DREAM-циклов, что даёт ~10–15 реактиваций при стабильном Frame.
 
 ---
 
@@ -352,8 +354,26 @@ EmergentDetector в production конфиге) — V2+.
 
 ---
 
+## 13. Исправление: SutraDepthStore::reactivation_count (2026-05)
+
+В `SutraDepthEntry.reactivation_count` обнаружена ошибка: поле инициализировалось в 0 и никогда не обновлялось — `apply_evidence` не инкрементировал его. В результате `qualifies_for_promotion` (и `DepthThresholdEmergentDetector`) всегда видели `reactivation_count == 0`.
+
+**Исправление** в `SutraDepthStore::apply_evidence`:
+
+```rust
+if evidence > 0 {
+    entry.reactivation_count = entry.reactivation_count.saturating_add(1);
+}
+```
+
+Поле теперь отражает реальное число DREAM-циклов, в которых Frame имел evidence > 0.
+
+---
+
 ## История
 
 - **V1.0** (2026-05-17): Advisory-only архитектура. Пять трейтов. RuleBasedCorpusCallosumResolver,
   DepthThresholdEmergentDetector. Null-реализации для остальных.
   Заменяет `context_recognizer/advisors/mod.rs` (стаб заглушки).
+- **V1.0 patch** (2026-05): Калибровка порогов DepthThresholdEmergentDetector по OBS-02.
+  Исправление `reactivation_count` в SutraDepthStore. Всё в рамках V1.0 без структурных изменений.
