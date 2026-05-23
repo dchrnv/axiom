@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 60.0
-**Обновлён:** 2026-05-21
+**Версия:** 61.0
+**Обновлён:** 2026-05-23
 
 ---
 
@@ -203,16 +203,114 @@ V6 `cascade_score` = sequence diversity (unique subsystems per run / n). Не о
 
 ## axiom-agent
 
-### AGENT-TD-01 — TextPerceptor: замена FNV-1a на embeddings
+### AGENT-TD-01 — TextPerceptor: embeddings (Path A реализован)
 
 **Где:** `crates/axiom-agent/src/perceptors/text.rs`
 
-Сейчас позиция токена в пространстве вычисляется через FNV-1a хеш от текста + якорное позиционирование (если есть совпадение в AnchorSet). Следующий шаг — заменить FNV-1a на настоящие text embeddings: тогда семантически близкие тексты будут попадать в соседние точки пространства без якорей.
+**Path A (done, 2026-05-23):** 2-path anchor-matching через `AnchorMatchTable` + `decomposition_table` — `detect_subsystem()` даёт 100% per-text accuracy на 8-текстовом корпусе (OBS-02). Позиция токена = взвешенный центроид совпавших якорей; FNV-1a остаётся как fallback для неизвестных слов.
 
-Якоря из `config/anchors/` становятся обучающей выборкой для калибровки embedding-модели.
+**Path B (this TD):** заменить lookup-таблицы (`word_signals`/`char_signals`) на векторные embeddings. Семантически близкие тексты без якорей → соседние точки пространства.
 
-**Что нужно:** выбрать embedding backend (ONNX runtime, candle, или внешний API), интегрировать в TextPerceptor, обеспечить fallback на FNV-1a при недоступности модели.
+**Что нужно:** выбрать embedding backend (ONNX runtime, candle, или внешний API); `perceive(text)` вычисляет вектор → проецирует в пространство якорей. Механизм `compute_position_from_anchors` (взвешенный центроид) остаётся. Fallback на FNV-1a при недоступности модели.
 
-**Когда:** после стабилизации поведения системы на живых данных (после OBS-01).
+**Когда:** после накопления живых данных на OBS-02+ прогонах.
 
-> Не делать до OBS-01 — FNV-1a baseline нужен для сравнения. Embeddings изменят геометрию пространства кардинально; без живых данных непонятно как это ляжет на физику поля.
+---
+
+## FrameWeaver — Shell
+
+### FW-TD-01 — RequestFrameDetails не реализован
+
+**Где:** UCL OpCode `RequestFrameDetails`, `crates/axiom-runtime/src/over_domain/weavers/frame.rs`
+
+UCL-команда существует в протоколе, но обработчик не написан. Нужна для Workstation V2.0 (детальный просмотр участников Frame).
+
+**Когда:** Workstation V2.0.
+
+---
+
+### Shell-TD-01 — ShellProximity + crystallization_rules архитектура
+
+**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs` → `evaluate_crystallization_rules`
+
+`ShellProximity(threshold)` — opt-in правило. `crystallization_rules: vec![]` по умолчанию намеренно. Проблема: при добавлении любого правила в список `evaluate_crystallization_rules` перестаёт фолбэчить на `stability_threshold` → все кандидаты получают `Defer` → Frames=0.
+
+**Что нужно:** добавлять `ShellProximity` в паре с явным `StabilityReached`-правилом, **или** рефакторить `evaluate_crystallization_rules` чтобы stability_threshold работал как minimum-baseline независимо от списка.
+
+**Когда:** при следующей работе с кристаллизацией.
+
+---
+
+### Shell-TD-02 — resonance_search shell bonus
+
+**Где:** `axiom-arbiter` → resonance_search
+
+Shell-бонус при поиске резонансных токенов требует доступа к shell-профилям в `axiom-arbiter`. Сейчас `ShellRegistry` живёт в engine, не пробрасывается в Experience/Arbiter.
+
+**Что нужно:** пробросить `shell_registry` в Experience или добавить метод в Arbiter для shell-proximity lookup.
+
+**Когда:** Shell Metrics V2+.
+
+---
+
+## NeuralAdvisor — Emergent
+
+### EMERGENT-TD-01 — Калибровка порогов под неоднородный корпус
+
+**Где:** `crates/axiom-runtime/src/over_domain/neural_advisor/implementations/emergent.rs`
+
+Текущие пороги (MIN_DEPTH=1000, MIN_REACTIVATIONS=5) откалиброваны по OBS-02 однородного корпуса → 312/312 frames стали кандидатами (все проходят). Discriminative detection невозможна при однородном опыте.
+
+**Что нужно:** неоднородный корпус (часть текстов 2-3 инжекции, часть 100+), после чего повторная калибровка так чтобы только "глубоко обработанные" Frame проходили порог.
+
+**Когда:** при следующем OBS-прогоне с неоднородным корпусом.
+
+---
+
+### EMERGENT-TD-02 — reactivation_count: гранулярность
+
+**Где:** `crates/axiom-experience/src/sutra_depth_store.rs` → `apply_evidence`
+
+Сейчас `reactivation_count` инкрементируется в `apply_evidence` → считает DREAM-циклы с activity (~10-15 за 30k тиков). Слишком грубо.
+
+Вариант: инкрементировать в `dream_activation_acc` (каждый Wake-тик где Frame активен) — более быстрорастущий сигнал, отражает реальную частоту реактивации.
+
+**Когда:** при EMERGENT-TD-01.
+
+---
+
+## Observability
+
+### OBS-TD-02 — avg_shell_similarity всегда 0
+
+**Где:** `crates/axiom-observe/src/runner.rs` → `capture_snapshot`
+
+Кандидаты FrameWeaver кристаллизуются за ~60 тиков (stability=3 × scan_interval=20). При `snapshot_every=500` к моменту снапшота активных кандидатов нет → `avg_candidate_shell_similarity()` = 0.
+
+**Варианты:** per-crystallization event capture; rolling avg за последние N кристаллизаций; уменьшить snapshot_every для shell-наблюдений.
+
+**Когда:** при следующей работе с shell metrics.
+
+---
+
+### OBS-TD-03 — delta-energy per-text нерабочий (метод оставлен)
+
+**Где:** `crates/axiom-runtime/src/engine.rs` → `snapshot_subsystem_energies`, `context_recognizer/mod.rs` → `compute_raw_energies`
+
+delta-energy подход для per-text subsystem detection не работает: позиции текстовых токенов (centroid якорей) и subsystem refs разнесены, sq_dist в миллионах → energy вклад ≈ 0. Методы намеренно оставлены в коде — пригодятся при embeddings, когда позиции будут семантически выровнены.
+
+**Когда:** AGENT-TD-01 (embeddings).
+
+---
+
+## Конфигурация якорей
+
+### Anchor-id — Domain/Layer якоря без id
+
+**Где:** `config/anchors/domains/D*.yaml`, `config/anchors/layers/L*.yaml`
+
+Domain и Layer якоря загружаются через `parse_domain` / `parse_layer` и матчатся через `match_text()`, но поле `id:` пустое (`#[serde(default)]`). `AnchorMatchTable` ищет по id → не видит их.
+
+**Что нужно:** добавить `id:` с осмысленным префиксом (`exec_*`, `L1_*` и т.п.); расширить `subsystem_from_anchor_id()` или добавить отдельный маппинг для domain/layer контекстов.
+
+**Когда:** при расширении AnchorMatchTable coverage.
