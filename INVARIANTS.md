@@ -1,6 +1,6 @@
 # Axiom — Справочник инвариантов
 
-**Версия:** 8.0 (2026-05-21)  
+**Версия:** 9.0 (2026-05-23)  
 **Правило:** Значения помеченные **HARD** менять запрещено — они фиксированы в коде compile-time assert-ами, бинарным форматом или фундаментальной логикой. Всё остальное — soft (настраиваемый дефолт).
 
 ---
@@ -433,11 +433,11 @@ config/anchors/
 
 ### EmergentPatternAdvisor пороги (DepthThresholdEmergentDetector)
 
-| Константа | Значение | Настраивается после |
-|-----------|----------|---------------------|
-| `EMERGENT_CANDIDATE_MIN_DEPTH` | **8000** | OBS-01 |
-| `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` | **30** | OBS-01 |
-| `EMERGENT_CANDIDATE_MIN_AGE_TICKS` | **100** | OBS-01 |
+| Константа | Значение | Откалибровано |
+|-----------|----------|---------------|
+| `EMERGENT_CANDIDATE_MIN_DEPTH` | **1000** | OBS-02 (O7 avg_depth=1198 за 30k тиков) |
+| `EMERGENT_CANDIDATE_MIN_REACTIVATIONS` | **5** | OBS-02 (~10-15 DREAM-циклов за 30k тиков) |
+| `EMERGENT_CANDIDATE_MIN_AGE_TICKS` | **100** | OBS-02 |
 
 ### ContextRecognizer V6 — ActivityTrace + SubsystemFatigue
 

@@ -1,9 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-22  
-**Тесты:** 1387, 0 failures  
-**Последний коммит:** f618269
+**Обновлено:** 2026-05-23  
+**Тесты:** 1417, 0 failures
 
 ---
 
@@ -34,8 +33,8 @@ axiom-protocol   — EngineCommand (15 variants), EngineEvent, EngineState, Syst
                    DreamPhaseStats, BenchSpec/BenchResults (serde JSON)
 axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
                    DomainActivity filter, SystemSnapshot publish, Lagged resync
-axiom-agent      — TextPerceptor, MessageEffector, CliChannel, meta_commands,
-                   tick_loop (9 params), AdapterCommand, ServerMessage,
+axiom-agent      — TextPerceptor (2-path detect_subsystem), MessageEffector, CliChannel,
+                   meta_commands, tick_loop (9 params), AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)
 axiom-persist    — MemoryWriter/Loader, AutoSaver, exchange (bincode)
 axiom-bench      — Criterion benchmarks
@@ -343,6 +342,8 @@ fn inject_anchor_tokens(&AnchorSet) -> usize
 fn trace_count() -> usize
 pub fn domain_name(id: u16) -> &'static str
 fn apply_meta_detector(&mut self, MetaDetector)   // CR-V6 Фаза C
+fn snapshot_subsystem_energies() -> HashMap<SubsystemId, u8>  // OBS: снимок энергий подсистем
+fn avg_candidate_shell_similarity() -> f32                     // OBS: среднее shell_similarity
 ```
 
 ### ProcessingResult
@@ -386,6 +387,7 @@ event_id: u64
   update(dominant): decay all × 0.90, active += 1.0; apply_dream_recovery(): load *= 0.35;
   apply_to_weights(&mut HashMap<SubsystemId, u8>): in-place penalty при усталости;
   ContextRecognizer::activity_dynamics(), activity_signatures(), fatigue_store();
+  compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8>  — снимок без фатиг-пенальти (OBS);
   V6C: MetaSubsystemId(u16) 0x1001–0x1007 (Analysis/Synthesis/Reflection/Perception/Recall/Imagination/Dialogue);
   MetaStore { activate(id, confidence, event_id), dominant() → Option<MetaSubsystemId> };
   MetaDetector::from_yaml("config/meta_primitives.yaml") → 5 примитивов;
@@ -404,7 +406,8 @@ event_id: u64
   V1 реализации: RuleBasedCorpusCallosumResolver + DepthThresholdEmergentDetector +
   ReactivationDepthAdvisor + SubsystemAffinityDepthAdvisor + AgeDecayAdvisor (DEPTH_FLOOR=50);
   implements AdvisorySource → poll_advisories() → Vec<Advisory>;
-  on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата
+  on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата;
+  DepthThresholdEmergentDetector пороги (OBS-02): MIN_DEPTH=1000, MIN_REACTIVATIONS=5, MIN_AGE=100
 - OverDomainArbiter V1.0 (tick=13, ModuleId=20) — координатор advisory-источников;
   AdvisorySource трейт: poll_advisories() / on_feedback(); Advisory { id, source, advisory_type,
   subject_id, confidence, action, created_at_event }; AdvisoryAction: ApplyDepth{octant,depth} /
@@ -480,6 +483,7 @@ FrameCandidate {
     category: u16               — FRAME_CATEGORY_SYNTAX
     lineage_hash: u64           — FNV-1a по sutra_id участников (order-independent)
     confidence: f32             — среднее strength синтаксических связей
+    shell_similarity: f32       — средн. косинусное сходство shell участников (0.0..=1.0)
 }
 
 Participant { sutra_id, origin_domain_id, role_link_type, layer: u8 }
@@ -668,6 +672,27 @@ fn reset_wake_stats(&mut self)                   // вызывается при 
 
 ## tick_loop & External Adapters (axiom-agent)
 
+### TextPerceptor — detect_subsystem() 2-path
+
+```rust
+// Path 1: прямой якорный матч
+let matches = anchor_set.match_text(text);
+if let Some(subsystem) = anchor_set.dominant_subsystem_of(&matches) { return subsystem; }
+
+// Path 2: AnchorMatchTable fallback (word_signals + char_signals)
+let subsystem = match_table.dominant_subsystem(text, &decomposition_table);
+```
+
+`AnchorMatchTable.dominant_subsystem(text, table)`:
+- `word_signals`: weight=1.0 за каждое совпадение (полное слово)
+- `char_signals`: weight=0.4 за совпадение символа
+- `decomposition_table.subsystem_from_anchor_id(id)`: `math_*→mathematics`, `prim_*→writing`,
+  `logic_*→logic`, `time_*→time`, `music_*→music`, `values_*→values`
+
+OBS-02 accuracy: 100% по всем 6 подсистемам (8 корпусных текстов, 415 инъекций).
+
+---
+
 ### tick_loop — 9 параметров
 
 ```rust
@@ -779,17 +804,21 @@ export/import traces+skills: GUARDIAN-валидация при импорте (
 ### AnchorSet
 
 ```
-axes: Vec<Anchor>       — 6 осевых → SUTRA
+axes: Vec<Anchor>        — 6 осевых → SUTRA
 layers: Vec<Vec<Anchor>> — L1–L8 → SUTRA
 domains: Vec<Vec<Anchor>> — D1–D8 → ASHTI[1..=8]
 ```
 
-**Загруженные якоря (сейчас):**
-- `config/anchors/axes.yaml` — 6
-- `config/anchors/layers/L5_cognitive.yaml` — 10
-- `config/anchors/domains/D1_execution.yaml` — 6
+**Ключевые методы:**
+```rust
+fn match_text(text: &str) -> Vec<AnchorMatch>
+fn dominant_subsystem_of(matches: &[AnchorMatch]) -> Option<SubsystemId>  // TextPerceptor Path1
+const SUBSYSTEM_NAMES: [&str; 6]  — ["writing","mathematics","logic","time","music","values"]
+```
 
-Остальные 14 файлов — Anchor-Fill (DEFERRED.md). FNV-1a fallback активен.
+**Подсистемные якорные файлы (config/anchors/{subsystem}/primitives.yaml):**
+writing, mathematics, logic, time, music, values — все загружены.
+FNV-1a fallback активен при отсутствии совпадений.
 
 ---
 

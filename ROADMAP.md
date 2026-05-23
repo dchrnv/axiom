@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 58.0  
-**Дата:** 2026-05-21
+**Версия:** 59.0  
+**Дата:** 2026-05-23
 
 ---
 
@@ -19,9 +19,9 @@ axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
                                                axiom-workstation
 ```
 
-**1387 тестов, 0 failures.**  
-Phase C (C1–C5), Phase I (I1–I4, I6), Phase E (E1) завершены.  
-CR-V6 Фазы A и B завершены.  
+**1417 тестов, 0 failures.**  
+Phase C (C1–C5), Phase I (I1–I7), Phase E (E1) завершены.  
+CR-V6 Фазы A–D завершены. OBS-02 полный прогон (30k тиков, 100% per-text accuracy).  
 Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 
 ---
@@ -46,21 +46,6 @@ Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
 **Тесты:** unit на MetaDetector + YAML-загрузка meta_primitives + интеграционный с ActivityDynamics
 
 ---
-
-### I5 — OBS-01: живое наблюдение
-
-**Проблема:** система ещё не запускалась с Phase C + полным якорным словарём на живых данных.
-
-**Что сделать:** запустить `./run.sh`, подавать тексты через Conversation. Зафиксировать:
-
-1. Какие Frame кристаллизуются? На каких текстах?
-2. Какие SubsystemId определяет ContextRecognizer? Правильно ли?
-3. Есть ли конфликты octant analytic vs synthetic в AxialEvaluator?
-4. Появляются ли emergent-кандидаты в NeuralAdvisor?
-5. Первый `NotifyEmergentCandidate` — при каких условиях?
-6. Корректно ли пороги DepthThresholdEmergentDetector (8000/30/100)?
-
-Результат: список наблюдений → tuning порогов → возможные errata.
 
 ---
 
