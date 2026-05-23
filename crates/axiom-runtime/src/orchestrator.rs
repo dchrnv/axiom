@@ -51,7 +51,7 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
 
     // Шаг 6 (SyntacticBridge): инжектировать 0x08-связи в MAYA domain state
     // чтобы FrameWeaver мог кристаллизовать Frame-анкеры.
-    bridge_to_maya(engine, &result);
+    bridge_to_maya(engine, &result, token.sutra_id);
 
     result
 }
@@ -61,12 +61,13 @@ pub(crate) fn route_token(engine: &mut AxiomEngine, token: Token) -> RoutingResu
 /// После каждого routing slow-path FrameWeaver получает 0x08-связи в MAYA, из которых
 /// может кристаллизовать Frame-анкеры в EXPERIENCE (при stability_count ≥ threshold).
 ///
-/// `source_id` = position-hash консолидированного результата (стабилен для одного паттерна).
+/// `source_id` = sutra_id входного токена — совпадает с sutra_id MAYA-токена из process_and_observe,
+///   что позволяет FrameWeaver::compute_centroid найти токен по t.sutra_id == p.sutra_id (E2 fix).
 /// `target_id` = hash(domain_id, position) для каждого ASHTI-результата — уникален по роли.
 /// `link_type`  = 0x0800 | (role << 4) — синтаксический слой.
 ///
 /// Игнорирует ошибки ёмкости (best-effort).
-fn bridge_to_maya(engine: &mut AxiomEngine, result: &RoutingResult) {
+fn bridge_to_maya(engine: &mut AxiomEngine, result: &RoutingResult, input_sutra_id: u32) {
     // Нечего мостить если slow_path пустой или консолидации нет
     let consolidated = match result.consolidated {
         Some(t) => t,
@@ -79,8 +80,9 @@ fn bridge_to_maya(engine: &mut AxiomEngine, result: &RoutingResult) {
     let level = engine.ashti.level_id();
     let maya_domain_id: u16 = level * 100 + 10;
 
-    // source_id: стабильный хеш консолидированной позиции (один на весь routing)
-    let source_id = position_hash(consolidated.position);
+    // source_id = sutra_id входного токена — совпадает с sutra_id MAYA-токена (E2 fix).
+    // Ранее использовался position_hash, который не мог совпасть ни с одним реальным токеном.
+    let source_id = input_sutra_id;
     let event_id = engine.next_event_id();
 
     for (i, ashti_tok) in result.slow_path.iter().enumerate() {
@@ -97,17 +99,6 @@ fn bridge_to_maya(engine: &mut AxiomEngine, result: &RoutingResult) {
         conn.strength = consolidated.mass as f32 / 255.0;
         let _ = engine.ashti.inject_connection(maya_domain_id, conn);
     }
-}
-
-/// Стабильный u32-идентификатор из позиции токена (FNV-1a по трём координатам).
-fn position_hash(pos: [i16; 3]) -> u32 {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for &v in &pos {
-        h ^= (v as u16) as u64;
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    let id = (h & 0x0FFF_FFFF) as u32; // 28 бит — не конфликтует с SUTRA anchor IDs
-    if id == 0 { 1 } else { id }
 }
 
 /// Стабильный u32-идентификатор из domain_id + позиции токена (FNV-1a).
@@ -148,7 +139,7 @@ pub(crate) fn route_token_limited(engine: &mut AxiomEngine, token: Token, max_ro
         let _ = engine.ashti.apply_feedback(result.event_id);
     }
 
-    bridge_to_maya(engine, &result);
+    bridge_to_maya(engine, &result, token.sutra_id);
 
     result
 }

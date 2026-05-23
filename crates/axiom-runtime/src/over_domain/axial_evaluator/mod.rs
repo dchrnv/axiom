@@ -141,12 +141,19 @@ impl AxialEvaluator {
             );
             let analytic_octant = eval.octant;
             last_analytic_octant = Some(analytic_octant);
-            let eval = match conflict::detect_conflict(analytic_octant, synthetic_octant) {
-                Some(c) => {
-                    last_conflict = Some(c.clone());
-                    eval.with_conflict(c)
+            // Conflict detection requires ≥ 2 participants for non-degenerate metrics.
+            // With < 2 participants, entropy=0 and density=0 by formula, forcing analytic
+            // to FormalDenying regardless of the frame's actual semantic position.
+            let eval = if participants.len() >= 2 {
+                match conflict::detect_conflict(analytic_octant, synthetic_octant) {
+                    Some(c) => {
+                        last_conflict = Some(c.clone());
+                        eval.with_conflict(c)
+                    }
+                    None => eval,
                 }
-                None => eval,
+            } else {
+                eval
             };
             self.storage.record(eval);
         }

@@ -693,12 +693,12 @@ impl AxiomEngine {
                 make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
             let routing = orchestrator::route_token(self, token);
 
-            // Разместить входной токен в MAYA для compute_energies (E1 fix)
+            // Разместить входной токен в MAYA для compute_energies (E1 fix).
+            // sutra_id = event_id совпадает с source_id MAYA-связей из bridge_to_maya (E2 fix).
             {
                 let maya_id = self.ashti.level_id() * 100 + 10;
-                let ev = self.next_event_id();
                 let mass = (p.mass.round() as u8).max(50);
-                let mut maya_tok = Token::new(ev as u32, maya_id, input_position, ev);
+                let mut maya_tok = Token::new(event_id as u32, maya_id, input_position, event_id);
                 maya_tok.mass = mass;
                 maya_tok.temperature = p.temperature.round().clamp(0.0, 255.0) as u8;
                 maya_tok.state = axiom_core::STATE_ACTIVE;

@@ -10,13 +10,13 @@
 
 | Metric | Value |
 |---|---|
-| Frames | 12 |
-| Total evaluations | 26 |
-| Total conflicts | 26 |
-| Profile count | 12 |
+| Frames | 31 |
+| Total evaluations | 45 |
+| Total conflicts | 0 |
+| Profile count | 31 |
 | Dominant subsystem | 1 |
 | Dominant octant | 6 |
-| Depth store entries | 12 |
+| Depth store entries | 31 |
 | Emergent pending | 0 |
 | Emergent approved | 0 |
 | Experience traces | 14 |
@@ -27,7 +27,7 @@
 | Oscillation score | 0.000 |
 | Cascade score | 0.000 |
 | Fatigue entries | 2 |
-| Meta dominant | meta_analysis |
+| Meta dominant | meta_synthesis |
 
 ## Experience Trace Growth
 
@@ -36,33 +36,33 @@
 | 0 | 2 | 0 | 0 | 0 |
 | 100 | 5 | 0 | 3 | 2 |
 | 200 | 8 | 0 | 6 | 6 |
-| 300 | 9 | 0 | 7 | 7 |
-| 400 | 11 | 0 | 8 | 8 |
-| 500 | 11 | 0 | 8 | 8 |
-| 600 | 13 | 0 | 9 | 9 |
-| 700 | 14 | 0 | 12 | 12 |
-| 800 | 14 | 0 | 12 | 12 |
-| 900 | 14 | 0 | 12 | 12 |
-| 1000 | 14 | 0 | 12 | 12 |
-| 1100 | 14 | 0 | 12 | 12 |
-| 1200 | 14 | 0 | 12 | 12 |
-| 1300 | 14 | 0 | 12 | 12 |
-| 1400 | 14 | 0 | 12 | 12 |
-| 1500 | 14 | 0 | 12 | 12 |
-| 1600 | 14 | 0 | 12 | 12 |
-| 1700 | 14 | 0 | 12 | 12 |
-| 1800 | 14 | 0 | 12 | 12 |
-| 1900 | 14 | 0 | 12 | 12 |
-| 2000 | 14 | 0 | 12 | 12 |
-| 2100 | 14 | 0 | 12 | 12 |
-| 2200 | 14 | 0 | 12 | 12 |
-| 2300 | 14 | 0 | 12 | 12 |
-| 2400 | 14 | 0 | 12 | 12 |
-| 2500 | 14 | 0 | 12 | 12 |
-| 2600 | 14 | 0 | 12 | 12 |
-| 2700 | 14 | 0 | 12 | 12 |
-| 2800 | 14 | 0 | 12 | 12 |
-| 2900 | 14 | 0 | 12 | 12 |
+| 300 | 9 | 0 | 8 | 8 |
+| 400 | 11 | 0 | 9 | 9 |
+| 500 | 11 | 0 | 10 | 10 |
+| 600 | 13 | 0 | 11 | 11 |
+| 700 | 14 | 0 | 16 | 16 |
+| 800 | 14 | 0 | 16 | 16 |
+| 900 | 14 | 0 | 18 | 17 |
+| 1000 | 14 | 0 | 20 | 20 |
+| 1100 | 14 | 0 | 21 | 21 |
+| 1200 | 14 | 0 | 23 | 23 |
+| 1300 | 14 | 0 | 27 | 25 |
+| 1400 | 14 | 0 | 27 | 27 |
+| 1500 | 14 | 0 | 29 | 29 |
+| 1600 | 14 | 0 | 30 | 30 |
+| 1700 | 14 | 0 | 31 | 31 |
+| 1800 | 14 | 0 | 31 | 31 |
+| 1900 | 14 | 0 | 31 | 31 |
+| 2000 | 14 | 0 | 31 | 31 |
+| 2100 | 14 | 0 | 31 | 31 |
+| 2200 | 14 | 0 | 31 | 31 |
+| 2300 | 14 | 0 | 31 | 31 |
+| 2400 | 14 | 0 | 31 | 31 |
+| 2500 | 14 | 0 | 31 | 31 |
+| 2600 | 14 | 0 | 31 | 31 |
+| 2700 | 14 | 0 | 31 | 31 |
+| 2800 | 14 | 0 | 31 | 31 |
+| 2900 | 14 | 0 | 31 | 31 |
 
 ## Avg Depth per Octant (final)
 
@@ -74,7 +74,7 @@
 | O4 | 0 |
 | O5 | 0 |
 | O6 | 0 |
-| O7 | 200 |
+| O7 | 188 |
 | O8 | 0 |
 
 ★ = depth ≥ 8000 (potential emergent threshold)
@@ -141,7 +141,7 @@ No octants reached depth ≥ 8000. Consider more injections or longer run.
 
 No emergent candidates detected yet.
 
-Conflict rate: 100.0% (26 / 26 evaluations)
+Conflict rate: 0.0% (0 / 45 evaluations)
 
 ## V6 Activity Dynamics
 
@@ -153,30 +153,30 @@ Conflict rate: 100.0% (26 / 26 evaluations)
 | 300 | 16 | 0.74 | -0.25 | 0.00 | 0.00 | 2 | meta_analysis | Steady, Converging |
 | 400 | 16 | 0.81 | -0.33 | 0.00 | 0.00 | 2 | meta_analysis | Steady, Converging |
 | 500 | 16 | 0.94 | -0.23 | 0.00 | 0.00 | 2 | meta_analysis | Steady, Converging |
-| 600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1100 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1200 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1300 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1400 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 1900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2100 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2200 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2300 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2400 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
-| 2900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_analysis | Steady |
+| 600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1100 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1200 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1300 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1400 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 1900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2100 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2200 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2300 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2400 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2600 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2700 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2800 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 2900 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
 
 ## Composite Co-activation Suspects (final)
 
@@ -184,5 +184,5 @@ None detected.
 
 ## Meta-subsystem Activations (final)
 
-Active: 2  |  Dominant: meta_analysis
+Active: 2  |  Dominant: meta_synthesis
 
