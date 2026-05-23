@@ -3,8 +3,10 @@
 //
 // TextPerceptor — кодирование текста в UclCommand(InjectToken).
 //
-// Если задан AnchorSet — позиция вычисляется через якорное совпадение.
-// Если якорей нет или совпадений нет — fallback на FNV-1a hash.
+// Порядок позиционирования:
+//   1. word-level match_text (AnchorSet, exact/alias/substring)
+//   2. char/word-level AnchorMatchTable (E1 путь А: OBS-01_Errata_Instructions.md §2)
+//   3. FNV-1a fallback
 //
 // Payload layout (сверено с parse_inject_token_payload):
 //   [0..2]   target_domain_id  u16 LE
@@ -24,27 +26,31 @@ use axiom_config::AnchorSet;
 use axiom_ucl::{OpCode, UclCommand};
 use std::sync::Arc;
 
+use super::anchor_match::AnchorMatchTable;
+
 /// SUTRA domain_id на уровне 1: level_id * 100 + 0 = 100
 const SUTRA_DOMAIN_ID: u16 = 100;
 
 /// Преобразует строку UTF-8 в `UclCommand(InjectToken)` с осмысленным токеном.
 ///
 /// Детерминирован: одинаковый текст → одинаковая команда.
-/// Если задан AnchorSet — использует якорное позиционирование.
 pub struct TextPerceptor {
     anchor_set: Option<Arc<AnchorSet>>,
+    match_table: Option<AnchorMatchTable>,
 }
 
 impl TextPerceptor {
     /// Создать TextPerceptor без якорей (FNV-1a fallback).
     pub fn new() -> Self {
-        Self { anchor_set: None }
+        Self { anchor_set: None, match_table: None }
     }
 
     /// Создать TextPerceptor с набором якорей для семантического позиционирования.
     pub fn with_anchors(anchors: Arc<AnchorSet>) -> Self {
+        let match_table = Some(AnchorMatchTable::build(&anchors));
         Self {
             anchor_set: Some(anchors),
+            match_table,
         }
     }
 
@@ -64,7 +70,7 @@ impl TextPerceptor {
             (base + excl * 15.0 + ques * 10.0).min(255.0)
         };
 
-        // Попытка якорного позиционирования
+        // Путь 1: word-level match_text (exact/alias/substring из AnchorSet)
         if let Some(ref anchors) = self.anchor_set {
             let matches = anchors.match_text(text);
             if !matches.is_empty() {
@@ -82,14 +88,28 @@ impl TextPerceptor {
             }
         }
 
-        // Fallback: FNV-1a hash → 3D координаты
+        // Путь 2: char/word-level AnchorMatchTable (E1 путь А)
+        if let Some(ref table) = self.match_table {
+            if let Some(pos) = table.compute_position(text) {
+                return build_inject_token_command(
+                    SUTRA_DOMAIN_ID,
+                    pos[0] as f32,
+                    pos[1] as f32,
+                    pos[2] as f32,
+                    mass,
+                    temperature,
+                    0.85,
+                );
+            }
+        }
+
+        // Путь 3: FNV-1a fallback
         let hash = fnv1a_hash(bytes);
         let x = (hash & 0x7FFF) as f32;
         let y = ((hash >> 16) & 0x7FFF) as f32;
         let z = ((hash >> 32) & 0x7FFF) as f32;
-        let semantic_weight: f32 = 0.8;
 
-        build_inject_token_command(SUTRA_DOMAIN_ID, x, y, z, mass, temperature, semantic_weight)
+        build_inject_token_command(SUTRA_DOMAIN_ID, x, y, z, mass, temperature, 0.8)
     }
 }
 

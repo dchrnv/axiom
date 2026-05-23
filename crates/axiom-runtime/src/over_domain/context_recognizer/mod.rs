@@ -82,6 +82,10 @@ pub struct ContextRecognizer {
     composite_suspects: Vec<CompositeActivationSuspected>,
     /// Список известных sutra_id активных Frame-анкеров.
     known_frame_ids: Vec<u32>,
+    /// Аккумулятор активаций Frame за текущий Wake-цикл (для DREAM depth update).
+    /// Ключ: (sutra_id, Octant), значение: число on_tick вызовов где Frame был активен.
+    /// Очищается после каждого apply_dream_update.
+    dream_activation_acc: HashMap<(u32, Octant), u32>,
     /// Снапшот AxialStore от AxialEvaluator (обновляется через sync_axial_store).
     axial_store_snapshot: AxialStore,
 }
@@ -107,6 +111,7 @@ impl ContextRecognizer {
             meta_store: MetaStore::new(),
             composite_suspects: Vec::new(),
             known_frame_ids: Vec::new(),
+            dream_activation_acc: HashMap::new(),
             axial_store_snapshot: AxialStore::new(),
         }
     }
@@ -145,6 +150,20 @@ impl ContextRecognizer {
     /// Заменить MetaDetector без пересоздания остальных stores.
     pub fn set_meta_detector(&mut self, detector: MetaDetector) {
         self.meta_detector = detector;
+    }
+
+    /// Дренировать аккумулятор активаций для DREAM depth update.
+    /// Возвращает (sutra_id, octant, count) и очищает аккумулятор.
+    pub fn drain_dream_activations(&mut self) -> Vec<(u32, Octant, u32)> {
+        self.dream_activation_acc
+            .drain()
+            .map(|((id, oct), count)| (id, oct, count))
+            .collect()
+    }
+
+    /// Все известные sutra_id Frame-анкеров (для decay в apply_dream_update).
+    pub fn all_known_frame_ids(&self) -> &[u32] {
+        &self.known_frame_ids
     }
 
     /// Построить ContextRecognizer с позициями подсистем из AnchorSet.
@@ -393,6 +412,8 @@ impl OverDomainComponent for ContextRecognizer {
                 FrameComposition::C1Atom,
                 snapshot.clone(),
             );
+            // Аккумулировать активацию для DREAM depth update
+            *self.dream_activation_acc.entry((frame_id, primary_octant)).or_insert(0) += 1;
         }
 
         Ok(vec![])

@@ -166,6 +166,12 @@ impl AnchorSet {
         self.subsystems.get(name).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
+    /// Найти якорь по его id-строке (первое совпадение).
+    /// Используется AnchorMatchTable для lookup позиций по id примитива.
+    pub fn get_by_id(&self, id: &str) -> Option<&Anchor> {
+        self.all_anchors().find(|a| a.id == id)
+    }
+
     /// Загрузить из `config_dir/anchors/`. Возвращает empty если директории нет.
     /// Логирует ошибки в stderr — не паникует.
     pub fn load_or_empty(config_dir: &Path) -> Self {

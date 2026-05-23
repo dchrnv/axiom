@@ -1283,6 +1283,7 @@ impl AxiomEngine {
             crate::over_domain::CycleAdvanceResult::InProgress => {}
             crate::over_domain::CycleAdvanceResult::Complete => {
                 self.apply_dream_cycle_commands();
+                self.apply_dream_depth_update();
                 self.transition_to_waking(WakeReason::CycleComplete);
             }
             crate::over_domain::CycleAdvanceResult::Timeout => {
@@ -1373,6 +1374,13 @@ impl AxiomEngine {
         for cmd in cmds {
             let _ = self.process_command(&cmd);
         }
+    }
+
+    fn apply_dream_depth_update(&mut self) {
+        let activations = self.context_recognizer.drain_dream_activations();
+        let known_ids: Vec<u32> = self.context_recognizer.all_known_frame_ids().to_vec();
+        let event_id = self.com_next_id;
+        self.context_recognizer.apply_dream_update(&activations, &known_ids, event_id);
     }
 
     /// Зарегистрировать Critical-команду для выполнения во время/после DREAMING.
