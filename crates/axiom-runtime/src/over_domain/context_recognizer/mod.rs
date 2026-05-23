@@ -238,6 +238,7 @@ fn build_subsystem_refs(anchors: &AnchorSet) -> HashMap<SubsystemId, Vec<[i16; 3
         SubsystemId::Music,
         SubsystemId::Time,
         SubsystemId::Logic,
+        SubsystemId::Values,
     ];
     let mut refs = HashMap::new();
     for id in known {

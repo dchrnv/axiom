@@ -125,16 +125,17 @@ impl InterpretationProfileStore {
             2 => SubsystemId::Music,
             3 => SubsystemId::Time,
             4 => SubsystemId::Logic,
+            5 => SubsystemId::Values,
             _ => SubsystemId::Unknown,
         })
     }
 
-    /// Most common primary subsystem as u8. Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Unknown=5.
+    /// Most common primary subsystem as u8. Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Values=5 Unknown=6.
     pub fn dominant_primary_as_u8(&self) -> Option<u8> {
         if self.profiles.is_empty() {
             return None;
         }
-        let mut counts = [0u32; 6];
+        let mut counts = [0u32; 7];
         for p in self.profiles.values() {
             counts[subsystem_to_u8(p.primary) as usize] += 1;
         }
@@ -153,7 +154,8 @@ fn subsystem_to_u8(s: SubsystemId) -> u8 {
         SubsystemId::Music => 2,
         SubsystemId::Time => 3,
         SubsystemId::Logic => 4,
-        SubsystemId::Unknown => 5,
+        SubsystemId::Values => 5,
+        SubsystemId::Unknown => 6,
     }
 }
 

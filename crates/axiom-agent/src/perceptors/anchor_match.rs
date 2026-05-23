@@ -27,7 +27,7 @@ impl AnchorMatchTable {
     pub fn build(anchor_set: &AnchorSet) -> Self {
         let mut id_to_position = HashMap::new();
         // Перебираем все известные якоря через pub API get_subsystem
-        for subsystem in ["writing", "mathematics", "music", "time", "logic"] {
+        for subsystem in ["writing", "mathematics", "music", "time", "logic", "values"] {
             for anchor in anchor_set.get_subsystem(subsystem) {
                 id_to_position.insert(anchor.id.clone(), anchor.position);
             }

@@ -182,6 +182,7 @@ pub enum SubsystemId {
     Music,
     Time,
     Logic,
+    Values,
     Unknown,
 }
 
@@ -193,6 +194,7 @@ impl SubsystemId {
             SubsystemId::Music => "music",
             SubsystemId::Time => "time",
             SubsystemId::Logic => "logic",
+            SubsystemId::Values => "values",
             SubsystemId::Unknown => "unknown",
         }
     }

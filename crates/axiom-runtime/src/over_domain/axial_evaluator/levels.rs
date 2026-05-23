@@ -42,6 +42,7 @@ pub fn subsystem_to_level(subsystem: SubsystemId) -> Option<EvaluationLevel> {
     match subsystem {
         SubsystemId::Mathematics => Some(EvaluationLevel::Conceptual),
         SubsystemId::Logic => Some(EvaluationLevel::Conceptual),
+        SubsystemId::Values => Some(EvaluationLevel::Conceptual),
         SubsystemId::Writing => Some(EvaluationLevel::Imaginal),
         SubsystemId::Music => Some(EvaluationLevel::Imaginal),
         SubsystemId::Time => Some(EvaluationLevel::Action),
