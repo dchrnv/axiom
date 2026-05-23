@@ -827,21 +827,22 @@ App → tokio runtime (отдельный thread)
 
 | ID | Суть |
 |----|------|
-| **OBS-01 errata** | Первый прогон (3000 тиков, 8 текстов): 12 Frames, 14 traces, 97% coherence. **E1:** CR energy=0 во всех on_tick → dominant=Unknown → V6 ActivityTrace пустой. Причина: EXPERIENCE-Frame-анкеры (FNV-позиции) не пересекаются с MAYA anchor positions в скан-плане. **E2:** 100% AE conflict rate (96/96). **E3:** SutraDepthStore пуст — DREAM не записывает глубины → emergent заблокирован. |
 | **CR-TD-01** | FatigueStore → axiom-experience. V7. |
 | **CR-TD-02** | TransitionGraph для directed Cascading (vs случайного чередования). V7. |
 | **CR-TD-03** | Ethics composite неполный: только Logic. Нет Values/Dilemmas/Morality. V7. |
 | **CR-TD-04** | ActivityTrace не сериализуется. Нужно для V9 NeuralAdvisor. V7. |
 | **FW-TD-01** | RequestFrameDetails не реализован. При Workstation V2.0. |
 | **FW-TD-02** | Per-pair co-activation. Ждёт CausalWeaver. Структуру не выбирать заранее. |
-| **Anchor-Fill** | 14 YAML (L1-L4, L6-L8, D2-D8). FNV-1a fallback активен. |
 | **WS-V2-*** | V2.0 идеи: история чата, Pause/Resume, custom bench, TLS, sync. |
 | **COMP-01** | Vital Signs окно (Companion, ambient display). |
-| **AGENT-TD-01** | TextPerceptor: FNV-1a → embeddings. После OBS-01. |
-| **OBS-TD-01** | per_text_detected через detect_subsystem() работает только для текстов с word-level anchor match. math_basic, writing_poetry → `—` (FNV-fallback, нет совпадений). Корень: TextPerceptor создаёт токен в центроиде совпавших якорей, а не в позиции конкретного якоря. Решение: embeddings (AGENT-TD-01) или расширить словарь корпуса. |
-| **OBS-TD-02** | avg_shell_similarity в TickSnapshot всегда 0.000 при snapshot_every=100: кандидаты FrameWeaver кристаллизуются за ~60 тиков (stability_threshold=3 × scan_interval=20), до момента снапшота уже нет активных кандидатов. Для наблюдения shell_similarity нужно либо уменьшить snapshot_every, либо добавить capture per-crystallization event. |
-| **OBS-TD-03** | delta-energy подход для per-text detection нерабочий: inject_to_maya добавляет токен с позицией = центроид совпавших якорей, sq_dist до индивидуальных опорных точек в миллионах → вклад ≈ 0. ContextRecognizer::compute_raw_energies + AxiomEngine::snapshot_subsystem_energies оставлены в коде, пригодятся если позиции будут выровнены. |
-| **Shell-TD-01** | ShellProximity crystallization rule — opt-in (crystallization_rules: vec![] по умолчанию). При непустом списке правил stability_threshold fallback не работает → все кандидаты остаются в Defer, Frames=0. ShellProximity нужно добавлять вместе с явным StabilityReached-правилом или менять архитектуру evaluate_crystallization_rules. |
+| **AGENT-TD-01** | TextPerceptor: lookup anchor-matching (Path A) → embeddings. Path A реализован (2-path detect_subsystem, 100% accuracy). Следующий шаг: заменить word/char lookup на векторные embeddings. |
+| **OBS-TD-02** | avg_shell_similarity всегда 0.000: кандидаты FrameWeaver кристаллизуются за ~60 тиков, до snapshot_every=500 их уже нет. Нужно либо capture per-crystallization event, либо накапливать rolling avg. |
+| **OBS-TD-03** | delta-energy per-text нерабочий: позиции текстовых токенов (центроид якорей) и subsystem refs не совпадают, sq_dist в миллионах → energy ≈ 0. `compute_raw_energies` + `snapshot_subsystem_energies` оставлены — пригодятся при embeddings. |
+| **Shell-TD-01** | ShellProximity crystallization rule — opt-in. При непустом `crystallization_rules` stability_threshold fallback не работает → Frames=0. Нужен явный StabilityReached-rule в паре с ShellProximity или рефактор `evaluate_crystallization_rules`. |
+| **Shell-TD-02** | resonance_search shell bonus требует изменений axiom-arbiter. |
+| **EMERGENT-TD-01** | Пороги DepthThresholdEmergentDetector откалиброваны по OBS-02 однородного корпуса (depth=1000, reactivations=5). При неоднородном корпусе нужна повторная калибровка: часть Frame должна не проходить порог. |
+| **EMERGENT-TD-02** | reactivation_count считает DREAM-циклы с evidence>0 (~10-15 за 30k тиков). Для более гранулярного сигнала: считать per-injection реактивации (инкрементировать при каждом on_tick где Frame активен, не только в DREAM). |
+| **Anchor-id** | Domain/Layer якоря (D1-D8, L1-L8) загружаются, но не имеют поля `id:` — AnchorMatchTable их не видит. Добавить id-префиксы по аналогии с subsystem-примитивами. |
 
 ---
 
