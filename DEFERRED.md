@@ -67,7 +67,7 @@
 
 **Что нужно:** `AxialStore::override_octant(sutra_id, octant)` с пометкой "advisory override"; AxialEvaluator уважает флаг.
 
-**Когда:** V2+, вместе с расширением advisory-действий в `AdvisoryAction`.
+**Когда:** AxialEvaluator V3 — спроектировано в `AxialEvaluator_V3_0.md` §3.
 
 ---
 
