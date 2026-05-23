@@ -74,6 +74,8 @@ impl TrustConfig {
             TrustEntry::new(TrustMode::RequireConfirmation, 0.70));
         cfg.set(ae, AdvisoryType::ConflictDiagnosis,
             TrustEntry::new(TrustMode::RequireConfirmation, 0.60));
+        cfg.set(ae, AdvisoryType::NarrativeShift,
+            TrustEntry::new(TrustMode::RequireConfirmation, 0.55));
         cfg
     }
 }

@@ -46,6 +46,10 @@ pub struct OverDomainArbiter {
     auto_apply_allowed: bool,
     /// Когнитивный профиль: масштабирует confidence OctantCorrection advisory по октанту.
     cognitive_profile: CognitiveProfile,
+    /// V3: pending octant overrides для AxialEvaluatorStorage (sutra_id, octant_idx).
+    pending_overrides: Vec<(u32, usize)>,
+    /// V3: feedback для незарегистрированных источников (source_id, advisory_id, outcome).
+    unrouted_feedback: Vec<(SourceId, AdvisoryId, AdvisoryOutcome)>,
 }
 
 impl OverDomainArbiter {
@@ -57,6 +61,8 @@ impl OverDomainArbiter {
             log: ArbiterLog::new(),
             auto_apply_allowed: false,
             cognitive_profile: CognitiveProfile::default(),
+            pending_overrides: Vec::new(),
+            unrouted_feedback: Vec::new(),
         }
     }
 
@@ -66,6 +72,16 @@ impl OverDomainArbiter {
 
     pub fn cognitive_profile_mut(&mut self) -> &mut CognitiveProfile {
         &mut self.cognitive_profile
+    }
+
+    /// V3: забрать накопленные octant overrides для AxialEvaluatorStorage.
+    pub fn drain_octant_overrides(&mut self) -> Vec<(u32, usize)> {
+        std::mem::take(&mut self.pending_overrides)
+    }
+
+    /// V3: забрать feedback для незарегистрированных источников.
+    pub fn drain_unrouted_feedback(&mut self) -> Vec<(SourceId, AdvisoryId, AdvisoryOutcome)> {
+        std::mem::take(&mut self.unrouted_feedback)
     }
 
     pub fn default_v1() -> Self {
@@ -89,7 +105,7 @@ impl OverDomainArbiter {
     pub fn confirm_pending(&mut self, advisory_id: AdvisoryId, depth_store: &mut SutraDepthStore) {
         if let Some(pos) = self.pending.iter().position(|p| p.advisory.id == advisory_id) {
             let pending = self.pending.remove(pos).unwrap();
-            Self::execute(&pending.advisory, depth_store);
+            Self::execute_with_overrides(&pending.advisory, depth_store, &mut self.pending_overrides);
             // CognitiveProfile: принятие → увеличить вес октанта
             if let Some(idx) = pending.advisory.octant_hint {
                 self.cognitive_profile.update(idx, true);
@@ -147,7 +163,7 @@ impl OverDomainArbiter {
 
                 TrustMode::AutoApply => {
                     if self.auto_apply_allowed {
-                        Self::execute(advisory, depth_store);
+                        Self::execute_with_overrides(advisory, depth_store, &mut self.pending_overrides);
                         self.push_log(advisory, event_id, ArbiterOutcome::Applied);
                         self.feedback_source(advisory.source, advisory.id, AdvisoryOutcome::Applied);
                     } else {
@@ -165,7 +181,11 @@ impl OverDomainArbiter {
 
     // ── Внутренние методы ────────────────────────────────────────────────────
 
-    fn execute(advisory: &Advisory, depth_store: &mut SutraDepthStore) {
+    fn execute_with_overrides(
+        advisory: &Advisory,
+        depth_store: &mut SutraDepthStore,
+        pending_overrides: &mut Vec<(u32, usize)>,
+    ) {
         match &advisory.action {
             AdvisoryAction::ApplyDepth { octant, depth } => {
                 depth_store.set_promoted_depth(
@@ -173,9 +193,12 @@ impl OverDomainArbiter {
                     *octant,
                     advisory.created_at_event,
                 );
-                let _ = depth; // depth is informational, set_promoted_depth uses PROMOTED_DEPTH
+                let _ = depth;
             }
             AdvisoryAction::NotifyWorkstation { .. } => {}
+            AdvisoryAction::OverrideOctant { sutra_id, octant_idx } => {
+                pending_overrides.push((*sutra_id, *octant_idx));
+            }
         }
     }
 
@@ -206,6 +229,9 @@ impl OverDomainArbiter {
     fn feedback_source(&mut self, source_id: SourceId, advisory_id: AdvisoryId, outcome: AdvisoryOutcome) {
         if let Some(src) = self.sources.iter_mut().find(|s| s.source_id() == source_id) {
             src.on_feedback(advisory_id, outcome);
+        } else {
+            // V3: незарегистрированные источники (AxialEvaluator) — буферизовать для Engine.
+            self.unrouted_feedback.push((source_id, advisory_id, outcome));
         }
     }
 }

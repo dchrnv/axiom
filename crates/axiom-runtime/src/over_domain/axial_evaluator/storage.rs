@@ -2,18 +2,23 @@
 // Copyright (C) 2024-2026 Chernov Denys
 //
 // Интерфейс к AxialStore для AxialEvaluator.
-// Источник: AxialEvaluator_V1_0.md §7.2
+// V3: advisory octant override per sutra_id.
+// Источник: AxialEvaluator_V1_0.md §7.2 / AxialEvaluator_V3_0.md §3
 
-use axiom_experience::{AxialEvaluation, AxialStore};
+use std::collections::HashMap;
+
+use axiom_experience::{AxialEvaluation, AxialStore, Octant};
 
 /// Внутреннее хранилище AxialEvaluator.
 ///
-/// Держит AxialStore + счётчики для диагностики.
+/// Держит AxialStore + счётчики диагностики + advisory octant overrides (V3).
 #[derive(Debug, Default)]
 pub struct EvaluatorStorage {
     store: AxialStore,
     pub total_evaluated: u64,
     pub total_conflicts: u64,
+    /// V3: advisory octant override per sutra_id; сбрасывается при реактивации.
+    octant_overrides: HashMap<u32, Octant>,
 }
 
 impl EvaluatorStorage {
@@ -41,6 +46,22 @@ pub const MAX_EVALUATIONS_PER_FRAME: usize = 20;
 
     pub fn store_mut(&mut self) -> &mut AxialStore {
         &mut self.store
+    }
+
+    /// V3: установить advisory override октанта для Frame.
+    /// AxialEvaluator использует его вместо вычисленного analytic_octant.
+    pub fn override_octant(&mut self, sutra_id: u32, octant: Octant) {
+        self.octant_overrides.insert(sutra_id, octant);
+    }
+
+    /// V3: получить активный override или None.
+    pub fn get_override(&self, sutra_id: u32) -> Option<Octant> {
+        self.octant_overrides.get(&sutra_id).copied()
+    }
+
+    /// V3: сбросить override (вызывается при реактивации Frame).
+    pub fn clear_override(&mut self, sutra_id: u32) {
+        self.octant_overrides.remove(&sutra_id);
     }
 }
 
@@ -85,6 +106,16 @@ mod tests {
         s.record(eval);
         assert_eq!(s.total_evaluated, 1);
         assert_eq!(s.total_conflicts, 1);
+    }
+
+    #[test]
+    fn test_override_octant_round_trip() {
+        let mut s = EvaluatorStorage::new();
+        assert!(s.get_override(1).is_none());
+        s.override_octant(1, Octant::HeroicFatal);
+        assert_eq!(s.get_override(1), Some(Octant::HeroicFatal));
+        s.clear_override(1);
+        assert!(s.get_override(1).is_none());
     }
 
     #[test]

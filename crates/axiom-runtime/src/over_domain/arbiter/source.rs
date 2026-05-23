@@ -18,6 +18,8 @@ pub enum AdvisoryType {
     ConflictDiagnosis,
     SubsystemAttribution,
     EmergentCandidate,
+    /// V3: смена доминирующего нарративного октанта в скользящем окне сессии.
+    NarrativeShift,
 }
 
 /// Действие которое Arbiter может выполнить при принятии рекомендации.
@@ -27,6 +29,8 @@ pub enum AdvisoryAction {
     ApplyDepth { octant: usize, depth: u16 },
     /// Поставить уведомление в очередь Workstation (для RequireConfirmation).
     NotifyWorkstation { label: String },
+    /// V3: установить advisory override октанта для Frame в AxialEvaluatorStorage.
+    OverrideOctant { sutra_id: u32, octant_idx: usize },
 }
 
 /// Единица рекомендации от AdvisorySource.

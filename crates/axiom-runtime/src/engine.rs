@@ -1251,6 +1251,20 @@ impl AxiomEngine {
                 &advisories,
                 self.context_recognizer.depth_store_mut(),
             );
+            // V3: применить octant overrides от Arbiter к AxialEvaluatorStorage
+            for (sutra_id, octant_idx) in self.over_domain_arbiter.drain_octant_overrides() {
+                let octant = octant_from_idx(octant_idx);
+                self.axial_evaluator.storage_mut().override_octant(sutra_id, octant);
+            }
+            // V3: маршрутизировать unrouted feedback → AxialEvaluator
+            use crate::over_domain::axial_evaluator::AXIAL_EVALUATOR_SOURCE_ID;
+            for (source_id, advisory_id, outcome) in
+                self.over_domain_arbiter.drain_unrouted_feedback()
+            {
+                if source_id == AXIAL_EVALUATOR_SOURCE_ID {
+                    self.axial_evaluator.on_feedback(advisory_id, outcome);
+                }
+            }
         }
 
         // DreamScheduler: проверить триггеры засыпания
@@ -2109,6 +2123,20 @@ fn fnv1a_anchor_id(id: &str) -> u32 {
 }
 
 /// Построить SleepTrigger из SleepTriggerKind и текущего состояния DreamScheduler.
+fn octant_from_idx(i: usize) -> axiom_experience::Octant {
+    use axiom_experience::Octant;
+    match i {
+        0 => Octant::CreativeAffirmation,
+        1 => Octant::EcstaticAffirmation,
+        2 => Octant::HeroicFatal,
+        3 => Octant::DestructiveActivating,
+        4 => Octant::IdealizedConsoling,
+        5 => Octant::PassiveSentimental,
+        6 => Octant::FormalDenying,
+        _ => Octant::SelfDestructiveApathic,
+    }
+}
+
 fn sleep_trigger_from_kind(kind: SleepTriggerKind, scheduler: &DreamScheduler) -> SleepTrigger {
     match kind {
         SleepTriggerKind::Idle => SleepTrigger::Idle {

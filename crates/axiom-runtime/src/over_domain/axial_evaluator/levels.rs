@@ -4,12 +4,35 @@
 // Определение применимых уровней оценки для Frame.
 // V1: прямое соответствие Shell L1..L8 ↔ EvaluationLevel 1..8.
 // V2: primary_subsystem из ContextRecognizer влияет на выбор уровня.
+// V3: AxialEvaluatorConfig — override таблица subsystem→level из genome.yaml.
 //
 // Shell Frame — вычисляется из link_type его связей: (link_type & 0x00F0) >> 4 = слой 0..7.
 // Синтаксические связи: link_type >> 8 == 0x08.
 
+use std::collections::HashMap;
+
 use axiom_core::Connection;
 use axiom_experience::{EvaluationLevel, SubsystemId};
+
+/// V3: конфигурация AxialEvaluator из genome.yaml.
+///
+/// Позволяет переопределить встроенную таблицу SubsystemId → EvaluationLevel.
+/// Встроенный дефолт используется как fallback для неупомянутых подсистем.
+#[derive(Debug, Default, Clone)]
+pub struct AxialEvaluatorConfig {
+    pub subsystem_level_overrides: HashMap<SubsystemId, EvaluationLevel>,
+}
+
+impl AxialEvaluatorConfig {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_override(mut self, subsystem: SubsystemId, level: EvaluationLevel) -> Self {
+        self.subsystem_level_overrides.insert(subsystem, level);
+        self
+    }
+}
 
 const SHELL_WEIGHT_THRESHOLD: u8 = 1;
 
@@ -50,6 +73,19 @@ pub fn subsystem_to_level(subsystem: SubsystemId) -> Option<EvaluationLevel> {
     }
 }
 
+/// V3: то же с учётом AxialEvaluatorConfig.overrides — override имеет приоритет над встроенным.
+pub fn subsystem_to_level_with_config(
+    subsystem: SubsystemId,
+    config: Option<&AxialEvaluatorConfig>,
+) -> Option<EvaluationLevel> {
+    if let Some(cfg) = config {
+        if let Some(&level) = cfg.subsystem_level_overrides.get(&subsystem) {
+            return Some(level);
+        }
+    }
+    subsystem_to_level(subsystem)
+}
+
 /// V2: Определить применимые уровни с учётом подсистемы.
 ///
 /// Если `primary_subsystem` известна и маппируется — возвращает [mapped_level].
@@ -60,6 +96,20 @@ pub fn determine_applicable_levels_with_subsystem(
 ) -> Vec<EvaluationLevel> {
     if let Some(subsystem) = primary_subsystem {
         if let Some(level) = subsystem_to_level(subsystem) {
+            return vec![level];
+        }
+    }
+    determine_applicable_levels(shell_profile)
+}
+
+/// V3: то же с AxialEvaluatorConfig.
+pub fn determine_applicable_levels_with_config(
+    shell_profile: &[u8; 8],
+    primary_subsystem: Option<SubsystemId>,
+    config: Option<&AxialEvaluatorConfig>,
+) -> Vec<EvaluationLevel> {
+    if let Some(subsystem) = primary_subsystem {
+        if let Some(level) = subsystem_to_level_with_config(subsystem, config) {
             return vec![level];
         }
     }
@@ -134,6 +184,34 @@ mod tests {
         assert_eq!(profile[3], 1);
         let levels = determine_applicable_levels(&profile);
         assert!(levels.contains(&EvaluationLevel::Conceptual));
+    }
+
+    #[test]
+    fn test_config_override_takes_priority() {
+        let cfg = AxialEvaluatorConfig::new()
+            .with_override(SubsystemId::Music, EvaluationLevel::Conceptual);
+        let level = subsystem_to_level_with_config(SubsystemId::Music, Some(&cfg));
+        assert_eq!(level, Some(EvaluationLevel::Conceptual));
+    }
+
+    #[test]
+    fn test_config_fallback_without_override() {
+        let cfg = AxialEvaluatorConfig::new();
+        let level = subsystem_to_level_with_config(SubsystemId::Music, Some(&cfg));
+        // No override → default: Music → Imaginal
+        assert_eq!(level, Some(EvaluationLevel::Imaginal));
+    }
+
+    #[test]
+    fn test_determine_with_config_override() {
+        let cfg = AxialEvaluatorConfig::new()
+            .with_override(SubsystemId::Time, EvaluationLevel::Transcendent);
+        let levels = determine_applicable_levels_with_config(
+            &[0u8; 8],
+            Some(SubsystemId::Time),
+            Some(&cfg),
+        );
+        assert_eq!(levels, vec![EvaluationLevel::Transcendent]);
     }
 
     #[test]

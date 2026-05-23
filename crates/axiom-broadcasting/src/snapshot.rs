@@ -107,11 +107,15 @@ fn build_phase_c_snapshot(engine: &AxiomEngine) -> Option<PhaseCSnapshot> {
                 axiom_runtime::over_domain::AdvisoryType::ConflictDiagnosis => 2,
                 axiom_runtime::over_domain::AdvisoryType::SubsystemAttribution => 3,
                 axiom_runtime::over_domain::AdvisoryType::EmergentCandidate => 4,
+                axiom_runtime::over_domain::AdvisoryType::NarrativeShift => 5,
             };
             let label = match &p.advisory.action {
                 AdvisoryAction::NotifyWorkstation { label } => label.clone(),
                 AdvisoryAction::ApplyDepth { octant, depth } => {
                     format!("#{} depth oct{octant}→{depth}", p.advisory.subject_id)
+                }
+                AdvisoryAction::OverrideOctant { sutra_id, octant_idx } => {
+                    format!("#{sutra_id} override oct{octant_idx}")
                 }
             };
             PendingAdvisorySnapshot {

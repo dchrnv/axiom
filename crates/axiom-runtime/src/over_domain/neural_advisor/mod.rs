@@ -444,6 +444,7 @@ fn advisory_id(sutra_id: u32, t: AdvisoryType) -> AdvisoryId {
         AdvisoryType::ConflictDiagnosis => 2,
         AdvisoryType::SubsystemAttribution => 3,
         AdvisoryType::EmergentCandidate => 4,
+        AdvisoryType::NarrativeShift => 5,
     };
     ((sutra_id as u64) << 8) | type_index
 }

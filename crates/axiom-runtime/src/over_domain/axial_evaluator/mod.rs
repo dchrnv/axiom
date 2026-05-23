@@ -5,7 +5,7 @@
 // Оценивает Frame по трём философским осям (X/Y/Z) на 8 уровнях абстракции.
 // Результаты хранятся в EvaluatorStorage (AxialStore).
 //
-// Источник: docs/architecture/AxialEvaluator_V2_0.md
+// Источник: docs/architecture/AxialEvaluator_V3_0.md
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -16,18 +16,22 @@ use axiom_experience::{AxialEvaluation, AxialScore, SubsystemId};
 use axiom_genome::{Genome, ModuleId};
 use axiom_ucl::UclCommand;
 
-use crate::over_domain::arbiter::source::{Advisory, AdvisoryAction, AdvisoryType, SourceId};
+use crate::over_domain::arbiter::source::{
+    Advisory, AdvisoryAction, AdvisoryId, AdvisoryOutcome, AdvisoryType, SourceId,
+};
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod conflict;
 pub mod levels;
 pub mod metrics;
+pub mod narrative;
 pub mod persistence;
 pub mod stability;
 pub mod storage;
 pub mod synthesis;
 
 pub use storage::EvaluatorStorage;
+use narrative::NarrativeOctantTracker;
 use persistence::ConflictPersistenceTracker;
 use stability::OctantStabilityTracker;
 
@@ -37,6 +41,12 @@ pub const AXIAL_EVALUATOR_TICK_INTERVAL: u32 = 5;
 /// source_id для OverDomainArbiter (AxialEvaluator — второй источник, id=1).
 pub const AXIAL_EVALUATOR_SOURCE_ID: SourceId = 1;
 
+/// Кодирование advisory ID: (sutra_id << 8) | type_byte.
+/// type_byte: 0x01 = OctantCorrection, 0x02 = ConflictDiagnosis.
+/// NarrativeShift использует простой счётчик (subject_id = 0).
+const AE_TYPE_OCTANT_CORRECTION: u64 = 0x01;
+const AE_TYPE_CONFLICT_DIAGNOSIS: u64 = 0x02;
+
 /// AxialEvaluator — над-доменный оценщик философских осей.
 pub struct AxialEvaluator {
     storage: EvaluatorStorage,
@@ -44,10 +54,13 @@ pub struct AxialEvaluator {
     evaluated_frames: HashSet<u32>,
     stability_tracker: OctantStabilityTracker,
     conflict_tracker: ConflictPersistenceTracker,
+    /// V3: скользящее окно нарративного октанта сессии.
+    narrative_tracker: NarrativeOctantTracker,
     pending_advisories: Vec<Advisory>,
     /// Доминирующая подсистема из ContextRecognizer; синхронизируется через sync_primary_subsystem.
     primary_subsystem: Option<SubsystemId>,
-    next_advisory_id: u64,
+    /// Счётчик для NarrativeShift advisory ID (не кодируется через sutra_id).
+    next_narrative_id: u64,
 }
 
 impl AxialEvaluator {
@@ -57,9 +70,10 @@ impl AxialEvaluator {
             evaluated_frames: HashSet::new(),
             stability_tracker: OctantStabilityTracker::new(),
             conflict_tracker: ConflictPersistenceTracker::new(),
+            narrative_tracker: NarrativeOctantTracker::new(),
             pending_advisories: Vec::new(),
             primary_subsystem: None,
-            next_advisory_id: 0,
+            next_narrative_id: 0,
         }
     }
 
@@ -67,9 +81,15 @@ impl AxialEvaluator {
         &self.storage
     }
 
+    pub fn storage_mut(&mut self) -> &mut EvaluatorStorage {
+        &mut self.storage
+    }
+
     /// Пометить Frame как требующий переоценки (например, после реактивации).
+    /// V3: также сбрасывает advisory octant override для этого Frame.
     pub fn invalidate(&mut self, sutra_id: u32) {
         self.evaluated_frames.remove(&sutra_id);
+        self.storage.clear_override(sutra_id);
     }
 
     /// V2: обновить доминирующую подсистему перед следующим on_tick.
@@ -77,15 +97,20 @@ impl AxialEvaluator {
         self.primary_subsystem = s;
     }
 
+    /// V3: обратная связь от Arbiter — маршрутизировать в stability_tracker.
+    pub fn on_feedback(&mut self, id: AdvisoryId, outcome: AdvisoryOutcome) {
+        let type_byte = id & 0xFF;
+        if type_byte == AE_TYPE_OCTANT_CORRECTION {
+            let sutra_id = (id >> 8) as u32;
+            let accepted = matches!(outcome, AdvisoryOutcome::Confirmed | AdvisoryOutcome::Applied);
+            self.stability_tracker.on_feedback(sutra_id, accepted);
+        }
+        // ConflictDiagnosis и NarrativeShift: no-op
+    }
+
     /// V2: забрать накопленные рекомендации (очищает буфер).
     pub fn drain_pending_advisories(&mut self) -> Vec<Advisory> {
         std::mem::take(&mut self.pending_advisories)
-    }
-
-    fn next_id(&mut self) -> u64 {
-        let id = self.next_advisory_id;
-        self.next_advisory_id += 1;
-        id
     }
 
     /// Оценить один Frame по всем применимым уровням.
@@ -127,6 +152,10 @@ impl AxialEvaluator {
         // Синтетический октант через центр масс позиций
         let synthetic_octant = synthesis::synthesize_octant(participants, anchor);
 
+        // V3: advisory override заменяет вычисленный analytic_octant для advisory-логики.
+        // X/Y/Z оценки всё равно пересчитываются; override влияет только на stability_tracker.
+        let octant_override = self.storage.get_override(anchor.sutra_id);
+
         let mut last_analytic_octant = None;
         let mut last_conflict = None;
 
@@ -158,23 +187,24 @@ impl AxialEvaluator {
             self.storage.record(eval);
         }
 
-        // V2: OctantStabilityTracker → OctantCorrection advisory
-        if let Some(octant) = last_analytic_octant {
+        // OctantStabilityTracker: если есть advisory override — используем его.
+        let effective_octant = octant_override.or(last_analytic_octant);
+
+        // OctantCorrection advisory (V2/V3)
+        if let Some(octant) = effective_octant {
             if let Some((stable_octant, confidence)) =
                 self.stability_tracker.push(anchor.sutra_id, octant)
             {
-                let id = self.next_id();
+                let id = (anchor.sutra_id as u64) << 8 | AE_TYPE_OCTANT_CORRECTION;
                 self.pending_advisories.push(Advisory {
                     id,
                     source: AXIAL_EVALUATOR_SOURCE_ID,
                     advisory_type: AdvisoryType::OctantCorrection,
                     subject_id: anchor.sutra_id,
                     confidence,
-                    action: AdvisoryAction::NotifyWorkstation {
-                        label: format!(
-                            "#{} stable octant → {:?} ({:.2})",
-                            anchor.sutra_id, stable_octant, confidence
-                        ),
+                    action: AdvisoryAction::OverrideOctant {
+                        sutra_id: anchor.sutra_id,
+                        octant_idx: stable_octant.index(),
                     },
                     created_at_event: event_id,
                     octant_hint: Some(stable_octant.index()),
@@ -182,9 +212,9 @@ impl AxialEvaluator {
             }
         }
 
-        // V2: ConflictPersistenceTracker → ConflictDiagnosis advisory
+        // ConflictDiagnosis advisory (V2)
         if let Some(pc) = self.conflict_tracker.push(anchor.sutra_id, last_conflict.as_ref()) {
-            let id = self.next_id();
+            let id = (anchor.sutra_id as u64) << 8 | AE_TYPE_CONFLICT_DIAGNOSIS;
             self.pending_advisories.push(Advisory {
                 id,
                 source: AXIAL_EVALUATOR_SOURCE_ID,
@@ -204,6 +234,26 @@ impl AxialEvaluator {
                 created_at_event: event_id,
                 octant_hint: None,
             });
+        }
+
+        // V3: NarrativeOctantTracker → NarrativeShift advisory
+        if let Some(octant) = last_analytic_octant {
+            if let Some((narrative_octant, confidence)) = self.narrative_tracker.push(octant) {
+                let id = self.next_narrative_id;
+                self.next_narrative_id += 1;
+                self.pending_advisories.push(Advisory {
+                    id,
+                    source: AXIAL_EVALUATOR_SOURCE_ID,
+                    advisory_type: AdvisoryType::NarrativeShift,
+                    subject_id: 0,
+                    confidence,
+                    action: AdvisoryAction::NotifyWorkstation {
+                        label: format!("narrative → {:?} ({:.2})", narrative_octant, confidence),
+                    },
+                    created_at_event: event_id,
+                    octant_hint: Some(narrative_octant.index()),
+                });
+            }
         }
 
         self.evaluated_frames.insert(anchor.sutra_id);
