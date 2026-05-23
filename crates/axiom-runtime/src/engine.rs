@@ -1656,6 +1656,30 @@ impl AxiomEngine {
             }
         }
 
+        // 4. Subsystem anchors → SUTRA(100): vocabulary seed.
+        //
+        // Те же примитивы, но в SUTRA как живые токены — не LOCKED, не нулевая температура.
+        // Цель: дать системе "словарь концептов" с первого тика, без ожидания внешнего ввода.
+        // Это позволяет DreamCycle обрабатывать примитивы сразу, а новый input резонирует
+        // с уже существующими концептами вместо создания всего с нуля.
+        //
+        // Параметры сознательно консервативны чтобы не подавить реальный ввод:
+        //   mass=80  — присутствует, но не доминирует над живым токеном (mass≥128)
+        //   temp=15  — чуть тёплый: участвует в резонансе, но не разрастается
+        //   state=Active — полноценно участвует в маршрутизации и фреймах
+        for anchors in anchor_set.subsystems.values() {
+            for anchor in anchors {
+                let event_id = self.next_event_id();
+                let mut token = Token::new(event_id as u32, sutra_id, anchor.position, event_id);
+                token.mass = 80;
+                token.temperature = 15;
+                token.state = axiom_core::STATE_ACTIVE;
+                if self.ashti.inject_token(sutra_id, token).is_ok() {
+                    injected += 1;
+                }
+            }
+        }
+
         injected
     }
 
