@@ -8,6 +8,10 @@
 
 set -euo pipefail
 
+# nvm не загружается в non-interactive bash — подгружаем вручную
+export NVM_DIR="${NVM_DIR:-$HOME/.var/app/com.vscodium.codium/config/nvm}"
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+
 DEV=0
 BUILD=0
 GRAFANA=0
