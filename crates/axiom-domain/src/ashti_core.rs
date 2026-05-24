@@ -373,6 +373,11 @@ impl AshtiCore {
         self.arbiter.skillset.export()
     }
 
+    /// Число кристаллизованных навыков.
+    pub fn skills_count(&self) -> usize {
+        self.arbiter.skillset.skill_count()
+    }
+
     /// Импортировать пакет навыков из другого экземпляра.
     ///
     /// Возвращает число фактически импортированных (без дублей).

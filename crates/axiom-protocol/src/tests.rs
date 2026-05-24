@@ -9,8 +9,9 @@ use crate::messages::{
     ClientKind, ClientMessage, CommandResultData, EngineMessage, ShutdownReason,
 };
 use crate::snapshot::{
-    DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport, FatigueSnapshot,
-    FrameDetails, FrameWeaverStats, GuardianStats, OverDomainSnapshot, SystemSnapshot,
+    CognitiveDepthSnapshot, DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport,
+    FatigueSnapshot, FrameDetails, FrameWeaverStats, GuardianStats, ImpulsesSnapshot,
+    OverDomainSnapshot, PerfSnapshot, ReflectorSnapshot, SystemSnapshot,
 };
 
 fn round_trip<
@@ -75,6 +76,15 @@ fn make_snapshot() -> SystemSnapshot {
         },
         adapter_progress: vec![],
         phase_c: None,
+        perf: PerfSnapshot::default(),
+        traces_count: 0,
+        tension_count: 0,
+        top_traces: vec![],
+        tension_traces: vec![],
+        reflector: ReflectorSnapshot::default(),
+        cognitive_depth: CognitiveDepthSnapshot::default(),
+        impulses: ImpulsesSnapshot::default(),
+        skills_count: 0,
     }
 }
 

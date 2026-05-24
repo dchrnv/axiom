@@ -99,6 +99,58 @@ export interface FrameWeaverStats {
   syntactic_layer_activations: number[];
 }
 
+export interface PerfSnapshot {
+  uptime_secs: number;
+  actual_hz: number;
+  tick_ns_avg: number;
+  tick_ns_peak: number;
+  total_ticks: number;
+}
+
+export interface TraceSnapshot {
+  weight: number;
+  temperature: number;
+  mass: number;
+  valence: number;
+  position: [number, number, number];
+  age_ticks: number;
+  success_count: number;
+  pattern_hash: number;
+}
+
+export interface TensionTraceSnapshot {
+  temperature: number;
+  age_ticks: number;
+}
+
+export interface ReflectorDomainStats {
+  role: number;
+  domain_id: number;
+  name: string;
+  success: number;
+  total: number;
+  success_rate: number;
+}
+
+export interface ReflectorSnapshot {
+  patterns_tracked: number;
+  total_success: number;
+  total_fail: number;
+  per_domain: ReflectorDomainStats[];
+}
+
+export interface CognitiveDepthSnapshot {
+  max_passes: number;
+  min_coherence: number;
+  internal_dominance: number;
+}
+
+export interface ImpulsesSnapshot {
+  tension_count: number;
+  goal_count: number;
+  curiosity_count: number;
+}
+
 export interface SystemSnapshot {
   engine_state: EngineState;
   current_tick: number;
@@ -113,6 +165,16 @@ export interface SystemSnapshot {
   dream_phase_stats: DreamPhaseStats;
   adapter_progress: unknown[];
   phase_c: PhaseCSnapshot | null;
+  // Extended metrics (WS-5)
+  perf: PerfSnapshot;
+  traces_count: number;
+  tension_count: number;
+  top_traces: TraceSnapshot[];
+  tension_traces: TensionTraceSnapshot[];
+  reflector: ReflectorSnapshot;
+  cognitive_depth: CognitiveDepthSnapshot;
+  impulses: ImpulsesSnapshot;
+  skills_count: number;
 }
 
 // EngineEvent — variants from axiom-protocol/src/events.rs

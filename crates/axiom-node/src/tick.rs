@@ -24,6 +24,58 @@ use crate::config::NodeConfig;
 use crate::http::NodeCmd;
 use crate::shutdown::ShutdownSignal;
 
+struct NodePerfTracker {
+    start: std::time::Instant,
+    window: std::collections::VecDeque<u64>,
+    peak_ns: u64,
+    total_ticks: u64,
+    window_size: usize,
+}
+
+impl NodePerfTracker {
+    fn new(window_size: usize) -> Self {
+        Self {
+            start: std::time::Instant::now(),
+            window: std::collections::VecDeque::with_capacity(window_size),
+            peak_ns: 0,
+            total_ticks: 0,
+            window_size,
+        }
+    }
+
+    fn record(&mut self, ns: u64) {
+        if self.window.len() >= self.window_size {
+            self.window.pop_front();
+        }
+        self.window.push_back(ns);
+        self.total_ticks += 1;
+        if ns > self.peak_ns {
+            self.peak_ns = ns;
+        }
+    }
+
+    fn avg_ns(&self) -> u64 {
+        if self.window.is_empty() { return 0; }
+        self.window.iter().sum::<u64>() / self.window.len() as u64
+    }
+
+    fn actual_hz(&self) -> f64 {
+        let elapsed = self.start.elapsed().as_secs_f64();
+        if elapsed < 0.001 { return 0.0; }
+        self.total_ticks as f64 / elapsed
+    }
+
+    fn to_snapshot(&self) -> axiom_protocol::snapshot::PerfSnapshot {
+        axiom_protocol::snapshot::PerfSnapshot {
+            uptime_secs: self.start.elapsed().as_secs_f64(),
+            actual_hz: self.actual_hz(),
+            tick_ns_avg: self.avg_ns(),
+            tick_ns_peak: self.peak_ns,
+            total_ticks: self.total_ticks,
+        }
+    }
+}
+
 pub async fn run(
     mut engine: AxiomEngine,
     mut auto_saver: AutoSaver,
@@ -42,6 +94,7 @@ pub async fn run(
     };
 
     let mut last_tick_ns: u64 = 0;
+    let mut node_perf = NodePerfTracker::new(100);
 
     info!(
         "tick loop started — {tick_hz} Hz, addr {addr}",
@@ -104,6 +157,7 @@ pub async fn run(
         let t0 = Instant::now();
         engine.process_command(&tick_cmd);
         last_tick_ns = t0.elapsed().as_nanos() as u64;
+        node_perf.record(last_tick_ns);
         let tick = engine.tick_count;
 
         debug!(
@@ -137,7 +191,7 @@ pub async fn run(
 
         // 4. Snapshot → Workstation
         if cfg.snapshot_interval > 0 && tick % cfg.snapshot_interval as u64 == 0 {
-            let snap = build_system_snapshot(&engine, last_tick_ns);
+            let snap = build_system_snapshot(&engine, last_tick_ns, node_perf.to_snapshot());
             handle.update_snapshot(snap.clone());
             handle.publish(EngineMessage::Snapshot(snap));
         }

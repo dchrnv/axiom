@@ -9,6 +9,7 @@ use tracing::debug;
 
 use axiom_agent::perceptors::text::TextPerceptor;
 use axiom_broadcasting::{build_system_snapshot, BroadcastHandle};
+use axiom_protocol::snapshot::PerfSnapshot;
 use axiom_config::AnchorSet;
 use axiom_protocol::{
     commands::EngineCommand,
@@ -46,7 +47,7 @@ pub fn handle_engine_command(
         }
 
         EngineCommand::RequestFullSnapshot => {
-            let snap = build_system_snapshot(engine, last_tick_ns);
+            let snap = build_system_snapshot(engine, last_tick_ns, PerfSnapshot::default());
             handle.update_snapshot(snap.clone());
             handle.publish(EngineMessage::Snapshot(snap));
         }

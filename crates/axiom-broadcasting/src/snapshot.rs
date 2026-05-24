@@ -2,13 +2,15 @@
 use axiom_protocol::{
     events::EngineState,
     snapshot::{
-        AdvisoryFrameSnapshot, DomainConfigSummary, DomainSnapshot, DreamPhaseStats, DreamReport,
-        EmergentCandidateSnapshot, FatigueSnapshot, FrameWeaverStats, GuardianStats,
-        OverDomainSnapshot, PendingAdvisorySnapshot, PhaseCSnapshot, SystemSnapshot, TokenFieldPoint,
+        AdvisoryFrameSnapshot, CognitiveDepthSnapshot, DomainConfigSummary, DomainSnapshot,
+        DreamPhaseStats, DreamReport, EmergentCandidateSnapshot, FatigueSnapshot, FrameWeaverStats,
+        GuardianStats, ImpulsesSnapshot, OverDomainSnapshot, PendingAdvisorySnapshot, PerfSnapshot,
+        PhaseCSnapshot, ReflectorDomainStats, ReflectorSnapshot, SystemSnapshot,
+        TensionTraceSnapshot, TokenFieldPoint, TraceSnapshot,
     },
 };
 use axiom_runtime::over_domain::AdvisoryAction;
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
+use axiom_runtime::{domain_name, AxiomEngine, BroadcastSnapshot};
 
 fn build_token_field(engine: &AxiomEngine, domain_id: u16, max: usize) -> Vec<TokenFieldPoint> {
     let Some(detail) = engine.domain_detail_snapshot(domain_id) else {
@@ -154,7 +156,7 @@ pub fn engine_state_from(s: &BroadcastSnapshot) -> EngineState {
     }
 }
 
-pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64) -> SystemSnapshot {
+pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: PerfSnapshot) -> SystemSnapshot {
     let bs = engine.snapshot_for_broadcast();
 
     let engine_state = engine_state_from(&bs);
@@ -258,6 +260,85 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64) -> SystemS
         fatigue_after: s.fatigue_after as f32 / 255.0,
     });
 
+    // Traces (top-20 by weight)
+    let exp = engine.ashti.experience();
+    let tick = engine.tick_count;
+    let traces_count = exp.trace_count() as u32;
+    let tension_count_val = exp.tension_count() as u32;
+
+    let mut sorted_traces: Vec<_> = exp.traces().iter().collect();
+    sorted_traces.sort_by(|a, b| b.weight.total_cmp(&a.weight));
+    let top_traces: Vec<TraceSnapshot> = sorted_traces.iter().take(20).map(|t| {
+        let age = tick.saturating_sub(t.created_at);
+        TraceSnapshot {
+            weight: t.weight,
+            temperature: t.pattern.temperature,
+            mass: t.pattern.mass,
+            valence: t.pattern.valence,
+            position: t.pattern.position,
+            age_ticks: age,
+            success_count: t.success_count,
+            pattern_hash: (t.pattern_hash & 0xFFFFFFFF) as u32,
+        }
+    }).collect();
+
+    let tension_traces: Vec<TensionTraceSnapshot> = exp.tension_traces().iter().map(|t| {
+        TensionTraceSnapshot {
+            temperature: t.temperature,
+            age_ticks: tick.saturating_sub(t.created_at),
+        }
+    }).collect();
+
+    // Reflector
+    let reflector_data = engine.ashti.reflector();
+    let level_id = engine.ashti.level_id();
+    let per_domain: Vec<ReflectorDomainStats> = (1u8..=8).filter_map(|role| {
+        let profile = reflector_data.domain_profile(role)?;
+        let total = profile.total_calls();
+        if total == 0 { return None; }
+        let domain_id = level_id * 100 + role as u16;
+        Some(ReflectorDomainStats {
+            role,
+            domain_id,
+            name: domain_name(domain_id).to_string(),
+            success: (profile.overall_success_rate() * total as f32) as u32,
+            total,
+            success_rate: profile.overall_success_rate(),
+        })
+    }).collect();
+    let reflector = ReflectorSnapshot {
+        patterns_tracked: reflector_data.tracked_patterns() as u32,
+        total_success: reflector_data.total_success(),
+        total_fail: reflector_data.total_fail(),
+        per_domain,
+    };
+
+    // Cognitive depth
+    let (max_passes, min_coh) = engine.maya_multipass_params();
+    let maya_id = level_id * 100 + 10;
+    let internal_dominance = engine.ashti.config_of(maya_id)
+        .map(|c| c.internal_dominance_factor as f32 / 128.0)
+        .unwrap_or(0.0);
+    let cognitive_depth = CognitiveDepthSnapshot {
+        max_passes: max_passes as u32,
+        min_coherence: min_coh,
+        internal_dominance,
+    };
+
+    // Impulses
+    let goal_count = engine.ashti.generate_goal_impulses(
+        tick, engine.tick_schedule.goal_check_interval as u64
+    ).len() as u32;
+    let curiosity_count = exp.find_crystallizable(0.72, 2).len() as u32;
+    let impulses = ImpulsesSnapshot {
+        tension_count: tension_count_val,
+        goal_count,
+        curiosity_count,
+    };
+
+    // Skills
+    let skills_count = engine.ashti.skills_count() as u32;
+
     SystemSnapshot {
         engine_state,
         current_tick: bs.tick_count,
@@ -284,5 +365,14 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64) -> SystemS
         dream_phase_stats,
         adapter_progress: vec![],
         phase_c: build_phase_c_snapshot(engine),
+        perf,
+        traces_count,
+        tension_count: tension_count_val,
+        top_traces,
+        tension_traces,
+        reflector,
+        cognitive_depth,
+        impulses,
+        skills_count,
     }
 }

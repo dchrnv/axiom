@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use axiom_broadcasting::{build_system_snapshot, BroadcastHandle};
+use axiom_protocol::snapshot::PerfSnapshot;
 use axiom_config::{AnchorSet, ConfigWatcher};
 use axiom_core::Event;
 use axiom_persist::AutoSaver;
@@ -214,7 +215,7 @@ pub async fn tick_loop(
                 snapshot: for_bcast,
             });
             if let Some(ref h) = wstation_handle {
-                h.update_snapshot(build_system_snapshot(&engine, tick_ns));
+                h.update_snapshot(build_system_snapshot(&engine, tick_ns, PerfSnapshot::default()));
             }
         }
 
@@ -357,7 +358,7 @@ fn handle_wstation_command(
             });
         }
         EngineCommand::RequestFullSnapshot => {
-            handle.update_snapshot(build_system_snapshot(engine, 0));
+            handle.update_snapshot(build_system_snapshot(engine, 0, PerfSnapshot::default()));
             handle.publish(EngineMessage::CommandResult {
                 command_id: cmd_id,
                 result: Ok(CommandResultData::None),

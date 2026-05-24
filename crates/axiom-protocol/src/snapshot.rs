@@ -23,6 +23,118 @@ pub struct SystemSnapshot {
     pub adapter_progress: Vec<AdapterProgress>,
 
     pub phase_c: Option<PhaseCSnapshot>,
+
+    pub perf: PerfSnapshot,
+    pub traces_count: u32,
+    pub tension_count: u32,
+    pub top_traces: Vec<TraceSnapshot>,
+    pub tension_traces: Vec<TensionTraceSnapshot>,
+    pub reflector: ReflectorSnapshot,
+    pub cognitive_depth: CognitiveDepthSnapshot,
+    pub impulses: ImpulsesSnapshot,
+    pub skills_count: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct PerfSnapshot {
+    pub uptime_secs: f64,
+    pub actual_hz: f64,
+    pub tick_ns_avg: u64,
+    pub tick_ns_peak: u64,
+    pub total_ticks: u64,
+}
+
+impl Default for PerfSnapshot {
+    fn default() -> Self {
+        Self {
+            uptime_secs: 0.0,
+            actual_hz: 0.0,
+            tick_ns_avg: 0,
+            tick_ns_peak: 0,
+            total_ticks: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct TraceSnapshot {
+    pub weight: f32,
+    pub temperature: u8,
+    pub mass: u8,
+    pub valence: i8,
+    pub position: [i16; 3],
+    pub age_ticks: u64,
+    pub success_count: u32,
+    pub pattern_hash: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct TensionTraceSnapshot {
+    pub temperature: u8,
+    pub age_ticks: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ReflectorDomainStats {
+    pub role: u8,
+    pub domain_id: u16,
+    pub name: String,
+    pub success: u32,
+    pub total: u32,
+    pub success_rate: f32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ReflectorSnapshot {
+    pub patterns_tracked: u32,
+    pub total_success: u32,
+    pub total_fail: u32,
+    pub per_domain: Vec<ReflectorDomainStats>,
+}
+
+impl Default for ReflectorSnapshot {
+    fn default() -> Self {
+        Self {
+            patterns_tracked: 0,
+            total_success: 0,
+            total_fail: 0,
+            per_domain: vec![],
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct CognitiveDepthSnapshot {
+    pub max_passes: u32,
+    pub min_coherence: f32,
+    pub internal_dominance: f32,
+}
+
+impl Default for CognitiveDepthSnapshot {
+    fn default() -> Self {
+        Self {
+            max_passes: 0,
+            min_coherence: 0.6,
+            internal_dominance: 0.0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ImpulsesSnapshot {
+    pub tension_count: u32,
+    pub goal_count: u32,
+    pub curiosity_count: u32,
+}
+
+impl Default for ImpulsesSnapshot {
+    fn default() -> Self {
+        Self {
+            tension_count: 0,
+            goal_count: 0,
+            curiosity_count: 0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
