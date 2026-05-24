@@ -314,6 +314,17 @@ impl AxiomEngine {
         self.ashti.is_ready()
     }
 
+    /// Подтвердить advisory из очереди Arbiter (Workstation API).
+    pub fn confirm_pending_advisory(&mut self, advisory_id: u64) {
+        let depth_store = self.context_recognizer.depth_store_mut();
+        self.over_domain_arbiter.confirm_pending(advisory_id, depth_store);
+    }
+
+    /// Отклонить advisory из очереди Arbiter (Workstation API).
+    pub fn reject_pending_advisory(&mut self, advisory_id: u64) {
+        self.over_domain_arbiter.reject_pending(advisory_id);
+    }
+
     /// Число токенов в домене по domain_id
     pub fn token_count(&self, domain_id: u16) -> usize {
         self.ashti.token_count(domain_id)

@@ -1,6 +1,22 @@
 # AXIOM Workspace — команды проверки и сборки
 # Использование: just <команда>
 
+# Запуск (production: axiom-node раздаёт dist/ на :8080)
+run:
+    ./run.sh
+
+# Запуск в dev-режиме (axiom-node :8080 + npm run dev :5173)
+dev:
+    ./run.sh --dev
+
+# Сборка + запуск (принудительная пересборка axiom-node и axiom-web)
+run-build:
+    ./run.sh --build
+
+# Запуск с Grafana + Prometheus
+run-grafana:
+    ./run.sh --grafana
+
 # Полная проверка workspace
 check:
     cargo test --workspace

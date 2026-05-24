@@ -21,6 +21,7 @@ use axiom_ucl::{OpCode, UclCommand};
 
 use crate::commands::handle_engine_command;
 use crate::config::NodeConfig;
+use crate::http::NodeCmd;
 use crate::shutdown::ShutdownSignal;
 
 pub async fn run(
@@ -30,6 +31,7 @@ pub async fn run(
     handle: Arc<BroadcastHandle>,
     cfg: &NodeConfig,
     shutdown: ShutdownSignal,
+    mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<NodeCmd>,
 ) {
     let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
     let base_tick_ms = 1000u64 / cfg.tick_hz.max(1) as u64;
@@ -63,7 +65,7 @@ pub async fn run(
         };
         tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
 
-        // 1. Drain EngineCommand от Workstation
+        // 1. Drain EngineCommand от Workstation (binary WS)
         let mut had_commands = false;
         loop {
             match handle.try_recv_command().await {
@@ -76,6 +78,19 @@ pub async fn run(
                     );
                 }
                 None => break,
+            }
+        }
+
+        // Drain HTTP commands (advisory confirm/reject, text submit)
+        while let Ok(cmd) = cmd_rx.try_recv() {
+            match cmd {
+                NodeCmd::AdvisoryConfirm(id) => engine.confirm_pending_advisory(id),
+                NodeCmd::AdvisoryReject(id)  => engine.reject_pending_advisory(id),
+                NodeCmd::SubmitText(text)    => {
+                    let ucl = perceptor.perceive(&text);
+                    engine.process_and_observe(&ucl);
+                    had_commands = true;
+                }
             }
         }
 

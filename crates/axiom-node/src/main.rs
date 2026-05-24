@@ -6,6 +6,7 @@
 
 mod commands;
 mod config;
+mod http;
 mod shutdown;
 mod startup;
 mod tick;
@@ -30,7 +31,7 @@ async fn main() -> Result<()> {
     // 1. Инициализация движка, хранилища, якорей
     let state = startup::init(&cfg)?;
 
-    // 2. BroadcastServer — WebSocket для Workstation
+    // 2. BroadcastServer — WebSocket для Workstation (binary/postcard)
     let addr = cfg.addr.parse().with_context(|| format!("invalid addr: {}", cfg.addr))?;
     let (server, handle) = BroadcastServer::new(addr, BroadcastingConfig::default());
     info!("WebSocket server listening on {}", cfg.addr);
@@ -41,11 +42,20 @@ async fn main() -> Result<()> {
         }
     });
 
-    // 3. Graceful shutdown
+    // 3. HTTP server — React SPA + JSON WebSocket bridge + REST API
+    let (cmd_tx, cmd_rx) = http::create_cmd_channel();
+    let http_addr = cfg.http_addr.parse().with_context(|| format!("invalid http_addr: {}", cfg.http_addr))?;
+    let http_handle = handle.clone();
+    let web_dist = cfg.web_dist.clone();
+    tokio::spawn(async move {
+        http::run(http_addr, http_handle, web_dist, cmd_tx).await;
+    });
+
+    // 4. Graceful shutdown
     let shutdown = ShutdownSignal::new();
     shutdown.spawn_listener();
 
-    // 4. Tick loop (blocks until shutdown)
+    // 5. Tick loop (blocks until shutdown)
     tick::run(
         state.engine,
         state.auto_saver,
@@ -53,6 +63,7 @@ async fn main() -> Result<()> {
         handle,
         &cfg,
         shutdown,
+        cmd_rx,
     )
     .await;
 

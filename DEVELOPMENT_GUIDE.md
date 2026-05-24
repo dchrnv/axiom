@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.0  
-**Дата:** 2026-04-24
+**Версия:** 3.1  
+**Дата:** 2026-05-24
 
 ---
 
@@ -25,12 +25,19 @@ Axiom/
 │   │   └── src/over_domain/
 │   │       ├── traits.rs          # OverDomainComponent, Weaver
 │   │       └── weavers/
-│   │           └── frame.rs       # FrameWeaver V1.1
+│   │           └── frame.rs       # FrameWeaver V1.3
 │   ├── axiom-persist/     # Персистентность: bincode, AutoSaver, exchange
 │   ├── axiom-agent/       # CLI, tick_loop, External Adapters, MLEngine
-│   └── axiom-bench/       # Criterion бенчмарки
+│   ├── axiom-bench/       # Criterion бенчмарки
+│   └── axiom-node/        # HTTP-сервер: WS JSON bridge, advisory REST, /metrics, ServeDir
 ├── tools/
-│   └── axiom-dashboard/   # egui/eframe GUI
+│   ├── axiom-dashboard/   # egui/eframe GUI (legacy)
+│   ├── axiom-web/         # Workstation V2: React 18 SPA (Vite + Zustand)
+│   │   ├── src/           # App, components, store, ws/
+│   │   └── vite.config.ts # proxy /api → axiom-node (dev), outDir=dist
+│   └── grafana/           # Мониторинг: Grafana + Prometheus
+│       ├── docker-compose.yml
+│       └── provisioning/  # дашборды + datasource
 ├── config/
 │   ├── genome.yaml        # Конституция системы (должна совпадать с Genome::default_ashti_core())
 │   ├── axiom.yaml         # Основная конфигурация
@@ -97,6 +104,36 @@ Axiom/
 - Новый `ModuleId` в `axiom-genome/src/types.rs`
 - Access rules в `Genome::default_ashti_core()` **и** в `config/genome.yaml` (должны совпадать)
 - Тест `test_from_yaml_matches_default` подтвердит синхронность
+
+---
+
+## Быстрый старт (разработка)
+
+```bash
+# Сборка и тесты
+cargo test --workspace          # 1487 тестов
+cargo build --release
+
+# Запуск одной командой
+just run        # production: axiom-node раздаёт dist/ на :8080
+just dev        # dev: axiom-node :8080 + npm run dev :5173 (hot reload)
+just run-build  # принудительная пересборка + запуск
+
+# Вручную — axiom-node (бэкенд)
+cargo run -p axiom-node --release
+# → http://127.0.0.1:8080
+
+# Вручную — Workstation V2 (dev)
+cd tools/axiom-web && npm install && npm run dev
+# → http://localhost:5173  (proxy /api → :8080)
+
+# Grafana мониторинг (опционально)
+just run-grafana
+# или: cd tools/grafana && docker compose up -d
+# → http://localhost:3000
+```
+
+Полный гайд: [QUICKSTART.md](../QUICKSTART.md)
 
 ---
 

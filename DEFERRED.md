@@ -7,7 +7,7 @@
 
 ## CognitiveProfile
 
-### PROFILE-01 — Иерархия важности октантов при принятии решений
+### PROFILE-01 — Иерархия важности октантов при принятии решений ✅
 
 **Идея:** ввести `CognitiveProfile` — вектор `octant_weights: [f32; 8]`, загружаемый из YAML, который описывает относительную «ценность» каждого октанта для конкретного агента. Профиль влияет на то, как OverDomainArbiter расставляет приоритеты при принятии решений.
 
@@ -35,7 +35,7 @@
 
 ## OverDomainArbiter
 
-### ARB-TD-01 — TrustConfig задаётся в коде, не в конфиге
+### ARB-TD-01 — TrustConfig задаётся в коде, не в конфиге ✅
 
 **Где:** `crates/axiom-runtime/src/over_domain/arbiter/trust.rs` → `TrustConfig::default_v1()`
 
@@ -47,7 +47,7 @@
 
 ---
 
-### ARB-TD-02 — PendingQueue не протухает
+### ARB-TD-02 — PendingQueue не протухает ✅
 
 **Где:** `crates/axiom-runtime/src/over_domain/arbiter/mod.rs` → `pending: VecDeque<PendingAdvisory>`
 
@@ -59,7 +59,7 @@
 
 ---
 
-### ARB-TD-03 — AutoApply только для DepthHint
+### ARB-TD-03 — AutoApply только для DepthHint ✅
 
 **Где:** `crates/axiom-runtime/src/over_domain/arbiter/mod.rs` → `execute()`
 

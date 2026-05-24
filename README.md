@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1332%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1487%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1332 tests passing.**
+**Axiom is in active development — core architecture complete, 1487 tests passing.**
 
 ---
 
@@ -56,7 +56,8 @@
 - **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
 - **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
 - **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
-- **Workstation V1.0** — десктопный рабочий стол оператора (iced 0.13). Подключается к движку через WebSocket (`axiom-broadcasting`). 8 вкладок: System Map (мандала ASHTI с анимацией), Live Field (3D-канвас с орбитальной камерой), Conversation, Patterns (sparklines L1-L8), Dream State, Configuration (schema-driven), Files, Benchmarks. Bidirectional WS, Welcome/Main фазы, keyboard shortcuts.
+- **Workstation V2.0** — основной оперативный интерфейс: `axiom-node` (HTTP/WS сервер) + React 18 SPA (Vite + Zustand). Четыре вкладки: Overview (7 метрик + sparklines L1–L8), Domains (карточки 11 доменов), Advisory Queue (confirm/reject advisory), Feed (поток событий). Без зависимостей от нейронных сетей — чистый детерминированный поток. Запуск: `just run` (production) / `just dev` (hot reload).
+- **Workstation V1.0** — десктопный рабочий стол оператора (iced 0.13, legacy). 8 вкладок: System Map, Live Field, Conversation, Patterns, Dream State, Configuration, Files, Benchmarks.
 
 #### Детерминизм — это не ограничение
 
@@ -70,18 +71,22 @@
 
 ```
   ┌───────────────────────────────────────────────────────────────┐
-  │  axiom-workstation  (iced 0.13 desktop GUI)                    │
+  │  Workstation V2  (React 18 SPA — axiom-web)                    │
+  │    Overview · Domains · Advisory Queue · Feed                  │
+  │    just run (prod :8080) / just dev (hot :5173)               │
+  ├───────────────────────────────────────────────────────────────┤
+  │  axiom-workstation V1  (iced 0.13 desktop GUI, legacy)         │
   │    System Map · Live Field · Conversation · Patterns           │
-  │    Dream State · Configuration · Files · Benchmarks           │
-  └────────────────────────────┬──────────────────────────────────┘
-                               │ WebSocket (axiom-broadcasting)
+  └───────────────────┬──────────────────────┬────────────────────┘
+                      │ HTTP/WS (axiom-node)  │ WebSocket (axiom-broadcasting)
                     ┌─────────────────────────────────────────────┐
   External World    │  External Adapters + axiom-broadcasting      │
-  WebSocket /       │    CLI  ── stdin/stdout, axiom-cli.yaml      │
-  REST API /        │    WS   ── axum 0.8, ws://host/ws            │
-  Workstation /     │    REST ── axum Router, 5 endpoints          │
-  Telegram /        │    GUI  ── egui/eframe dashboard             │
-  OpenSearch        │    TG   ── Telegram long-poll (feature)      │
+  WebSocket /       │    axiom-node ── HTTP :8080, WS, /metrics   │
+  REST API /        │    CLI  ── stdin/stdout, axiom-cli.yaml      │
+  Workstation /     │    WS   ── axum 0.8, ws://host/ws            │
+  Telegram /        │    REST ── axum Router, 5 endpoints          │
+  OpenSearch        │    GUI  ── egui/eframe dashboard             │
+                    │    TG   ── Telegram long-poll (feature)      │
                     │    OS   ── OpenSearch indexer  (feature)     │
                     │    BCast── axiom-broadcasting WebSocket srv  │
                     │  tick_loop — единственный writer AxiomEngine │
@@ -154,35 +159,35 @@
 ```bash
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
-cargo test --workspace
+cargo test --workspace   # 1487 тестов
+just run                 # → http://127.0.0.1:8080
+# или: just dev          # → :8080 API + :5173 hot reload
 ```
 
 ```rust
-use axiom_runtime::{Gateway, Channel};
+use axiom_runtime::AxiomEngine;
 use axiom_ucl::{UclCommand, OpCode};
 
-let mut gw = Gateway::with_default_engine();
-let mut ch = Channel::new();
-
-ch.send(UclCommand::new(OpCode::TickForward, 0, 0, 0));
-let result = gw.process_channel(&mut ch);
+let mut engine = AxiomEngine::new();
+let cmd = UclCommand::new(OpCode::TickForward, 0, 0, 0);
+engine.process_command(&cmd);
 ```
 
-Полная документация: [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
+Полная документация: [QUICKSTART.md](QUICKSTART.md)
 
 ---
 
 ### Documentation
 
+- [QUICKSTART.md](QUICKSTART.md) — быстрый старт: Workstation V2, CLI, WebSocket, REST, Telegram, OpenSearch
+- [docs/guides/Workstation_V2_Guide.md](docs/guides/Workstation_V2_Guide.md) — Workstation V2: вкладки, Advisory Queue, WS-протокол
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
-- [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver V1.2: scan/кристаллизация/промоция
-- [docs/guides/FrameWeaver_Implementation_V1_3.md](docs/guides/FrameWeaver_Implementation_V1_3.md) — FrameWeaver V1.3: полная реализация (все RuleTrigger, GENOME enforcement, dream_propose, min_participant_anchors)
-- [docs/guides/DREAM_Phase_Guide.md](docs/guides/DREAM_Phase_Guide.md) — DREAM Phase V1.0: состояния, триггеры, усталость, DreamCycle, CLI, конфиги
+- [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver V1.3
+- [docs/guides/DREAM_Phase_Guide.md](docs/guides/DREAM_Phase_Guide.md) — DREAM Phase V1.0: состояния, триггеры, DreamCycle
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md) — WebSocket, REST, Dashboard, Telegram, OpenSearch
-- [crates/axiom-workstation/README.md](crates/axiom-workstation/README.md) — Workstation V1.0: архитектура, вкладки, протокол, запуск
-- [QUICKSTART.md](QUICKSTART.md) — быстрый старт: CLI, WebSocket, REST, адаптеры
+- [crates/axiom-workstation/README.md](crates/axiom-workstation/README.md) — Workstation V1.0 (legacy)
 - [STATUS.md](STATUS.md) — текущее состояние, тесты по crates
 - [ROADMAP.md](ROADMAP.md) — активные планы
 - [DEFERRED.md](DEFERRED.md) — технический долг

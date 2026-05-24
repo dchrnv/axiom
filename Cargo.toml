@@ -47,7 +47,7 @@ schemars = "1"
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 rayon = "1"
 axum = { version = "0.8", features = ["ws"] }
-tower-http = { version = "0.6", features = ["cors"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
 futures-util = "0.3"
 postcard = { version = "1", features = ["use-std"] }
 tokio-tungstenite = "0.24"

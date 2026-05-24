@@ -26,6 +26,8 @@ pub struct BroadcastHandle {
     pub command_rx: Mutex<mpsc::UnboundedReceiver<(u64, EngineCommand)>>,
     /// Pre-serialized EngineMessage::Snapshot sent to each new client on connect.
     snapshot_cache: RwLock<Option<Vec<u8>>>,
+    /// Live snapshot for /metrics and JSON consumers (avoids re-deserializing postcard bytes).
+    snapshot_live: RwLock<Option<SystemSnapshot>>,
 }
 
 impl BroadcastHandle {
@@ -40,14 +42,27 @@ impl BroadcastHandle {
         self.command_rx.lock().await.try_recv().ok()
     }
 
+    /// Subscribe to all engine messages (for the JSON HTTP/WS bridge).
+    pub fn subscribe_events(&self) -> broadcast::Receiver<EngineMessage> {
+        self.event_tx.subscribe()
+    }
+
     /// Update the cached snapshot sent to new clients on connect.
     /// Called by Engine after each tick or on demand.
     pub fn update_snapshot(&self, snap: SystemSnapshot) {
-        if let Ok(bytes) = postcard::to_stdvec(&EngineMessage::Snapshot(snap)) {
+        if let Ok(bytes) = postcard::to_stdvec(&EngineMessage::Snapshot(snap.clone())) {
             if let Ok(mut guard) = self.snapshot_cache.write() {
                 *guard = Some(bytes);
             }
         }
+        if let Ok(mut guard) = self.snapshot_live.write() {
+            *guard = Some(snap);
+        }
+    }
+
+    /// Return a clone of the latest snapshot (for /metrics endpoint).
+    pub fn latest_snapshot(&self) -> Option<SystemSnapshot> {
+        self.snapshot_live.read().ok()?.clone()
     }
 }
 
@@ -69,6 +84,7 @@ impl BroadcastServer {
             event_tx: event_tx.clone(),
             command_rx: Mutex::new(command_rx),
             snapshot_cache: RwLock::new(None),
+            snapshot_live: RwLock::new(None),
         });
 
         let server = BroadcastServer {

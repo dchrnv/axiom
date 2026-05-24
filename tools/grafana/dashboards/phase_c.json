@@ -1,0 +1,487 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "schemaVersion": 39,
+  "uid": "axiom-phase-c",
+  "title": "AXIOM Phase C",
+  "description": "AxialEvaluator V3, CognitionRouter, Arbiter — octants, subsystems, layer activations",
+  "tags": ["axiom", "phase-c", "axial-evaluator"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Dominant Octant",
+      "description": "ae_dominant_octant — current dominant octant index (0–7)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 7,
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0, "to": 0, "result": { "text": "0: Drive",     "color": "red",    "index": 0 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 1, "to": 1, "result": { "text": "1: Engage",    "color": "orange", "index": 1 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 2, "to": 2, "result": { "text": "2: Reflect",   "color": "yellow", "index": 2 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 3, "to": 3, "result": { "text": "3: Create",    "color": "green",  "index": 3 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 4, "to": 4, "result": { "text": "4: Withdraw",  "color": "teal",   "index": 4 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 5, "to": 5, "result": { "text": "5: Analyse",   "color": "blue",   "index": 5 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 6, "to": 6, "result": { "text": "6: Integrate", "color": "purple", "index": 6 }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 7, "to": 7, "result": { "text": "7: Transcend", "color": "super-light-blue", "index": 7 }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "ae_dominant_octant",
+          "legendFormat": "octant",
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Dominant Subsystem",
+      "description": "cr_dominant_subsystem — CognitionRouter dominant subsystem (0–5)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "semi-dark-blue", "value": null }]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 5,
+          "mappings": [
+            {
+              "type": "range",
+              "options": { "from": 0, "to": 0, "result": { "text": "0: Perception", "color": "blue",   "index": 0 } }
+            },
+            {
+              "type": "range",
+              "options": { "from": 1, "to": 1, "result": { "text": "1: Cognition",  "color": "green",  "index": 1 } }
+            },
+            {
+              "type": "range",
+              "options": { "from": 2, "to": 2, "result": { "text": "2: Memory",     "color": "yellow", "index": 2 } }
+            },
+            {
+              "type": "range",
+              "options": { "from": 3, "to": 3, "result": { "text": "3: Affect",     "color": "orange", "index": 3 } }
+            },
+            {
+              "type": "range",
+              "options": { "from": 4, "to": 4, "result": { "text": "4: Volition",   "color": "red",    "index": 4 } }
+            },
+            {
+              "type": "range",
+              "options": { "from": 5, "to": 5, "result": { "text": "5: Meta",       "color": "purple", "index": 5 } }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "cr_dominant_subsystem",
+          "legendFormat": "subsystem",
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Emergent Pending",
+      "description": "cr_emergent_pending_count",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red",    "value": 10 }
+            ]
+          },
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "cr_emergent_pending_count",
+          "legendFormat": "emergent pending",
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Guardian Vetoes (total)",
+      "description": "guardian_vetoes_total",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red",    "value": 50 }
+            ]
+          },
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "guardian_vetoes_total",
+          "legendFormat": "vetoes",
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Octant Depth Averages",
+      "description": "ae_octant_depth_avg for all 8 octants",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100,
+        "showValue": "auto",
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "stacking": "none",
+        "fillOpacity": 80,
+        "gradientMode": "none",
+        "tooltipOptions": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "text": {}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false
+          },
+          "unit": "short",
+          "min": 0,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "ae_octant_depth_avg{octant=~\".*\"}",
+          "legendFormat": "octant {{octant}}",
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Layer Activations L1–L8",
+      "description": "layer_activation for all layers",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "drawStyle": "line",
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "layer_activation{layer=~\".*\"}",
+          "legendFormat": "{{layer}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "FrameWeaver Syntactic Layer Activations",
+      "description": "fw_syntactic_layer_activations for S1–S8",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "drawStyle": "line",
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "unit": "short",
+          "min": 0,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "fw_syntactic_layer_activations{layer=~\".*\"}",
+          "legendFormat": "{{layer}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "FrameWeaver Frames",
+      "description": "fw_frames_total, fw_frames_in_sutra, fw_promotions_since_wake",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "drawStyle": "line",
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "unit": "short",
+          "min": 0,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "fw_frames_total",
+          "legendFormat": "frames total",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "fw_frames_in_sutra",
+          "legendFormat": "frames in sutra",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "fw_promotions_since_wake",
+          "legendFormat": "promotions since wake",
+          "refId": "C"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

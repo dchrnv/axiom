@@ -11,6 +11,15 @@
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
+- **Node.js:** 20+ (для Workstation V2)
+
+```bash
+# Arch Linux
+pacman -S nodejs npm
+```
+
+- **Docker** (опционально, для Grafana-мониторинга)
+
 ---
 
 ## Installation
@@ -19,34 +28,113 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-cargo test --workspace   # 1344 тестов, 0 failures
+cargo test --workspace   # 1487 тестов, 0 failures
 cargo build --release    # production build (~7 мин первый раз)
 ```
 
-Полное руководство по установке: [Installation Guide.md](Installation%20Guide.md)
+---
+
+## Интерфейсы
+
+AXIOM имеет несколько независимых интерфейсов:
+
+| Интерфейс | Бинарник / Команда | Описание |
+|-----------|-------------------|----------|
+| **Workstation V2** | `axiom-node` + `axiom-web` | React SPA — основной оперативный интерфейс |
+| **CLI** | `axiom-cli` | Интерактивная командная строка |
+| **WebSocket** | `axiom-cli --server` | JSON WebSocket сервер (Phase 1) |
+| **REST API** | `axiom-cli --server` | REST поверх того же порта (Phase 2) |
+| **egui Dashboard** | `axiom-dashboard` | Desktop GUI через WS (Phase 3) |
+| **Telegram** | `axiom-cli --features telegram` | Telegram-бот (Phase 4) |
+| **OpenSearch** | `axiom-cli --features opensearch` | Индексация событий (Phase 5) |
 
 ---
 
-## Запуск
+## Workstation V2 (рекомендуется)
 
-### Workstation (рекомендуется)
+### Быстрый запуск
 
 ```bash
-./run.sh          # собирает если нужно, запускает node + workstation
-./run.sh --build  # принудительная пересборка
+just run          # production: axiom-node раздаёт dist/ на :8080
+just dev          # dev: axiom-node :8080 + npm run dev :5173 (hot reload)
+just run-build    # принудительная пересборка + запуск
+just run-grafana  # запуск + Grafana/Prometheus
 ```
 
-При закрытии окна Workstation нода останавливается автоматически.
-
-### CLI
+Или напрямую через `run.sh`:
 
 ```bash
-cargo run --bin axiom-cli --release
+./run.sh           # production
+./run.sh --dev     # dev
+./run.sh --build   # пересборка + запуск
+./run.sh --grafana # с Grafana
+```
+
+### Вручную (два терминала)
+
+#### Терминал 1 — axiom-node
+
+```bash
+cargo run -p axiom-node --release
+# → "http server on 127.0.0.1:8080"
+```
+
+#### Терминал 2 — Workstation (dev-режим)
+
+```bash
+cd tools/axiom-web
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
+### Production (один терминал)
+
+```bash
+cd tools/axiom-web && npm install && npm run build && cd ../..
+cargo run -p axiom-node --release
+# axiom-node раздаёт dist/ на http://127.0.0.1:8080
+```
+
+Полный гайд по UI: [docs/guides/Workstation_V2_Guide.md](docs/guides/Workstation_V2_Guide.md)
+
+---
+
+## Мониторинг Grafana (опционально)
+
+```bash
+cd tools/grafana
+docker compose up -d
+# Grafana:    http://localhost:3000  (admin/admin)
+# Prometheus: http://localhost:9090
+```
+
+Три дашборда провижионируются автоматически. Метрики: `GET /metrics` на axiom-node.
+
+---
+
+## HTTP API (axiom-node)
+
+```bash
+# Текстовый ввод в Engine
+POST http://localhost:8080/api/text/submit
+Content-Type: application/json
+{"text": "порядок структуры"}
+
+# Advisory — подтвердить / отклонить
+POST http://localhost:8080/api/advisory/confirm/{id}
+POST http://localhost:8080/api/advisory/reject/{id}
+
+# Prometheus-метрики
+GET http://localhost:8080/metrics
+
+# WebSocket (снапшот при подключении + события)
+ws://localhost:8080/api/ws
 ```
 
 ---
 
-## Запуск CLI — подробно
+## CLI
 
 ```bash
 cargo run --bin axiom-cli --release
@@ -75,9 +163,6 @@ axiom> порядок структуры
 
   [Direct] → EXECUTION | coh=0.75 matched=3 pos=(22000,1500,500)
 ```
-
-Если в `config/anchors/` есть якоря — TextPerceptor определяет позицию через совпадение,
-иначе — через FNV-1a хэш.
 
 ---
 
@@ -165,27 +250,19 @@ cargo run --bin axiom-cli --release -- --server --port 9000
 Протокол — JSON сообщения:
 
 ```json
-// Подписка на события
 {"type":"subscribe","channels":["ticks","state"]}
-
-// Текстовый ввод
 {"type":"inject","text":"порядок структуры"}
-
-// Мета-команда
 {"type":"read_command","cmd":":status"}
 {"type":"mutate_command","cmd":":save"}
-
-// Запрос деталей домена
 {"type":"domain_snapshot","domain_id":100}
 ```
 
-Ответы сервера (`ServerMessage`):
+Ответы сервера:
 ```json
 {"type":"tick","tick_count":100,"traces":5,"tension":1,"last_matched":3}
 {"type":"result","command_id":"1","domain_name":"SUTRA","coherence":0.85,...}
 {"type":"command_result","command_id":"2","output":"  ══ Engine Status ..."}
 {"type":"state","tick_count":100,"snapshot":{...}}
-{"type":"domain_detail",...}
 {"type":"error","message":"..."}
 ```
 
@@ -195,8 +272,6 @@ cargo run --bin axiom-cli --release -- --server --port 9000
 
 ## REST API (Phase 2)
 
-Работает на том же порту что и WebSocket:
-
 ```bash
 cargo run --bin axiom-cli --release -- --server --port 8765
 ```
@@ -204,78 +279,18 @@ cargo run --bin axiom-cli --release -- --server --port 8765
 Endpoints:
 
 ```bash
-# Текстовый ввод
-POST http://localhost:8765/inject
-Content-Type: application/json
-{"text": "порядок структуры"}
-
-# Мета-команды
-GET http://localhost:8765/status
-GET http://localhost:8765/domains
-GET http://localhost:8765/traces
-
-# Детали домена
-GET http://localhost:8765/domain-detail/100
+POST http://localhost:8765/inject          # текстовый ввод
+GET  http://localhost:8765/status
+GET  http://localhost:8765/domains
+GET  http://localhost:8765/traces
+GET  http://localhost:8765/domain-detail/100
 ```
-
-Ответы — те же JSON-структуры что и у WebSocket (`ServerMessage`).
-Timeout ожидания ответа — 5 секунд.
 
 Тесты: `cargo test -p axiom-agent --test rest_tests`
 
 ---
 
-## Workstation (V1.0)
-
-Десктопный рабочий стол оператора на iced 0.13. Требует запущенного `axiom-node`.
-
-### Быстрый запуск (один терминал)
-
-```bash
-./run.sh          # собирает если нужно, запускает node + workstation
-./run.sh --build  # принудительная пересборка перед запуском
-```
-
-При закрытии Workstation нода останавливается автоматически.
-
-### Вручную (два терминала)
-
-```bash
-# Терминал 1
-cargo run -p axiom-node --release
-# → "loaded N anchors", "listening on 127.0.0.1:9876"
-
-# Терминал 2
-cargo run -p axiom-workstation --release
-```
-
-По умолчанию подключается к `127.0.0.1:9876`. Адрес меняется в Configuration → Connection.
-
-### При старте axiom-node
-
-1. Восстанавливает состояние из `./data/` (если есть)
-2. Загружает якоря из `config/anchors/` (axes, layers, domains, writing, mathematics, …)
-3. Инициализирует Phase C компоненты (AxialEvaluator t%5, ContextRecognizer t%7, NeuralAdvisor t%11)
-4. Запускает tick loop на 60 Hz
-
-### 8 вкладок
-
-- **System Map** — мандала ASHTI с пульсацией и анимацией состояния
-- **Live Field** — 3D-визуализация токенов, орбитальная камера (drag + scroll)
-- **Conversation** — текстовый ввод в Engine через TextPerceptor (с историей и domain selector)
-- **Patterns** — sparklines слоёв L1–L8, Phase C panel (доминирующий октант/подсистема, emergent candidates), лента Frame-событий
-- **Dream State** — состояние цикла сна, fatigue, force sleep / wake up
-- **Configuration** — schema-driven редактор конфигурации движка
-- **Files** — импорт данных через адаптеры (progress + история)
-- **Benchmarks** — запуск бенчмарков и история результатов
-
-**Keyboard shortcuts:** `Ctrl+1–8` — переключение вкладок, `Ctrl+S` — применить конфиг, `Ctrl+Z` — сбросить изменения.
-
----
-
 ## egui Dashboard (Phase 3)
-
-Standalone desktop GUI — подключается к запущенному axiom-cli:
 
 ```bash
 # Сначала запустить сервер
@@ -287,47 +302,36 @@ cargo run -p axiom-dashboard
 cargo run -p axiom-dashboard -- ws://127.0.0.1:9000/ws
 ```
 
-Панели:
-- **Status** — tick_count, traces, tension, last_matched, uptime
-- **Space View** — scatter-plot токенов по доменам (загружается через `DomainDetail`)
-- **Domain List** — список доменов с числом токенов
-- **Input** — текстовый ввод и кнопки `:status` / `:domains` / `:traces`
+Панели: Status, Space View, Domain List, Input.
 
 ---
 
 ## Telegram-адаптер (Phase 4)
 
-Требует feature flag `telegram`. Токен получить у [@BotFather](https://t.me/BotFather).
+Токен получить у [@BotFather](https://t.me/BotFather).
 
 ```bash
 cargo run --bin axiom-cli --release --features telegram -- \
   --telegram-token YOUR_BOT_TOKEN
 
-# С ограничением по user_id (можно повторять)
+# С ограничением по user_id
 cargo run --bin axiom-cli --release --features telegram -- \
   --telegram-token YOUR_BOT_TOKEN \
-  --telegram-allow 123456789 \
-  --telegram-allow 987654321
+  --telegram-allow 123456789
 ```
 
 Команды в Telegram:
 ```
-/start          — приветствие + статус
-/status         — :status
-/domains        — :domains
-/traces         — :traces
+/start, /status, /domains, /traces
 любой текст     — inject в engine
-:status         — мета-команда (read)
-:save           — мета-команда (mutate)
+:status, :save  — мета-команды
 ```
 
-Build-проверка без запуска: `cargo build --features telegram`
+Build-проверка: `cargo build --features telegram`
 
 ---
 
 ## OpenSearch-адаптер (Phase 5)
-
-Требует feature flag `opensearch`. Индексирует результаты инферов и тик-пульсы.
 
 ```bash
 cargo run --bin axiom-cli --release --features opensearch -- \
@@ -339,30 +343,6 @@ cargo run --bin axiom-cli --release --features opensearch -- \
   --opensearch-url http://localhost:9200 \
   --opensearch-index my-axiom \
   --opensearch-tick 100
-```
-
-Документы в индексе:
-
-```json
-// Результат инфера
-{
-  "@timestamp": "2026-04-19T12:00:00.000Z",
-  "type": "result",
-  "command_id": "42",
-  "domain_name": "SUTRA",
-  "coherence": 0.85,
-  "traces_matched": 3,
-  "position": [1, 2, 3]
-}
-
-// Тик-пульс (при --opensearch-tick N)
-{
-  "@timestamp": "...",
-  "type": "tick",
-  "tick_count": 100,
-  "traces": 15,
-  "tension": 2
-}
 ```
 
 Build-проверка: `cargo build --features opensearch`
@@ -411,22 +391,6 @@ let cmd = perceptor.perceive("порядок");
 engine.process_and_observe(&cmd);
 ```
 
-С External Adapters (tick_loop):
-
-```rust
-use axiom_agent::tick_loop::tick_loop;
-use axiom_agent::adapters_config::AdaptersConfig;
-use axiom_agent::channels::cli::CliConfig;
-use tokio::sync::{broadcast, mpsc};
-
-let (cmd_tx, cmd_rx) = mpsc::channel(256);
-let (bcast_tx, _)    = broadcast::channel(1024);
-let snapshot = Arc::new(RwLock::new(BroadcastSnapshot::default()));
-let config   = AdaptersConfig::from_cli_config(&CliConfig::default());
-
-tokio::spawn(tick_loop(engine, cmd_rx, bcast_tx, snapshot, saver, None, config, None));
-```
-
 Подробнее: [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
 
 ---
@@ -448,7 +412,12 @@ cargo bench -p axiom-bench
 cargo clean && cargo build --release
 ```
 
-**Сброс состояния:**
+**Сброс состояния (axiom-node):**
+```bash
+rm -rf data/
+```
+
+**Сброс состояния (axiom-cli):**
 ```bash
 rm -rf axiom-data/
 cargo run --bin axiom-cli --release -- --no-load
@@ -458,7 +427,10 @@ cargo run --bin axiom-cli --release -- --no-load
 Убедитесь что директория `config/anchors/` существует и содержит `axes.yaml`.
 Система работает без якорей — FNV-1a fallback активен автоматически.
 
-**WebSocket не подключается:**
+**WebSocket не подключается (axiom-node):**
+Проверьте что axiom-node запущен и `--http-addr` совпадает с адресом в браузере.
+
+**WebSocket не подключается (axiom-cli):**
 Проверьте что axiom-cli запущен с флагом `--server`.
 Dashboard по умолчанию подключается к `ws://127.0.0.1:8765/ws`.
 

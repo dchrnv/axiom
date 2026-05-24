@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-23  
-**Тесты:** 1452, 0 failures
+**Обновлено:** 2026-05-24  
+**Тесты:** 1487, 0 failures
 
 ---
 
@@ -32,7 +32,10 @@ axiom-protocol   — EngineCommand (15 variants), EngineEvent, EngineState, Syst
                    DomainSnapshot, TokenFieldPoint, FrameWeaverStats, GuardianStats,
                    DreamPhaseStats, BenchSpec/BenchResults (serde JSON)
 axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
-                   DomainActivity filter, SystemSnapshot publish, Lagged resync
+                   DomainActivity filter, SystemSnapshot publish, Lagged resync;
+                   subscribe_events() → broadcast::Receiver<EngineMessage>;
+                   latest_snapshot() → Option<SystemSnapshot>;
+                   snapshot_live: RwLock<Option<SystemSnapshot>> (хранит живой снапшот)
 axiom-agent      — TextPerceptor (2-path detect_subsystem), MessageEffector, CliChannel,
                    meta_commands, tick_loop (9 params), AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)
@@ -40,8 +43,17 @@ axiom-persist    — MemoryWriter/Loader, AutoSaver, exchange (bincode)
 axiom-bench      — Criterion benchmarks
 axiom-workstation — egui/eframe desktop GUI V1.0 (async tungstenite)
 axiom-node       — самостоятельный бинарный узел: tick loop, BroadcastServer :9876,
-                   SIGINT/SIGTERM shutdown, axiom.yaml + persistence
+                   SIGINT/SIGTERM shutdown, axiom.yaml + persistence;
+                   HTTP-сервер (axum): GET /api/ws (WS JSON bridge), POST /api/text/submit,
+                   POST /api/advisory/confirm|reject/{id}, GET /metrics (Prometheus text);
+                   ServeDir(web_dist) для Workstation V2 SPA;
+                   NodeCmd channel: unbounded mpsc, HTTP handlers → tick loop (нет Mutex на Engine)
 axiom-observe       — автоматизация OBS-01: Corpus, ObsRunner, TickSnapshot V6, report.md
+tools/axiom-web  — React 18 SPA (Vite + Zustand): 4 таба (Overview, Conversation, Phase C, Patterns);
+                   AdvisoryQueue confirm/reject, SVG sparklines, domain grid;
+                   WS клиент с авто-reconnect; proxy /api → axiom-node в dev
+tools/grafana    — docker-compose: Grafana :3000 + Prometheus :9090; 3 provisioned дашборда;
+                   scrape axiom-node /metrics каждые 5s
 tools/axiom-dashboard — egui/eframe desktop GUI (sync tungstenite, legacy)
 ```
 
@@ -372,11 +384,13 @@ event_id: u64
 - Deferred: CausalWeaver, SpatialWeaver, TemporalWeaver, AnalogyWeaver, NarrativeWeaver
 
 **Phase C — Knowledge Subsystems:**
-- AxialEvaluator V2.0 (tick=5, ModuleId=17) — оценка Frame по осям X/Y/Z (Apollo/Dionysus,
+- AxialEvaluator V3.0 (tick=5, ModuleId=17) — оценка Frame по осям X/Y/Z (Apollo/Dionysus,
   Eros/Thanatos, Will/Nothing), 8 EvaluationLevel, Corpus Callosum conflict (analytic vs synthetic octant);
   V2: subsystem-aware level selection (SubsystemId→EvaluationLevel mapping), OctantStabilityTracker
   (ring=10, threshold=0.70, min_history=5 → OctantCorrection advisory), ConflictPersistenceTracker
-  (streak≥5 → ConflictDiagnosis advisory); AXIAL_EVALUATOR_SOURCE_ID=1; drain_pending_advisories()
+  (streak≥5 → ConflictDiagnosis advisory); AXIAL_EVALUATOR_SOURCE_ID=1; drain_pending_advisories();
+  V3: NarrativeOctantTracker — применяет advisory override на следующем тике; adaptive stability threshold;
+  AxialStore::override_octant(sutra_id, octant) — помечает override, AE уважает флаг при пересчёте
 - ContextRecognizer V6.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
   ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates);
   V6A: ActivityTrace { short: RingBuf[16], mid: RingBuf[64], long: RingBuf[256] } → ActivityDynamics
@@ -417,16 +431,21 @@ event_id: u64
   AdvisoryHistory: ring-буфер 32 записей per sutra_id (AdvisoryHistoryEntry с outcome);
   implements AdvisorySource → poll_advisories() → Vec<Advisory> с octant_hint:Option<usize>;
   on_tick → NotifyEmergentCandidate (UCL 5200) при обнаружении кандидата
-- OverDomainArbiter V1.0 (tick=13, ModuleId=20) — координатор advisory-источников;
+- OverDomainArbiter V2.0 (tick=13, ModuleId=20) — координатор advisory-источников;
   AdvisorySource трейт: poll_advisories() / on_feedback(); Advisory { id, source, advisory_type,
   subject_id, confidence, action, created_at_event, octant_hint:Option<usize> };
   AdvisoryAction: ApplyDepth{octant,depth} / NotifyWorkstation{label};
   TrustConfig: HashMap<(SourceId,AdvisoryType), TrustEntry{mode,min_confidence}>;
+  V2: TrustConfig загружается из genome.yaml секции [arbiter.trust]; min_confidence калибруется
+  автоматически по ArbiterLog (confirmed / confirmed+rejected);
+  TTL: expires_at_event = created_at_event + 1000 → ArbiterOutcome::Expired + on_feedback(Expired);
+  CognitiveProfile загружается из yaml (профили: balanced/analytic из config/profiles/);
   TrustMode: Ignore / AutoApply / RequireConfirmation; on_boot устанавливает auto_apply_allowed
   (ExperienceMemory/Control из генома); PendingQueue → PhaseCSnapshot.pending_advisories →
-  Workstation (confirm/reject); ArbiterLog ring-buffer 500 записей;
+  Workstation V2 confirm/reject (HTTP REST); ArbiterLog ring-buffer 500 записей;
   CognitiveProfile { octant_weights:[f32;8], init 1.0 } — scale_confidence(octant_idx, raw) → f32×weight;
-  update(idx, accepted): ±LEARNING_RATE=0.05, clamp [0.5, 2.0]; ортогонален TrustConfig
+  update(idx, accepted): ±LEARNING_RATE=0.05, clamp [0.5, 2.0]; ортогонален TrustConfig;
+  AxiomEngine: confirm_pending_advisory(id: u64), reject_pending_advisory(id: u64)
 
 ### Инварианты Over-Domain
 

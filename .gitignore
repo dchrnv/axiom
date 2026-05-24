@@ -90,3 +90,10 @@ PERF_NOTES.md
 
 # Axiom runtime save data
 axiom-data/
+
+# axiom-web (React SPA)
+tools/axiom-web/node_modules/
+tools/axiom-web/dist/
+
+# Grafana / Prometheus data volumes (docker)
+tools/grafana/data/
