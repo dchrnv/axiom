@@ -1,0 +1,108 @@
+import { useEngineStore } from '../store/engine';
+
+function fmtNs(ns: number): string {
+  if (ns === 0) return '—';
+  if (ns < 1_000) return `${ns} ns`;
+  if (ns < 1_000_000) return `${(ns / 1_000).toFixed(1)} µs`;
+  return `${(ns / 1_000_000).toFixed(2)} ms`;
+}
+
+function fmtUptime(secs: number): string {
+  if (secs < 60) return `${secs.toFixed(0)}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${Math.floor(secs % 60)}s`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+}
+
+export function Internals() {
+  const { snapshot } = useEngineStore();
+  if (!snapshot) return <div className="waiting">Waiting for snapshot…</div>;
+
+  const { perf, reflector, cognitive_depth } = snapshot;
+
+  const maxReflectorRate = Math.max(...reflector.per_domain.map((d) => d.success_rate), 0.001);
+
+  return (
+    <div className="internals-view">
+      {/* Performance */}
+      <section className="card">
+        <h2>Performance</h2>
+        <div className="internals-grid">
+          <InternalRow label="Uptime"       value={fmtUptime(perf.uptime_secs)} />
+          <InternalRow label="Actual Hz"    value={`${perf.actual_hz.toFixed(1)} Hz`} />
+          <InternalRow label="Total ticks"  value={perf.total_ticks.toLocaleString()} />
+          <InternalRow label="Avg tick"     value={fmtNs(perf.tick_ns_avg)} />
+          <InternalRow label="Peak tick"    value={fmtNs(perf.tick_ns_peak)} />
+        </div>
+      </section>
+
+      {/* Cognitive Depth */}
+      <section className="card">
+        <h2>Cognitive Depth (MAYA)</h2>
+        <div className="internals-grid">
+          <InternalRow label="Max passes"          value={cognitive_depth.max_passes.toString()} />
+          <InternalRow label="Min coherence"       value={cognitive_depth.min_coherence.toFixed(3)} />
+          <InternalRow label="Internal dominance"  value={cognitive_depth.internal_dominance.toFixed(3)} />
+        </div>
+      </section>
+
+      {/* Reflector */}
+      <section className="card">
+        <h2>Reflector</h2>
+        <div className="internals-grid" style={{ marginBottom: 14 }}>
+          <InternalRow label="Patterns tracked" value={reflector.patterns_tracked.toLocaleString()} />
+          <InternalRow label="Total success"    value={reflector.total_success.toLocaleString()} />
+          <InternalRow label="Total fail"       value={reflector.total_fail.toLocaleString()} />
+        </div>
+        {reflector.per_domain.length === 0 ? (
+          <div className="waiting" style={{ height: 50 }}>No reflector data yet</div>
+        ) : (
+          <table className="reflector-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Domain</th>
+                <th>Success</th>
+                <th>Total</th>
+                <th>Rate</th>
+                <th>Bar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reflector.per_domain.map((d) => (
+                <tr key={d.role}>
+                  <td className="refl-role">{d.role}</td>
+                  <td className="refl-name">{d.name}</td>
+                  <td className="refl-success">{d.success}</td>
+                  <td className="refl-total">{d.total}</td>
+                  <td className="refl-rate">{(d.success_rate * 100).toFixed(1)}%</td>
+                  <td>
+                    <div className="refl-bar-track">
+                      <div
+                        className="refl-bar-fill"
+                        style={{
+                          width: `${(d.success_rate / maxReflectorRate) * 100}%`,
+                          background: d.success_rate > 0.7 ? 'var(--green)'
+                            : d.success_rate > 0.4 ? 'var(--yellow)'
+                            : 'var(--red)',
+                        }}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function InternalRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="internal-row">
+      <span className="internal-label">{label}</span>
+      <span className="internal-value">{value}</span>
+    </div>
+  );
+}

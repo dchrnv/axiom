@@ -5,12 +5,18 @@ import { AdvisoryQueue } from './components/AdvisoryQueue';
 import { Conversation } from './components/Conversation';
 import { PhaseC } from './components/PhaseC';
 import { Patterns } from './components/Patterns';
+import { Domains } from './components/Domains';
+import { Traces } from './components/Traces';
+import { Internals } from './components/Internals';
 import './App.css';
 
-type Tab = 'overview' | 'conversation' | 'phase-c' | 'patterns';
+type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',     label: 'Overview' },
+  { id: 'domains',      label: 'Domains' },
+  { id: 'traces',       label: 'Traces' },
+  { id: 'internals',    label: 'Internals' },
   { id: 'conversation', label: 'Conversation' },
   { id: 'phase-c',      label: 'Phase C' },
   { id: 'patterns',     label: 'Patterns' },
@@ -62,14 +68,20 @@ export default function App() {
           {tab === 'overview' && (
             <>
               <section className="card metrics-row">
-                <Metric label="Tick"       value={snapshot.current_tick.toLocaleString()} />
-                <Metric label="Event"      value={snapshot.current_event.toLocaleString()} />
-                <Metric label="Hot path"   value={`${(snapshot.hot_path_ns / 1_000).toFixed(1)} µs`} />
-                <Metric label="Fatigue"    value={`${fatiguePct}%`} />
-                <Metric label="Tokens"     value={snapshot.over_domain.total_tokens.toLocaleString()} />
+                <Metric label="Tick"        value={snapshot.current_tick.toLocaleString()} />
+                <Metric label="Event"       value={snapshot.current_event.toLocaleString()} />
+                <Metric label="Hz"          value={snapshot.perf.actual_hz.toFixed(1)} />
+                <Metric label="Avg tick"    value={fmtNs(snapshot.perf.tick_ns_avg)} />
+                <Metric label="Peak tick"   value={fmtNs(snapshot.perf.tick_ns_peak)} />
+                <Metric label="Uptime"      value={fmtUptime(snapshot.perf.uptime_secs)} />
+                <Metric label="Fatigue"     value={`${fatiguePct}%`} />
+                <Metric label="Tokens"      value={snapshot.over_domain.total_tokens.toLocaleString()} />
                 <Metric label="Connections" value={snapshot.over_domain.total_connections.toLocaleString()} />
-                <Metric label="Dreams"     value={snapshot.dream_phase_stats.cycles_completed.toString()} />
-                <Metric label="Vetoes"     value={snapshot.guardian_stats.total_vetoes.toString()} />
+                <Metric label="Traces"      value={snapshot.traces_count.toLocaleString()} />
+                <Metric label="Tension"     value={snapshot.tension_count.toString()} />
+                <Metric label="Skills"      value={snapshot.skills_count.toString()} />
+                <Metric label="Dreams"      value={snapshot.dream_phase_stats.cycles_completed.toString()} />
+                <Metric label="Vetoes"      value={snapshot.guardian_stats.total_vetoes.toString()} />
               </section>
 
               {snapshot.phase_c && pendingCount > 0 && (
@@ -97,6 +109,9 @@ export default function App() {
             </>
           )}
 
+          {tab === 'domains'      && <Domains />}
+          {tab === 'traces'       && <Traces />}
+          {tab === 'internals'    && <Internals />}
           {tab === 'conversation' && <Conversation />}
           {tab === 'phase-c'      && <PhaseC />}
           {tab === 'patterns'     && <Patterns />}
@@ -104,6 +119,19 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function fmtNs(ns: number): string {
+  if (ns === 0) return '—';
+  if (ns < 1_000) return `${ns} ns`;
+  if (ns < 1_000_000) return `${(ns / 1_000).toFixed(1)} µs`;
+  return `${(ns / 1_000_000).toFixed(2)} ms`;
+}
+
+function fmtUptime(secs: number): string {
+  if (secs < 60) return `${secs.toFixed(0)}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${Math.floor(secs % 60)}s`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

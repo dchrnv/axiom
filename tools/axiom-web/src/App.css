@@ -242,7 +242,76 @@
 .sparkline-label { font-size: 11px; font-weight: 600; width: 22px; flex-shrink: 0; }
 .sparkline-val { font-size: 11px; color: var(--text-dim); width: 28px; text-align: right; }
 
-/* ── Domain grid ── */
+/* ── Domains tab ── */
+.domains-view { display: flex; flex-direction: column; gap: 14px; }
+.domain-grid-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.domain-card-full {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.domain-card-header { display: flex; justify-content: space-between; align-items: baseline; }
+.domain-name-full { font-weight: 700; font-size: 12px; letter-spacing: 0.5px; }
+.domain-id { font-size: 10px; color: var(--text-dim); }
+.domain-card-stats { display: flex; flex-direction: column; gap: 3px; }
+.domain-stat-row { display: flex; justify-content: space-between; font-size: 11px; }
+.domain-stat-label { color: var(--text-dim); }
+.domain-stat-value { font-variant-numeric: tabular-nums; }
+.domain-layer-bar-wrap { margin-top: 2px; }
+
+/* ── Traces tab ── */
+.traces-view { display: flex; flex-direction: column; gap: 14px; }
+.traces-table-wrap { overflow-x: auto; }
+.traces-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.traces-table th {
+  text-align: left; padding: 4px 8px;
+  color: var(--text-dim); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.traces-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+.traces-table tr:hover td { background: rgba(255,255,255,.02); }
+.trace-rank    { color: var(--text-dim); width: 28px; }
+.trace-weight  { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+.trace-weight-bar { width: 80px; height: 6px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.trace-weight-fill { height: 100%; background: var(--accent); border-radius: 2px; opacity: 0.7; }
+.trace-tup     { color: var(--text-dim); font-size: 10px; }
+.trace-pos     { color: var(--text-dim); font-size: 10px; white-space: nowrap; }
+.trace-age     { font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.trace-success { color: var(--green); }
+.trace-hash    { font-size: 10px; color: var(--text-dim); font-family: monospace; }
+.tension-list  { display: flex; flex-direction: column; gap: 5px; }
+.tension-item  { display: flex; align-items: center; gap: 12px; font-size: 11px; }
+.tension-rank  { color: var(--text-dim); width: 20px; }
+.tension-temp  { width: 60px; }
+.tension-age   { color: var(--text-dim); min-width: 100px; }
+.tension-temp-bar { height: 6px; border-radius: 2px; }
+
+/* ── Internals tab ── */
+.internals-view { display: flex; flex-direction: column; gap: 14px; }
+.internals-grid { display: flex; flex-direction: column; gap: 6px; }
+.internal-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,.04); padding: 4px 0; }
+.internal-row:last-child { border-bottom: none; }
+.internal-label { color: var(--text-dim); }
+.internal-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+.reflector-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.reflector-table th { text-align: left; padding: 4px 8px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.reflector-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+.reflector-table tr:hover td { background: rgba(255,255,255,.02); }
+.refl-role    { color: var(--text-dim); width: 36px; }
+.refl-name    { font-weight: 600; }
+.refl-success { color: var(--green); }
+.refl-total   { color: var(--text-dim); }
+.refl-rate    { font-variant-numeric: tabular-nums; font-weight: 600; }
+.refl-bar-track { width: 100px; height: 6px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.refl-bar-fill  { height: 100%; border-radius: 2px; }
+
+/* ── Domain grid (legacy, used in Patterns) ── */
 .domain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .domain-card {
   background: var(--surface2);
