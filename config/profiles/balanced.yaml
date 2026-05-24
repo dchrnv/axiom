@@ -1,0 +1,12 @@
+name: balanced
+octant_weights:
+  # [CreativeAffirmation, EcstaticAffirmation, HeroicFatal, DestructiveActivating,
+  #  IdealizedConsoling,  PassiveSentimental,  FormalDenying, SelfDestructiveApathic]
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0

@@ -1,0 +1,12 @@
+name: analytic
+octant_weights:
+  # [CreativeAffirmation, EcstaticAffirmation, HeroicFatal, DestructiveActivating,
+  #  IdealizedConsoling,  PassiveSentimental,  FormalDenying, SelfDestructiveApathic]
+  - 1.2   # CreativeAffirmation   — синтетическая аффирмация
+  - 0.8   # EcstaticAffirmation   — аффективно перегруженный
+  - 1.4   # HeroicFatal           — высокое усилие при ясной структуре
+  - 0.7   # DestructiveActivating — разрушение без цели
+  - 0.9   # IdealizedConsoling    — идеализация
+  - 0.6   # PassiveSentimental    — пассивность
+  - 1.5   # FormalDenying         — чёткая формальная структура
+  - 0.5   # SelfDestructiveApathic— апатия

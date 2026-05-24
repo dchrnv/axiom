@@ -63,6 +63,8 @@ pub enum AdvisoryOutcome {
     Confirmed,
     /// Отклонено chrnv из очереди Workstation.
     Rejected,
+    /// V2: истёк TTL в очереди (PENDING_TTL event_id).
+    Expired,
 }
 
 /// Трейт для источников рекомендаций.

@@ -4,7 +4,7 @@
 // OverDomainArbiter — слушатель advisory-источников.
 // Читает рекомендации, решает по TrustConfig, действует через SutraDepthStore / UCL.
 //
-// Источник: docs/architecture/OverDomainArbiter_V1_0.md
+// Источник: docs/architecture/OverDomainArbiter_V2_0.md
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -30,11 +30,16 @@ pub use trust::{TrustConfig, TrustEntry, TrustMode};
 /// Тик-интервал: 13 (простое, не совпадает с AE=5, CR=7, NA=11).
 pub const ARBITER_TICK_INTERVAL: u32 = 13;
 
+/// V2: TTL очереди в event_id единицах.
+pub const PENDING_TTL: u64 = 1000;
+
 /// Рекомендация в очереди на подтверждение chrnv.
 #[derive(Debug, Clone)]
 pub struct PendingAdvisory {
     pub advisory: Advisory,
     pub queued_at_event: u64,
+    /// V2: event_id после которого advisory считается устаревшим.
+    pub expires_at_event: u64,
 }
 
 pub struct OverDomainArbiter {
@@ -112,6 +117,9 @@ impl OverDomainArbiter {
             }
             self.push_log(&pending.advisory, pending.queued_at_event, ArbiterOutcome::Confirmed);
             self.feedback_source(pending.advisory.source, advisory_id, AdvisoryOutcome::Confirmed);
+            // V2: автокалибровка после подтверждения
+            let (src, atype) = (pending.advisory.source, pending.advisory.advisory_type);
+            self.trust.calibrate(src, atype, &self.log);
         }
     }
 
@@ -124,6 +132,9 @@ impl OverDomainArbiter {
             }
             self.push_log(&pending.advisory, pending.queued_at_event, ArbiterOutcome::Rejected);
             self.feedback_source(pending.advisory.source, advisory_id, AdvisoryOutcome::Rejected);
+            // V2: автокалибровка после отклонения
+            let (src, atype) = (pending.advisory.source, pending.advisory.advisory_type);
+            self.trust.calibrate(src, atype, &self.log);
         }
     }
 
@@ -136,6 +147,20 @@ impl OverDomainArbiter {
         advisories: &[Advisory],
         depth_store: &mut SutraDepthStore,
     ) {
+        // V2: TTL sweep — истечь advisory старше PENDING_TTL event_id.
+        let expired_ids: Vec<AdvisoryId> = self.pending
+            .iter()
+            .filter(|p| event_id >= p.expires_at_event)
+            .map(|p| p.advisory.id)
+            .collect();
+        for id in expired_ids {
+            if let Some(pos) = self.pending.iter().position(|p| p.advisory.id == id) {
+                let pending = self.pending.remove(pos).unwrap();
+                self.push_log(&pending.advisory, pending.queued_at_event, ArbiterOutcome::Expired);
+                self.feedback_source(pending.advisory.source, id, AdvisoryOutcome::Expired);
+            }
+        }
+
         for advisory in advisories {
             let Some(entry) = self.trust.get(advisory.source, advisory.advisory_type) else {
                 continue;
@@ -209,6 +234,7 @@ impl OverDomainArbiter {
         self.pending.push_back(PendingAdvisory {
             advisory: advisory.clone(),
             queued_at_event: event_id,
+            expires_at_event: event_id + PENDING_TTL,
         });
         self.push_log(advisory, event_id, ArbiterOutcome::Queued);
         self.feedback_source(advisory.source, advisory.id, AdvisoryOutcome::Queued);
@@ -251,6 +277,18 @@ impl OverDomainComponent for OverDomainArbiter {
             ResourceId::ExperienceMemory,
             Permission::Control,
         );
+
+        // V2: загрузить TrustConfig из config/genome.yaml, если секция arbiter.trust задана.
+        let genome_path = std::path::Path::new("config/genome.yaml");
+        self.trust = trust::TrustConfigLoader::from_genome_yaml(genome_path);
+
+        // V2: загрузить CognitiveProfile из config/profiles/<name>.yaml, если задано.
+        if let Some(name) = trust::TrustConfigLoader::profile_name_from_genome_yaml(genome_path) {
+            let profile_path = format!("config/profiles/{name}.yaml");
+            self.cognitive_profile =
+                CognitiveProfile::from_yaml_or_default(std::path::Path::new(&profile_path));
+        }
+
         Ok(())
     }
 
@@ -260,4 +298,69 @@ impl OverDomainComponent for OverDomainArbiter {
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> { Vec::new() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axiom_experience::SutraDepthStore;
+
+    fn make_advisory(id: AdvisoryId, source: SourceId, atype: AdvisoryType, confidence: f32) -> Advisory {
+        Advisory {
+            id,
+            source,
+            advisory_type: atype,
+            subject_id: 1,
+            confidence,
+            action: AdvisoryAction::NotifyWorkstation { label: "test".into() },
+            created_at_event: 0,
+            octant_hint: None,
+        }
+    }
+
+    #[test]
+    fn test_ttl_sweep_expires_old_advisory() {
+        let mut arbiter = OverDomainArbiter::default_v1();
+        let mut depth_store = SutraDepthStore::new();
+
+        // Enqueue at event 0 (expires at event PENDING_TTL)
+        let adv = make_advisory(1, 0, AdvisoryType::OctantCorrection, 0.85);
+        arbiter.tick_with_stores(0, &[adv], &mut depth_store);
+        assert_eq!(arbiter.pending.len(), 1);
+
+        // Tick at event PENDING_TTL → should expire
+        arbiter.tick_with_stores(PENDING_TTL, &[], &mut depth_store);
+        assert_eq!(arbiter.pending.len(), 0, "advisory should be expired");
+
+        // Log should contain Expired entry
+        let expired = arbiter.log().iter()
+            .filter(|e| e.outcome == ArbiterOutcome::Expired)
+            .count();
+        assert_eq!(expired, 1);
+    }
+
+    #[test]
+    fn test_ttl_sweep_not_premature() {
+        let mut arbiter = OverDomainArbiter::default_v1();
+        let mut depth_store = SutraDepthStore::new();
+
+        let adv = make_advisory(1, 0, AdvisoryType::OctantCorrection, 0.85);
+        arbiter.tick_with_stores(0, &[adv], &mut depth_store);
+
+        // One tick before expiry — should still be pending
+        arbiter.tick_with_stores(PENDING_TTL - 1, &[], &mut depth_store);
+        assert_eq!(arbiter.pending.len(), 1, "advisory should not expire before TTL");
+    }
+
+    #[test]
+    fn test_expires_at_event_set_correctly() {
+        let mut arbiter = OverDomainArbiter::default_v1();
+        let mut depth_store = SutraDepthStore::new();
+
+        let adv = make_advisory(42, 0, AdvisoryType::OctantCorrection, 0.85);
+        arbiter.tick_with_stores(500, &[adv], &mut depth_store);
+
+        let p = arbiter.pending.front().unwrap();
+        assert_eq!(p.expires_at_event, 500 + PENDING_TTL);
+    }
 }

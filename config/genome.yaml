@@ -80,3 +80,42 @@ config:
   default_storm_threshold: 5000
   default_heartbeat_interval: 1024
   ashti_domain_count: 11
+
+# V2: OverDomainArbiter — TrustConfig + CognitiveProfile из файла (ARB-TD-01, PROFILE-01)
+arbiter:
+  profile: balanced
+  trust:
+    # NeuralAdvisor (source_id=0)
+    - source: 0
+      type: DepthHint
+      mode: AutoApply
+      min_confidence: 0.75
+    - source: 0
+      type: OctantCorrection
+      mode: RequireConfirmation
+      min_confidence: 0.60
+    - source: 0
+      type: ConflictDiagnosis
+      mode: Ignore
+      min_confidence: 0.0
+    - source: 0
+      type: SubsystemAttribution
+      mode: Ignore
+      min_confidence: 0.0
+    - source: 0
+      type: EmergentCandidate
+      mode: RequireConfirmation
+      min_confidence: 0.60
+    # AxialEvaluator (source_id=1)
+    - source: 1
+      type: OctantCorrection
+      mode: RequireConfirmation
+      min_confidence: 0.70
+    - source: 1
+      type: ConflictDiagnosis
+      mode: RequireConfirmation
+      min_confidence: 0.60
+    - source: 1
+      type: NarrativeShift
+      mode: RequireConfirmation
+      min_confidence: 0.55

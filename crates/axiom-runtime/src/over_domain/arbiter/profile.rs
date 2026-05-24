@@ -11,6 +11,19 @@
 //   CognitiveProfile = куда смотреть (по октанту)
 //
 // Источник: docs/guides/NeuralAdvisor_V2_Plan.md Фаза 4; DEFERRED.md → PROFILE-01
+//           docs/architecture/OverDomainArbiter_V2_0.md §4 (PROFILE-01)
+
+use std::path::Path;
+
+use serde::Deserialize;
+
+/// YAML-схема для config/profiles/*.yaml
+#[derive(Deserialize)]
+struct ProfileYaml {
+    #[allow(dead_code)]
+    name: Option<String>,
+    octant_weights: [f32; 8],
+}
 
 /// Когнитивный профиль: мультипликаторы confidence per-octant.
 ///
@@ -32,6 +45,19 @@ impl CognitiveProfile {
     pub fn with_weights(weights: [f32; 8]) -> Self {
         let clamped = weights.map(|w| w.clamp(Self::WEIGHT_MIN, Self::WEIGHT_MAX));
         Self { octant_weights: clamped }
+    }
+
+    /// V2: загрузить профиль из YAML-файла (config/profiles/*.yaml).
+    /// Клампирует веса в [WEIGHT_MIN, WEIGHT_MAX].
+    pub fn from_yaml(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = std::fs::read_to_string(path)?;
+        let parsed: ProfileYaml = serde_yaml::from_str(&content)?;
+        Ok(Self::with_weights(parsed.octant_weights))
+    }
+
+    /// V2: загрузить из YAML или вернуть default при ошибке.
+    pub fn from_yaml_or_default(path: &Path) -> Self {
+        Self::from_yaml(path).unwrap_or_default()
     }
 
     /// Применить мультипликатор октанта к raw confidence.
@@ -133,12 +159,33 @@ mod tests {
 
     #[test]
     fn test_octant_correction_scaled_by_profile_passes_threshold() {
-        // Профиль с weight=2.0 для октанта 3.
-        // Совет с confidence=0.5, min_confidence=0.60.
-        // 0.5 * 2.0 = 1.0 (clamped) ≥ 0.60 → должен пройти.
         let mut p = CognitiveProfile::default();
         p.octant_weights[3] = 2.0;
         let effective = p.scale_confidence(3, 0.5);
         assert!(effective >= 0.60, "scaled confidence should pass min_confidence threshold");
+    }
+
+    #[test]
+    fn test_from_yaml_parses_weights() {
+        let yaml = "name: test\noctant_weights: [1.0, 1.2, 0.8, 1.4, 0.7, 0.9, 1.5, 0.5]";
+        let parsed: ProfileYaml = serde_yaml::from_str(yaml).unwrap();
+        let p = CognitiveProfile::with_weights(parsed.octant_weights);
+        assert!((p.octant_weights[2] - 0.8).abs() < 1e-5);
+        assert!((p.octant_weights[6] - 1.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_from_yaml_clamps_out_of_range() {
+        let yaml = "octant_weights: [5.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]";
+        let parsed: ProfileYaml = serde_yaml::from_str(yaml).unwrap();
+        let p = CognitiveProfile::with_weights(parsed.octant_weights);
+        assert!((p.octant_weights[0] - CognitiveProfile::WEIGHT_MAX).abs() < f32::EPSILON);
+        assert!((p.octant_weights[1] - CognitiveProfile::WEIGHT_MIN).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_from_yaml_or_default_missing_file() {
+        let p = CognitiveProfile::from_yaml_or_default(std::path::Path::new("/nonexistent.yaml"));
+        assert!(p.octant_weights.iter().all(|&w| (w - 1.0).abs() < f32::EPSILON));
     }
 }

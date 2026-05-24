@@ -431,6 +431,7 @@ impl AdvisorySource for NeuralAdvisor {
             AdvisoryOutcome::Rejected => AdvisoryHistoryOutcome::Rejected,
             AdvisoryOutcome::Skipped => AdvisoryHistoryOutcome::Skipped,
             AdvisoryOutcome::Queued => AdvisoryHistoryOutcome::Pending,
+            AdvisoryOutcome::Expired => AdvisoryHistoryOutcome::Skipped,
         };
         self.advisory_history.update_outcome(sutra_id, id, hist_outcome);
     }
