@@ -57,6 +57,29 @@ pub struct OverDomainArbiter {
     unrouted_feedback: Vec<(SourceId, AdvisoryId, AdvisoryOutcome)>,
 }
 
+fn advisory_type_to_u8(atype: AdvisoryType) -> u8 {
+    match atype {
+        AdvisoryType::DepthHint            => 0,
+        AdvisoryType::OctantCorrection     => 1,
+        AdvisoryType::ConflictDiagnosis    => 2,
+        AdvisoryType::SubsystemAttribution => 3,
+        AdvisoryType::EmergentCandidate    => 4,
+        AdvisoryType::NarrativeShift       => 5,
+    }
+}
+
+fn advisory_type_from_u8(v: u8) -> Option<AdvisoryType> {
+    match v {
+        0 => Some(AdvisoryType::DepthHint),
+        1 => Some(AdvisoryType::OctantCorrection),
+        2 => Some(AdvisoryType::ConflictDiagnosis),
+        3 => Some(AdvisoryType::SubsystemAttribution),
+        4 => Some(AdvisoryType::EmergentCandidate),
+        5 => Some(AdvisoryType::NarrativeShift),
+        _ => None,
+    }
+}
+
 impl OverDomainArbiter {
     pub fn new(trust: TrustConfig) -> Self {
         Self {
@@ -91,6 +114,21 @@ impl OverDomainArbiter {
 
     pub fn default_v1() -> Self {
         Self::new(TrustConfig::default_v1(0))
+    }
+
+    /// ARB-TD-05: экспортировать калиброванные min_confidence значения TrustConfig.
+    pub fn export_trust_calibration(&self) -> Vec<(u8, u8, f32)> {
+        self.trust.iter_entries().map(|((src, atype), entry)| {
+            (*src, advisory_type_to_u8(*atype), entry.min_confidence)
+        }).collect()
+    }
+
+    /// ARB-TD-05: восстановить min_confidence значения в TrustConfig.
+    pub fn import_trust_calibration(&mut self, data: &[(u8, u8, f32)]) {
+        for &(src, atype_u8, min_conf) in data {
+            let Some(atype) = advisory_type_from_u8(atype_u8) else { continue };
+            self.trust.set_min_confidence(src, atype, min_conf);
+        }
     }
 
     pub fn register_source(&mut self, source: Box<dyn AdvisorySource>) {

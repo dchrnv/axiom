@@ -91,6 +91,18 @@ impl TrustConfig {
         cfg
     }
 
+    /// ARB-TD-05: итерировать все записи для сериализации калиброванных значений.
+    pub fn iter_entries(&self) -> impl Iterator<Item = (&(SourceId, AdvisoryType), &TrustEntry)> {
+        self.entries.iter()
+    }
+
+    /// ARB-TD-05: обновить min_confidence для конкретной пары (source, advisory_type).
+    pub fn set_min_confidence(&mut self, source: SourceId, advisory_type: AdvisoryType, min_confidence: f32) {
+        if let Some(entry) = self.entries.get_mut(&(source, advisory_type)) {
+            entry.min_confidence = min_confidence;
+        }
+    }
+
     /// V2: автокалибровка min_confidence для пары (source, advisory_type).
     /// Вызывается после confirm_pending / reject_pending.
     pub fn calibrate(

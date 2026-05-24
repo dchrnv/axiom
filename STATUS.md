@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1487 тестов, 0 failures**
+**1489 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -148,7 +148,11 @@ axiom-persist (D-04):
   ├── save/load: Token+Connection+ExperienceTrace → bincode (атомарный rename)
   ├── MemoryManifest (YAML), IMPORT_WEIGHT_FACTOR=0.7
   ├── AutoSaver: интервальное автосохранение, force_save при :quit
-  └── exchange: export/import traces+skills (bincode), GUARDIAN-валидация
+  ├── exchange: export/import traces+skills (bincode), GUARDIAN-валидация
+  ├── ARB-TD-05: StoredTrustEntry в StoredEngineState; save→export_trust_calibration(); load→import_trust_calibration()
+  │     TrustConfig: iter_entries() + set_min_confidence() (pub API для сериализации)
+  └── ARB-TD-06: octant_weights: Option<[f32;8]> в StoredEngineState; save→cognitive_profile().octant_weights;
+        load→CognitiveProfile::with_weights(weights) (с клампингом); 2 новых roundtrip-теста
 
 axiom-space:
   ├── apply_gravity_batch — scalar, детерминировано точный (feature "simd")
@@ -223,7 +227,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
 | axiom-runtime | 528 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V2.0, OverDomainArbiter V2.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory |
 | axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
-| axiom-persist | 35 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode) |
+| axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
 | axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter (domain_activity_threshold), heartbeat, snapshot resync при Lagged, build_system_snapshot; subscribe_events() → Receiver<EngineMessage>; latest_snapshot() → Option<SystemSnapshot>; snapshot_live: RwLock; WS-5: build_system_snapshot takes PerfSnapshot, populates all new fields |
 | axiom-node | — | HTTP-сервер (axum): WS JSON bridge, advisory confirm/reject, /metrics, ServeDir; NodeCmd channel; tick_loop интеграция; WS-5: NodePerfTracker (window=100) → PerfSnapshot per snapshot |
@@ -323,3 +327,4 @@ Workstation V1.0 ✅ (2026-05-05):
 | WS-1 | Advisory Queue UI: confirm/reject кнопки + TTL bar; REST endpoints advisory/confirm|reject/{id} | ✅ |
 | WS-2 | Core Tabs: Conversation (feed + textarea), Phase C (octant depth, emergent, advisory), Patterns (sparklines L1–L8, domain grid) | ✅ |
 | WS-3 | /metrics Prometheus endpoint (~30 метрик); tools/grafana: docker-compose, 3 provisioned дашборда | ✅ |
+| ARB-TD-05/06 | axiom-persist: persist TrustConfig calibration (StoredTrustEntry) + CognitiveProfile octant_weights; TrustConfig: iter_entries()+set_min_confidence(); loader restores both; 2 roundtrip tests | ✅ |

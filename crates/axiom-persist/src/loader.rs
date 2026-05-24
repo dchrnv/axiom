@@ -72,6 +72,22 @@ pub fn load(dir: &Path) -> Result<LoadResult, PersistError> {
         }
     }
 
+    // 6. ARB-TD-05: восстановить калиброванные min_confidence в TrustConfig
+    if !state.trust_calibration.is_empty() {
+        let cal: Vec<(u8, u8, f32)> = state
+            .trust_calibration
+            .iter()
+            .map(|e| (e.source, e.advisory_type, e.min_confidence))
+            .collect();
+        engine.over_domain_arbiter.import_trust_calibration(&cal);
+    }
+
+    // 7. ARB-TD-06: восстановить веса октантов CognitiveProfile (с клампингом)
+    if let Some(weights) = state.octant_weights {
+        use axiom_runtime::over_domain::arbiter::CognitiveProfile;
+        *engine.over_domain_arbiter.cognitive_profile_mut() = CognitiveProfile::with_weights(weights);
+    }
+
     Ok(LoadResult {
         engine,
         manifest,

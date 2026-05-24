@@ -91,6 +91,14 @@ impl From<StoredTensionTrace> for TensionTrace {
     }
 }
 
+/// Калибровочная запись TrustConfig на диске: (source, advisory_type, min_confidence).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StoredTrustEntry {
+    pub source: u8,
+    pub advisory_type: u8,
+    pub min_confidence: f32,
+}
+
 /// Полное состояние Engine на диске.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StoredEngineState {
@@ -99,4 +107,10 @@ pub struct StoredEngineState {
     pub domains: Vec<StoredDomain>,
     pub traces: Vec<StoredTrace>,
     pub tension: Vec<StoredTensionTrace>,
+    /// ARB-TD-05: калиброванные min_confidence значения TrustConfig.
+    #[serde(default)]
+    pub trust_calibration: Vec<StoredTrustEntry>,
+    /// ARB-TD-06: веса октантов CognitiveProfile.
+    #[serde(default)]
+    pub octant_weights: Option<[f32; 8]>,
 }

@@ -4,7 +4,7 @@
 // MemoryWriter — сериализация состояния Engine на диск.
 
 use crate::error::PersistError;
-use crate::format::{StoredDomain, StoredEngineState, StoredTensionTrace, StoredTrace};
+use crate::format::{StoredDomain, StoredEngineState, StoredTensionTrace, StoredTrace, StoredTrustEntry};
 use crate::manifest::{ManifestContents, MemoryManifest};
 use axiom_runtime::AxiomEngine;
 use std::path::Path;
@@ -74,12 +74,29 @@ pub fn save(
         tension_traces: tension.len() as u32,
     };
 
+    // ARB-TD-05: TrustConfig calibration
+    let trust_calibration: Vec<StoredTrustEntry> = engine
+        .over_domain_arbiter
+        .export_trust_calibration()
+        .into_iter()
+        .map(|(source, advisory_type, min_confidence)| StoredTrustEntry {
+            source,
+            advisory_type,
+            min_confidence,
+        })
+        .collect();
+
+    // ARB-TD-06: CognitiveProfile octant_weights
+    let octant_weights = Some(engine.over_domain_arbiter.cognitive_profile().octant_weights);
+
     let state = StoredEngineState {
         tick_count: snapshot.tick_count,
         com_next_id: snapshot.com_next_id,
         domains,
         traces,
         tension,
+        trust_calibration,
+        octant_weights,
     };
 
     // Атомарная запись engine_state.bin:

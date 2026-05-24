@@ -215,6 +215,52 @@ fn test_manifest_updates_on_resave() {
     assert_eq!(manifest2.tick_count, 10);
 }
 
+// ─── Тест ARB-TD-05/06: TrustConfig calibration + CognitiveProfile roundtrip ──
+
+#[test]
+fn test_trust_calibration_roundtrip() {
+    // advisory_type 0 = DepthHint (u8 encoding from advisory_type_to_u8 in arbiter/mod.rs)
+
+    let dir = temp_dir("arb_td05");
+    let mut engine = AxiomEngine::new();
+
+    // Изменяем min_confidence для NeuralAdvisor source=0 DepthHint
+    engine.over_domain_arbiter.import_trust_calibration(&[(0, 0, 0.88)]);
+    let before = engine.over_domain_arbiter.export_trust_calibration();
+    let depth_hint_entry = before.iter().find(|(s, t, _)| *s == 0 && *t == 0);
+    assert!(depth_hint_entry.is_some(), "DepthHint entry must exist");
+    assert!((depth_hint_entry.unwrap().2 - 0.88).abs() < 1e-5,
+        "min_confidence should be 0.88 before save");
+
+    save(&engine, &dir, &WriteOptions::default()).expect("save failed");
+    let result = load(&dir).expect("load failed");
+
+    let after = result.engine.over_domain_arbiter.export_trust_calibration();
+    let loaded_entry = after.iter().find(|(s, t, _)| *s == 0 && *t == 0);
+    assert!(loaded_entry.is_some(), "DepthHint entry must survive roundtrip");
+    assert!((loaded_entry.unwrap().2 - 0.88).abs() < 1e-5,
+        "min_confidence 0.88 should survive save/load roundtrip");
+}
+
+#[test]
+fn test_cognitive_profile_octant_weights_roundtrip() {
+    let dir = temp_dir("arb_td06");
+    let mut engine = AxiomEngine::new();
+
+    // Задаём нестандартные веса октантов
+    let weights = [1.1, 0.9, 1.3, 0.7, 1.5, 0.8, 1.2, 1.0];
+    engine.over_domain_arbiter.cognitive_profile_mut().octant_weights = weights;
+
+    save(&engine, &dir, &WriteOptions::default()).expect("save failed");
+    let result = load(&dir).expect("load failed");
+
+    let loaded_weights = result.engine.over_domain_arbiter.cognitive_profile().octant_weights;
+    for (i, (expected, got)) in weights.iter().zip(loaded_weights.iter()).enumerate() {
+        assert!((expected - got).abs() < 1e-5,
+            "octant_weights[{i}] should survive roundtrip: expected {expected}, got {got}");
+    }
+}
+
 // ─── Тест 10: WriteOptions::trace_weight_threshold фильтрует traces ───────────
 
 #[test]
