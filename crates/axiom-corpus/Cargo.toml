@@ -1,0 +1,10 @@
+[package]
+name = "axiom-corpus"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Text corpus generator for AXIOM engine testing and Phase E calibration"
+
+[dependencies]
+serde = { workspace = true }

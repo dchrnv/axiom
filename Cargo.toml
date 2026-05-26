@@ -26,6 +26,7 @@ members = [
     "crates/axiom-node",
     "crates/axiom-experience",
     "crates/axiom-observe",
+    "crates/axiom-corpus",
 ]
 
 [workspace.package]

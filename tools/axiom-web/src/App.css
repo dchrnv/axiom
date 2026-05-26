@@ -238,6 +238,34 @@
 .batch-progress { font-size: 12px; color: var(--text-dim); margin-left: auto; }
 .batch-stop { background: var(--red) !important; }
 .batch-stop:hover { background: #c0392b !important; }
+.gen-btn { margin-left: auto; }
+.gen-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gen-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gen-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.gen-mode-group { display: flex; gap: 4px; }
+.gen-mode-option {
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.gen-mode-option:hover { color: var(--text); }
+.gen-mode-selected { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+.gen-seed-input { width: 90px; }
+.gen-go-btn { padding: 5px 14px; font-size: 12px; margin-left: auto; }
 
 /* ── Phase C ── */
 .phase-c { display: flex; flex-direction: column; gap: 14px; }

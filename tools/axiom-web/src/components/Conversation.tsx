@@ -1,16 +1,28 @@
 import { useRef, useState, useEffect, KeyboardEvent } from 'react';
 import { useEngineStore } from '../store/engine';
 
+type GenMode = 'noise' | 'syllables' | 'words' | 'prose';
+
 export function Conversation() {
   const { feed, snapshot } = useEngineStore();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Batch
   const [batchMode, setBatchMode] = useState(false);
   const [batchText, setBatchText] = useState('');
   const [batchDelay, setBatchDelay] = useState(500);
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const batchStopRef = useRef(false);
+
+  // Generator panel
+  const [genOpen, setGenOpen] = useState(false);
+  const [genMode, setGenMode] = useState<GenMode>('prose');
+  const [genCount, setGenCount] = useState(20);
+  const [genSeed, setGenSeed] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,15 +70,25 @@ export function Conversation() {
     if (!batchStopRef.current) setBatchText('');
   }
 
-  function stopBatch() {
-    batchStopRef.current = true;
+  function stopBatch() { batchStopRef.current = true; }
+
+  async function generateCorpus() {
+    setGenLoading(true);
+    const params = new URLSearchParams({ mode: genMode, count: String(genCount) });
+    if (genSeed.trim()) params.set('seed', genSeed.trim());
+    try {
+      const res = await fetch(`/api/corpus/generate?${params}`);
+      const data: { lines: string[] } = await res.json();
+      setBatchText(data.lines.join('\n'));
+      setBatchMode(true);
+      setGenOpen(false);
+    } finally {
+      setGenLoading(false);
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      submit();
-    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
   }
 
   return (
@@ -85,19 +107,60 @@ export function Conversation() {
       </div>
 
       <div className="compose-mode-bar">
-        <button
-          className={`compose-mode-btn ${!batchMode ? 'compose-mode-active' : ''}`}
-          onClick={() => setBatchMode(false)}
-        >
+        <button className={`compose-mode-btn ${!batchMode ? 'compose-mode-active' : ''}`} onClick={() => setBatchMode(false)}>
           Single
         </button>
-        <button
-          className={`compose-mode-btn ${batchMode ? 'compose-mode-active' : ''}`}
-          onClick={() => setBatchMode(true)}
-        >
+        <button className={`compose-mode-btn ${batchMode ? 'compose-mode-active' : ''}`} onClick={() => setBatchMode(true)}>
           Batch
         </button>
+        <button className={`compose-mode-btn gen-btn ${genOpen ? 'compose-mode-active' : ''}`} onClick={() => setGenOpen((v) => !v)}>
+          ⚡ Generate
+        </button>
       </div>
+
+      {genOpen && (
+        <div className="gen-panel">
+          <div className="gen-row">
+            <span className="gen-label">Mode</span>
+            <div className="gen-mode-group">
+              {(['noise', 'syllables', 'words', 'prose'] as GenMode[]).map((m) => (
+                <button
+                  key={m}
+                  className={`gen-mode-option ${genMode === m ? 'gen-mode-selected' : ''}`}
+                  onClick={() => setGenMode(m)}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="gen-row">
+            <label className="gen-label" htmlFor="gen-count">Lines</label>
+            <input
+              id="gen-count"
+              className="batch-delay-input"
+              type="number"
+              min={1}
+              max={500}
+              value={genCount}
+              onChange={(e) => setGenCount(Math.max(1, Math.min(500, Number(e.target.value))))}
+            />
+            <label className="gen-label" htmlFor="gen-seed" style={{ marginLeft: 12 }}>Seed</label>
+            <input
+              id="gen-seed"
+              className="batch-delay-input gen-seed-input"
+              type="number"
+              min={0}
+              placeholder="random"
+              value={genSeed}
+              onChange={(e) => setGenSeed(e.target.value)}
+            />
+            <button className="compose-send gen-go-btn" onClick={generateCorpus} disabled={genLoading}>
+              {genLoading ? '…' : 'Fill Batch'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!batchMode ? (
         <div className="compose">
@@ -139,22 +202,14 @@ export function Conversation() {
               ms
             </label>
             {batchProgress && (
-              <span className="batch-progress">
-                {batchProgress.done} / {batchProgress.total}
-              </span>
+              <span className="batch-progress">{batchProgress.done} / {batchProgress.total}</span>
             )}
             {!batchRunning ? (
-              <button
-                className="compose-send"
-                onClick={startBatch}
-                disabled={!batchText.trim()}
-              >
+              <button className="compose-send" onClick={startBatch} disabled={!batchText.trim()}>
                 Start
               </button>
             ) : (
-              <button className="compose-send batch-stop" onClick={stopBatch}>
-                Stop
-              </button>
+              <button className="compose-send batch-stop" onClick={stopBatch}>Stop</button>
             )}
           </div>
         </div>

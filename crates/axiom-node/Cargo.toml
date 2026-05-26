@@ -18,6 +18,7 @@ axiom-persist    = { path = "../axiom-persist" }
 axiom-config     = { path = "../axiom-config" }
 axiom-protocol   = { path = "../axiom-protocol" }
 axiom-ucl        = { path = "../axiom-ucl" }
+axiom-corpus     = { path = "../axiom-corpus" }
 
 tokio            = { workspace = true }
 tracing          = { workspace = true }

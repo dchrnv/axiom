@@ -9,6 +9,7 @@
 //   POST /api/advisory/confirm/:id — подтвердить advisory
 //   POST /api/advisory/reject/:id  — отклонить advisory
 //   POST /api/text/submit          — отправить текст в движок
+//   GET  /api/corpus/generate      — сгенерировать текстовый корпус (mode/count/seed)
 //   GET  /metrics                  — Prometheus text format
 //   GET  /*                        — статика React SPA из web_dist/
 
@@ -17,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -28,6 +29,7 @@ use tower_http::services::ServeDir;
 use tracing::{info, warn};
 
 use axiom_broadcasting::BroadcastHandle;
+use axiom_corpus::{GenerateMode, generate};
 use axiom_protocol::snapshot::SystemSnapshot;
 
 /// Команды из HTTP → tick loop.
@@ -62,6 +64,7 @@ pub async fn run(
         .route("/api/advisory/confirm/{id}", post(api_confirm))
         .route("/api/advisory/reject/{id}", post(api_reject))
         .route("/api/text/submit", post(api_text_submit))
+        .route("/api/corpus/generate", get(api_corpus_generate))
         .route("/metrics", get(metrics_handler))
         .fallback_service(ServeDir::new(&web_dist).append_index_html_on_directories(true))
         .with_state(state);
@@ -141,6 +144,39 @@ async fn api_text_submit(
     }
     let _ = s.cmd_tx.send(NodeCmd::SubmitText(body.text));
     StatusCode::OK
+}
+
+// ── Corpus generator ─────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct CorpusQuery {
+    #[serde(default)]
+    mode: Option<String>,
+    #[serde(default)]
+    count: Option<usize>,
+    #[serde(default)]
+    seed: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
+struct CorpusResponse {
+    lines: Vec<String>,
+    mode: String,
+}
+
+async fn api_corpus_generate(
+    Query(q): Query<CorpusQuery>,
+) -> Result<Json<CorpusResponse>, StatusCode> {
+    let mode: GenerateMode = q.mode
+        .as_deref()
+        .unwrap_or("prose")
+        .parse()
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    let count = q.count.unwrap_or(20).min(500).max(1);
+    let seed = q.seed.unwrap_or(0);
+    let lines = generate(mode, count, seed);
+    let mode_str = format!("{mode:?}").to_lowercase();
+    Ok(Json(CorpusResponse { lines, mode: mode_str }))
 }
 
 // ── Prometheus metrics ───────────────────────────────────────────────────────
