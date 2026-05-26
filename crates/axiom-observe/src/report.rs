@@ -1,3 +1,5 @@
+use axiom_runtime::over_domain::neural_advisor::implementations::EMERGENT_CANDIDATE_MIN_DEPTH;
+
 use crate::corpus::Corpus;
 use crate::metrics::{InjectionEvent, TickSnapshot};
 
@@ -70,11 +72,11 @@ pub fn generate_markdown(
         out.push_str("## Avg Depth per Octant (final)\n\n");
         out.push_str("| Octant | Avg depth |\n|---|---|\n");
         for (i, &d) in last.avg_depths.iter().enumerate() {
-            let flag = if d >= 8000 { " ★" } else { "" };
+            let flag = if d >= EMERGENT_CANDIDATE_MIN_DEPTH as u32 { " ★" } else { "" };
             out.push_str(&format!("| O{} | {}{} |\n", i + 1, d, flag));
         }
         out.push('\n');
-        out.push_str("★ = depth ≥ 8000 (potential emergent threshold)\n\n");
+        out.push_str(&format!("★ = depth ≥ {} (emergent candidate threshold)\n\n", EMERGENT_CANDIDATE_MIN_DEPTH));
     }
 
     // 5. Injection events with routing diagnostics
@@ -150,19 +152,20 @@ pub fn generate_markdown(
     // 7. Threshold assessment
     out.push_str("## Threshold Assessment\n\n");
     if let Some(last) = snapshots.last() {
+        let threshold = EMERGENT_CANDIDATE_MIN_DEPTH as u32;
         let high_depth_octants: Vec<usize> = last
             .avg_depths
             .iter()
             .enumerate()
-            .filter(|(_, &d)| d >= 8000)
+            .filter(|(_, &d)| d >= threshold)
             .map(|(i, _)| i + 1)
             .collect();
 
         if high_depth_octants.is_empty() {
-            out.push_str("No octants reached depth ≥ 8000. Consider more injections or longer run.\n\n");
+            out.push_str(&format!("No octants reached depth ≥ {threshold}. Consider more injections or longer run.\n\n"));
         } else {
             out.push_str(&format!(
-                "Octants above depth threshold (≥8000): {}\n\n",
+                "Octants above depth threshold (≥{threshold}): {}\n\n",
                 high_depth_octants.iter().map(|o| format!("O{o}")).collect::<Vec<_>>().join(", ")
             ));
         }
