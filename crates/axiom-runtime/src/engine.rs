@@ -12,10 +12,11 @@ use crate::adaptive::AdaptiveTickRate;
 use crate::guardian::{Guardian, GuardianConfig, RoleStats};
 use crate::orchestrator;
 use crate::over_domain::{
-    restore_frame_from_anchor, AdvisorySource, AxialEvaluator, ContextRecognizer, DreamCycle,
-    DreamPhaseState, DreamPhaseStats, DreamProposalKind, DreamScheduler, FatigueSnapshot,
-    FrameWeaver, GatewayPriority, NeuralAdvisor, OverDomainArbiter, OverDomainComponent,
-    SleepDecision, SleepTrigger, SleepTriggerKind, WakeReason, WeaverId,
+    cluster_emergent_primitives, restore_frame_from_anchor, AdvisorySource, AxialEvaluator,
+    ContextRecognizer, DreamCycle, DreamPhaseState, DreamPhaseStats, DreamProposalKind,
+    DreamScheduler, FatigueSnapshot, FrameWeaver, GatewayPriority, NeuralAdvisor,
+    OverDomainArbiter, OverDomainComponent, SleepDecision, SleepTrigger, SleepTriggerKind,
+    SubsystemCandidateStore, WakeReason, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
@@ -234,6 +235,8 @@ pub struct AxiomEngine {
     /// Окно совместной активации: sutra_id → тик последнего участия в Frame-кандидате.
     /// Используется для приоритизации DreamProposal (temporal co-activation).
     pub(crate) co_activation_window: HashMap<u32, u64>,
+    /// H1+H2: кандидаты в новые подсистемы (обнаруживаются в DREAM Phase).
+    pub subsystem_candidate_store: SubsystemCandidateStore,
 }
 
 impl AxiomEngine {
@@ -266,7 +269,7 @@ impl AxiomEngine {
             frame_weaver: FrameWeaver::with_default_config(),
             axial_evaluator: AxialEvaluator::new(),
             context_recognizer: ContextRecognizer::new(std::collections::HashMap::new()),
-            neural_advisor: NeuralAdvisor::with_default_v2(),
+            neural_advisor: NeuralAdvisor::with_default_v3(),
             over_domain_arbiter,
             dream_phase_state: DreamPhaseState::default(),
             dream_phase_stats: DreamPhaseStats::default(),
@@ -287,6 +290,7 @@ impl AxiomEngine {
             shell_registry: HashMap::new(),
             subsystem_shell_templates: HashMap::new(),
             co_activation_window: HashMap::new(),
+            subsystem_candidate_store: SubsystemCandidateStore::default(),
         })
     }
 
@@ -653,6 +657,16 @@ impl AxiomEngine {
                     u32::from_le_bytes([cmd.payload[0], cmd.payload[1], cmd.payload[2], cmd.payload[3]]);
                 self.neural_advisor.approve_emergent(sutra_id);
                 make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+            }
+            OpCode::ApproveSubsystemCandidate => {
+                let candidate_id =
+                    u32::from_le_bytes([cmd.payload[0], cmd.payload[1], cmd.payload[2], cmd.payload[3]]);
+                let ok = self.subsystem_candidate_store.approve(candidate_id);
+                if ok {
+                    make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
+                } else {
+                    make_result(cmd.command_id, CommandStatus::SystemError, error_codes::INVALID_PAYLOAD, 0)
+                }
             }
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
             OpCode::LockMembrane
@@ -1350,6 +1364,7 @@ impl AxiomEngine {
             crate::over_domain::CycleAdvanceResult::Complete => {
                 self.apply_dream_cycle_commands();
                 self.apply_dream_depth_update();
+                self.discover_subsystem_candidates();
                 self.transition_to_waking(WakeReason::CycleComplete);
             }
             crate::over_domain::CycleAdvanceResult::Timeout => {
@@ -1364,6 +1379,17 @@ impl AxiomEngine {
         }
 
         0
+    }
+
+    /// H1: кластеризация approved EmergentPrimitives в SubsystemCandidate'ы.
+    /// Вызывается один раз за DREAM-цикл (на Complete).
+    fn discover_subsystem_candidates(&mut self) {
+        let primitives: Vec<_> = self.neural_advisor.emergent_store().get_all().to_vec();
+        let clusters = cluster_emergent_primitives(&primitives, &self.subsystem_candidate_store);
+        let event_id = self.com_next_id;
+        for (octant, ids) in clusters {
+            self.subsystem_candidate_store.insert(ids, octant, event_id);
+        }
     }
 
     fn tick_waking(&mut self) -> u16 {
@@ -1949,6 +1975,7 @@ fn opcode_from_u16(raw: u16) -> Option<OpCode> {
         9002 => Some(OpCode::BackupState),
         9003 => Some(OpCode::RestoreState),
         5201 => Some(OpCode::ApproveEmergentCandidate),
+        5301 => Some(OpCode::ApproveSubsystemCandidate),
         _ => None,
     }
 }

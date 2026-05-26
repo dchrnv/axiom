@@ -10,7 +10,8 @@ use crate::over_domain::neural_advisor::{
     implementations::{
         AnchorVotingAdvisor, DepthHistoryBiasAdvisor, DepthThresholdEmergentDetector,
         NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor, NullOctantAdvisor,
-        NullSubsystemAdvisor, ReactivationDepthAdvisor, RuleBasedCorpusCallosumResolver,
+        NullSubsystemAdvisor, PatternLearningResolver, ReactivationDepthAdvisor,
+        RuleBasedCorpusCallosumResolver,
     },
     traits::{
         CorpusCallosumResolver, DepthPredictionAdvisor, EmergentPatternAdvisor,
@@ -57,6 +58,20 @@ impl NeuralAdvisorRegistry {
             depth: Some(Arc::new(ReactivationDepthAdvisor)),
             octant: Some(Arc::new(DepthHistoryBiasAdvisor::default())),
             conflict: Some(Arc::new(RuleBasedCorpusCallosumResolver)),
+            subsystem: Some(Arc::new(AnchorVotingAdvisor::default())),
+            emergent: Some(Arc::new(DepthThresholdEmergentDetector)),
+        }
+    }
+
+    /// Конфигурация V3 (G2): conflict slot → PatternLearningResolver.
+    ///
+    /// PatternLearningResolver учится на AdvisoryHistory per-Frame;
+    /// fallback на RuleBasedCorpusCallosumResolver при недостатке данных.
+    pub fn default_v3() -> Self {
+        Self {
+            depth: Some(Arc::new(ReactivationDepthAdvisor)),
+            octant: Some(Arc::new(DepthHistoryBiasAdvisor::default())),
+            conflict: Some(Arc::new(PatternLearningResolver::new())),
             subsystem: Some(Arc::new(AnchorVotingAdvisor::default())),
             emergent: Some(Arc::new(DepthThresholdEmergentDetector)),
         }

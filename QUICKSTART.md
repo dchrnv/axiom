@@ -28,7 +28,7 @@ pacman -S nodejs npm
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-cargo test --workspace   # 1487 тестов, 0 failures
+cargo test --workspace   # 1539 тестов, 0 failures
 cargo build --release    # production build (~7 мин первый раз)
 ```
 
@@ -97,6 +97,31 @@ cargo run -p axiom-node --release
 ```
 
 Полный гайд по UI: [docs/guides/Workstation_V2_Guide.md](docs/guides/Workstation_V2_Guide.md)
+
+---
+
+## axiom-tray (системный трей)
+
+Показывает статус `axiom-node` в трее GNOME/KDE: тик + DREAM-фаза. Позволяет открыть Workstation в браузере, запустить или остановить `axiom-node`.
+
+**Требования (GNOME):** расширение `appindicatorsupport@rgcjonas.gmail.com` должно быть включено.
+
+```bash
+# Сборка
+cargo build -p axiom-tray --release
+
+# Запуск (из корня проекта — иначе не найдёт target/release/axiom-node)
+./target/release/axiom-tray
+
+# Кастомные настройки
+AXIOM_PORT=8080 AXIOM_BIN=/path/to/axiom-node ./target/release/axiom-tray
+```
+
+Меню трея:
+- **Статус** — `● tick 12345 · dreaming ✦` (обновляется каждые 2 с)
+- **Open Workstation** — открывает `http://127.0.0.1:8080` в браузере
+- **Start / Stop axiom-node** — запуск или остановка процесса
+- **Quit** — выход из axiom-tray
 
 ---
 

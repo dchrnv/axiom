@@ -8,7 +8,7 @@ pub mod null;
 pub mod octant;
 pub mod subsystem;
 
-pub use conflict::RuleBasedCorpusCallosumResolver;
+pub use conflict::{PatternLearningResolver, RuleBasedCorpusCallosumResolver, MIN_SAMPLES};
 pub use depth::{AgeDecayAdvisor, ReactivationDepthAdvisor, SubsystemAffinityDepthAdvisor, DEPTH_FLOOR};
 pub use emergent::{
     DepthThresholdEmergentDetector, EMERGENT_CANDIDATE_MIN_AGE_TICKS,

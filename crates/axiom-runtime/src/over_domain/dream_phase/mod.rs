@@ -14,6 +14,7 @@ pub mod cycle;
 pub mod fatigue;
 pub mod scheduler;
 pub mod state;
+pub mod subsystem;
 
 pub use state::{
     DreamPhaseEvent, DreamPhaseState, DreamPhaseStats, GatewayPriority, SleepTrigger, WakeReason,
@@ -26,4 +27,7 @@ pub use cycle::{
 pub use fatigue::{FatigueSnapshot, FatigueTracker, FatigueWeights, IdleTracker};
 pub use scheduler::{
     DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
+};
+pub use subsystem::{
+    cluster_emergent_primitives, SubsystemCandidate, SubsystemCandidateStore, SubsystemLifecycleState,
 };

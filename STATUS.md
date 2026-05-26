@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-24
+**Обновлено:** 2026-05-26
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1489 тестов, 0 failures**
+**1539 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -36,14 +36,17 @@ AxiomEngine
         │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
-        ├── NeuralAdvisor V2.0 ✅ (tick=11, ModuleId=19) — все 5 слотов заполнены;
+        ├── NeuralAdvisor V3.0 ✅ (tick=11, ModuleId=19) — все 5 слотов заполнены;
         │     depth: ReactivationDepthAdvisor; octant: DepthHistoryBiasAdvisor (DHB_MIN_DEPTH=800,
-        │     DHB_MIN_ADVANTAGE=300); conflict: RuleBasedCorpusCallosumResolver;
+        │     DHB_MIN_ADVANTAGE=300); conflict: RuleBasedCorpusCallosumResolver (V2) / PatternLearningResolver (V3);
         │     subsystem: AnchorVotingAdvisor (AV_MIN_ENERGY=20, dominance≥0.50, dual-gap<0.15);
         │     emergent: DepthThresholdEmergentDetector; AdvisoryHistory (ring 32 per sutra_id);
         │     OctantAdvisorInput расширен: depth_per_octant[8] + reactivation_count;
-        │     implements AdvisorySource → poll_advisories() → Vec<Advisory> с octant_hint
-        └── OverDomainArbiter V2.0 ✅ (tick=13, ModuleId=20) — координатор advisory-источников;
+        │     implements AdvisorySource → poll_advisories() → Vec<Advisory> с octant_hint;
+        │     G1: DivergenceLog (ring 256) — расхождения advisory_octant ↔ analytic_octant (Hamming ≥ 2);
+        │     G2: PatternLearningResolver — conflict slot, учится на AdvisoryHistory per-Frame;
+        │     G3: NeuralAdvisorConfig — genome.yaml секция neural_advisor → per-advisor enable/disable
+        └── OverDomainArbiter V3.0 ✅ (tick=13, ModuleId=20) — координатор advisory-источников;
               TrustConfig (Ignore/AutoApply/RequireConfirmation × min_confidence);
               V2: TrustConfig загружается из genome.yaml секции [arbiter.trust]; TTL ~1000 event_id
               (expires_at_event = created_at_event + 1000 → ArbiterOutcome::Expired + on_feedback);
@@ -60,9 +63,11 @@ AxiomEngine
               RuleTrigger: StabilityReached, HighConfidence(f32), DreamCycle, RepeatedAssembly{window_ticks};
               min_participant_anchors cross-domain check; check_promotion(tick) — корректный min_age_ticks;
               V1.2: промоция → dream_propose(); V1.3: все RuleTrigger реализованы, GENOME enforcement;
-              AxiomEngine: confirm_pending_advisory(advisory_id: u64), reject_pending_advisory(advisory_id: u64)
+              AxiomEngine: confirm_pending_advisory(advisory_id: u64), reject_pending_advisory(advisory_id: u64);
+              V3: drain_octant_overrides() → pending octant overrides для AxialEvaluatorStorage;
+              V3: feedback-буфер для незарегистрированных источников (AxialEvaluator source_id)
 
-DREAM Phase V1.0 ✅ — когнитивный сон: 4 состояния (Wake/FallingAsleep/Dreaming/Waking)
+DREAM Phase V1.1 ✅ — когнитивный сон: 4 состояния (Wake/FallingAsleep/Dreaming/Waking)
   ├── DreamScheduler — 3 триггера: Idle (порог idle тиков), Fatigue (0-255, 4 фактора), ExplicitCommand
   ├── FatigueTracker — composite score = Σ(factor × weight) / Σ(weight); отслеживает 4 показателя
   ├── DreamCycle — 3 этапа: Stabilization → Processing → Consolidation; DreamProposal (Promotion/HeavyCrystallization)
@@ -70,7 +75,10 @@ DREAM Phase V1.0 ✅ — когнитивный сон: 4 состояния (Wa
   ├── GatewayPriority: Normal (игнорируется в DREAMING) / Critical (пробуждение) / Emergency (V2.0=Critical)
   ├── Gateway::with_config() — старт с загрузкой DreamConfig из axiom.yaml
   ├── CLI: :dream-stats / :force-sleep / :wake-up
-  └── BroadcastSnapshot расширен: dream_phase, dream_stats (FatigueStats, SchedulerStats, CycleStats)
+  ├── BroadcastSnapshot расширен: dream_phase, dream_stats (FatigueStats, SchedulerStats, CycleStats)
+  └── H1/H2: SubsystemCandidate discovery — cluster_emergent_primitives() → SubsystemCandidateStore;
+        SubsystemLifecycleState: Proposed→Candidate→InReview→Active→Mature→Deprecated→Archived;
+        ApproveSubsystemCandidate (UCL 5301): engine.subsystem_candidate_store.approve(candidate_id)
 
 FractalChain — N уровней AshtiCore (MAYA[n] → SUTRA[n+1], skills exchange)
 ConfigWatcher — горячая перезагрузка axiom.yaml (inotify), передаётся в tick_loop
@@ -216,8 +224,8 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-core | 34 | Token, Connection, Event |
 | axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21 |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 92 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
-| axiom-space | 119 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
+| axiom-config | 101 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
+| axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
@@ -225,7 +233,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 528 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V2.0, OverDomainArbiter V2.0), DREAM Phase V1.0, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory |
+| axiom-runtime | 568 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState; drain_octant_overrides |
 | axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
@@ -234,8 +242,10 @@ Workstation V1.0 ✅ (2026-05-05):
 | tools/axiom-web | — | React 18 SPA: Overview/Conversation/Phase C/Patterns; AdvisoryQueue, Sparklines, Zustand store; WS-5: protocol.ts extended with PerfSnapshot/TraceSnapshot/TensionTraceSnapshot/ReflectorSnapshot/CognitiveDepthSnapshot/ImpulsesSnapshot |
 | axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
+| axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
-| **Итого** | **1487** | |
+| tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
+| **Итого** | **1539** | |
 
 ---
 
@@ -328,3 +338,11 @@ Workstation V1.0 ✅ (2026-05-05):
 | WS-2 | Core Tabs: Conversation (feed + textarea), Phase C (octant depth, emergent, advisory), Patterns (sparklines L1–L8, domain grid) | ✅ |
 | WS-3 | /metrics Prometheus endpoint (~30 метрик); tools/grafana: docker-compose, 3 provisioned дашборда | ✅ |
 | ARB-TD-05/06 | axiom-persist: persist TrustConfig calibration (StoredTrustEntry) + CognitiveProfile octant_weights; TrustConfig: iter_entries()+set_min_confidence(); loader restores both; 2 roundtrip tests | ✅ |
+| Phase G1 | NeuralAdvisor V3.0: DivergenceLog (ring 256) — расхождения advisory_octant ↔ analytic_octant (Hamming ≥ 2); octant_hamming_distance() | ✅ |
+| Phase G2 | NeuralAdvisor V3.0: PatternLearningResolver (conflict slot) — online learning на AdvisoryHistory per-Frame | ✅ |
+| Phase G3 | NeuralAdvisor V3.0: NeuralAdvisorConfig — genome.yaml секция neural_advisor → per-advisor enable/disable | ✅ |
+| OverDomainArbiter V3.0 | drain_octant_overrides() → pending overrides для AxialEvaluatorStorage; feedback-буфер для незарегистрированных источников | ✅ |
+| WS-5 | axiom-node: NodePerfTracker → PerfSnapshot; SystemSnapshot расширен (traces/tension/reflector/cognitive_depth/impulses/skills); React SPA: Domains, Traces, Internals tabs + расширенный Overview | ✅ |
+| Phase H1 | DREAM Phase V1.1: cluster_emergent_primitives() → SubsystemCandidateStore; NotifySubsystemCandidate (UCL 5300) | ✅ |
+| Phase H2 | DREAM Phase V1.1: SubsystemLifecycleState (Proposed→Candidate→InReview→Active→Mature→Deprecated→Archived); ApproveSubsystemCandidate (UCL 5301) | ✅ |
+| WS-6 | axiom-tray: системный трей (ksni), poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation в браузере | ✅ |

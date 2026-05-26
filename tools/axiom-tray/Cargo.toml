@@ -1,0 +1,15 @@
+[package]
+name = "axiom-tray"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "axiom-tray"
+path = "src/main.rs"
+
+[dependencies]
+ksni  = "0.2"
+open  = "5"
+ureq  = { version = "2", default-features = false }

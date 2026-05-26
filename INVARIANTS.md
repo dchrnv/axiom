@@ -1,6 +1,6 @@
 # Axiom — Справочник инвариантов
 
-**Версия:** 9.0 (2026-05-23)  
+**Версия:** 10.0 (2026-05-26)  
 **Правило:** Значения помеченные **HARD** менять запрещено — они фиксированы в коде compile-time assert-ами, бинарным форматом или фундаментальной логикой. Всё остальное — soft (настраиваемый дефолт).
 
 ---
@@ -430,6 +430,32 @@ config/anchors/
 
 > После fire OctantStabilityTracker очищает историю Frame.  
 > После fire ConflictPersistenceTracker сбрасывает streak в 0.
+
+### SubsystemLifecycleState (Phase H2)
+
+Жизненный цикл кандидата в подсистемы (`dream_phase/subsystem.rs`).
+
+| Variant | Value | Смысл |
+|---------|-------|-------|
+| `Proposed` | **0** | Автоматически обнаружен (кластер ≥2 approved primitives) |
+| `Candidate` | **1** | Оператор одобрил для изучения |
+| `InReview` | **2** | Детальный анализ оператором |
+| `Active` | **3** | Интегрирован в таксономию подсистем |
+| `Mature` | **4** | Долгосрочно устойчивый |
+| `Deprecated` | **5** | Выводится из использования |
+| `Archived` | **6** | Удалён из активного использования |
+
+Допустимые переходы: `Proposed→Candidate→InReview→Active→(Mature|Deprecated)→Archived`.  
+`ApproveSubsystemCandidate` (UCL 5301) переводит `Proposed→Candidate`.
+
+### DivergenceLog (Phase G1)
+
+| Константа | Значение | Смысл |
+|-----------|----------|-------|
+| `DIVERGENCE_LOG_CAPACITY` | **256** | Размер скользящего буфера расхождений |
+| Порог записи | Hamming distance ≥ 2 | Фиксируются только существенные расхождения |
+
+`octant_hamming_distance(a, b)` — число отличающихся осей (0–3).
 
 ### EmergentPatternAdvisor пороги (DepthThresholdEmergentDetector)
 

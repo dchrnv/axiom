@@ -60,9 +60,10 @@ pub use weavers::{
 };
 
 pub use dream_phase::{
-    CycleAdvanceResult, CycleStage, DreamCycle, DreamCycleConfig, DreamCycleStats, DreamPhaseEvent,
-    DreamPhaseState, DreamPhaseStats, DreamProposal, DreamProposalKind, DreamReport,
-    DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats, FatigueSnapshot, FatigueTracker,
-    FatigueWeights, GatewayPriority, IdleTracker, SleepDecision, SleepTrigger, SleepTriggerKind,
-    WakeReason,
+    cluster_emergent_primitives, CycleAdvanceResult, CycleStage, DreamCycle, DreamCycleConfig,
+    DreamCycleStats, DreamPhaseEvent, DreamPhaseState, DreamPhaseStats, DreamProposal,
+    DreamProposalKind, DreamReport, DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats,
+    FatigueSnapshot, FatigueTracker, FatigueWeights, GatewayPriority, IdleTracker, SleepDecision,
+    SleepTrigger, SleepTriggerKind, SubsystemCandidate, SubsystemCandidateStore,
+    SubsystemLifecycleState, WakeReason,
 };

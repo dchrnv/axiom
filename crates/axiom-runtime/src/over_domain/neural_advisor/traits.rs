@@ -6,6 +6,8 @@
 
 use axiom_experience::{EvaluationLevel, Octant, SubsystemId};
 
+use crate::over_domain::neural_advisor::history::AdvisoryHistoryEntry;
+
 // ─── Shared output types ─────────────────────────────────────────────────────
 
 /// Подсказка о целевой глубине Frame в конкретном октанте.
@@ -139,6 +141,9 @@ pub struct ConflictAdvisorInput {
     pub reactivation_count: u32,
     pub primary_subsystem: SubsystemId,
     pub event_id: u64,
+    /// G2: снапшот истории советов для этого Frame (PatternLearningResolver).
+    /// None в V1/V2 конфигурации или если история пуста.
+    pub history: Option<Vec<AdvisoryHistoryEntry>>,
 }
 
 /// Вход для SubsystemAttributionAdvisor.

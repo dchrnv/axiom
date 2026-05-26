@@ -81,6 +81,19 @@ config:
   default_heartbeat_interval: 1024
   ashti_domain_count: 11
 
+# G3: NeuralAdvisor — per-advisor enable/disable
+neural_advisor:
+  depth:
+    enabled: true
+  octant:
+    enabled: true
+  conflict:
+    enabled: true
+  subsystem:
+    enabled: true
+  emergent:
+    enabled: true
+
 # V2: OverDomainArbiter — TrustConfig + CognitiveProfile из файла (ARB-TD-01, PROFILE-01)
 arbiter:
   profile: balanced

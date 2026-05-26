@@ -22,19 +22,23 @@ use crate::over_domain::arbiter::source::{
 };
 use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
+pub mod config;
+pub mod divergence;
 pub mod history;
 pub mod implementations;
 pub mod registry;
 pub mod results;
 pub mod traits;
 
+pub use config::NeuralAdvisorConfig;
+pub use divergence::{octant_hamming_distance, DivergenceEntry, DivergenceLog};
 pub use history::{AdvisoryHistory, AdvisoryHistoryEntry, AdvisoryHistoryOutcome, AdvisoryRingBuffer};
 pub use implementations::{
     AnchorVotingAdvisor, DepthHistoryBiasAdvisor, DepthThresholdEmergentDetector,
     NullConflictResolver, NullDepthAdvisor, NullEmergentAdvisor, NullOctantAdvisor,
-    NullSubsystemAdvisor, RuleBasedCorpusCallosumResolver,
+    NullSubsystemAdvisor, PatternLearningResolver, RuleBasedCorpusCallosumResolver,
     EMERGENT_CANDIDATE_MIN_AGE_TICKS, EMERGENT_CANDIDATE_MIN_DEPTH,
-    EMERGENT_CANDIDATE_MIN_REACTIVATIONS,
+    EMERGENT_CANDIDATE_MIN_REACTIVATIONS, MIN_SAMPLES,
 };
 pub use registry::NeuralAdvisorRegistry;
 pub use results::{AdvisoryResult, AdvisoryResultStore};
@@ -64,6 +68,8 @@ pub struct NeuralAdvisor {
     depth_store_snapshot: SutraDepthStore,
     /// История советов per sutra_id (ring-буфер 32 записи).
     advisory_history: AdvisoryHistory,
+    /// G1: расхождения advisory_octant ↔ analytic_octant (Hamming distance ≥ 2).
+    divergence_log: DivergenceLog,
 }
 
 impl NeuralAdvisor {
@@ -76,6 +82,7 @@ impl NeuralAdvisor {
             profile_store_snapshot: InterpretationProfileStore::new(),
             depth_store_snapshot: SutraDepthStore::new(),
             advisory_history: AdvisoryHistory::new(),
+            divergence_log: DivergenceLog::new(),
         }
     }
 
@@ -83,8 +90,17 @@ impl NeuralAdvisor {
         &self.advisory_history
     }
 
+    pub fn divergence_log(&self) -> &DivergenceLog {
+        &self.divergence_log
+    }
+
     pub fn with_default_v2() -> Self {
         Self::new(NeuralAdvisorRegistry::default_v2())
+    }
+
+    /// V3: conflict slot → PatternLearningResolver (учится на AdvisoryHistory).
+    pub fn with_default_v3() -> Self {
+        Self::new(NeuralAdvisorRegistry::default_v3())
     }
 
 
@@ -178,6 +194,10 @@ impl NeuralAdvisor {
         if let Some(resolver) = &self.registry.conflict {
             if let Some(eval) = self.axial_store_snapshot.get_latest(sutra_id) {
                 if let Some(conflict) = &eval.conflict {
+                    // G2: snapshot history for PatternLearningResolver
+                    let history = self.advisory_history
+                        .get(sutra_id)
+                        .map(|buf| buf.iter().cloned().collect::<Vec<_>>());
                     let input = traits::ConflictAdvisorInput {
                         sutra_id,
                         analytic_octant: conflict.analytic_octant,
@@ -187,6 +207,7 @@ impl NeuralAdvisor {
                         reactivation_count,
                         primary_subsystem,
                         event_id,
+                        history,
                     };
                     result.conflict_diagnosis = Some(resolver.resolve(&input));
                 }
@@ -284,6 +305,9 @@ impl OverDomainComponent for NeuralAdvisor {
                 return Err(OverDomainError::GenomeDenied);
             }
         }
+        // G3: apply per-advisor enable/disable from genome.yaml
+        let genome_path = std::path::Path::new("config/genome.yaml");
+        NeuralAdvisorConfig::from_genome_yaml(genome_path).apply_to_registry(&mut self.registry);
         Ok(())
     }
 
@@ -348,6 +372,23 @@ impl OverDomainComponent for NeuralAdvisor {
                     ucl_commands.push(
                         self.make_notify_command(*sutra_id, primary_octant, depth, 0.60),
                     );
+                }
+            }
+
+            // G1: log divergences where advisory_octant differs from analytic_octant by ≥ 2 axes
+            if let Some(ref sug) = result.octant_suggestion {
+                if let Some(eval) = self.axial_store_snapshot.get_latest(*sutra_id) {
+                    let dist = divergence::octant_hamming_distance(eval.octant, sug.octant);
+                    if dist >= 2 {
+                        self.divergence_log.push(DivergenceEntry {
+                            event_id: tick,
+                            sutra_id: *sutra_id,
+                            analytic_octant: eval.octant,
+                            advisory_octant: sug.octant,
+                            distance: dist,
+                            advisor_confidence: sug.confidence,
+                        });
+                    }
                 }
             }
 

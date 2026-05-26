@@ -58,6 +58,10 @@ pub enum OpCode {
     NotifyEmergentCandidate = 5200,  // NeuralAdvisor → Workstation: Frame-кандидат в примитивы
     ApproveEmergentCandidate = 5201, // chrnv → NeuralAdvisor: одобрить кандидата
 
+    // --- SubsystemDiscovery / H1+H2 (5300+) ---
+    NotifySubsystemCandidate = 5300,  // DreamPhase → Workstation: кластер → кандидат в подсистемы
+    ApproveSubsystemCandidate = 5301, // chrnv → Engine: повысить кандидата до Candidate
+
     // --- Администрирование (9000+) ---
     CoreShutdown = 9000, // Остановка реактора
     CoreReset = 9001,    // Сброс состояния
@@ -292,6 +296,30 @@ pub struct NotifyEmergentCandidatePayload {
 #[derive(Debug, Clone, Copy)]
 pub struct ApproveEmergentCandidatePayload {
     pub sutra_id: u32,      // 4b | sutra_id для одобрения
+    pub reserved: [u8; 44], // 44b | резерв
+}
+
+/// Payload для NotifySubsystemCandidate (5300).
+///
+/// Layout: 4+1+1+1+1+6+2+32 = 48 байт.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct NotifySubsystemCandidatePayload {
+    pub candidate_id: u32,          // 4b | ID кандидата в SubsystemCandidateStore
+    pub primary_octant_index: u8,   // 1b | октант кластера (0-7)
+    pub primitive_count: u8,        // 1b | число примитивов в кластере
+    pub evidence_scaled: u8,        // 1b | evidence_strength * 255
+    pub reserved0: u8,              // 1b | выравнивание
+    pub centroid_position: [i16; 3], // 6b | центр масс октанта [x, y, z]
+    pub lifecycle_state: u16,       // 2b | SubsystemLifecycleState as u16 (0=Proposed)
+    pub reserved: [u8; 32],         // 32b | резерв
+}
+
+/// Payload для ApproveSubsystemCandidate (5301).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ApproveSubsystemCandidatePayload {
+    pub candidate_id: u32,  // 4b | ID кандидата для одобрения
     pub reserved: [u8; 44], // 44b | резерв
 }
 

@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 59.0  
-**Дата:** 2026-05-23
+**Версия:** 61.0  
+**Дата:** 2026-05-26
 
 ---
 
@@ -13,46 +13,35 @@ axiom-core → axiom-arbiter → axiom-domain → axiom-runtime
 axiom-config → axiom-genome → axiom-frontier    axiom-persist
 axiom-space → axiom-shell → axiom-heartbeat         ↑
 axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
-                                                    ↑
+axiom-corpus                                        ↑
                                                axiom-broadcasting
                                                     ↑
                                                axiom-workstation
 ```
 
-**1417 тестов, 0 failures.**  
-Phase C (C1–C5), Phase I (I1–I7), Phase E (E1) завершены.  
-CR-V6 Фазы A–D завершены. OBS-02 полный прогон (30k тиков, 100% per-text accuracy).  
-Workstation V1.0, axiom-node, Axiom Sentinel V1.1 в продакшне.
+**1533 тестов, 0 failures.**  
+Phases E–H завершены. NeuralAdvisor V3, OverDomainArbiter V3, DREAM Phase V1.1, CR V6 — в продакшне.  
+Workstation V2, axiom-node, axiom-corpus — в продакшне.
 
 ---
 
 ## Активные задачи
 
-### CR-V6 — ContextRecognizer V6: Meta-level Recognition
+### WS-6 — axiom-tray
 
-Спек: `docs/architecture/ContextRecognizer_Roadmap_V6_V9.md §1`
-
-**Фаза C — MetaSubsystemId + MetaStore**
-- `MetaSubsystemId(u16)` (0x1001–0x1007) в `axiom-experience`
-- `MetaDetector` матчит `ActivityDynamics` + subsystem combo на `meta_primitives.yaml`
-- `MetaStore: HashMap<MetaSubsystemId, MetaActivation>` в `axiom-experience`
-
-**Фаза D — CompositeSubsystemDef + сигнал co-activation**
-- 5 статических def: Calculus (Math+Time), Rhythm (Music+Time), Geometry (Math+Writing),
-  Narrative (Writing+Time), Ethics (Values+Logic)
-- При `Converging` с парой подсистем из def → `CompositeActivationSuspected { def, confidence }`
-- Полная детекция composite (TransitionGraph, stable topology) — V7
-
-**Тесты:** unit на MetaDetector + YAML-загрузка meta_primitives + интеграционный с ActivityDynamics
-
----
+Системный трей: статус `axiom-node` (тик + DREAM-фаза) + открыть SPA в браузере.  
+Стек: `ksni` + `open`. Crate `tools/axiom-tray`. **Выполнено** (2026-05-26).
 
 ---
 
 ## Не в активном плане
 
 - **BRD-TD-06** — Pong timeout test: требует raw TCP клиент без WS framing.
+- **AE-TD-08** — Full semantic connections at injection time. См. DEFERRED.md.
+- **OBS-MON-01/02** — Мониторинг трасс и activity dynamics в продакшне. См. DEFERRED.md.
 - **WS-V2-***, **COMP-01** — V2.0 идеи и Companion. См. DEFERRED.md.
+- **V8** — Axiogenesis through Dilemmas. После 6+ месяцев реальной работы.
+- **V9** — Active NeuralAdvisor (нейронные модели). После накопленной истории.
 
 ---
 
