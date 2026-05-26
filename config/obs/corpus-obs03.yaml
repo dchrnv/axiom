@@ -1,0 +1,156 @@
+# OBS-03 — Phase E calibration corpus
+# Goal: drive octant depths above emergent threshold (1000) to observe
+#        DepthThresholdEmergentDetector in action and calibrate per-octant thresholds.
+#
+# Distribution:
+#   noise   (~12%): 3 sparse entries, inject_every=3000-5000, inject_count=6-8
+#   medium  (~48%): 9 regular entries, inject_every=300-500, inject_count=60-70
+#   heavy   (~40%): 7 dense entries,   inject_every=80-150,  inject_count=100-120
+#
+# Total injections ≈ 140 + 560 + 780 = ~1480 over 50 000 ticks
+
+ticks_total: 50000
+snapshot_every: 500
+
+texts:
+  # ──────────────────────────────────────────────────────────
+  # NOISE  (sparse, low frequency — establish baseline noise)
+  # ──────────────────────────────────────────────────────────
+
+  - id: noise_chars
+    content: "7xQ! k3@Ω ∑ δ→ψ β≠α 9# zZ2 %%$ ≤ ∞ ≥ ← → ↑"
+    inject_every: 5000
+    inject_count: 8
+    start_at_tick: 0
+
+  - id: noise_words
+    content: "table sky door lamp fast cold heavy bright door window run stop"
+    inject_every: 4000
+    inject_count: 7
+    start_at_tick: 1500
+
+  - id: noise_mixed
+    content: "12:47 — OK. ref#8821. status: Δ=0.03 / flag=true / len=∅"
+    inject_every: 3500
+    inject_count: 8
+    start_at_tick: 700
+
+  # ──────────────────────────────────────────────────────────
+  # MEDIUM  (regular frequency — cover all octants)
+  # ──────────────────────────────────────────────────────────
+
+  - id: med_math
+    content: "Производная функции f(x)=x² равна 2x. Интеграл определяет площадь под кривой."
+    expected_subsystem: mathematics
+    inject_every: 400
+    inject_count: 65
+    start_at_tick: 0
+
+  - id: med_logic
+    content: "Если A влечёт B, и B влечёт C, то A влечёт C. Контрапозиция: не-C влечёт не-A."
+    expected_subsystem: logic
+    inject_every: 350
+    inject_count: 70
+    start_at_tick: 80
+
+  - id: med_narrative
+    content: "Молодой исследователь открыл дверь лаборатории. За окном шёл дождь. Он сел за стол."
+    expected_subsystem: writing
+    inject_every: 450
+    inject_count: 60
+    start_at_tick: 200
+
+  - id: med_emotion
+    content: "Страх и любопытство — два полюса познания. Тревога перед неизвестным исчезает с опытом."
+    expected_subsystem: values
+    inject_every: 500
+    inject_count: 60
+    start_at_tick: 120
+
+  - id: med_music
+    content: "Мажорная гамма: до ре ми фа соль ля си. Тоника создаёт ощущение покоя и завершённости."
+    expected_subsystem: music
+    inject_every: 480
+    inject_count: 62
+    start_at_tick: 300
+
+  - id: med_history
+    content: "В 1687 году Ньютон опубликовал «Начала». Промышленная революция изменила облик Европы."
+    expected_subsystem: time
+    inject_every: 420
+    inject_count: 65
+    start_at_tick: 160
+
+  - id: med_poetry
+    content: "Белеет парус одинокий в тумане моря голубом. Что ищет он в стране далёкой?"
+    expected_subsystem: writing
+    inject_every: 380
+    inject_count: 68
+    start_at_tick: 50
+
+  - id: med_philosophy
+    content: "Cogito ergo sum. Бытие предшествует сущности. Познание начинается с сомнения."
+    expected_subsystem: logic
+    inject_every: 460
+    inject_count: 62
+    start_at_tick: 250
+
+  - id: med_perception
+    content: "Восприятие избирательно. Мы замечаем то, что ожидаем увидеть. Внимание — фильтр реальности."
+    expected_subsystem: values
+    inject_every: 490
+    inject_count: 60
+    start_at_tick: 400
+
+  # ──────────────────────────────────────────────────────────
+  # HEAVY  (high frequency — drive depth for emergent detection)
+  # ──────────────────────────────────────────────────────────
+
+  - id: heavy_logic_core
+    content: "Аксиома: целое больше части. Теорема: из противоречия следует всё. Доказательство ищет структуру."
+    expected_subsystem: logic
+    inject_every: 100
+    inject_count: 120
+    start_at_tick: 0
+
+  - id: heavy_narrative_deep
+    content: "Каждая история имеет начало, середину и конец. Конфликт порождает движение. Разрешение — это порядок."
+    expected_subsystem: writing
+    inject_every: 120
+    inject_count: 110
+    start_at_tick: 60
+
+  - id: heavy_math_deep
+    content: "Предел последовательности — точка, к которой она стремится. Непрерывность исключает разрывы."
+    expected_subsystem: mathematics
+    inject_every: 110
+    inject_count: 115
+    start_at_tick: 30
+
+  - id: heavy_pattern_recur
+    content: "Паттерн повторяется на разных масштабах. Структура отражает себя. Рекурсия — это самоподобие."
+    expected_subsystem: logic
+    inject_every: 80
+    inject_count: 120
+    start_at_tick: 10
+
+  - id: heavy_music_theory
+    content: "Гармония возникает из отношений частот. Резонанс усиливает. Диссонанс требует разрешения."
+    expected_subsystem: music
+    inject_every: 130
+    inject_count: 105
+    start_at_tick: 90
+
+  - id: heavy_meta_reflection
+    content: "Система наблюдает себя. Самоотнесение создаёт глубину. Рефлексия — это петля обратной связи."
+    expected_subsystem: values
+    inject_every: 90
+    inject_count: 118
+    start_at_tick: 20
+
+  - id: heavy_causality
+    content: "Причина предшествует следствию. Цепи причинности образуют сети. Каждое событие — узел в паутине."
+    expected_subsystem: time
+    inject_every: 140
+    inject_count: 100
+    start_at_tick: 70
