@@ -204,6 +204,41 @@
 .compose-send:hover { background: #4a7cd8; }
 .compose-send:disabled { opacity: 0.4; cursor: default; }
 
+/* ── Compose mode toggle ── */
+.compose-mode-bar { display: flex; gap: 6px; margin-bottom: 8px; }
+.compose-mode-btn {
+  padding: 4px 14px;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.compose-mode-btn:hover { color: var(--text); }
+.compose-mode-active { background: var(--surface) !important; color: var(--accent) !important; border-color: var(--accent) !important; }
+
+/* ── Batch Inject ── */
+.batch-compose { display: flex; flex-direction: column; gap: 8px; }
+.batch-input { min-height: 140px; }
+.batch-controls { display: flex; align-items: center; gap: 12px; }
+.batch-delay-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.batch-delay-input {
+  width: 72px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.batch-delay-input:focus { outline: none; border-color: var(--accent); }
+.batch-progress { font-size: 12px; color: var(--text-dim); margin-left: auto; }
+.batch-stop { background: var(--red) !important; }
+.batch-stop:hover { background: #c0392b !important; }
+
 /* ── Phase C ── */
 .phase-c { display: flex; flex-direction: column; gap: 14px; }
 .phase-c-dominant { display: flex; flex-wrap: wrap; gap: 28px; }
