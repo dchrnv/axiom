@@ -1,0 +1,6 @@
+[observe] corpus: 19 entries, 50000 ticks
+[observe] loaded anchors from config/anchors
+[observe] injected 201 anchor tokens
+[observe] loaded 5 meta primitives
+[observe] running…
+[observe] done. 100 snapshots, 1383 injection events

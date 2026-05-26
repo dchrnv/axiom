@@ -41,20 +41,27 @@ pub fn synthesize_octant(participants: &[Token], anchor: &Token) -> Octant {
 /// Content anchors [0..32767]³: полюс оси — высокое значение.
 /// Axes (±30000) — исключение. Нейтральная точка ≈ 16383/2 = 8191.
 fn octant_from_position(pos: [i16; 3]) -> Octant {
-    // For content anchors (0..32767): midpoint = 8191
-    // For axis anchors (-30000..30000): midpoint = 0
-    // Unified: positive = above 0 on axis
-    let apollo_score = (pos[0].max(0) as u32 * 255 / 32767) as u8;
-    let dionysus_score = ((-pos[0]).max(0) as u32 * 255 / 30000) as u8;
-    let eros_score = (pos[1].max(0) as u32 * 255 / 32767) as u8;
-    let thanatos_score = ((-pos[1]).max(0) as u32 * 255 / 30000) as u8;
-    let will_score = (pos[2].max(0) as u32 * 255 / 32767) as u8;
-    let nothing_score = ((-pos[2]).max(0) as u32 * 255 / 30000) as u8;
-
-    let x = AxialScore::new(apollo_score, dionysus_score);
-    let y = AxialScore::new(eros_score, thanatos_score);
-    let z = AxialScore::new(will_score, nothing_score);
+    let (x, y, z) = axis_scores_from_position(pos);
     Octant::from_scores(&x, &y, &z)
+}
+
+/// Вычислить axis scores из позиции токена в семантическом пространстве.
+///
+/// Используется как fallback когда нет участников Frame — позволяет избежать
+/// вырожденной маршрутизации (entropy=density=will=0 → всегда FormalDenying).
+/// Позиция вычислена TextPerceptor из якорных матчей, поэтому несёт семантику.
+pub fn axis_scores_from_position(pos: [i16; 3]) -> (AxialScore, AxialScore, AxialScore) {
+    let apollo   = (pos[0].max(0) as u32 * 255 / 32767) as u8;
+    let dionysus = ((-pos[0]).max(0) as u32 * 255 / 30000) as u8;
+    let eros     = (pos[1].max(0) as u32 * 255 / 32767) as u8;
+    let thanatos = ((-pos[1]).max(0) as u32 * 255 / 30000) as u8;
+    let will     = (pos[2].max(0) as u32 * 255 / 32767) as u8;
+    let nothing  = ((-pos[2]).max(0) as u32 * 255 / 30000) as u8;
+    (
+        AxialScore::new(apollo, dionysus),
+        AxialScore::new(eros, thanatos),
+        AxialScore::new(will, nothing),
+    )
 }
 
 #[cfg(test)]

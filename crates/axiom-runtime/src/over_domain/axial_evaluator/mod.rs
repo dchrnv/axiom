@@ -132,22 +132,29 @@ impl AxialEvaluator {
         let positions: Vec<[i16; 3]> = participants.iter().map(|t| t.position).collect();
         let participant_ids: Vec<u32> = participants.iter().map(|t| t.sutra_id).collect();
 
-        // X axis: Apollo / Dionysus (энтропия)
-        let entropy = metrics::entropy_score(&positions);
-        let apollo = 255u8.saturating_sub(entropy);
-        let x_score = AxialScore::new(apollo, entropy);
+        // Axis scores: аналитические метрики если есть участники, иначе позиционный фallback.
+        // С < 2 участниками entropy=density=will=0 → всегда FormalDenying (O7) — вырождение.
+        // Позиционный фallback использует semantic position анкера (вычислена TextPerceptor
+        // из якорных матчей), что корректно распределяет инъекции по всем октантам.
+        let (x_score, y_score, z_score) = if participants.len() >= 2 {
+            let entropy = metrics::entropy_score(&positions);
+            let apollo = 255u8.saturating_sub(entropy);
 
-        // Y axis: Eros / Thanatos (связность + валентность)
-        let density = metrics::graph_density(&participant_ids, all_connections);
-        let (pos_val, neg_val) = metrics::valence_score(participants);
-        let eros = density.saturating_add(pos_val).min(255);
-        let thanatos = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
-        let y_score = AxialScore::new(eros, thanatos);
+            let density = metrics::graph_density(&participant_ids, all_connections);
+            let (pos_val, neg_val) = metrics::valence_score(participants);
+            let eros = density.saturating_add(pos_val).min(255);
+            let thanatos = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
 
-        // Z axis: Will / Nothing (энергетика)
-        let will = metrics::will_score(participants);
-        let nothing = 255u8.saturating_sub(will);
-        let z_score = AxialScore::new(will, nothing);
+            let will = metrics::will_score(participants);
+            let nothing = 255u8.saturating_sub(will);
+            (
+                AxialScore::new(apollo, entropy),
+                AxialScore::new(eros, thanatos),
+                AxialScore::new(will, nothing),
+            )
+        } else {
+            synthesis::axis_scores_from_position(anchor.position)
+        };
 
         // Синтетический октант через центр масс позиций
         let synthetic_octant = synthesis::synthesize_octant(participants, anchor);
