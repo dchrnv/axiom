@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1487%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1539%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1487 tests passing.**
+**Axiom is in active development — core architecture complete, 1539 tests passing.**
 
 ---
 
@@ -159,7 +159,7 @@
 ```bash
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
-cargo test --workspace   # 1487 тестов
+cargo test --workspace   # 1539 тестов
 just run                 # → http://127.0.0.1:8080
 # или: just dev          # → :8080 API + :5173 hot reload
 ```
@@ -179,7 +179,7 @@ engine.process_command(&cmd);
 
 ### Documentation
 
-- [QUICKSTART.md](QUICKSTART.md) — быстрый старт: Workstation V2, CLI, WebSocket, REST, Telegram, OpenSearch
+- [QUICKSTART.md](QUICKSTART.md) — быстрый старт: Workstation V2, axiom-tray, CLI, WebSocket, REST, Telegram, OpenSearch
 - [docs/guides/Workstation_V2_Guide.md](docs/guides/Workstation_V2_Guide.md) — Workstation V2: вкладки, Advisory Queue, WS-протокол
 - [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md) — полное руководство по архитектуре и API
 - [docs/guides/FrameWeaver_Guide_V1_1.md](docs/guides/FrameWeaver_Guide_V1_1.md) — Over-Domain Layer, FrameWeaver V1.3
