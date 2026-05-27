@@ -28,6 +28,7 @@ pub mod axial_bridge;
 pub mod composite;
 pub mod conflicts;
 pub mod depth_bridge;
+pub mod dilemma_store;
 pub mod emergent;
 pub mod energy;
 pub mod hot_reload;
@@ -42,6 +43,9 @@ pub mod transitions;
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
 pub use composite::{CompositeActivationSuspected, CompositeSubsystemDef, COMPOSITE_DEFS};
 pub use conflicts::SubsystemConflict;
+pub use dilemma_store::{
+    crystallize_to_experience_commands, DilemmaRecord, DilemmaResolution, DilemmaStore, DilemmaType,
+};
 pub use energy::SubsystemEnergy;
 pub use meta_detector::{MetaDetector, MetaPrimitive, SubsystemActivationPattern};
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};

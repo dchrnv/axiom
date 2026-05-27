@@ -1,0 +1,100 @@
+# subsystem_dependencies.yaml — статический граф зависимостей когнитивных подсистем.
+#
+# Источник: docs/architecture/ContextRecognizer_Roadmap_V6_V9.md §2.7 (Variant C+)
+#
+# Два вида связей:
+#
+#   builds_on: архитектурная зависимость — подсистема B требует A для загрузки
+#              и корректной работы. Определяет порядок инициализации.
+#              Если A не активна → B деградирует до fallback-режима.
+#
+#   natural_tensions: ожидаемые продуктивные конфликты — активация обеих подсистем
+#                     порождает параллельные гипотезы вместо блокировки.
+#                     НЕ является ограничением коактивации.
+#
+# Механизм natural_tensions (реализуется в V7 / DilemmaDetector V2.0):
+#   1. ContextRecognizer детектирует коактивацию пары из natural_tensions
+#   2. D2 SHADOW порождает 2+ параллельные гипотезы интерпретации
+#   3. D5 PROBE исследует обе ветки независимо
+#   4. D4 MAP накапливает свидетельства → победитель или взаимодополнение
+#   5. Если ни одна не побеждает за N тиков → DilemmaStore (Type III/IV)
+#
+# Неожиданная коактивация (пара не в natural_tensions) → DilemmaStore приоритет
+# + уведомление NeuralAdvisor.
+#
+# Примечание: подсистема understanding исключена — это таксономический справочник
+# (Understanding_V1_0.md), а не активная когнитивная подсистема.
+
+subsystems:
+
+  writing:
+    builds_on: []
+    natural_tensions:
+      - target: mathematics
+        reason: "символ как визуальная форма (Writing) vs символ как структурный объект (Mathematics)"
+
+  mathematics:
+    builds_on:
+      - writing                    # math-символы используют writing-примитивы как визуальный субстрат
+    natural_tensions:
+      - target: writing
+        reason: "символ как структура vs символ как форма (обратный полюс)"
+      - target: abstractions
+        reason: "конкретная формальная система vs мета-уровень над системами"
+
+  time:
+    builds_on: []
+    natural_tensions:
+      - target: abstractions
+        reason: "временно́е (изменяется, течёт) vs вневременное (абстракция не стареет)"
+      - target: morality
+        reason: "нормы меняются со временем (прогресс) vs нормы внеисторичны (табу)"
+
+  morality:
+    builds_on: []
+    natural_tensions:
+      - target: values
+        reason: "пред-рациональный инстинкт (morality) vs рефлексивная ценность (values)"
+      - target: time
+        reason: "моральная традиция как вечная vs мораль как исторически обусловленная"
+
+  values:
+    builds_on:
+      - morality                   # рефлексивный слой над morality: values осмысляют то, что morality чувствует
+    natural_tensions:
+      - target: morality
+        reason: "рефлексия ('это правильно потому что...') vs инстинкт ('это просто неправильно!')"
+      - target: time
+        reason: "ценности претендуют на вечность, но меняются со временем"
+
+  abstractions:
+    builds_on: []
+    # мета-слой; зависит от инфраструктуры (FrameWeaver V7-A1), не от доменных подсистем
+    natural_tensions:
+      - target: time
+        reason: "абстракция как вневременная структура vs время как фундаментальная изменчивость"
+      - target: mathematics
+        reason: "конкретная математическая система vs мета-уровень над формальными системами"
+
+  dilemmas:
+    builds_on:
+      - values                     # диlemma требует ценностного слоя для Type III/IV
+      - morality                   # и морального слоя для детекции конфликтов
+    natural_tensions: []
+    # dilemmas — ОПЕРАТОР над конфликтами, не участник.
+    # Не генерирует own-tensions: его задача их регистрировать и разрешать.
+    # DilemmaStore: max 8 active, 64 resolved ring buffer.
+    # Type I (DataConflict) и Type II (ResourceTradeoff) не хранятся.
+    # Type V (Axiogenic) только в DREAM Phase + явное подтверждение.
+
+# ============================================================
+# Справочник: subsystem → доминирующий домен AshtiCore
+# ============================================================
+#
+# writing:      P1-P7 → D0 SUTRA; TextPerceptor → D1 EXECUTION
+# mathematics:  M1-M7 → D0 SUTRA; computations → D6 LOGIC
+# time:         T1-T7 → D0 SUTRA; T6 irreversible → D3 CODEX
+# morality:     M1-M7 → D0 SUTRA; harm/desecration/betrayal → D2 SHADOW
+# values:       V1-V7 → D0 SUTRA; val_forbidden → D3 CODEX
+# abstractions: A0-A6 → D0 SUTRA; путь D8→D5→D7→D4→D6→D3→D0
+# dilemmas:     DilemmaStore → D8 VOID; Type V → D8→D7→D10

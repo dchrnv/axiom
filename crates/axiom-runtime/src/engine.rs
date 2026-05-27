@@ -1776,6 +1776,9 @@ impl AxiomEngine {
                 "time" => SubsystemId::Time,
                 "logic" => SubsystemId::Logic,
                 "values" => SubsystemId::Values,
+                "morality" => SubsystemId::Morality,
+                "abstractions" => SubsystemId::Abstractions,
+                "dilemmas" => SubsystemId::Dilemmas,
                 _ => SubsystemId::Unknown,
             };
             for anchor in anchors {

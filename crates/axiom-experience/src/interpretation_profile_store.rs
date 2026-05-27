@@ -155,6 +155,9 @@ fn subsystem_to_u8(s: SubsystemId) -> u8 {
         SubsystemId::Time => 3,
         SubsystemId::Logic => 4,
         SubsystemId::Values => 5,
+        SubsystemId::Morality => 7,
+        SubsystemId::Abstractions => 8,
+        SubsystemId::Dilemmas => 9,
         SubsystemId::Unknown => 6,
     }
 }

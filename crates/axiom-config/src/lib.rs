@@ -35,6 +35,8 @@ pub mod loader;
 pub mod preset;
 /// JSON-схемы и валидация
 pub mod schema;
+/// Граф зависимостей когнитивных подсистем
+pub mod subsystem_dependencies;
 /// Горячая перезагрузка конфигурации
 pub mod watcher;
 
@@ -51,4 +53,5 @@ pub use loader::{
     RuntimeConfig, SchemaConfig,
 };
 pub use preset::{ConnectionPreset, TokenPreset};
+pub use subsystem_dependencies::{NaturalTension, SubsystemDep, SubsystemDependencies};
 pub use watcher::ConfigWatcher;

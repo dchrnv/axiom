@@ -66,9 +66,12 @@ pub fn subsystem_to_level(subsystem: SubsystemId) -> Option<EvaluationLevel> {
         SubsystemId::Mathematics => Some(EvaluationLevel::Conceptual),
         SubsystemId::Logic => Some(EvaluationLevel::Conceptual),
         SubsystemId::Values => Some(EvaluationLevel::Conceptual),
+        SubsystemId::Abstractions => Some(EvaluationLevel::Conceptual),
         SubsystemId::Writing => Some(EvaluationLevel::Imaginal),
         SubsystemId::Music => Some(EvaluationLevel::Imaginal),
         SubsystemId::Time => Some(EvaluationLevel::Action),
+        SubsystemId::Morality => Some(EvaluationLevel::Action),
+        SubsystemId::Dilemmas => None,
         SubsystemId::Unknown => None,
     }
 }

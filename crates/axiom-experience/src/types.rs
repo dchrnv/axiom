@@ -173,7 +173,7 @@ impl EvaluationLevel {
 
 /// Подсистемы знания — то, что ContextRecognizer различает.
 ///
-/// Источник: `docs/architecture/ContextRecognizer_V5_0.md`, `Writing_V1_0.md`, `Mathematics_V1_0.md`
+/// Источник: `docs/architecture/ContextRecognizer_V5_0.md`, примитивные спеки V1.0
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SubsystemId {
@@ -183,6 +183,9 @@ pub enum SubsystemId {
     Time,
     Logic,
     Values,
+    Morality,
+    Abstractions,
+    Dilemmas,
     Unknown,
 }
 
@@ -195,6 +198,9 @@ impl SubsystemId {
             SubsystemId::Time => "time",
             SubsystemId::Logic => "logic",
             SubsystemId::Values => "values",
+            SubsystemId::Morality => "morality",
+            SubsystemId::Abstractions => "abstractions",
+            SubsystemId::Dilemmas => "dilemmas",
             SubsystemId::Unknown => "unknown",
         }
     }

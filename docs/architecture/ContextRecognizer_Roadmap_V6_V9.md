@@ -2,7 +2,7 @@
 
 **Версия документа:** 2.0  
 **Обновлено:** 2026-05-26 (актуализация по итогам Phases E–H)  
-**Опирается на:** `ContextRecognizer_V5_0.md`, `NeuralAdvisor_V1_0.md`, `INVARIANTS.md`, `Дилеммы.md`, `Axiom_Semantic_Core.md`
+**Опирается на:** `ContextRecognizer_V6_0.md`, `NeuralAdvisor_V3.md`, `INVARIANTS.md`, `Дилеммы.md`, `Axiom_Semantic_Core.md`
 
 | Версия | Статус | Детали |
 |--------|--------|--------|
@@ -319,27 +319,96 @@ config/anchors/subsystems/
 
 ### 2.7 Subsystem Dependency Graph ⏳ DEFERRED
 
-В V7 появляется **граф зависимостей подсистем**:
+*(Решение зафиксировано 2026-05-27, обновлено — Вариант C+)*
+
+#### Почему не другие варианты
+
+- **Вариант A (всё динамически):** невозможен — TransitionMatrix не существует при загрузке. Порядок загрузки (`builds_on`) нельзя вывести эмпирически.
+- **Вариант B (всё статически):** слишком жёсткий — `composes_with` и `enhanced_by` это живые паттерны, которые система должна открывать сама, а не получать готовыми.
+- **Вариант C с `conflicts_with` как блокировкой:** архитектурно неверен. В когнитивной системе нет подсистем, совместная активация которых невозможна. Блок предотвращает эмерджентное понимание. Символ `+` — одновременно Writing и Mathematics, и это не баг.
+
+#### Вариант C+: гибрид с параллельными гипотезами
+
+Граф состоит из **четырёх источников**:
+
+| Тип связи | Источник | Природа |
+|-----------|----------|---------|
+| `builds_on` | статический YAML | архитектурный hard-факт; порядок загрузки |
+| `natural_tensions` | статический YAML | ожидаемые напряжения; **не блок** — сигнал |
+| `composes_with`, `enhanced_by` | TransitionMatrix (live) | эмерджентные, не объявляются |
+| L1 → L0 (primitive refs) | AnchorSet + composition bonds (V7-A1) | уже существует / появится |
+
+#### Статический YAML — полный граф подсистем
+
+Файл создан: [`config/subsystem_dependencies.yaml`](../../config/subsystem_dependencies.yaml)
 
 ```yaml
 # config/subsystem_dependencies.yaml
-mathematics:
-  builds_on: ["writing"]              # math использует writing-примитивы (символы)
-  enhanced_by: ["abstractions"]       # math + abstractions = richer math
-  conflicts_with: []
-  composes_with: ["time"]             # → calculus
 
-music:
+writing:
   builds_on: []
-  enhanced_by: ["time", "emotions"]
-  conflicts_with: []
-  composes_with: ["time"]             # → rhythm
+  natural_tensions: ["mathematics"]       # символ как форма vs символ как структура
+
+mathematics:
+  builds_on: ["writing"]                  # math-символы используют writing-примитивы
+  natural_tensions: ["writing", "abstractions"]
+
+time:
+  builds_on: []
+  natural_tensions: ["abstractions", "morality"]  # временно́е vs вневременное; нормы меняются
+
+morality:
+  builds_on: []
+  natural_tensions: ["values", "time"]    # инстинкт vs рефлексия; традиция vs прогресс
+
+values:
+  builds_on: ["morality"]                 # рефлексивный слой над morality
+  natural_tensions: ["morality", "time"]  # рефлексия vs инстинкт; ценности меняются со временем
+
+abstractions:
+  builds_on: []                           # мета-слой; зависит от инфраструктуры (FrameWeaver), не доменов
+  natural_tensions: ["time", "mathematics"]
+
+dilemmas:
+  builds_on: ["values", "morality"]       # возникают из конфликтов обоих слоёв
+  natural_tensions: []                    # особый случай: dilemmas — оператор над напряжениями, не участник
 ```
 
-Граф используется:
-- При загрузке: загружать в правильном порядке (writing → mathematics)
-- При обновлении: предупреждать о dependent
-- При удалении: запретить если есть dependent
+#### Механизм обработки напряжений
+
+Когда TransitionMatrix фиксирует осцилляцию между двумя подсистемами:
+
+```
+если пара в natural_tensions:
+    → ожидаемое напряжение
+    → D2 SHADOW порождает 2+ параллельных гипотезы
+    → D5 PROBE исследует оба пути одновременно
+    → D4 MAP накапливает evidence для каждой
+    → побеждает та, что набрала больше — или оба живут (дополнительность, Dilemma Type IV)
+
+если НЕ в natural_tensions:
+    → неожиданное напряжение (интереснее)
+    → DilemmaStore с повышенным приоритетом
+    → NeuralAdvisor уведомляется
+    → chrnv видит сигнал
+```
+
+`natural_tensions` — не блок и не запрет. Это **подсказка DilemmaDetector**: "здесь осцилляция нормальна, не считай её ошибкой — разверни в гипотезы".
+
+#### Производные связи из TransitionMatrix
+
+`composes_with` и `enhanced_by` **не объявляются** — выводятся на лету:
+- `composes_with` = bidirectional coupling (A→B И B→A оба сильные)
+- `enhanced_by` = co-activation statistics без обратной связи
+
+Работает и для emergent-подсистем (SubsystemCandidate) без YAML-объявления.
+
+#### Граф используется
+
+- **При загрузке:** топологическая сортировка по `builds_on` → правильный порядок
+- **При удалении / обновлении:** проверка dependents через статическую часть
+- **В реальном времени:** DilemmaDetector использует `natural_tensions` для калибровки порогов осцилляции
+- **В DREAM Phase:** `composes_with` / `enhanced_by` вычисляются из TransitionMatrix на лету
 
 ### 2.8 Subsystem Export/Import ⏳ DEFERRED
 
@@ -382,7 +451,7 @@ GUARDIAN валидирует каждое предложение по этим 
 
 *(зафиксировано по итогам проектирования V6)*
 
-- **TransitionGraph** — граф направленных переходов между подсистемами с подсчётом edge frequency и propagation chains. Нужен для настоящего Cascading (directed propagation) вместо V6-упрощения "sequence diversity". Строится поверх `ActivityTrace`.
+- **TransitionMatrix** *(решение зафиксировано 2026-05-27)* — **не граф-структура, а живая decaying-матрица** `[[f32; 16]; 16]` в ContextRecognizer рядом с FatigueStore. Обновляется в той же точке что и ActivityTrace (O(1) per push: `counts[from][to] += 1.0`), decay на каждом тике (`counts[i][j] *= DECAY`). Размер: ≤ 1 KB (SubsystemId-пространство замкнуто и ≤ 16 вариантов). Назначение: (1) заменить V6-Cascading "sequence diversity" на directed propagation chains — настоящий каскад; (2) bidirectional coupling (A→B И B→A оба сильные) = принципиальный критерий CompositeSubsystem вместо нынешнего "оба в mid-окне"; (3) фиксированный тензор `[[f32; 16]; 16]` готов к подаче в будущие NeuralAdvisor LM-модели без предобработки.
 - **FatigueStore → axiom-experience** — в V6 `SubsystemFatigue` живёт в CR. В V7 переносится в `axiom-experience` как `FatigueStore` (аналогично `SutraDepthStore`), чтобы жизненный цикл fatigue не зависел от CR.
 - **CompositeSubsystem full detection** — stable co-activation topology через TransitionGraph. V6 даёт только сигнал `CompositeActivationSuspected`; V7 строит полный профиль и предлагает chrnv.
 

@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-26
+**Обновлено:** 2026-05-27
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1539 тестов, 0 failures**
+**1559 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -36,6 +36,10 @@ AxiomEngine
         │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
+        │     DilemmaStore V1.1 ✅ — хранит дилеммы типов III/IV/V (не I/II); max 8 active, ring-64 resolved;
+        │       pending_crystallizations → drain → crystallize_to_experience_commands() → UCL (InjectToken+BondTokens);
+        │       кристаллизация в EXPERIENCE domain (level*100+9); lineage_hash FNV-1a; resolution_valence;
+        │       DilemmaType: DataConflict/ResourceTradeoff/ValueConflict/OntologicalConflict/Axiogenic
         ├── NeuralAdvisor V3.0 ✅ (tick=11, ModuleId=19) — все 5 слотов заполнены;
         │     depth: ReactivationDepthAdvisor; octant: DepthHistoryBiasAdvisor (DHB_MIN_DEPTH=800,
         │     DHB_MIN_ADVANTAGE=300); conflict: RuleBasedCorpusCallosumResolver (V2) / PatternLearningResolver (V3);
@@ -149,8 +153,12 @@ axiom-config (Config V1.0 + D-07 + Anchor V1.0 + DreamConfig):
   ├── DreamConfig: SchedulerConfig + FatigueWeightsConfig + CycleConfig; default/dev/production/validate()
   ├── ConfigWatcher — поллится в tick_loop каждый тик (EA-TD-05 ✅)
   ├── schema — JsonSchema на всех конфигах включая DreamConfig, validate_yaml<T>(), :schema CLI-команда
-  └── AnchorSet — якорные токены: axes/layers/domains, YAML-загрузка, match_text(), compute_position/shell/weight;
-        SUBSYSTEM_NAMES: [&str; 6], dominant_subsystem_of(matches) → Option<SubsystemId>
+  ├── AnchorSet — якорные токены: axes/layers/domains, YAML-загрузка, match_text(), compute_position/shell/weight;
+  │     SUBSYSTEM_NAMES: [&str; 6], dominant_subsystem_of(matches) → Option<SubsystemId>
+  └── SubsystemDependencies ✅ — загрузчик §2.7 Variant C+ из config/subsystem_dependencies.yaml;
+        SubsystemDep { builds_on, natural_tensions }, NaturalTension { target, reason };
+        load_or_empty(config_dir) — graceful degradation; is_natural_tension(a,b) — симметрично;
+        load_order() → topological sort (DFS), Err(String) при обнаружении цикла
 
 axiom-persist (D-04):
   ├── save/load: Token+Connection+ExperienceTrace → bincode (атомарный rename)
@@ -232,8 +240,8 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
-| axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId, EvaluationLevel |
-| axiom-runtime | 568 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState; drain_octant_overrides |
+| axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
+| axiom-runtime | 568 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands |
 | axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
@@ -346,3 +354,8 @@ Workstation V1.0 ✅ (2026-05-05):
 | Phase H1 | DREAM Phase V1.1: cluster_emergent_primitives() → SubsystemCandidateStore; NotifySubsystemCandidate (UCL 5300) | ✅ |
 | Phase H2 | DREAM Phase V1.1: SubsystemLifecycleState (Proposed→Candidate→InReview→Active→Mature→Deprecated→Archived); ApproveSubsystemCandidate (UCL 5301) | ✅ |
 | WS-6 | axiom-tray: системный трей (ksni), poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation в браузере | ✅ |
+| Primitive YAMLs | config/anchors/morality/primitives.yaml (7 Haidt: moral_care..moral_desecration, Shell L1/L4/L6); config/anchors/abstractions/primitives.yaml (7 мета-якорей A0–A6, C0→C5+, temp 3–9); config/anchors/time/primitives.yaml (T1–T7: time_before..time_horizon); config/anchors/values/primitives.yaml (V1–V7: val_beneficial..val_forbidden) — выровнены со спецификациями | ✅ |
+| config/subsystem_dependencies.yaml | §2.7 Variant C+: 7 подсистем (writing/mathematics/time/morality/values/abstractions/dilemmas), builds_on + natural_tensions | ✅ |
+| SubsystemDependencies loader | axiom-config: SubsystemDependencies, SubsystemDep, NaturalTension; load_or_empty, is_natural_tension (симметрично), load_order() топо-сорт с детектированием цикла; 7 тестов | ✅ |
+| DilemmaStore V1.1 | axiom-runtime: DilemmaStore (max 8 active, ring-64 resolved), DilemmaType (I–V), DilemmaResolution (5 вариантов); crystallize_to_experience_commands() → UCL InjectToken+BondTokens для EXPERIENCE domain; lineage_hash FNV-1a; 13 тестов | ✅ |
+| SubsystemId extension | axiom-experience: SubsystemId += Morality(7), Abstractions(8), Dilemmas(9); subsystem_to_u8, subsystem_to_level, engine.rs string mapping | ✅ |
