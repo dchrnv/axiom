@@ -101,11 +101,13 @@ V6 `composite_suspects` сохранён (backward compat).
 `ContextRecognizer.version_store`: инициализируется в `from_anchor_set`, `update_subsystem_versions()` при hot-reload.  
 8 unit-тестов SubsystemVersionStore.
 
-**V7-D2 — Splitting + Merging**
+**V7-D2 — Splitting + Merging ✅**
 
-В DREAM Phase: обнаружение двух кластеров внутри подсистемы (→ Split) или перекрытия двух подсистем (→ Merge). Предлагается chrnv, не автоматически.
-
-Детали: §2.5, §2.6
+`SplitMergeDetector::detect(fatigue, matrix)` → `SplitMergeCandidateStore`.  
+Split-сигнал: `activation_load ≥ 0.6·MAX` + Shannon-энтропия исходящих переходов ≥ 1.5.  
+Merge-сигнал: prob(A→B) ≥ 0.25 AND prob(B→A) ≥ 0.25 (bidirectional coupling).  
+`split_merge_candidates()` accessor в CR. Предлагается chrnv, не применяется авто.  
+9 unit-тестов. Вызывается на каждом тике CR после fatigue.update().
 
 **V7-D3 — SubsystemDependencyGraph (Вариант C) ✅**
 

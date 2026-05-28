@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1606 тестов, 0 failures**
+**1615 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -46,6 +46,8 @@ AxiomEngine
         │           composite_profiles() accessor в CR; V6 composite_suspects сохранён; 6 тестов
         │     SubsystemVersionStore ✅ (V7-D1) — version в FlatAnchorFile + AnchorSet.subsystem_versions;
         │           init()/check_migration()/drain_stale(); from_anchor_set инициализирует; 8 тестов
+        │     SplitMergeDetector ✅ (V7-D2) — Split(load≥0.6·MAX + entropy≥1.5) / Merge(bidirectional≥0.25);
+        │           split_merge_candidates() accessor; 9 unit-тестов; on_tick после fatigue.update()
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;

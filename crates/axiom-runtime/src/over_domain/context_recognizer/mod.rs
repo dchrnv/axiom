@@ -39,6 +39,7 @@ pub mod scanner;
 pub mod scanning_plan;
 pub mod subsystem_fatigue;
 pub mod transitions;
+pub mod split_merge;
 pub mod version_store;
 
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
@@ -55,6 +56,10 @@ pub use meta_detector::{MetaDetector, MetaPrimitive, SubsystemActivationPattern}
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
 pub use subsystem_fatigue::{FatigueStore, SubsystemFatigue};
 pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector, TransitionMatrix};
+pub use split_merge::{
+    MergeCandidate, MergeReason, SplitCandidate, SplitMergeCandidateStore, SplitMergeDetector,
+    SplitReason, MERGE_THRESHOLD, SPLIT_ENTROPY_THRESHOLD, SPLIT_LOAD_THRESHOLD,
+};
 pub use version_store::{SubsystemVersionEntry, SubsystemVersionStore};
 
 /// MAYA domain: role 10 → level_id * 100 + 10.
@@ -110,6 +115,8 @@ pub struct ContextRecognizer {
     transition_matrix: TransitionMatrix,
     /// Версии подсистем для migration trace (V7-D1).
     version_store: SubsystemVersionStore,
+    /// Split/Merge кандидаты (V7-D2). Обновляются в DREAM-фазе on_tick.
+    split_merge_candidates: SplitMergeCandidateStore,
 }
 
 impl ContextRecognizer {
@@ -141,6 +148,7 @@ impl ContextRecognizer {
             subsystem_shell_templates: HashMap::new(),
             transition_matrix: TransitionMatrix::new(),
             version_store: SubsystemVersionStore::new(),
+            split_merge_candidates: SplitMergeCandidateStore::new(),
         }
     }
 
@@ -167,6 +175,11 @@ impl ContextRecognizer {
     /// Хранилище версий подсистем (V7-D1).
     pub fn version_store(&self) -> &SubsystemVersionStore {
         &self.version_store
+    }
+
+    /// Split/Merge кандидаты (V7-D2).
+    pub fn split_merge_candidates(&self) -> &SplitMergeCandidateStore {
+        &self.split_merge_candidates
     }
 
     /// Инициализировать версии подсистем из AnchorSet (первичная загрузка).
@@ -476,6 +489,9 @@ impl OverDomainComponent for ContextRecognizer {
 
         // Обновить усталость подсистем (CR-V6 Фаза B)
         self.fatigue_store.update(dominant);
+        // Детектировать split/merge сигналы (V7-D2, обновляется каждый тик CR)
+        self.split_merge_candidates =
+            split_merge::SplitMergeDetector::detect(&self.fatigue_store, &self.transition_matrix);
 
         // Детектировать мета-подсистемы (CR-V6 Фаза C)
         let signatures = activity_trace::classify(&self.activity_dynamics);
