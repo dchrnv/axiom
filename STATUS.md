@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1576 тестов, 0 failures**
+**1587 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -35,6 +35,9 @@ AxiomEngine
         │           ActivityAnalyzer (переименован из TransitionDetector);
         │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
+        │     TransitionMatrix ✅ (V7-B1) — [[f32; 16]; 16] матрица переходов; record(from, to) при смене
+        │           доминанты; decay(0.995) на каждом тике; probability_of(from, to), most_likely_next(from);
+        │           Unknown игнорируется; 7 unit-тестов; 3 CR-интеграционных теста
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;

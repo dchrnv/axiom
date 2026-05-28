@@ -50,7 +50,7 @@ pub use energy::SubsystemEnergy;
 pub use meta_detector::{MetaDetector, MetaPrimitive, SubsystemActivationPattern};
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
 pub use subsystem_fatigue::{FatigueStore, SubsystemFatigue};
-pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector};
+pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector, TransitionMatrix};
 
 /// MAYA domain: role 10 → level_id * 100 + 10.
 const MAYA_ROLE: u16 = 10;
@@ -99,6 +99,8 @@ pub struct ContextRecognizer {
     subsystem_shell_refs: SubsystemShellRefs,
     /// Средний shell-профиль каждой подсистемы (синхронизируется из engine после boot).
     subsystem_shell_templates: HashMap<SubsystemId, [u8; 8]>,
+    /// Матрица переходов между подсистемами (V7-B1). Decay на каждом on_tick.
+    transition_matrix: TransitionMatrix,
 }
 
 impl ContextRecognizer {
@@ -126,6 +128,7 @@ impl ContextRecognizer {
             axial_store_snapshot: AxialStore::new(),
             subsystem_shell_refs: HashMap::new(),
             subsystem_shell_templates: HashMap::new(),
+            transition_matrix: TransitionMatrix::new(),
         }
     }
 
@@ -142,6 +145,11 @@ impl ContextRecognizer {
     /// Доступ к хранилищу усталости (для диагностики и DREAM-интеграции).
     pub fn fatigue_store(&self) -> &FatigueStore {
         &self.fatigue_store
+    }
+
+    /// Матрица переходов между подсистемами (V7-B1).
+    pub fn transition_matrix(&self) -> &TransitionMatrix {
+        &self.transition_matrix
     }
 
     /// Активные мета-подсистемы (CR-V6 Фаза C).
@@ -416,8 +424,13 @@ impl OverDomainComponent for ContextRecognizer {
             .copied()
             .unwrap_or(Octant::CreativeAffirmation);
 
-        // Детектировать переключение подсистемы
-        let _transition = self.transition_detector.update(dominant, tick);
+        // Детектировать переключение подсистемы + обновить TransitionMatrix (V7-B1)
+        let transition = self.transition_detector.update(dominant, tick);
+        if let Some(ref t) = transition {
+            self.transition_matrix.record(t.from, t.to);
+        }
+        // Decay TransitionMatrix на каждом тике CR
+        self.transition_matrix.decay();
 
         // Обновить ActivityTrace (CR-V6 Фаза A)
         self.activity_trace.push(dominant, tick);
@@ -523,5 +536,24 @@ mod tests {
     fn test_depth_store_empty() {
         let cr = ContextRecognizer::default();
         assert!(cr.depth_store().get(1).is_none());
+    }
+
+    #[test]
+    fn test_transition_matrix_empty_on_new() {
+        let cr = ContextRecognizer::default();
+        assert!(cr.transition_matrix().is_empty());
+    }
+
+    #[test]
+    fn test_transition_matrix_probability_zero_no_data() {
+        let cr = ContextRecognizer::default();
+        let p = cr.transition_matrix().probability_of(SubsystemId::Writing, SubsystemId::Mathematics);
+        assert_eq!(p, 0.0);
+    }
+
+    #[test]
+    fn test_transition_matrix_most_likely_next_none_no_data() {
+        let cr = ContextRecognizer::default();
+        assert!(cr.transition_matrix().most_likely_next(SubsystemId::Writing).is_none());
     }
 }
