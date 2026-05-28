@@ -14,12 +14,21 @@
 
 pub mod axial_store;
 pub mod emergent_primitive_store;
+pub mod fatigue_store;
 pub mod interpretation_profile_store;
 pub mod meta_store;
 pub mod sutra_depth_store;
 pub mod types;
 
 pub use axial_store::{AxialConflict, AxialEvaluation, AxialStore, ConflictResolution};
+pub use fatigue_store::{
+    FatigueStore, SubsystemFatigue,
+    DECAY_FACTOR as FATIGUE_DECAY_FACTOR,
+    DEBT_DECAY as FATIGUE_DEBT_DECAY,
+    DEBT_RATE as FATIGUE_DEBT_RATE,
+    DREAM_RECOVERY as FATIGUE_DREAM_RECOVERY,
+    MAX_ACTIVATION_LOAD,
+};
 pub use emergent_primitive_store::{
     EmergentPrimitive, EmergentPrimitiveStore, MAX_EMERGENT_PRIMITIVES,
 };

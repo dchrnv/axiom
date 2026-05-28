@@ -33,7 +33,7 @@ AxiomEngine
         │     V6 A: ActivityTrace (short=16/mid=64/long=256 ring-буферы), ActivityDynamics (entropy_gradient,
         │           oscillation_score, cascade_score, dominant_persistence), ActivitySignature classifier,
         │           ActivityAnalyzer (переименован из TransitionDetector);
-        │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
+        │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore (V7-B2 → axiom-experience);
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
         │     TransitionMatrix ✅ (V7-B1) — [[f32; 16]; 16] матрица переходов; record(from, to) при смене
         │           доминанты; decay(0.995) на каждом тике; probability_of(from, to), most_likely_next(from);
@@ -251,7 +251,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
-| axiom-experience | 33 | AxialStore, SutraDepthStore (reactivation_count fix), InterpretationProfileStore, EmergentPrimitiveStore; Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
+| axiom-experience | 46 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
 | axiom-runtime | 568 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands |
 | axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
