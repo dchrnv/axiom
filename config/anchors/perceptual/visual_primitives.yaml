@@ -1,0 +1,91 @@
+# L0 Visual Primitives — базовые перцептивные примитивы зрительной системы.
+#
+# Слой: L0. Используются VisionPerceptor, НЕ TextPerceptor.match_text().
+# Источник: Universal_Grounding_Stack.md §3
+#
+# Позиции: регион [-10000..-5500, -5000..-2500, -1000..1500]
+# Shell: доминирует L1 (перцептивный), умеренный L2 (структурный)
+# Масса: 120–150 (лёгкие примитивы — строительные блоки)
+# Температура: 4–6 (стабильные, редко изменяются)
+
+description: "L0 визуальные примитивы — базовые визуальные компоненты без семантики"
+anchors:
+  - id: visual_edge
+    word: edge
+    layer: L0
+    position: [-9500, -4500, -800]
+    shell: [210, 60, 0, 0, 0, 0, 0, 0]
+    mass: 130
+    temperature: 4
+    description: "граница / край формы"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_stroke_horizontal
+    word: stroke_h
+    layer: L0
+    position: [-9000, -4000, -500]
+    shell: [200, 80, 0, 0, 0, 0, 0, 0]
+    mass: 125
+    temperature: 4
+    description: "горизонтальный штрих"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_stroke_vertical
+    word: stroke_v
+    layer: L0
+    position: [-8500, -4000, 500]
+    shell: [200, 80, 0, 0, 0, 0, 0, 0]
+    mass: 125
+    temperature: 4
+    description: "вертикальный штрих"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_stroke_diagonal
+    word: stroke_d
+    layer: L0
+    position: [-8000, -4000, 0]
+    shell: [180, 70, 0, 0, 0, 0, 0, 0]
+    mass: 120
+    temperature: 4
+    description: "диагональный штрих (45°)"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_curve
+    word: curve
+    layer: L0
+    position: [-7500, -3500, 0]
+    shell: [170, 80, 0, 0, 0, 0, 0, 0]
+    mass: 125
+    temperature: 5
+    description: "кривая линия"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_angle
+    word: angle
+    layer: L0
+    position: [-6500, -3500, 600]
+    shell: [160, 90, 20, 0, 0, 0, 0, 0]
+    mass: 130
+    temperature: 5
+    description: "угол между линиями"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_intersection
+    word: intersect
+    layer: L0
+    position: [-7000, -3000, 800]
+    shell: [160, 100, 20, 0, 0, 0, 0, 0]
+    mass: 135
+    temperature: 5
+    description: "пересечение двух линий"
+    tags: [perceptual, visual, l0]
+
+  - id: visual_closed_region
+    word: region
+    layer: L0
+    position: [-6000, -3000, 1200]
+    shell: [150, 100, 40, 0, 0, 0, 0, 0]
+    mass: 140
+    temperature: 6
+    description: "замкнутая область (контур)"
+    tags: [perceptual, visual, l0]

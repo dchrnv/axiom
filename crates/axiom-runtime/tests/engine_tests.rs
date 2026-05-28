@@ -325,6 +325,7 @@ fn test_inject_anchor_tokens_axes() {
         position: [30000, 0, 0],
         shell: [0; 8],
         description: String::new(),
+        layer: axiom_config::AnchorLayer::L1,
     });
     let mut engine = AxiomEngine::new();
     let before = engine.token_count(100); // SUTRA
@@ -346,6 +347,7 @@ fn test_inject_anchor_tokens_domain() {
         position: [0, 0, 20000],
         shell: [0; 8],
         description: String::new(),
+        layer: axiom_config::AnchorLayer::L1,
     });
     let mut engine = AxiomEngine::new();
     let before = engine.token_count(101); // EXECUTION

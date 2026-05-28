@@ -110,6 +110,7 @@ fn make_anchor(word: &str, position: [i16; 3]) -> Anchor {
         position,
         shell: [0; 8],
         description: String::new(),
+        layer: axiom_config::AnchorLayer::L1,
     }
 }
 

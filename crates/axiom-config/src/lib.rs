@@ -40,7 +40,7 @@ pub mod subsystem_dependencies;
 /// Горячая перезагрузка конфигурации
 pub mod watcher;
 
-pub use anchor::{Anchor, AnchorMatch, AnchorSet, MatchType};
+pub use anchor::{Anchor, AnchorLayer, AnchorMatch, AnchorSet, MatchType};
 pub use domain_config::{
     DomainConfig, DomainType, StructuralRole, DOMAIN_ACTIVE, DOMAIN_LOCKED, DOMAIN_TEMPORARY,
     GUARDIAN_CHECK_REQUIRED, MEMBRANE_ADAPTIVE, MEMBRANE_CLOSED, MEMBRANE_OPEN, MEMBRANE_SEMI,

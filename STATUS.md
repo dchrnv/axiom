@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1569 тестов, 0 failures**
+**1576 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -159,10 +159,14 @@ axiom-config (Config V1.0 + D-07 + Anchor V1.0 + DreamConfig):
   ├── schema — JsonSchema на всех конфигах включая DreamConfig, validate_yaml<T>(), :schema CLI-команда
   ├── AnchorSet — якорные токены: axes/layers/domains, YAML-загрузка, match_text(), compute_position/shell/weight;
   │     SUBSYSTEM_NAMES: [&str; 6], dominant_subsystem_of(matches) → Option<SubsystemId>
-  └── SubsystemDependencies ✅ — загрузчик §2.7 Variant C+ из config/subsystem_dependencies.yaml;
-        SubsystemDep { builds_on, natural_tensions }, NaturalTension { target, reason };
-        load_or_empty(config_dir) — graceful degradation; is_natural_tension(a,b) — симметрично;
-        load_order() → topological sort (DFS), Err(String) при обнаружении цикла
+  ├── SubsystemDependencies ✅ — загрузчик §2.7 Variant C+ из config/subsystem_dependencies.yaml;
+  │     SubsystemDep { builds_on, natural_tensions }, NaturalTension { target, reason };
+  │     load_or_empty(config_dir) — graceful degradation; is_natural_tension(a,b) — симметрично;
+  │     load_order() → topological sort (DFS), Err(String) при обнаружении цикла
+  └── AnchorLayer ✅ (V7-A2) — L0/L1 флаг в Anchor; AnchorSet.perceptual: Vec<Anchor>;
+        load_perceptual() из config/anchors/perceptual/ (graceful degradation);
+        perceptual_anchors() accessor; L0 НЕ в match_text() (только VisionPerceptor);
+        total_count() включает perceptual; 7 новых тестов
 
 axiom-persist (D-04):
   ├── save/load: Token+Connection+ExperienceTrace → bincode (атомарный rename)

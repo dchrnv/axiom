@@ -23,6 +23,20 @@ use std::path::Path;
 
 // ─── Основные структуры ──────────────────────────────────────────────────────
 
+/// Уровень якоря в Universal Grounding Stack.
+///
+/// L0 — перцептивные примитивы: сырые, без имён, задаются Perceptor-ом.
+///      Не участвуют в TextPerceptor.match_text() — только для VisionPerceptor и др.
+/// L1 — когнитивные примитивы: связаны с подсистемами знания (writing, mathematics, ...).
+///      Участвуют в match_text().
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum AnchorLayer {
+    L0,
+    #[default]
+    L1,
+}
+
 /// Один якорный токен — постоянный ориентир в семантическом пространстве.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Anchor {
@@ -44,6 +58,10 @@ pub struct Anchor {
     /// Описание (для документации и `:anchor` команды)
     #[serde(default)]
     pub description: String,
+    /// Уровень якоря в Universal Grounding Stack (V7-A2).
+    /// L0 — перцептивный примитив; L1 — когнитивный/языковый (default).
+    #[serde(default)]
+    pub layer: AnchorLayer,
 }
 
 /// Тип совпадения входного текста с якорем.
@@ -123,7 +141,7 @@ struct FlatAnchorFile {
 
 // ─── AnchorSet ────────────────────────────────────────────────────────────────
 
-/// Полный набор якорей: осевые + слоевые + доменные + октанты + семцентры + подсистемы.
+/// Полный набор якорей: осевые + слоевые + доменные + октанты + семцентры + подсистемы + L0.
 ///
 /// Загружается из `config/anchors/`:
 ///   axes.yaml                — 6 осевых якорей (±30000, исключение из правила +only)
@@ -131,7 +149,8 @@ struct FlatAnchorFile {
 ///   semantic_centers.yaml    — универсальные центры: истина/ложь/жизнь/смерть и др.
 ///   layers/L{n}_*.yaml       — якоря Shell-слоёв L1..L8
 ///   domains/D{n}_*.yaml      — якоря ASHTI-доменов D1..D8
-///   {name}/*.yaml            — подсистемы знания (writing, mathematics, ...)
+///   perceptual/*.yaml        — L0 перцептивные примитивы (visual, spatial, causal)
+///   {name}/*.yaml            — L1 подсистемы знания (writing, mathematics, ...)
 pub struct AnchorSet {
     /// 6 осевых якорей (X+/X-/Y+/Y-/Z+/Z-)
     pub axes: Vec<Anchor>,
@@ -143,6 +162,9 @@ pub struct AnchorSet {
     pub octants: Vec<Anchor>,
     /// Универсальные семантические центры (из semantic_centers.yaml)
     pub semantic_centers: Vec<Anchor>,
+    /// L0 перцептивные примитивы (visual, spatial, causal).
+    /// НЕ участвуют в match_text() — только для VisionPerceptor и аналогов.
+    pub perceptual: Vec<Anchor>,
     /// Подсистемы знания: "writing" → примитивы письма, "mathematics" → мат. примитивы, ...
     pub subsystems: HashMap<String, Vec<Anchor>>,
 }
@@ -156,8 +178,15 @@ impl AnchorSet {
             domains: vec![Vec::new(); 8],
             octants: Vec::new(),
             semantic_centers: Vec::new(),
+            perceptual: Vec::new(),
             subsystems: HashMap::new(),
         }
+    }
+
+    /// Получить L0 перцептивные примитивы.
+    /// В отличие от subsystem-якорей, L0 не участвует в match_text().
+    pub fn perceptual_anchors(&self) -> &[Anchor] {
+        &self.perceptual
     }
 
     /// Якоря конкретной подсистемы (например, "writing" или "mathematics").
@@ -213,8 +242,9 @@ impl AnchorSet {
         }
         let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
+        let perceptual = Self::load_perceptual(anchors_dir)?;
         let subsystems = Self::load_subsystems(anchors_dir)?;
-        Ok(Self { axes, layers, domains, octants, semantic_centers, subsystems })
+        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems })
     }
 
     /// Загрузить из `config_dir/anchors/`. Возвращает ошибку при YAML-синтаксических проблемах.
@@ -250,6 +280,7 @@ impl AnchorSet {
 
         let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
+        let perceptual = Self::load_perceptual(&anchors_dir)?;
         let subsystems = Self::load_subsystems(&anchors_dir)?;
 
         Ok(Self {
@@ -258,6 +289,7 @@ impl AnchorSet {
             domains,
             octants,
             semantic_centers,
+            perceptual,
             subsystems,
         })
     }
@@ -276,11 +308,32 @@ impl AnchorSet {
         Ok(file.anchors)
     }
 
+    /// Загрузить L0 перцептивные примитивы из `anchors_dir/perceptual/`.
+    /// Возвращает пустой Vec если директория не существует.
+    fn load_perceptual(anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
+        let dir = anchors_dir.join("perceptual");
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut paths: Vec<_> = std::fs::read_dir(&dir)
+            .map_err(ConfigError::IoError)?
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml"))
+            .collect();
+        paths.sort();
+        let mut anchors = Vec::new();
+        for path in paths {
+            anchors.extend(Self::load_flat(&path)?);
+        }
+        Ok(anchors)
+    }
+
     /// Сканировать поддиректории `anchors_dir` как подсистемы знания.
-    /// Пропускает `layers/` и `domains/` — они обрабатываются отдельно.
+    /// Пропускает `layers/`, `domains/` и `perceptual/` — они обрабатываются отдельно.
     fn load_subsystems(anchors_dir: &Path) -> Result<HashMap<String, Vec<Anchor>>, ConfigError> {
         let mut result: HashMap<String, Vec<Anchor>> = HashMap::new();
-        let skip = ["layers", "domains"];
+        let skip = ["layers", "domains", "perceptual"];
 
         let entries = match std::fs::read_dir(anchors_dir) {
             Ok(e) => e,
@@ -367,6 +420,7 @@ impl AnchorSet {
             + self.domains.iter().map(|d| d.len()).sum::<usize>()
             + self.octants.len()
             + self.semantic_centers.len()
+            + self.perceptual.len()
             + self.subsystems.values().map(|v| v.len()).sum::<usize>()
     }
 
@@ -548,6 +602,7 @@ mod tests {
             position: pos,
             shell: [0; 8],
             description: String::new(),
+            layer: AnchorLayer::L1,
         }
     }
 
@@ -728,5 +783,91 @@ mod tests {
         assert_eq!(s.semantic_centers.len(), 10, "semantic centers");
         // all axes loaded
         assert_eq!(s.axes.len(), 6, "axes");
+        // perceptual/: visual(8) + spatial(8) + causal(6) = 22
+        assert_eq!(s.perceptual.len(), 22, "perceptual L0 anchors");
+        // perceptual NOT in subsystems
+        assert!(!s.subsystems.contains_key("perceptual"), "perceptual не должен быть в subsystems");
+    }
+
+    // ── V7-A2: AnchorLayer ────────────────────────────────────────────────────
+
+    #[test]
+    fn anchor_layer_defaults_to_l1() {
+        let a = make_anchor("test", &[], [0; 3]);
+        assert_eq!(a.layer, AnchorLayer::L1);
+    }
+
+    #[test]
+    fn anchor_layer_l0_serializes_as_uppercase() {
+        let a = Anchor {
+            id: "x".into(),
+            word: "x".into(),
+            aliases: vec![],
+            tags: vec![],
+            position: [0; 3],
+            shell: [0; 8],
+            description: String::new(),
+            layer: AnchorLayer::L0,
+        };
+        let yaml = serde_yaml::to_string(&a).unwrap();
+        assert!(yaml.contains("L0"), "layer должен сериализоваться как 'L0'");
+    }
+
+    #[test]
+    fn anchor_layer_parses_from_yaml() {
+        let yaml = r#"
+word: stroke_h
+position: [-9000, -4000, -500]
+shell: [200, 80, 0, 0, 0, 0, 0, 0]
+layer: L0
+"#;
+        let anchor: Anchor = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(anchor.layer, AnchorLayer::L0);
+    }
+
+    #[test]
+    fn anchor_layer_defaults_l1_when_absent() {
+        let yaml = r#"
+word: symbol
+position: [0, 0, 0]
+shell: [0, 0, 0, 0, 0, 0, 0, 0]
+"#;
+        let anchor: Anchor = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(anchor.layer, AnchorLayer::L1);
+    }
+
+    #[test]
+    fn anchor_set_perceptual_not_in_match_text() {
+        let mut s = AnchorSet::empty();
+        s.perceptual.push(Anchor {
+            id: "visual_edge".into(),
+            word: "edge".into(),
+            aliases: vec![],
+            tags: vec![],
+            position: [0; 3],
+            shell: [200, 0, 0, 0, 0, 0, 0, 0],
+            description: String::new(),
+            layer: AnchorLayer::L0,
+        });
+        // match_text не должен находить L0-якорь
+        let matches = s.match_text("edge");
+        assert!(matches.is_empty(), "L0 якори не должны участвовать в match_text");
+    }
+
+    #[test]
+    fn anchor_set_perceptual_accessor() {
+        let mut s = AnchorSet::empty();
+        let anchor = make_anchor("stroke_h", &[], [0; 3]);
+        s.perceptual.push(anchor);
+        assert_eq!(s.perceptual_anchors().len(), 1);
+    }
+
+    #[test]
+    fn anchor_set_total_count_includes_perceptual() {
+        let mut s = AnchorSet::empty();
+        s.perceptual.push(make_anchor("p1", &[], [0; 3]));
+        s.perceptual.push(make_anchor("p2", &[], [0; 3]));
+        s.axes.push(make_anchor("axis", &[], [0; 3]));
+        assert_eq!(s.total_count(), 3);
     }
 }

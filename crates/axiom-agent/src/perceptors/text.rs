@@ -258,6 +258,7 @@ mod tests {
             position: [30000, 0, 0],
             shell: [0; 8],
             description: String::new(),
+            layer: axiom_config::AnchorLayer::L1,
         });
         let p = TextPerceptor::with_anchors(Arc::new(set));
         let cmd = p.perceive("порядок");
