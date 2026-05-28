@@ -83,9 +83,12 @@ axiom-runtime/subsystem_fatigue.rs → тонкий ре-экспорт (backwar
 `classify()`: предпочитает directed_cascade_score если > 0, иначе fallback на cascade_score (backward compat).  
 Вычисляется в CR::on_tick после transition_matrix.record(). 5 новых тестов.
 
-**V7-C2 — CompositeSubsystem full detection**
+**V7-C2 — CompositeSubsystem full detection ✅**
 
-V6 даёт только `CompositeActivationSuspected`. V7 строит полный профиль: `composes_with` = bidirectional coupling в TransitionMatrix (A→B И B→A оба сильные). Предлагает chrnv.
+`CompositeSubsystemProfile` + `BidirectionalCoupling` — полный профиль с directed coupling.  
+`detect_composite_profiles(recent, sigs, matrix, threshold=0.15)` — coverage + bidirectional pairs.  
+`composite_profiles` в CR, `composite_profiles()` accessor. 6 новых тестов.  
+V6 `composite_suspects` сохранён (backward compat).
 
 ---
 

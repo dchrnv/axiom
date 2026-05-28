@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1592 тестов, 0 failures**
+**1598 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -41,6 +41,9 @@ AxiomEngine
         │     directed_cascade_score ✅ (V7-C1) — ActivityDynamics.directed_cascade_score: f32;
         │           ActivityTrace::directed_cascade_score(matrix, threshold=0.20) → цепочка A→B→C
         │           где prob(A→B)≥T; classify() предпочитает если >0 (fallback на cascade_score); 5 тестов
+        │     CompositeSubsystemProfile ✅ (V7-C2) — полный профиль с BidirectionalCoupling;
+        │           detect_composite_profiles(recent, sigs, matrix, bi_threshold=0.15);
+        │           composite_profiles() accessor в CR; V6 composite_suspects сохранён; 6 тестов
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;

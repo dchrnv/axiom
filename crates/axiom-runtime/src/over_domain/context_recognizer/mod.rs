@@ -41,7 +41,10 @@ pub mod subsystem_fatigue;
 pub mod transitions;
 
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
-pub use composite::{CompositeActivationSuspected, CompositeSubsystemDef, COMPOSITE_DEFS};
+pub use composite::{
+    BidirectionalCoupling, CompositeActivationSuspected, CompositeSubsystemDef,
+    CompositeSubsystemProfile, BIDIRECTIONAL_COUPLING_THRESHOLD, COMPOSITE_DEFS,
+};
 pub use conflicts::SubsystemConflict;
 pub use dilemma_store::{
     crystallize_to_experience_commands, DilemmaRecord, DilemmaResolution, DilemmaStore, DilemmaType,
@@ -85,6 +88,8 @@ pub struct ContextRecognizer {
     meta_store: MetaStore,
     /// Подозреваемые composite co-activations (CR-V6 Фаза D).
     composite_suspects: Vec<CompositeActivationSuspected>,
+    /// Полные профили composite подсистем с bidirectional coupling (V7-C2).
+    composite_profiles: Vec<CompositeSubsystemProfile>,
     /// Список известных sutra_id активных Frame-анкеров.
     known_frame_ids: Vec<u32>,
     /// Аккумулятор активаций Frame за текущий Wake-цикл (для DREAM depth update).
@@ -124,6 +129,7 @@ impl ContextRecognizer {
             meta_detector: MetaDetector::new(vec![]),
             meta_store: MetaStore::new(),
             composite_suspects: Vec::new(),
+            composite_profiles: Vec::new(),
             known_frame_ids: Vec::new(),
             dream_activation_acc: HashMap::new(),
             axial_store_snapshot: AxialStore::new(),
@@ -161,6 +167,11 @@ impl ContextRecognizer {
     /// Подозреваемые composite co-activations (CR-V6 Фаза D).
     pub fn composite_suspects(&self) -> &[CompositeActivationSuspected] {
         &self.composite_suspects
+    }
+
+    /// Полные профили composite подсистем с bidirectional coupling (V7-C2).
+    pub fn composite_profiles(&self) -> &[CompositeSubsystemProfile] {
+        &self.composite_profiles
     }
 
     /// Установить MetaDetector с загруженными примитивами (builder).
@@ -455,10 +466,16 @@ impl OverDomainComponent for ContextRecognizer {
             &mut self.meta_store,
         );
 
-        // Детектировать composite co-activations (CR-V6 Фаза D)
+        // Детектировать composite co-activations (CR-V6 Фаза D + V7-C2)
         let recent_subs = self.activity_trace.unique_subsystems_in_mid();
         self.composite_suspects =
             composite::detect_composite_suspects(&recent_subs, &signatures);
+        self.composite_profiles = composite::detect_composite_profiles(
+            &recent_subs,
+            &signatures,
+            &self.transition_matrix,
+            BIDIRECTIONAL_COUPLING_THRESHOLD,
+        );
 
         // Применить усталость к весам
         let mut fatigued_weights = weights.clone();
