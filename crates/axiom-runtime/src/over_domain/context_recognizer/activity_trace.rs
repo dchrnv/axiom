@@ -49,6 +49,9 @@ impl ActivitySignature {
     }
 }
 
+/// Порог вероятности перехода для directed cascade (V7-C1).
+pub const DIRECTED_CASCADE_THRESHOLD: f32 = 0.20;
+
 /// Непрерывные метрики активности, вычисляемые из кольцевых буферов.
 #[derive(Debug, Clone)]
 pub struct ActivityDynamics {
@@ -59,6 +62,9 @@ pub struct ActivityDynamics {
     pub oscillation_score: f32,
     /// Нормированная длина самого длинного каскада (≥3 строго новых подсистем) в mid-окне.
     pub cascade_score: f32,
+    /// Directed cascade score через TransitionMatrix (V7-C1). 0.0 пока matrix не накоплена.
+    /// Если > 0 — classify() предпочитает его вместо cascade_score.
+    pub directed_cascade_score: f32,
     /// Доля mid-окна, занятая наиболее частой подсистемой.
     pub dominant_persistence: f32,
     /// Текущее число записей в short-буфере (для проверки MIN_WINDOW_FILL).
@@ -115,6 +121,7 @@ impl ActivityTrace {
                 entropy_gradient: 0.0,
                 oscillation_score: 0.0,
                 cascade_score: 0.0,
+                directed_cascade_score: 0.0,
                 dominant_persistence: 0.0,
                 fill_count,
             };
@@ -124,6 +131,7 @@ impl ActivityTrace {
             entropy_gradient: compute_entropy_gradient(&self.mid),
             oscillation_score: compute_oscillation_score(&self.short),
             cascade_score: compute_cascade_score(&self.mid),
+            directed_cascade_score: 0.0, // заполняется в CR::on_tick через directed_cascade_score()
             dominant_persistence: compute_dominant_persistence(&self.mid),
             fill_count,
         }
@@ -142,6 +150,21 @@ impl ActivityTrace {
             .map(|(s, _)| *s)
             .filter(|s| seen.insert(*s))
             .collect()
+    }
+
+    /// Directed cascade score (V7-C1): каскад A→B→C где prob(A→B) и prob(B→C) ≥ threshold.
+    ///
+    /// Возвращает 0.0 если matrix пустая или данных недостаточно.
+    pub fn directed_cascade_score(
+        &self,
+        matrix: &crate::over_domain::context_recognizer::transitions::TransitionMatrix,
+        threshold: f32,
+    ) -> f32 {
+        if matrix.is_empty() {
+            return 0.0;
+        }
+        let items: Vec<SubsystemId> = self.mid.iter().map(|&(s, _)| s).collect();
+        compute_directed_cascade_impl(&items, matrix, threshold)
     }
 }
 
@@ -164,8 +187,13 @@ pub fn classify(dynamics: &ActivityDynamics) -> Vec<ActivitySignature> {
     if dynamics.oscillation_score > 0.5 && dynamics.dominant_persistence <= 0.7 {
         sigs.push(ActivitySignature::Oscillating);
     }
-    // Cascading: не применяется когда один явный доминант
-    if dynamics.cascade_score > 0.4 && dynamics.dominant_persistence <= 0.7 {
+    // Cascading: directed_cascade_score (V7-C1) предпочтительнее cascade_score
+    let effective_cascade = if dynamics.directed_cascade_score > 0.0 {
+        dynamics.directed_cascade_score
+    } else {
+        dynamics.cascade_score
+    };
+    if effective_cascade > 0.4 && dynamics.dominant_persistence <= 0.7 {
         sigs.push(ActivitySignature::Cascading);
     }
     if dynamics.entropy_gradient < -0.15 {
@@ -339,6 +367,50 @@ fn compute_cascade_score(mid: &RingBuf) -> f32 {
     }
     if current_len >= 3 {
         cascade_elements += current_len;
+    }
+
+    if cascade_elements == 0 {
+        return 0.0;
+    }
+    cascade_elements as f32 / n as f32
+}
+
+// ── Directed cascade (V7-C1) ─────────────────────────────────────────────────
+
+type TMatrix = crate::over_domain::context_recognizer::transitions::TransitionMatrix;
+
+fn compute_directed_cascade_impl(items: &[SubsystemId], matrix: &TMatrix, threshold: f32) -> f32 {
+    let n = items.len();
+    if n < 3 {
+        return 0.0;
+    }
+
+    let mut cascade_elements = 0usize;
+    let mut chain_len = 1usize;
+    let mut seen: HashSet<SubsystemId> = HashSet::new();
+    seen.insert(items[0]);
+
+    for i in 1..n {
+        let prev = items[i - 1];
+        let curr = items[i];
+
+        if curr != prev
+            && !seen.contains(&curr)
+            && matrix.probability_of(prev, curr) >= threshold
+        {
+            chain_len += 1;
+            seen.insert(curr);
+        } else {
+            if chain_len >= 3 {
+                cascade_elements += chain_len;
+            }
+            chain_len = 1;
+            seen.clear();
+            seen.insert(curr);
+        }
+    }
+    if chain_len >= 3 {
+        cascade_elements += chain_len;
     }
 
     if cascade_elements == 0 {
@@ -560,5 +632,88 @@ mod tests {
             t.push(SubsystemId::Unknown, i);
         }
         assert_eq!(t.fill_count(), 0);
+    }
+
+    // ── Directed cascade (V7-C1) ─────────────────────────────────────────────
+
+    fn make_matrix_with_chain() -> TMatrix {
+        let mut m = TMatrix::new();
+        // Записываем цепочку: Writing→Mathematics→Music с хорошей вероятностью
+        for _ in 0..8 {
+            m.record(SubsystemId::Writing, SubsystemId::Mathematics);
+        }
+        for _ in 0..8 {
+            m.record(SubsystemId::Mathematics, SubsystemId::Music);
+        }
+        m
+    }
+
+    #[test]
+    fn test_directed_cascade_zero_when_matrix_empty() {
+        let t = fill_trace(&(0..64).map(|_| SubsystemId::Mathematics).collect::<Vec<_>>());
+        let m = TMatrix::new();
+        assert_eq!(t.directed_cascade_score(&m, DIRECTED_CASCADE_THRESHOLD), 0.0);
+    }
+
+    #[test]
+    fn test_directed_cascade_detects_chain() {
+        use SubsystemId::*;
+        // Паттерн Writing→Mathematics→Music, повторяется много раз
+        let pattern = [Writing, Mathematics, Music];
+        let mut subs = Vec::new();
+        for _ in 0..24 {
+            subs.extend_from_slice(&pattern);
+        }
+        let t = fill_trace(&subs);
+        let m = make_matrix_with_chain();
+        let score = t.directed_cascade_score(&m, DIRECTED_CASCADE_THRESHOLD);
+        assert!(score > 0.4, "directed cascade score should be high for known chain, got {score}");
+    }
+
+    #[test]
+    fn test_directed_cascade_zero_for_random_sequence() {
+        use SubsystemId::*;
+        // Случайная последовательность без обученных переходов в matrix
+        let subs = [Writing, Mathematics, Music, Time, Logic, Values, Writing, Music];
+        let t = fill_trace(&subs.repeat(8));
+        let m = TMatrix::new(); // пустая матрица — всё вероятности 0
+        let score = t.directed_cascade_score(&m, DIRECTED_CASCADE_THRESHOLD);
+        assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_classify_uses_directed_cascade_score() {
+        // Если directed_cascade_score > 0.4 и persistence <= 0.7 → Cascading
+        let mut d = ActivityDynamics {
+            entropy_gradient: 0.0,
+            oscillation_score: 0.0,
+            cascade_score: 0.0,
+            directed_cascade_score: 0.5, // направленный каскад
+            dominant_persistence: 0.5,
+            fill_count: MIN_WINDOW_FILL,
+        };
+        let sigs = classify(&d);
+        assert!(sigs.contains(&ActivitySignature::Cascading), "expected Cascading via directed_cascade_score, got {:?}", sigs);
+
+        // Если directed_cascade_score = 0 и cascade_score = 0 → нет Cascading
+        d.directed_cascade_score = 0.0;
+        d.cascade_score = 0.0;
+        let sigs2 = classify(&d);
+        assert!(!sigs2.contains(&ActivitySignature::Cascading), "should not be Cascading without scores");
+    }
+
+    #[test]
+    fn test_directed_cascade_fallback_to_cascade_score() {
+        // cascade_score > 0.4 AND directed_cascade_score = 0 → Cascading (backward compat)
+        let d = ActivityDynamics {
+            entropy_gradient: 0.0,
+            oscillation_score: 0.0,
+            cascade_score: 0.6,
+            directed_cascade_score: 0.0,
+            dominant_persistence: 0.5,
+            fill_count: MIN_WINDOW_FILL,
+        };
+        let sigs = classify(&d);
+        assert!(sigs.contains(&ActivitySignature::Cascading), "backward compat: cascade_score fallback failed, got {:?}", sigs);
     }
 }

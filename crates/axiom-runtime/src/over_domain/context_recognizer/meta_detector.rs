@@ -175,6 +175,7 @@ mod tests {
             entropy_gradient: 0.0,
             oscillation_score: 0.0,
             cascade_score: 0.0,
+            directed_cascade_score: 0.0,
             dominant_persistence: 0.8,
             fill_count: 16,
         }

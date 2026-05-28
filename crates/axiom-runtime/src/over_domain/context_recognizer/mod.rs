@@ -116,6 +116,7 @@ impl ContextRecognizer {
                 entropy_gradient: 0.0,
                 oscillation_score: 0.0,
                 cascade_score: 0.0,
+                directed_cascade_score: 0.0,
                 dominant_persistence: 0.0,
                 fill_count: 0,
             },
@@ -432,9 +433,14 @@ impl OverDomainComponent for ContextRecognizer {
         // Decay TransitionMatrix на каждом тике CR
         self.transition_matrix.decay();
 
-        // Обновить ActivityTrace (CR-V6 Фаза A)
+        // Обновить ActivityTrace (CR-V6 Фаза A) + directed cascade (V7-C1)
         self.activity_trace.push(dominant, tick);
-        self.activity_dynamics = self.activity_trace.compute_dynamics();
+        let mut dynamics = self.activity_trace.compute_dynamics();
+        dynamics.directed_cascade_score = self.activity_trace.directed_cascade_score(
+            &self.transition_matrix,
+            activity_trace::DIRECTED_CASCADE_THRESHOLD,
+        );
+        self.activity_dynamics = dynamics;
 
         // Обновить усталость подсистем (CR-V6 Фаза B)
         self.fatigue_store.update(dominant);

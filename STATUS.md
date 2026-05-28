@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1587 тестов, 0 failures**
+**1592 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -38,6 +38,9 @@ AxiomEngine
         │     TransitionMatrix ✅ (V7-B1) — [[f32; 16]; 16] матрица переходов; record(from, to) при смене
         │           доминанты; decay(0.995) на каждом тике; probability_of(from, to), most_likely_next(from);
         │           Unknown игнорируется; 7 unit-тестов; 3 CR-интеграционных теста
+        │     directed_cascade_score ✅ (V7-C1) — ActivityDynamics.directed_cascade_score: f32;
+        │           ActivityTrace::directed_cascade_score(matrix, threshold=0.20) → цепочка A→B→C
+        │           где prob(A→B)≥T; classify() предпочитает если >0 (fallback на cascade_score); 5 тестов
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;

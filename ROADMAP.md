@@ -76,9 +76,12 @@ axiom-runtime/subsystem_fatigue.rs → тонкий ре-экспорт (backwar
 
 #### V7-C: Cascading и CompositeSubsystem (после B1)
 
-**V7-C1 — Cascading upgrade**
+**V7-C1 — Cascading upgrade ✅**
 
-Заменить V6 "sequence diversity" на directed propagation через TransitionMatrix. Cascading = цепочка A→B→C где каждая пара имеет вес выше порога.
+`ActivityDynamics.directed_cascade_score: f32` — directed cascade через TransitionMatrix.  
+`ActivityTrace::directed_cascade_score(matrix, threshold=0.20)` — цепочка A→B→C где prob(A→B) ≥ threshold.  
+`classify()`: предпочитает directed_cascade_score если > 0, иначе fallback на cascade_score (backward compat).  
+Вычисляется в CR::on_tick после transition_matrix.record(). 5 новых тестов.
 
 **V7-C2 — CompositeSubsystem full detection**
 
