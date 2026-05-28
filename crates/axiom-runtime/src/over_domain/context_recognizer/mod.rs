@@ -39,6 +39,7 @@ pub mod scanner;
 pub mod scanning_plan;
 pub mod subsystem_fatigue;
 pub mod transitions;
+pub mod version_store;
 
 pub use activity_trace::{ActivityDynamics, ActivitySignature, ActivityTrace};
 pub use composite::{
@@ -54,6 +55,7 @@ pub use meta_detector::{MetaDetector, MetaPrimitive, SubsystemActivationPattern}
 pub use scanning_plan::{DepthRange, FractalLevel, ScanningPlan};
 pub use subsystem_fatigue::{FatigueStore, SubsystemFatigue};
 pub use transitions::{ActivityAnalyzer, SubsystemTransition, TransitionDetector, TransitionMatrix};
+pub use version_store::{SubsystemVersionEntry, SubsystemVersionStore};
 
 /// MAYA domain: role 10 → level_id * 100 + 10.
 const MAYA_ROLE: u16 = 10;
@@ -106,6 +108,8 @@ pub struct ContextRecognizer {
     subsystem_shell_templates: HashMap<SubsystemId, [u8; 8]>,
     /// Матрица переходов между подсистемами (V7-B1). Decay на каждом on_tick.
     transition_matrix: TransitionMatrix,
+    /// Версии подсистем для migration trace (V7-D1).
+    version_store: SubsystemVersionStore,
 }
 
 impl ContextRecognizer {
@@ -136,6 +140,7 @@ impl ContextRecognizer {
             subsystem_shell_refs: HashMap::new(),
             subsystem_shell_templates: HashMap::new(),
             transition_matrix: TransitionMatrix::new(),
+            version_store: SubsystemVersionStore::new(),
         }
     }
 
@@ -157,6 +162,21 @@ impl ContextRecognizer {
     /// Матрица переходов между подсистемами (V7-B1).
     pub fn transition_matrix(&self) -> &TransitionMatrix {
         &self.transition_matrix
+    }
+
+    /// Хранилище версий подсистем (V7-D1).
+    pub fn version_store(&self) -> &SubsystemVersionStore {
+        &self.version_store
+    }
+
+    /// Инициализировать версии подсистем из AnchorSet (первичная загрузка).
+    pub fn init_subsystem_versions(&mut self, versions: &std::collections::HashMap<String, String>) {
+        self.version_store.init(versions);
+    }
+
+    /// Проверить и применить обновление версий (hot-reload). Возвращает stale-подсистемы.
+    pub fn update_subsystem_versions(&mut self, versions: &std::collections::HashMap<String, String>) -> Vec<String> {
+        self.version_store.check_migration(versions)
     }
 
     /// Активные мета-подсистемы (CR-V6 Фаза C).
@@ -209,6 +229,7 @@ impl ContextRecognizer {
         let subsystem_shell_refs = build_subsystem_shell_refs(anchors);
         let mut cr = Self::new(subsystem_refs);
         cr.subsystem_shell_refs = subsystem_shell_refs;
+        cr.version_store.init(&anchors.subsystem_versions);
         cr
     }
 

@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1598 тестов, 0 failures**
+**1606 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -44,6 +44,8 @@ AxiomEngine
         │     CompositeSubsystemProfile ✅ (V7-C2) — полный профиль с BidirectionalCoupling;
         │           detect_composite_profiles(recent, sigs, matrix, bi_threshold=0.15);
         │           composite_profiles() accessor в CR; V6 composite_suspects сохранён; 6 тестов
+        │     SubsystemVersionStore ✅ (V7-D1) — version в FlatAnchorFile + AnchorSet.subsystem_versions;
+        │           init()/check_migration()/drain_stale(); from_anchor_set инициализирует; 8 тестов
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;

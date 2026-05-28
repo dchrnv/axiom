@@ -136,7 +136,14 @@ struct FlatAnchorFile {
     #[serde(default)]
     #[allow(dead_code)]
     description: String,
+    /// Версия файла примитивов (V7-D1). Если не указано — "1.0".
+    #[serde(default = "default_version")]
+    version: String,
     anchors: Vec<Anchor>,
+}
+
+fn default_version() -> String {
+    "1.0".to_string()
 }
 
 // ─── AnchorSet ────────────────────────────────────────────────────────────────
@@ -167,6 +174,8 @@ pub struct AnchorSet {
     pub perceptual: Vec<Anchor>,
     /// Подсистемы знания: "writing" → примитивы письма, "mathematics" → мат. примитивы, ...
     pub subsystems: HashMap<String, Vec<Anchor>>,
+    /// Версии загруженных подсистем (V7-D1): "writing" → "1.0", ...
+    pub subsystem_versions: HashMap<String, String>,
 }
 
 impl AnchorSet {
@@ -180,6 +189,7 @@ impl AnchorSet {
             semantic_centers: Vec::new(),
             perceptual: Vec::new(),
             subsystems: HashMap::new(),
+            subsystem_versions: HashMap::new(),
         }
     }
 
@@ -193,6 +203,11 @@ impl AnchorSet {
     /// Возвращает пустой срез если подсистема не загружена.
     pub fn get_subsystem(&self, name: &str) -> &[Anchor] {
         self.subsystems.get(name).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+
+    /// Версия подсистемы (V7-D1). None если подсистема не загружена или версия не задана.
+    pub fn subsystem_version(&self, name: &str) -> Option<&str> {
+        self.subsystem_versions.get(name).map(|s| s.as_str())
     }
 
     /// Найти якорь по его id-строке (первое совпадение).
@@ -243,8 +258,8 @@ impl AnchorSet {
         let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
         let perceptual = Self::load_perceptual(anchors_dir)?;
-        let subsystems = Self::load_subsystems(anchors_dir)?;
-        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems })
+        let (subsystems, subsystem_versions) = Self::load_subsystems(anchors_dir)?;
+        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems, subsystem_versions })
     }
 
     /// Загрузить из `config_dir/anchors/`. Возвращает ошибку при YAML-синтаксических проблемах.
@@ -281,7 +296,7 @@ impl AnchorSet {
         let octants = Self::load_flat(&anchors_dir.join("octants.yaml"))?;
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
         let perceptual = Self::load_perceptual(&anchors_dir)?;
-        let subsystems = Self::load_subsystems(&anchors_dir)?;
+        let (subsystems, subsystem_versions) = Self::load_subsystems(&anchors_dir)?;
 
         Ok(Self {
             axes,
@@ -291,21 +306,26 @@ impl AnchorSet {
             semantic_centers,
             perceptual,
             subsystems,
+            subsystem_versions,
         })
     }
 
     // ─── Private loaders ─────────────────────────────────────────────────────
 
-    /// Загрузить плоский файл с якорями (octants.yaml, semantic_centers.yaml,
-    /// или любой файл в subsystem-директории). Возвращает пустой Vec если файл не существует.
+    /// Загрузить плоский файл с якорями. Возвращает пустой Vec если файл не существует.
     fn load_flat(path: &Path) -> Result<Vec<Anchor>, ConfigError> {
+        Ok(Self::load_flat_file(path)?.map(|f| f.anchors).unwrap_or_default())
+    }
+
+    /// Загрузить плоский файл полностью (anchors + version). None если файл не существует.
+    fn load_flat_file(path: &Path) -> Result<Option<FlatAnchorFile>, ConfigError> {
         if !path.exists() {
-            return Ok(Vec::new());
+            return Ok(None);
         }
         let content = std::fs::read_to_string(path).map_err(ConfigError::IoError)?;
         let file: FlatAnchorFile =
             serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
-        Ok(file.anchors)
+        Ok(Some(file))
     }
 
     /// Загрузить L0 перцептивные примитивы из `anchors_dir/perceptual/`.
@@ -331,13 +351,17 @@ impl AnchorSet {
 
     /// Сканировать поддиректории `anchors_dir` как подсистемы знания.
     /// Пропускает `layers/`, `domains/` и `perceptual/` — они обрабатываются отдельно.
-    fn load_subsystems(anchors_dir: &Path) -> Result<HashMap<String, Vec<Anchor>>, ConfigError> {
+    /// Возвращает (anchors_map, versions_map).
+    fn load_subsystems(
+        anchors_dir: &Path,
+    ) -> Result<(HashMap<String, Vec<Anchor>>, HashMap<String, String>), ConfigError> {
         let mut result: HashMap<String, Vec<Anchor>> = HashMap::new();
+        let mut versions: HashMap<String, String> = HashMap::new();
         let skip = ["layers", "domains", "perceptual"];
 
         let entries = match std::fs::read_dir(anchors_dir) {
             Ok(e) => e,
-            Err(_) => return Ok(result),
+            Err(_) => return Ok((result, versions)),
         };
 
         for entry in entries.filter_map(|e| e.ok()) {
@@ -352,8 +376,6 @@ impl AnchorSet {
             if skip.contains(&name.as_str()) {
                 continue;
             }
-            // Загрузить все *.yaml из этой поддиректории
-            let mut anchors = Vec::new();
             let yamls = match std::fs::read_dir(&path) {
                 Ok(e) => e,
                 Err(_) => continue,
@@ -363,17 +385,23 @@ impl AnchorSet {
                 .map(|e| e.path())
                 .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("yaml"))
                 .collect();
-            yaml_paths.sort(); // детерминированный порядок
+            yaml_paths.sort();
+
+            let mut anchors = Vec::new();
+            let mut subsystem_version = String::from("1.0");
             for yaml_path in yaml_paths {
-                let loaded = Self::load_flat(&yaml_path)?;
-                anchors.extend(loaded);
+                if let Some(file) = Self::load_flat_file(&yaml_path)? {
+                    subsystem_version = file.version.clone();
+                    anchors.extend(file.anchors);
+                }
             }
             if !anchors.is_empty() {
+                versions.insert(name.clone(), subsystem_version);
                 result.insert(name, anchors);
             }
         }
 
-        Ok(result)
+        Ok((result, versions))
     }
 
     fn load_axes(anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
@@ -759,7 +787,9 @@ mod tests {
     fn test_load_subsystems_missing_dir_returns_empty() {
         let result = AnchorSet::load_subsystems(Path::new("/nonexistent/anchors/"));
         assert!(result.is_ok());
-        assert!(result.unwrap().is_empty());
+        let (anchors, versions) = result.unwrap();
+        assert!(anchors.is_empty());
+        assert!(versions.is_empty());
     }
 
     #[test]

@@ -94,11 +94,12 @@ V6 `composite_suspects` сохранён (backward compat).
 
 #### V7-D: SubsystemLifecycle (после C)
 
-**V7-D1 — SubsystemVersioning**
+**V7-D1 — SubsystemVersioning ✅**
 
-Версионирование yaml подсистем: `config/anchors/subsystems/mathematics/v1.0.yaml` + `current → v1.0.yaml`. Migration trace для Frame-профилей при обновлении.
-
-Детали: `ContextRecognizer_Roadmap_V6_V9.md` §2.4
+`version` поле в `FlatAnchorFile` (default "1.0"). `AnchorSet.subsystem_versions: HashMap<String, String>`.  
+`SubsystemVersionStore` в axiom-runtime: `init()` / `check_migration()` → stale subsystems / `drain_stale()`.  
+`ContextRecognizer.version_store`: инициализируется в `from_anchor_set`, `update_subsystem_versions()` при hot-reload.  
+8 unit-тестов SubsystemVersionStore.
 
 **V7-D2 — Splitting + Merging**
 
