@@ -30,7 +30,7 @@ Axiom/
 │   ├── axiom-protocol/    # UCL protocol: адаптеры, bench-команды, низкоуровневые типы
 │   ├── axiom-experience/  # FatigueStore, SubsystemFatigue — семантические хранилища
 │   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, TickSnapshot
-│   ├── axiom-workstation/ # Workstation V2: native GUI (egui/eframe), connection, UI
+│   ├── axiom-workstation/ # Workstation V1: iced 0.13 desktop GUI (legacy), WS-клиент axiom-node
 │   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors (TextPerceptor, L0VisionPerceptor)
 │   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
 │   ├── axiom-observe/     # ObsRunner, OBS-01: автоматизация прогонов, MetricsCollector, report.md
