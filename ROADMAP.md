@@ -15,8 +15,6 @@ axiom-space → axiom-shell → axiom-heartbeat         ↑
 axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
 axiom-corpus                                        ↑
                                                axiom-broadcasting
-                                                    ↑
-                                               axiom-workstation
 ```
 
 **1631 тестов, 0 failures.**  
@@ -37,7 +35,7 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 - **BRD-TD-06** — Pong timeout test: требует raw TCP клиент без WS framing.
 - **AE-TD-08** — Full semantic connections at injection time. Приоритет повышается в V7 (связан с L0 bonds). См. DEFERRED.md.
 - **OBS-MON-01/02** — Мониторинг трасс и activity dynamics. См. DEFERRED.md.
-- **WS-V2-***, **COMP-01** — V2.0 идеи и Companion. См. DEFERRED.md.
+- **COMP-01** — Vital Signs окно (Companion). См. DEFERRED.md.
 - **V7-D: SubsystemExport/Import** — обмен подсистемами между инстансами. После стабилизации SubsystemVersioning. См. §2.8.
 - **V8** — Axiogenesis through Dilemmas. После 6+ месяцев реальной работы.
 - **V9** — Active NeuralAdvisor (нейронные модели). После накопленной истории.

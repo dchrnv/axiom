@@ -57,7 +57,7 @@
 - **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
 - **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
 - **Workstation V2.0** — основной оперативный интерфейс: `axiom-node` (HTTP/WS сервер) + React 18 SPA (Vite + Zustand). Четыре вкладки: Overview (7 метрик + sparklines L1–L8), Domains (карточки 11 доменов), Advisory Queue (confirm/reject advisory), Feed (поток событий). Без зависимостей от нейронных сетей — чистый детерминированный поток. Запуск: `just run` (production) / `just dev` (hot reload).
-- **Workstation V1.0** — десктопный рабочий стол оператора (iced 0.13, legacy). 8 вкладок: System Map, Live Field, Conversation, Patterns, Dream State, Configuration, Files, Benchmarks.
+
 
 #### Детерминизм — это не ограничение
 
@@ -74,9 +74,6 @@
   │  Workstation V2  (React 18 SPA — axiom-web)                    │
   │    Overview · Domains · Advisory Queue · Feed                  │
   │    just run (prod :8080) / just dev (hot :5173)               │
-  ├───────────────────────────────────────────────────────────────┤
-  │  axiom-workstation V1  (iced 0.13 desktop GUI, legacy)         │
-  │    System Map · Live Field · Conversation · Patterns           │
   └───────────────────┬──────────────────────┬────────────────────┘
                       │ HTTP/WS (axiom-node)  │ WebSocket (axiom-broadcasting)
                     ┌─────────────────────────────────────────────┐
@@ -190,7 +187,7 @@ engine.process_command(&cmd);
 - [docs/guides/ML_ENGINE_GUIDE.md](docs/guides/ML_ENGINE_GUIDE.md) — MLEngine, VisionPerceptor, AudioPerceptor
 - [docs/guides/FRACTAL_SIMD_GUIDE.md](docs/guides/FRACTAL_SIMD_GUIDE.md) — FractalChain, batch-физика
 - [docs/guides/External_Adapters_Guide_V1_0.md](docs/guides/External_Adapters_Guide_V1_0.md) — WebSocket, REST, Dashboard, Telegram, OpenSearch
-- [crates/axiom-workstation/README.md](crates/axiom-workstation/README.md) — Workstation V1.0 (legacy)
+
 - [STATUS.md](STATUS.md) — текущее состояние, тесты по crates
 - [ROADMAP.md](ROADMAP.md) — активные планы
 - [DEFERRED.md](DEFERRED.md) — технический долг

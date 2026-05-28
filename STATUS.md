@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1631 тестов, 0 failures**
+**1592 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -223,29 +223,6 @@ Workstation V2.0 ✅ (2026-05-24):
   Авто-переподключение WS каждые 2s; badge на Phase C tab при pending advisories
   Grafana + Prometheus (tools/grafana/docker-compose.yml): 3 provisioned дашборда, scrape 5s
 
-Workstation V1.0 ✅ (2026-05-05):
-  axiom-protocol — типы Engine ↔ Workstation: EngineCommand(16 incl. RunBench, ApproveEmergentCandidate), EngineEvent(14),
-    EngineMessage/ClientMessage (handshake), SystemSnapshot, ConfigSchema, BenchSpec;
-    TokenFieldPoint + token_field: Vec<TokenFieldPoint> в DomainSnapshot;
-    FrameWeaverStats: syntactic_layer_activations [u8; 8];
-    PhaseCSnapshot (dominant_octant/subsystem, emergent_candidates) + EmergentCandidateSnapshot в SystemSnapshot;
-    postcard сериализация; PROTOCOL_VERSION = 0x01_00_00_00
-  axiom-broadcasting — WebSocket-сервер (tokio-tungstenite 0.24): BroadcastServer/Handle,
-    subscription filter (event_category bits + tick_event_interval + domain_activity_threshold),
-    heartbeat ping/pong, snapshot resync при RecvError::Lagged,
-    build_system_snapshot(); BRD-TD-07 (Engine integration) → axiom-node
-  axiom-workstation — iced 0.13 desktop-клиент оператора:
-    ├── connection.rs — ws_subscription + reconnect backoff [1,2,5,10,30]s
-    ├── settings.rs — UiSettings, TOML-персистенция (dirs)
-    ├── app.rs — WorkstationApp, AppPhase (Welcome/Main), 8 табов, bidirectional WS,
-    │             keyboard shortcuts Ctrl+1–8/,/S/Z, alert overlay, subscription_key hot-reload;
-    │             MenuBar (кастомный dropdown через stack), DetachTab (View → Detach),
-    │             RunBench подключён к протоколу (BenchStarted/Progress/Finished events)
-    └── ui/ — header, tabs, welcome (fade-in анимация), system_map(canvas::Cache),
-              config(schema-driven), conversation(multi-line text_editor, Ctrl+Enter),
-              patterns(sparklines L1-L8, Phase C panel: октант+подсистема+emergent candidates, show-more pagination),
-              dream_state(show-more pagination), files(rfd AsyncFileDialog Browse button),
-              benchmarks, live_field(3D canvas, реальный token_field из DomainSnapshot)
 ```
 
 **Документация:** [docs/guides/AXIOM_GUIDE.md](docs/guides/AXIOM_GUIDE.md)
@@ -275,12 +252,12 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter (domain_activity_threshold), heartbeat, snapshot resync при Lagged, build_system_snapshot; subscribe_events() → Receiver<EngineMessage>; latest_snapshot() → Option<SystemSnapshot>; snapshot_live: RwLock; WS-5: build_system_snapshot takes PerfSnapshot, populates all new fields |
 | axiom-node | — | HTTP-сервер (axum): WS JSON bridge, advisory confirm/reject, /metrics, ServeDir; NodeCmd channel; tick_loop интеграция; WS-5: NodePerfTracker (window=100) → PerfSnapshot per snapshot |
 | tools/axiom-web | — | React 18 SPA: Overview/Conversation/Phase C/Patterns; AdvisoryQueue, Sparklines, Zustand store; WS-5: protocol.ts extended with PerfSnapshot/TraceSnapshot/TensionTraceSnapshot/ReflectorSnapshot/CognitiveDepthSnapshot/ImpulsesSnapshot |
-| axiom-workstation | 39 | WorkstationApp (iced 0.13 daemon), 8 вкладок, bidirectional WS, Welcome/Main (fade-in), alert overlay, keyboard shortcuts, MenuBar, rfd file picker, multi-line editor, canvas::Cache |
+
 | axiom-bench | — | Criterion бенчмарки (результаты: `docs/bench/RESULTS.md`) |
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1631** | |
+| **Итого** | **1592** | |
 
 ---
 
@@ -334,16 +311,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | DreamConfig | axiom-config: SchedulerConfig+FatigueWeightsConfig+CycleConfig; apply_dream_config() в engine; Gateway::with_config(); hot-reload; dream.yaml; :schema dream | ✅ |
 | WS Stage 0–1 | axiom-protocol (41 тест) + axiom-broadcasting scaffold; postcard сериализация | ✅ |
 | WS Stage 2 | axiom-broadcasting: BroadcastServer/Handle, filter, heartbeat, 6 тестов | ✅ |
-| WS Stage 3 | axiom-workstation базовая инфраструктура: settings, connection, reconnect backoff, 3 теста | ✅ |
-| WS Stage 4 | Multi-window (iced::daemon), tabs, System Map canvas (мандала + анимация) | ✅ |
-| WS Stage 5 | Configuration tab: schema-driven UI, bidirectional WS, workstation-секция | ✅ |
-| WS Stage 6 | Conversation tab: лента, domain selector, Submit, корреляция с Frame-событиями | ✅ |
-| WS Stage 7 | Patterns tab (sparklines L1-L8) + Dream State tab (force sleep / wake up) | ✅ |
-| WS Stage 8 | Files tab (import flow) + Benchmarks tab (progress + history) | ✅ |
-| WS Stage 9 | Welcome/Main фазы, alert overlay, keyboard shortcuts Ctrl+1–8, hot-reload адреса | ✅ |
-| WS Stage 10 | Live Field 3D canvas: орбитальная камера, перспективное проецирование, процедурные токены | ✅ |
-| WS Stage 11 | clippy --workspace -D warnings → 0 errors; 1174 тестов; fmt; README + errata | ✅ |
-| WS B1–B6 | UI-доделки: rfd file picker (B1), multi-line text_editor Ctrl+Enter (B2), show-more pagination Patterns+Dream (B3), canvas::Cache system_map (B4), welcome fade-in (B5), MenuBar + DetachTab (B6) | ✅ |
+
 | Protocol C1–C3 | syntactic_layer_activations [u8;8] в FrameWeaverStats (C1); RunBench в протоколе + tick_loop (C2); TokenFieldPoint + token_field в DomainSnapshot + Live Field real data (C3) | ✅ |
 | Engine D1–D6 | tick в check_promotion (D1); min_participant_anchors cross-domain (D2); все RuleTrigger (D3); GENOME on_boot enforcement (D4); domain config hot-reload apply_domain_config (D5); domain_activity_threshold + Lagged resync (D6) | ✅ |
 | E2 | MLEngine size check — явная ShapeMismatch вместо silent fallback (D-06 закрыт) | ✅ |

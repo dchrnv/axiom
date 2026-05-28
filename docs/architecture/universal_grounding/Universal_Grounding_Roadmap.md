@@ -268,7 +268,7 @@ Pipeline:
 |-------------|--------|------------|
 | AE-TD-08 | Full semantic connections at injection | нужен для L0 семантических bonds |
 | OBS-MON-01/02 | Мониторинг activity dynamics | нужен чтобы видеть L0 паттерны |
-| WS-V2-* | Workstation идеи | нужна визуализация кросс-модальных bonds |
+
 
 ---
 

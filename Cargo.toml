@@ -23,7 +23,6 @@ members = [
     "crates/axiom-agent",
     "crates/axiom-protocol",
     "crates/axiom-broadcasting",
-    "crates/axiom-workstation",
     "crates/axiom-node",
     "crates/axiom-experience",
     "crates/axiom-observe",

@@ -42,7 +42,7 @@ axiom-agent      — TextPerceptor (2-path detect_subsystem), L0VisionPerceptor 
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)
 axiom-persist    — MemoryWriter/Loader, AutoSaver, exchange (bincode)
 axiom-bench      — Criterion benchmarks
-axiom-workstation — egui/eframe desktop GUI V1.0 (async tungstenite)
+
 axiom-node       — самостоятельный бинарный узел: tick loop, BroadcastServer :9876,
                    SIGINT/SIGTERM shutdown, axiom.yaml + persistence;
                    HTTP-сервер (axum): GET /api/ws (WS JSON bridge), POST /api/text/submit,
@@ -578,7 +578,7 @@ fn dream_propose(&self, ashti: &AshtiCore, tick: u64) -> Vec<DreamProposal>
 
 ## Protocol (axiom-protocol)
 
-Независимый crate. Serde JSON. Используется axiom-workstation + axiom-broadcasting.
+Независимый crate. Serde JSON. Используется axiom-broadcasting.
 
 ### EngineCommand (15 вариантов)
 
@@ -754,7 +754,6 @@ pub async fn tick_loop(
     anchor_set: Option<Arc<AnchorSet>>,
     config: AdaptersConfig,
     config_watcher: Option<ConfigWatcher>,
-    wstation_handle: Option<Arc<BroadcastHandle>>,  // axiom-workstation интеграция
 )
 ```
 
@@ -767,7 +766,6 @@ pub async fn tick_loop(
 6. Adaptive tick: ExternalInput/TensionHigh или on_idle_tick()
 7. TickSchedule периодические задачи
 8. Broadcast
-9. Если `wstation_handle`: publish EngineEvents через axiom-broadcasting
 
 ### AdapterCommand
 
@@ -874,36 +872,6 @@ FNV-1a fallback активен при отсутствии совпадений.
 
 ---
 
-## Workstation V1.0 (axiom-workstation)
-
-Desktop GUI на egui/eframe + async tungstenite.
-
-### Вкладки
-
-```
-Conversation  — чат с Engine (SubmitText), multi-line, Ctrl+Enter для отправки
-Files         — импорт файлов (rfd picker), прогресс адаптеров, Cancel
-System Map    — мандала: 11 доменов, секторы, связи, Alert ring (WS4-TD-03)
-Benchmarks    — история предустановленных BenchSpec, RunBench команды
-Settings      — конфигурация параметров Engine (UpdateConfigField)
-```
-
-### Архитектура
-
-```
-App → tokio runtime (отдельный thread)
-    → tungstenite WS клиент → axiom-broadcasting (BroadcastHandle)
-    → EngineCommand tx / EngineEvent rx
-    → eframe::run_native (основной thread)
-```
-
-**Show-more pagination** — длинные Conversation-ответы разбиваются на страницы.
-**Canvas::Cache** — системная карта кешируется между кадрами.
-**Welcome fade-in** — анимация при первом подключении.
-**MenuBar + DetachTab** — системные контролы.
-
----
-
 ## Незакрытые задачи (DEFERRED.md)
 
 | ID | Суть |
@@ -914,7 +882,7 @@ App → tokio runtime (отдельный thread)
 | **CR-TD-04** | ActivityTrace не сериализуется. Нужно для V9 NeuralAdvisor. V7. |
 | **FW-TD-01** | RequestFrameDetails не реализован. При Workstation V2.0. |
 | **FW-TD-02** | Per-pair co-activation. Ждёт CausalWeaver. Структуру не выбирать заранее. |
-| **WS-V2-*** | V2.0 идеи: история чата, Pause/Resume, custom bench, TLS, sync. |
+
 | **COMP-01** | Vital Signs окно (Companion, ambient display). |
 | **AGENT-TD-01** | TextPerceptor: lookup anchor-matching (Path A) → embeddings. Path A реализован (2-path detect_subsystem, 100% accuracy). Следующий шаг: заменить word/char lookup на векторные embeddings. |
 | **OBS-TD-02** | avg_shell_similarity всегда 0.000: кандидаты FrameWeaver кристаллизуются за ~60 тиков, до snapshot_every=500 их уже нет. Нужно либо capture per-crystallization event, либо накапливать rolling avg. |
