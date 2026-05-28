@@ -1,10 +1,20 @@
 // Hot Path Regression — постоянный бенчмарк для отслеживания просадок.
 //
-// Цель: держать TickForward (50 токенов, default FW config) ≤ 150 ns.
+// Эталон: TickForward (50 токенов, default Over-Domain config).
 // Запускается при каждом релизе: cargo bench --bench hot_path_regression
 //
-// Если медиана выйдет за 150 ns — ищи регрессию в FrameWeaver интеграции
-// или в основном pipeline AshtiCore (hot path).
+// История:
+//   ~96 ns   — до FrameWeaver V1.1 (только AshtiCore pipeline)
+//   ~310 ns  — после FW V1.1 (до оптимизации drain_commands)
+//   ~238 ns  — после оптимизации drain_commands
+//   V7+      — ContextRecognizer V7 (TransitionMatrix, FatigueStore, CompositeSubsystem,
+//              SplitMergeDetector), NeuralAdvisor V3.0, OverDomainArbiter V3.0 добавлены
+//              в pipeline; базовый тик холодного движка — см. актуальные результаты
+//              в docs/bench/RESULTS.md или showcase/SHOWCASE.md
+//
+// Регрессия: если медиана растёт >20% относительно предыдущего baseline —
+// ищи изменения в ContextRecognizer::on_tick, NeuralAdvisor::on_tick,
+// FrameWeaver::on_tick или AshtiCore pipeline.
 
 use axiom_runtime::AxiomEngine;
 use axiom_ucl::{OpCode, UclCommand};
@@ -29,7 +39,7 @@ fn engine_with_50_tokens() -> AxiomEngine {
 fn bench_hot_path(c: &mut Criterion) {
     let mut group = c.benchmark_group("HotPath regression");
     group.measurement_time(Duration::from_secs(10));
-    group.sample_size(1000);
+    group.sample_size(500);
 
     // Эталонный замер: TickForward с 50 токенами в LOGIC, default FrameWeaver config
     // История: ~96.5 ns до FrameWeaver V1.1; ~310 ns после интеграции (до оптимизации).

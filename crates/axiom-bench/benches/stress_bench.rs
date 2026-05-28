@@ -16,10 +16,10 @@ use std::time::Duration;
 fn make_positions(n: usize) -> Vec<[i16; 3]> {
     (0..n)
         .map(|i| {
-            let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
-            let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
-            let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
-            [x, y, z]
+            let x = ((i.wrapping_mul(37)) % 60000) as i32 - 30000;
+            let y = ((i.wrapping_mul(53)) % 60000) as i32 - 30000;
+            let z = ((i.wrapping_mul(71)) % 10000) as i32 - 5000;
+            [x as i16, y as i16, z as i16]
         })
         .collect()
 }
@@ -31,10 +31,10 @@ fn make_masses(n: usize) -> Vec<u16> {
 fn make_pos_tuples(n: usize) -> Vec<(i16, i16, i16)> {
     (0..n)
         .map(|i| {
-            let x = ((i.wrapping_mul(37)) % 60000) as i16 - 30000;
-            let y = ((i.wrapping_mul(53)) % 60000) as i16 - 30000;
-            let z = ((i.wrapping_mul(71)) % 10000) as i16 - 5000;
-            (x, y, z)
+            let x = ((i.wrapping_mul(37)) % 60000) as i32 - 30000;
+            let y = ((i.wrapping_mul(53)) % 60000) as i32 - 30000;
+            let z = ((i.wrapping_mul(71)) % 10000) as i32 - 5000;
+            (x as i16, y as i16, z as i16)
         })
         .collect()
 }

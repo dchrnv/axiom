@@ -38,9 +38,21 @@ clippy:
 size-check:
     cargo test --workspace -- size_assertion
 
-# Бенчмарки (когда будут добавлены)
+# Showcase: OBS 1M тиков + бенчи → showcase/SHOWCASE.md
+showcase:
+    ./scripts/showcase.sh
+
+# Только бенчмарки (без OBS)
+showcase-bench:
+    ./scripts/showcase.sh --bench-only
+
+# Только OBS (без бенчей)
+showcase-obs:
+    ./scripts/showcase.sh --obs-only
+
+# Все бенчмарки
 bench:
-    cargo bench -p axiom-space
+    cargo bench -p axiom-bench
 
 # Визуализация графа зависимостей
 deps-graph:
