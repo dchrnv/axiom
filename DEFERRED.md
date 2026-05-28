@@ -264,6 +264,21 @@ ObsRunner не печатает прогресс — только старт и 
 
 ---
 
+### OBS-TD-04 — Оптимизация длинных прогонов
+
+**Где:** `crates/axiom-observe/src/runner.rs`, `crates/axiom-observe/src/report.rs`
+
+При 1M тиков прогон занял ~90 минут, RAM вырос до ~108MB — все snapshots и events накапливаются в памяти и пишутся в конце одним блоком.
+
+**Что нужно:**
+- Стриминг событий/снапшотов в файл по мере накопления вместо Vec в памяти (JSONL или bincode append)
+- Параметр `max_injection_count` в corpus.yaml — ограничитель на суммарное число инъекций
+- Возможно: `--sample-rate` флаг чтобы записывать каждый N-й снапшот
+
+**Когда:** перед следующим большим прогоном.
+
+---
+
 ### OBS-TD-02 — avg_shell_similarity всегда 0
 
 **Где:** `crates/axiom-observe/src/runner.rs` → `capture_snapshot`
