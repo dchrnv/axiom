@@ -75,12 +75,33 @@ fi
 echo ""
 echo "==> Assembling $REPORT..."
 
+# Collect hardware / OS info
+HW_CPU=$(grep -m1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+HW_CORES=$(nproc 2>/dev/null || echo "?")
+HW_RAM=$(awk '/MemTotal/ {printf "%.0f GiB", $2/1048576}' /proc/meminfo 2>/dev/null || echo "?")
+HW_OS=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || uname -s)
+HW_KERNEL=$(uname -r)
+HW_RUSTC=$(rustc --version 2>/dev/null || echo "?")
+
 {
   echo "# Axiom — Showcase Report"
   echo ""
   echo "> Generated: $GENERATED_AT  "
   echo "> Engine: V7 (ContextRecognizer V7, NeuralAdvisor V3, DREAM V1.1, FractalChain)  "
   echo "> Corpus: \`$CORPUS\`"
+  echo ""
+  echo "---"
+  echo ""
+  echo "## Environment"
+  echo ""
+  echo "| | |"
+  echo "|---|---|"
+  echo "| **OS** | $HW_OS |"
+  echo "| **Kernel** | $HW_KERNEL |"
+  echo "| **CPU** | $HW_CPU |"
+  echo "| **Cores** | $HW_CORES |"
+  echo "| **RAM** | $HW_RAM |"
+  echo "| **Rust** | $HW_RUSTC |"
   echo ""
   echo "---"
   echo ""
@@ -103,7 +124,7 @@ echo "==> Assembling $REPORT..."
   # ── Bench section ─────────────────────────────────────────────────────────
   echo "## Benchmark Results"
   echo ""
-  echo "All measurements: release build, Criterion 0.5, Linux x86-64."
+  echo "All measurements: release build, Criterion 0.5, $HW_OS, $(uname -m)."
   echo ""
 
   if [ -f "$BENCH_OUT/hot_path.txt" ]; then
