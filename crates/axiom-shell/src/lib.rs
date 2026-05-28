@@ -601,6 +601,13 @@ pub mod link_types {
     pub const SYNTACTIC_FRAME_NEGATION: u16 = 0x0872;
     pub const SYNTACTIC_FRAME_QUOTE: u16 = 0x0873;
     pub const SYNTACTIC_FRAME_HYPOTHESIS: u16 = 0x0874;
+
+    // --- Composition bonds (категория 0x09) —
+    // Иерархические связи между Frame-анкерами в EXPERIENCE.
+    // Используется FrameWeaver V7-A1 для записи родительских Frame.
+
+    /// Дочерний Frame → родительский Frame (child composed_of parent).
+    pub const COMPOSITION_BOND: u16 = 0x0901;
 }
 
 // ============================================================================

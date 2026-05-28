@@ -19,7 +19,7 @@ axiom-corpus                                        ↑
                                                axiom-workstation
 ```
 
-**1559 тестов, 0 failures.**  
+**1569 тестов, 0 failures.**  
 Phases E–H завершены. NeuralAdvisor V3, OverDomainArbiter V3, DREAM Phase V1.1, CR V6 — в продакшне.  
 Workstation V2, axiom-node, axiom-corpus — в продакшне.  
 Primitive YAMLs (morality/abstractions/time/values), DilemmaStore V1.1, SubsystemDependencies loader — завершены.
@@ -37,16 +37,12 @@ UGS-фундамент: `docs/architecture/universal_grounding/Universal_Groundi
 
 #### V7-A: Фундамент (блокирует всё остальное)
 
-**V7-A1 — Composition bonds в FrameWeaver**
+**V7-A1 — Composition bonds в FrameWeaver ✅**
 
-Когда FrameWeaver кристаллизует Frame — записывать из чего он сложился.
-
-```rust
-// В FrameAnchor или отдельном FrameCompositionStore:
-pub composed_of: Option<Vec<u32>>   // sutra_id родительских Frame
-```
-
-Критический компонент для Universal Grounding Stack: без него L0→L1 путь не работает, кросс-модальное связывание невозможно.
+`FrameCandidate.composed_of: Vec<u32>` — участники совпадающие с Frame-анкерами EXPERIENCE = родители.  
+`FrameCompositionStore` — иерархия post-crystallization.  
+`COMPOSITION_BOND` (0x0901) в axiom-shell — UCL-запись родителей.  
+`detect_composed_of()`, `composition_level()` → FrameComposition.
 
 **V7-A2 — L0/L1 структура в anchors**
 

@@ -13,11 +13,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use std::collections::HashSet;
+
 use axiom_core::{
     Connection, Token, FLAG_ACTIVE, FRAME_CATEGORY_MASK, FRAME_CATEGORY_SYNTAX, STATE_ACTIVE,
     STATE_LOCKED, TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE,
 };
 use axiom_domain::{AshtiCore, DomainState};
+use axiom_experience::FrameComposition;
 use axiom_genome::{Genome, ModuleId};
 use axiom_shell::link_types;
 use axiom_ucl::{
@@ -58,6 +61,54 @@ pub struct FrameCandidate {
     /// Средняя попарная cosine-близость shell-профилей участников (0.0..1.0).
     /// 0.0 если ни один участник не зарегистрирован в ShellRegistry.
     pub shell_similarity: f32,
+    /// Родительские Frame-анкеры в EXPERIENCE (V7-A1).
+    /// Заполняется в on_tick перед кристаллизацией: участники чей sutra_id
+    /// совпадает с Frame-анкером в EXPERIENCE.
+    pub composed_of: Vec<u32>,
+}
+
+/// Хранилище иерархии композиций Frame (V7-A1).
+///
+/// Сохраняет composed_of после кристаллизации (FrameCandidate удаляется).
+/// Позволяет Universal Grounding Stack traversal по иерархии.
+#[derive(Debug, Clone, Default)]
+pub struct FrameCompositionStore {
+    /// frame_anchor_id → родительские Frame-анкеры
+    pub entries: HashMap<u32, Vec<u32>>,
+}
+
+impl FrameCompositionStore {
+    /// Записать композицию после кристаллизации.
+    pub fn record(&mut self, anchor_id: u32, parents: Vec<u32>) {
+        if !parents.is_empty() {
+            self.entries.insert(anchor_id, parents);
+        }
+    }
+
+    /// Получить родителей Frame-анкера.
+    pub fn get(&self, anchor_id: u32) -> Option<&[u32]> {
+        self.entries.get(&anchor_id).map(|v| v.as_slice())
+    }
+
+    /// Уровень композиции по числу родителей.
+    pub fn composition_level(&self, anchor_id: u32) -> FrameComposition {
+        let n = self.entries.get(&anchor_id).map(|v| v.len()).unwrap_or(0);
+        match n {
+            0 => FrameComposition::C1Atom,
+            1 => FrameComposition::C2Molecule,
+            2..=3 => FrameComposition::C3Structure,
+            4..=7 => FrameComposition::C4Composition,
+            _ => FrameComposition::C5Plus,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 /// Участник Frame — токен с конкретной синтаксической ролью.
@@ -337,6 +388,8 @@ pub struct FrameWeaver {
     /// Плоский список (position, shell) всех subsystem-якорей.
     /// Используется как positional fallback: если участник не в registry — ищем ближайший якорь по позиции.
     anchor_shell_refs: Vec<([i16; 3], [u8; 8])>,
+    /// Иерархия композиций Frame (V7-A1).
+    pub composition_store: FrameCompositionStore,
     pub stats: FrameWeaverStats,
 }
 
@@ -351,6 +404,7 @@ impl FrameWeaver {
             dream_cycle_completed: false,
             shell_registry: HashMap::new(),
             anchor_shell_refs: Vec::new(),
+            composition_store: FrameCompositionStore::default(),
             stats: FrameWeaverStats::default(),
         }
     }
@@ -413,6 +467,30 @@ impl FrameWeaver {
 
     pub fn last_reactivation_tick_for(&self, anchor_id: u32) -> Option<u64> {
         self.last_reactivation_tick.get(&anchor_id).copied()
+    }
+
+    /// Определить родительские Frame-анкеры из EXPERIENCE (V7-A1).
+    ///
+    /// Родитель = Frame-анкер в EXPERIENCE чей `sutra_id` совпадает с
+    /// `sutra_id` любого участника кандидата. Так работает FractalChain:
+    /// SUTRA[n] токены становятся участниками MAYA[n+1].
+    fn detect_composed_of(
+        candidate: &FrameCandidate,
+        exp_state: &DomainState,
+    ) -> Vec<u32> {
+        let frame_anchors: HashSet<u32> = exp_state
+            .tokens
+            .iter()
+            .filter(|t| (t.type_flags & TOKEN_FLAG_FRAME_ANCHOR) != 0)
+            .map(|t| t.sutra_id)
+            .collect();
+
+        candidate
+            .participants
+            .iter()
+            .map(|p| p.sutra_id)
+            .filter(|id| frame_anchors.contains(id))
+            .collect()
     }
 
     /// Синтаксический слой из link_type: S1=0 … S8=7 (соответствует (link_type & 0x00F0) >> 4).
@@ -568,6 +646,7 @@ impl FrameWeaver {
                 lineage_hash,
                 confidence,
                 shell_similarity,
+                composed_of: vec![],
             });
         }
 
@@ -616,6 +695,22 @@ impl FrameWeaver {
                 reserved: [0; 24],
             };
             cmds.push(UclCommand::new(OpCode::BondTokens, 0, 10, 0).with_payload(&bond_payload));
+        }
+
+        // Composition bonds: новый Frame → каждый родительский Frame-анкер (V7-A1).
+        for parent_id in &candidate.composed_of {
+            let comp_payload = BondTokensPayload {
+                source_id: proposed_sutra_id,
+                target_id: *parent_id,
+                domain_id: experience_domain,
+                link_type: link_types::COMPOSITION_BOND,
+                strength: 1.0,
+                conn_flags: 0,
+                origin_domain: experience_domain,
+                role_id: 0,
+                reserved: [0; 24],
+            };
+            cmds.push(UclCommand::new(OpCode::BondTokens, 0, 10, 0).with_payload(&comp_payload));
         }
 
         cmds
@@ -991,7 +1086,7 @@ impl OverDomainComponent for FrameWeaver {
             .collect();
 
         for hash in stable_hashes {
-            let candidate = match self.candidates.get(&hash) {
+            let mut candidate = match self.candidates.get(&hash) {
                 Some(c) => c.clone(),
                 None => continue,
             };
@@ -1019,10 +1114,20 @@ impl OverDomainComponent for FrameWeaver {
                 self.stats.frame_reactivations += 1;
             } else {
                 // Новая кристаллизация в EXPERIENCE
+                // V7-A1: определить родительские Frame-анкеры и записать в candidate
+                let composed_of = exp_state
+                    .map(|s| Self::detect_composed_of(&candidate, s))
+                    .unwrap_or_default();
+                candidate.composed_of = composed_of;
+
+                let new_anchor_id = Self::proposed_id_from_hash(candidate.lineage_hash);
+                if !candidate.composed_of.is_empty() {
+                    self.composition_store.record(new_anchor_id, candidate.composed_of.clone());
+                }
+
                 let cmds = self.build_crystallization_commands(&candidate, exp_domain_id);
                 self.stats.crystallizations_approved += 1;
                 self.stats.candidates_proposed_to_dream += 1;
-                // Record which syntactic layers are active in this frame
                 for p in &candidate.participants {
                     let idx = (p.layer as usize).min(7);
                     self.stats.syntactic_layer_activations[idx] =
@@ -1693,6 +1798,7 @@ mod tests {
             lineage_hash: 1,
             confidence,
             shell_similarity: 0.0,
+            composed_of: vec![],
         };
 
         assert!(
@@ -1735,6 +1841,7 @@ mod tests {
             lineage_hash: 2,
             confidence: 0.0,
             shell_similarity: 0.0,
+            composed_of: vec![],
         };
 
         // 4 сканов × 20 тиков = 80 < 100 → Defer
@@ -1779,6 +1886,7 @@ mod tests {
             lineage_hash: 3,
             confidence: 0.0,
             shell_similarity: 0.0,
+            composed_of: vec![],
         };
 
         // До on_dream_wake → Defer
@@ -2120,5 +2228,183 @@ mod tests {
             matches!(fw.on_boot(&genome), Err(OverDomainError::GenomeDenied)),
             "без ExperienceMemory/ReadWrite on_boot должен вернуть GenomeDenied"
         );
+    }
+
+    // ── V7-A1: Composition bonds ──────────────────────────────────────────────
+
+    fn make_frame_candidate(participant_ids: &[u32]) -> FrameCandidate {
+        let participants = participant_ids
+            .iter()
+            .map(|&id| Participant {
+                sutra_id: id,
+                origin_domain_id: 110,
+                role_link_type: link_types::SYNTACTIC_SUBJECT,
+                layer: 1,
+            })
+            .collect();
+        let lineage_hash = FrameWeaver::fnv1a_lineage_hash(participant_ids);
+        FrameCandidate {
+            anchor_position: [0; 3],
+            participants,
+            detected_at_tick: 0,
+            stability_count: 3,
+            category: FRAME_CATEGORY_SYNTAX,
+            lineage_hash,
+            confidence: 1.0,
+            shell_similarity: 0.0,
+            composed_of: vec![],
+        }
+    }
+
+    fn exp_state_with_frame_anchors(anchor_ids: &[u32]) -> DomainState {
+        let mut s = empty_state();
+        for &id in anchor_ids {
+            let mut tok = Token::new(id, 109, [0; 3], 0);
+            tok.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+            s.tokens.push(tok);
+        }
+        s
+    }
+
+    #[test]
+    fn detect_composed_of_empty_when_no_parent_frames() {
+        let candidate = make_frame_candidate(&[10, 20, 30]);
+        let exp = empty_state(); // нет Frame-анкеров
+        let result = FrameWeaver::detect_composed_of(&candidate, &exp);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn detect_composed_of_finds_participant_frame_anchor() {
+        let candidate = make_frame_candidate(&[10, 200, 30]);
+        // 200 — Frame-анкер в EXPERIENCE
+        let exp = exp_state_with_frame_anchors(&[200]);
+        let result = FrameWeaver::detect_composed_of(&candidate, &exp);
+        assert_eq!(result, vec![200]);
+    }
+
+    #[test]
+    fn detect_composed_of_finds_multiple_parents() {
+        let candidate = make_frame_candidate(&[100, 200, 300, 400]);
+        // 200 и 400 — Frame-анкеры
+        let exp = exp_state_with_frame_anchors(&[200, 400]);
+        let result = FrameWeaver::detect_composed_of(&candidate, &exp);
+        assert_eq!(result.len(), 2);
+        assert!(result.contains(&200));
+        assert!(result.contains(&400));
+    }
+
+    #[test]
+    fn detect_composed_of_ignores_non_anchor_tokens() {
+        let candidate = make_frame_candidate(&[10, 20, 30]);
+        // токен 20 есть в EXPERIENCE, но НЕ является Frame-анкером
+        let mut exp = empty_state();
+        let tok = Token::new(20, 109, [0; 3], 0); // type_flags = 0
+        exp.tokens.push(tok);
+        let result = FrameWeaver::detect_composed_of(&candidate, &exp);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn crystallization_commands_include_composition_bond() {
+        let mut candidate = make_frame_candidate(&[10, 200, 30]);
+        candidate.composed_of = vec![200]; // участник 200 = родительский Frame
+
+        let fw = FrameWeaver::with_default_config();
+        let cmds = fw.build_crystallization_commands(&candidate, 109);
+
+        // Должен быть хотя бы один BondTokens с COMPOSITION_BOND link_type
+        let has_comp_bond = cmds.iter().any(|cmd| {
+            if cmd.opcode != OpCode::BondTokens as u16 {
+                return false;
+            }
+            let payload: BondTokensPayload = cmd.get_payload();
+            payload.link_type == link_types::COMPOSITION_BOND && payload.target_id == 200
+        });
+        assert!(has_comp_bond, "должен быть COMPOSITION_BOND → 200");
+    }
+
+    #[test]
+    fn crystallization_commands_no_composition_bond_when_no_parents() {
+        let candidate = make_frame_candidate(&[10, 20, 30]);
+        // composed_of = [] (по умолчанию)
+        let fw = FrameWeaver::with_default_config();
+        let cmds = fw.build_crystallization_commands(&candidate, 109);
+
+        let has_comp_bond = cmds.iter().any(|cmd| {
+            if cmd.opcode != OpCode::BondTokens as u16 {
+                return false;
+            }
+            let payload: BondTokensPayload = cmd.get_payload();
+            payload.link_type == link_types::COMPOSITION_BOND
+        });
+        assert!(!has_comp_bond, "не должно быть COMPOSITION_BOND без родителей");
+    }
+
+    #[test]
+    fn composition_store_updated_after_on_tick_crystallization() {
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 2,
+            ..Default::default()
+        });
+        let mut ashti = AshtiCore::new(1);
+        // MAYA: два синтаксических conn от токена 10
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        // EXPERIENCE: токен 20 = Frame-анкер (родитель)
+        let mut parent_anchor = Token::new(20, 109, [0; 3], 0);
+        parent_anchor.type_flags = TOKEN_FLAG_FRAME_ANCHOR;
+        parent_anchor.lineage_hash = 9999; // другой hash (не пересекается)
+        ashti.inject_token(109, parent_anchor).unwrap();
+
+        // Tick 1: stability = 1 (below threshold)
+        fw.on_tick(1, &ashti).unwrap();
+        fw.drain_commands();
+
+        // Tick 2: stability = 2 → кристаллизация
+        fw.on_tick(2, &ashti).unwrap();
+        fw.drain_commands();
+
+        // composition_store должен содержать запись: новый Frame → [20]
+        assert!(
+            !fw.composition_store.is_empty(),
+            "composition_store должен быть заполнен после кристаллизации"
+        );
+        let new_hash = {
+            let maya = ashti.state(ashti.index_of(110).unwrap()).unwrap();
+            fw.scan_state_pub(maya, 110)[0].lineage_hash
+        };
+        let new_anchor_id = FrameWeaver::proposed_id_from_hash(new_hash);
+        let parents = fw.composition_store.get(new_anchor_id);
+        assert!(parents.is_some());
+        assert!(parents.unwrap().contains(&20));
+    }
+
+    #[test]
+    fn composition_store_level_c1_atom_no_parents() {
+        let store = FrameCompositionStore::default();
+        assert!(matches!(store.composition_level(42), FrameComposition::C1Atom));
+    }
+
+    #[test]
+    fn composition_store_level_c2_molecule_one_parent() {
+        let mut store = FrameCompositionStore::default();
+        store.record(42, vec![100]);
+        assert!(matches!(
+            store.composition_level(42),
+            FrameComposition::C2Molecule
+        ));
+    }
+
+    #[test]
+    fn composition_store_level_c3_structure_two_parents() {
+        let mut store = FrameCompositionStore::default();
+        store.record(42, vec![100, 200]);
+        assert!(matches!(
+            store.composition_level(42),
+            FrameComposition::C3Structure
+        ));
     }
 }

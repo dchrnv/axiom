@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1559 тестов, 0 failures**
+**1569 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -36,6 +36,10 @@ AxiomEngine
         │     V6 B: SubsystemFatigue { activation_load, recovery_debt }, FatigueStore;
         │           effective_weight = base*(1-0.5*min(1,load/MAX)); DREAM: activation_load *= 0.35;
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
+        │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
+        │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;
+        │       composition_level(anchor_id) → FrameComposition (C1Atom..C5Plus);
+        │       FrameCandidate.composed_of: Vec<u32> — заполняется перед кристаллизацией; 10 новых тестов
         │     DilemmaStore V1.1 ✅ — хранит дилеммы типов III/IV/V (не I/II); max 8 active, ring-64 resolved;
         │       pending_crystallizations → drain → crystallize_to_experience_commands() → UCL (InjectToken+BondTokens);
         │       кристаллизация в EXPERIENCE domain (level*100+9); lineage_hash FNV-1a; resolution_valence;

@@ -8,7 +8,8 @@
 pub mod frame;
 
 pub use frame::{
-    restore_frame_from_anchor, CrystallizationRule, CycleStrategy, FrameCandidate, FrameWeaver,
-    FrameWeaverConfig, FrameWeaverStats, Participant, PromotionRule, RestoreError, RestoredFrame,
-    RuleAction, RuleCondition, RuleTrigger, FRAME_WEAVER_ID,
+    restore_frame_from_anchor, CrystallizationRule, CycleStrategy, FrameCandidate,
+    FrameCompositionStore, FrameWeaver, FrameWeaverConfig, FrameWeaverStats, Participant,
+    PromotionRule, RestoreError, RestoredFrame, RuleAction, RuleCondition, RuleTrigger,
+    FRAME_WEAVER_ID,
 };
