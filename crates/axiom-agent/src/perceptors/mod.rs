@@ -4,3 +4,5 @@ pub mod text;
 pub mod anchor_match;
 /// Таблица декомпозиции: char/word → якорный ID
 pub mod decomposition_table;
+/// L0VisionPerceptor — edge detection → L0 visual primitives → SUTRA (V7-E2)
+pub mod vision_l0;

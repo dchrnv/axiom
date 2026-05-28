@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-26  
-**Тесты:** 1539, 0 failures
+**Обновлено:** 2026-05-28  
+**Тесты:** 1631, 0 failures
 
 ---
 
@@ -11,7 +11,7 @@
 ```
 axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(64)))
 axiom-ucl        — UclCommand, OpCode, UclResult
-axiom-genome     — Genome (конституция, frozen в Arc после boot)
+axiom-genome     — Genome (конституция, frozen в Arc после boot); EmergentSubsystemRules (V7-D4)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);
                    MetaSubsystemId (0x1001–0x1007), MetaActivation, MetaStore (CR-V6 Фаза C)
@@ -36,8 +36,9 @@ axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>> (хранит живой снапшот)
-axiom-agent      — TextPerceptor (2-path detect_subsystem), MessageEffector, CliChannel,
-                   meta_commands, tick_loop (9 params), AdapterCommand, ServerMessage,
+axiom-agent      — TextPerceptor (2-path detect_subsystem), L0VisionPerceptor (V7-E2),
+                   MessageEffector, CliChannel, meta_commands, tick_loop (9 params),
+                   AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)
 axiom-persist    — MemoryWriter/Loader, AutoSaver, exchange (bincode)
 axiom-bench      — Criterion benchmarks
@@ -325,6 +326,10 @@ dream_phase_state: DreamPhaseState
 last_crystallization_tick: u64
 last_dream_summary: Option<LastDreamSummary>  — pub(crate), заполняется при Waking
 subsystem_candidate_store: SubsystemCandidateStore  — Phase H: кандидаты в подсистемы
+transition_matrix: TransitionMatrix                 — V7-B1: [[f32;16];16] переходы доминант
+composite_profiles: Vec<CompositeSubsystemProfile>  — V7-C2: bidirectional coupling профили
+version_store: SubsystemVersionStore                — V7-D1: версии подсистем для hot-reload
+split_merge_candidates: SplitMergeCandidateStore    — V7-D2: split/merge сигналы
 ```
 
 ### TickSchedule
@@ -855,13 +860,16 @@ domains: Vec<Vec<Anchor>> — D1–D8 → ASHTI[1..=8]
 
 **Ключевые методы:**
 ```rust
-fn match_text(text: &str) -> Vec<AnchorMatch>
+fn match_text(text: &str) -> Vec<AnchorMatch>  // L0 исключены (только VisionPerceptor)
 fn dominant_subsystem_of(matches: &[AnchorMatch]) -> Option<SubsystemId>  // TextPerceptor Path1
+fn perceptual_anchors() -> &[Anchor]           // V7-A2: L0 visual/spatial/causal (22 шт.)
 const SUBSYSTEM_NAMES: [&str; 6]  — ["writing","mathematics","logic","time","music","values"]
+// + morality, abstractions, dilemmas (SubsystemId, не загружаются через SUBSYSTEM_NAMES)
 ```
 
 **Подсистемные якорные файлы (config/anchors/{subsystem}/primitives.yaml):**
-writing, mathematics, logic, time, music, values — все загружены.
+writing, mathematics, logic, time, music, values, morality, abstractions — загружены.
+Perceptual L0: visual_primitives(8) + spatial_primitives(8) + causal_primitives(6) = 22 якоря.
 FNV-1a fallback активен при отсутствии совпадений.
 
 ---

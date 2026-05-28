@@ -57,6 +57,41 @@ pub struct ProtocolRule {
     pub mandatory: bool,
 }
 
+// serde default helpers
+fn default_min_primitives() -> usize { 2 }
+fn default_min_evidence() -> f32 { 0.3 }
+fn default_require_review() -> bool { true }
+
+/// Правила для emergent subsystem lifecycle (V7-D4).
+///
+/// GUARDIAN проверяет эти правила при одобрении SubsystemCandidate.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EmergentSubsystemRules {
+    /// Минимум примитивов в кластере для создания кандидата.
+    #[serde(default = "default_min_primitives")]
+    pub min_primitives: usize,
+    /// Минимальная evidence_strength для одобрения кандидата.
+    #[serde(default = "default_min_evidence")]
+    pub min_evidence_strength: f32,
+    /// Оператор должен явно одобрить кандидата (всегда true в V7).
+    #[serde(default = "default_require_review")]
+    pub require_review: bool,
+    /// Максимум одновременных активных кандидатов (None = без ограничений).
+    #[serde(default)]
+    pub max_active_candidates: Option<usize>,
+}
+
+impl Default for EmergentSubsystemRules {
+    fn default() -> Self {
+        Self {
+            min_primitives: default_min_primitives(),
+            min_evidence_strength: default_min_evidence(),
+            require_review: default_require_review(),
+            max_active_candidates: None,
+        }
+    }
+}
+
 /// Глобальная конфигурация Ashti_Core уровня.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenomeConfig {

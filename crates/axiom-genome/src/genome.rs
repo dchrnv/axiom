@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
-use crate::rules::{AccessRule, GenomeConfig, GenomeInvariants, ProtocolRule};
+use crate::rules::{AccessRule, EmergentSubsystemRules, GenomeConfig, GenomeInvariants, ProtocolRule};
 use crate::types::{DataType, ModuleId, Permission, ResourceId};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -44,6 +44,9 @@ pub struct Genome {
     pub access_rules: Vec<AccessRule>,
     pub protocol_rules: Vec<ProtocolRule>,
     pub config: GenomeConfig,
+    /// Правила GUARDIAN для emergent subsystem lifecycle (V7-D4).
+    #[serde(default)]
+    pub emergent_subsystems: Option<EmergentSubsystemRules>,
 }
 
 impl Genome {
@@ -297,6 +300,7 @@ impl Genome {
             access_rules,
             protocol_rules,
             config: GenomeConfig::ashti_core_v2(),
+            emergent_subsystems: Some(EmergentSubsystemRules::default()),
         }
     }
 

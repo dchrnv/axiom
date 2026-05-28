@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 62.0  
-**Дата:** 2026-05-27
+**Версия:** 63.0  
+**Дата:** 2026-05-28
 
 ---
 
@@ -19,10 +19,10 @@ axiom-corpus                                        ↑
                                                axiom-workstation
 ```
 
-**1569 тестов, 0 failures.**  
+**1631 тестов, 0 failures.**  
 Phases E–H завершены. NeuralAdvisor V3, OverDomainArbiter V3, DREAM Phase V1.1, CR V6 — в продакшне.  
 Workstation V2, axiom-node, axiom-corpus — в продакшне.  
-Primitive YAMLs (morality/abstractions/time/values), DilemmaStore V1.1, SubsystemDependencies loader — завершены.
+V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, directed cascade, CompositeSubsystem, SubsystemVersionStore, SplitMergeDetector, SubsystemDependencies, EmergentSubsystemRules (GUARDIAN), L0VisionPerceptor.
 
 ---
 
@@ -114,9 +114,11 @@ Merge-сигнал: prob(A→B) ≥ 0.25 AND prob(B→A) ≥ 0.25 (bidirectional
 `config/subsystem_dependencies.yaml` — 7 подсистем, `builds_on` + `natural_tensions`.  
 `SubsystemDependencies` loader в axiom-config: load_or_empty, is_natural_tension (симметрично), load_order() (топо-сорт, детект цикла).
 
-**V7-D4 — Genome для emergent subsystems**
+**V7-D4 — Genome для emergent subsystems ✅**
 
-Секция `emergent_subsystems` в genome.yaml. GUARDIAN валидирует предложения по правилам.
+`EmergentSubsystemRules` в axiom-genome: `min_primitives`, `min_evidence_strength`, `require_review`, `max_active_candidates`.
+`emergent_subsystems` секция в genome.yaml. `approve_with_rules()` в SubsystemCandidateStore — GUARDIAN проверяет evidence + лимит активных.
+`discover_subsystem_candidates` использует `min_primitives` из genome. 6 новых тестов.
 
 Детали: §2.9
 
@@ -128,9 +130,12 @@ Merge-сигнал: prob(A→B) ≥ 0.25 AND prob(B→A) ≥ 0.25 (bidirectional
 
 22 L0 якоря созданы в V7-A2: `visual_primitives.yaml` (8), `spatial_primitives.yaml` (8), `causal_primitives.yaml` (6). AnchorSet расширен. Архитектура L0/L1 завершена.
 
-**V7-E2 — VisionPerceptor базовый**
+**V7-E2 — VisionPerceptor базовый ✅**
 
-Перевести VisionPerceptor из заглушки в рабочую реализацию: изображение → L0 visual примитивы → inject в SUTRA. Минимальный pipeline: edge detection → stroke primitives.
+`L0VisionPerceptor` в `axiom-agent/src/perceptors/vision_l0.rs`.
+Pipeline: RGBA8 → grayscale → Sobel edge detection → stroke classification (horizontal/vertical/diagonal) → InjectToken в SUTRA(100).
+`EdgeAnalysis` struct: edge_density + fraction per direction. Порог: 0.02.
+10 unit-тестов: flat image no-ops, vertical/horizontal edge dominance, anchor position propagation, full integration.
 
 ---
 

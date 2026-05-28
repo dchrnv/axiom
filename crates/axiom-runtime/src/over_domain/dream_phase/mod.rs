@@ -29,5 +29,6 @@ pub use scheduler::{
     DreamScheduler, DreamSchedulerConfig, DreamSchedulerStats, SleepDecision, SleepTriggerKind,
 };
 pub use subsystem::{
-    cluster_emergent_primitives, SubsystemCandidate, SubsystemCandidateStore, SubsystemLifecycleState,
+    cluster_emergent_primitives, ApproveError, SubsystemCandidate, SubsystemCandidateStore,
+    SubsystemLifecycleState,
 };

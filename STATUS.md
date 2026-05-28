@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-27
+**Обновлено:** 2026-05-28
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1615 тестов, 0 failures**
+**1631 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -99,7 +99,9 @@ DREAM Phase V1.1 ✅ — когнитивный сон: 4 состояния (Wa
   ├── BroadcastSnapshot расширен: dream_phase, dream_stats (FatigueStats, SchedulerStats, CycleStats)
   └── H1/H2: SubsystemCandidate discovery — cluster_emergent_primitives() → SubsystemCandidateStore;
         SubsystemLifecycleState: Proposed→Candidate→InReview→Active→Mature→Deprecated→Archived;
-        ApproveSubsystemCandidate (UCL 5301): engine.subsystem_candidate_store.approve(candidate_id)
+        ApproveSubsystemCandidate (UCL 5301): approve_with_rules(id, genome.emergent_subsystems);
+        V7-D4: EmergentSubsystemRules { min_primitives, min_evidence_strength, require_review, max_active_candidates };
+        ApproveError: NotFound / InvalidTransition / InsufficientEvidence / TooManyCandidates; 6 тестов
 
 FractalChain — N уровней AshtiCore (MAYA[n] → SUTRA[n+1], skills exchange)
 ConfigWatcher — горячая перезагрузка axiom.yaml (inotify), передаётся в tick_loop
@@ -111,6 +113,10 @@ axiom-agent:
   │     Path1: AnchorSet.match_text() + dominant_subsystem_of(); Path2: AnchorMatchTable.dominant_subsystem()
   │     (word_signals weight=1.0 + char_signals weight×0.4 → subsystem_from_anchor_id prefix map)
   │     100% per-text subsystem accuracy (OBS-02, 8 корпусов × 30k тиков)
+  ├── L0VisionPerceptor ✅ (V7-E2) — RGBA8 → grayscale → Sobel edge detection → stroke classification;
+  │     EdgeAnalysis { edge_density, horizontal_fraction, vertical_fraction, diagonal_fraction };
+  │     InjectToken в SUTRA(100) для каждого L0 примитива с density ≥ 0.02;
+  │     Anchors: visual_edge / stroke_horizontal / stroke_vertical / stroke_diagonal; 10 тестов
   ├── MessageEffector — ProcessingResult → диагностический вывод (DetailLevel: off/min/mid/max)
   ├── MLEngine (mock + ONNX) → VisionPerceptor (explicit ShapeMismatch при input_size=0),
   │   AudioPerceptor (VAD)
@@ -251,9 +257,9 @@ Workstation V1.0 ✅ (2026-05-05):
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 34 | Token, Connection, Event |
-| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21 |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21; EmergentSubsystemRules (V7-D4) |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
-| axiom-config | 101 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet |
+| axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml |
 | axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
@@ -262,8 +268,8 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 46 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
-| axiom-runtime | 568 (features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands |
-| axiom-agent | 138 (161 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
+| axiom-runtime | 603 (623 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState, ApproveError; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands; TransitionMatrix, FatigueStore→experience, directed_cascade_score, CompositeSubsystemProfile, SubsystemVersionStore, SplitMergeDetector |
+| axiom-agent | 148 (171 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), L0VisionPerceptor (V7-E2: Sobel→stroke primitives→SUTRA), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
 | axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter (domain_activity_threshold), heartbeat, snapshot resync при Lagged, build_system_snapshot; subscribe_events() → Receiver<EngineMessage>; latest_snapshot() → Option<SystemSnapshot>; snapshot_live: RwLock; WS-5: build_system_snapshot takes PerfSnapshot, populates all new fields |
@@ -274,7 +280,7 @@ Workstation V1.0 ✅ (2026-05-05):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1539** | |
+| **Итого** | **1631** | |
 
 ---
 

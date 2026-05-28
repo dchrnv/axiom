@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 67.0
-**Обновлён:** 2026-05-27
+**Версия:** 68.0
+**Обновлён:** 2026-05-28
 
 ---
 
@@ -222,31 +222,7 @@ Abstractions_V1_0.md §7.2 (NOTE): A0 `abstraction_raw` — L0/L1 граница
 
 ---
 
-## ContextRecognizer V6 → V7 (*? dchrnv*)
-
-### CR-TD-01 — FatigueStore → axiom-experience
-
-**Где:** `crates/axiom-runtime/src/over_domain/context_recognizer/subsystem_fatigue.rs`
-
-`FatigueStore` живёт в ContextRecognizer (V6). Жизненный цикл усталости не зависит от CR и должен быть в `axiom-experience`, аналогично `SutraDepthStore`. Это позволит V9 NeuralAdvisor читать fatigue напрямую.
-
-**Что нужно:** ***перенести*** `SubsystemFatigue`, `FatigueStore` ***в*** `axiom-experience`; обновить re-exports в `axiom-runtime`.
-
-**Когда:** V7.
-
----
-
-### CR-TD-02 — TransitionGraph для directed Cascading
-
-**Где:** `crates/axiom-runtime/src/over_domain/context_recognizer/activity_trace.rs` → `compute_cascade_score`
-
-V6 `cascade_score` = sequence diversity (unique subsystems per run / n). Не отличает directed propagation от случайного чередования. `Cascading` может ошибочно срабатывать на случайные последовательности.
-
-**Что нужно:** `TransitionGraph { edges: HashMap<(SubsystemId, SubsystemId), u32> }` поверх `ActivityTrace`; edge frequency → directed chain detection; заменить `cascade_score` ***на граф-метрику***.
-
-**Когда:** V7.
-
----
+## ContextRecognizer V6 → V7
 
 ### CR-TD-03 — Ethics composite неполный
 

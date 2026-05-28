@@ -14,6 +14,7 @@
 use std::collections::HashMap;
 
 use axiom_experience::{EmergentPrimitive, Octant};
+use axiom_genome::EmergentSubsystemRules;
 
 // ── H2: lifecycle ──────────────────────────────────────────────────────────────
 
@@ -116,6 +117,15 @@ impl SubsystemCandidate {
 
 // ── H2: SubsystemCandidateStore ────────────────────────────────────────────────
 
+/// Причина отклонения approve_with_rules (V7-D4).
+#[derive(Debug, PartialEq)]
+pub enum ApproveError {
+    NotFound,
+    InvalidTransition,
+    InsufficientEvidence { actual: f32, required: f32 },
+    TooManyCandidates { current: usize, max: usize },
+}
+
 /// Хранилище кандидатов в подсистемы с управлением жизненным циклом.
 pub struct SubsystemCandidateStore {
     candidates: HashMap<u32, SubsystemCandidate>,
@@ -160,13 +170,47 @@ impl SubsystemCandidateStore {
     /// H2: оператор одобряет Proposed → Candidate.
     /// Возвращает true если переход выполнен.
     pub fn approve(&mut self, id: u32) -> bool {
-        if let Some(c) = self.candidates.get_mut(&id) {
-            if c.lifecycle.can_transition_to(SubsystemLifecycleState::Candidate) {
-                c.lifecycle = SubsystemLifecycleState::Candidate;
-                return true;
+        self.approve_with_rules(id, None).is_ok()
+    }
+
+    /// H2 + V7-D4: одобрить с проверкой правил GUARDIAN.
+    pub fn approve_with_rules(
+        &mut self,
+        id: u32,
+        rules: Option<&EmergentSubsystemRules>,
+    ) -> Result<(), ApproveError> {
+        let candidate = self.candidates.get(&id).ok_or(ApproveError::NotFound)?;
+
+        if let Some(rules) = rules {
+            if candidate.evidence_strength < rules.min_evidence_strength {
+                return Err(ApproveError::InsufficientEvidence {
+                    actual: candidate.evidence_strength,
+                    required: rules.min_evidence_strength,
+                });
+            }
+            if let Some(max) = rules.max_active_candidates {
+                let active = self.candidates.values().filter(|c| {
+                    matches!(
+                        c.lifecycle,
+                        SubsystemLifecycleState::Candidate
+                        | SubsystemLifecycleState::InReview
+                        | SubsystemLifecycleState::Active
+                        | SubsystemLifecycleState::Mature
+                    )
+                }).count();
+                if active >= max {
+                    return Err(ApproveError::TooManyCandidates { current: active, max });
+                }
             }
         }
-        false
+
+        let c = self.candidates.get_mut(&id).unwrap();
+        if c.lifecycle.can_transition_to(SubsystemLifecycleState::Candidate) {
+            c.lifecycle = SubsystemLifecycleState::Candidate;
+            Ok(())
+        } else {
+            Err(ApproveError::InvalidTransition)
+        }
     }
 
     /// Продвинуть кандидата в следующее состояние.
@@ -458,5 +502,82 @@ mod tests {
         assert!(yaml.contains("HeroicFatal"));
         assert!(yaml.contains("sutra_id: 10"));
         assert!(yaml.contains("sutra_id: 20"));
+    }
+
+    // ─── V7-D4: approve_with_rules ────────────────────────────────────────────
+
+    fn rules_default() -> EmergentSubsystemRules {
+        EmergentSubsystemRules::default()
+    }
+
+    fn rules_high_evidence() -> EmergentSubsystemRules {
+        EmergentSubsystemRules {
+            min_evidence_strength: 0.9,
+            ..EmergentSubsystemRules::default()
+        }
+    }
+
+    fn rules_max_one() -> EmergentSubsystemRules {
+        EmergentSubsystemRules {
+            max_active_candidates: Some(1),
+            ..EmergentSubsystemRules::default()
+        }
+    }
+
+    #[test]
+    fn test_approve_with_rules_none_same_as_approve() {
+        let mut store = SubsystemCandidateStore::new();
+        let id = store.insert(vec![1, 2], Octant::CreativeAffirmation, 100);
+        assert!(store.approve_with_rules(id, None).is_ok());
+        assert_eq!(store.get(id).unwrap().lifecycle, SubsystemLifecycleState::Candidate);
+    }
+
+    #[test]
+    fn test_approve_with_rules_default_passes() {
+        let rules = rules_default();
+        let mut store = SubsystemCandidateStore::new();
+        let id = store.insert(vec![1, 2], Octant::CreativeAffirmation, 100);
+        // evidence_strength = 2/5 = 0.4 > 0.3 default
+        assert!(store.approve_with_rules(id, Some(&rules)).is_ok());
+    }
+
+    #[test]
+    fn test_approve_with_rules_insufficient_evidence() {
+        let rules = rules_high_evidence(); // requires 0.9
+        let mut store = SubsystemCandidateStore::new();
+        let id = store.insert(vec![1, 2], Octant::CreativeAffirmation, 100);
+        // evidence_strength = 0.4 < 0.9
+        let err = store.approve_with_rules(id, Some(&rules)).unwrap_err();
+        assert!(matches!(err, ApproveError::InsufficientEvidence { .. }));
+    }
+
+    #[test]
+    fn test_approve_with_rules_too_many_candidates() {
+        let rules = rules_max_one();
+        let mut store = SubsystemCandidateStore::new();
+        let id1 = store.insert(vec![1, 2], Octant::CreativeAffirmation, 100);
+        let id2 = store.insert(vec![3, 4], Octant::EcstaticAffirmation, 100);
+        // Approve first — should succeed (0 active before this)
+        assert!(store.approve_with_rules(id1, Some(&rules)).is_ok());
+        // Approve second — now 1 active, max=1
+        let err = store.approve_with_rules(id2, Some(&rules)).unwrap_err();
+        assert!(matches!(err, ApproveError::TooManyCandidates { current: 1, max: 1 }));
+    }
+
+    #[test]
+    fn test_approve_with_rules_not_found() {
+        let mut store = SubsystemCandidateStore::new();
+        let err = store.approve_with_rules(999, None).unwrap_err();
+        assert_eq!(err, ApproveError::NotFound);
+    }
+
+    #[test]
+    fn test_approve_with_rules_invalid_transition() {
+        let mut store = SubsystemCandidateStore::new();
+        let id = store.insert(vec![1, 2], Octant::CreativeAffirmation, 100);
+        assert!(store.approve_with_rules(id, None).is_ok());
+        // Second approve → invalid transition
+        let err = store.approve_with_rules(id, None).unwrap_err();
+        assert_eq!(err, ApproveError::InvalidTransition);
     }
 }

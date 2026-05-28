@@ -661,11 +661,10 @@ impl AxiomEngine {
             OpCode::ApproveSubsystemCandidate => {
                 let candidate_id =
                     u32::from_le_bytes([cmd.payload[0], cmd.payload[1], cmd.payload[2], cmd.payload[3]]);
-                let ok = self.subsystem_candidate_store.approve(candidate_id);
-                if ok {
-                    make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0)
-                } else {
-                    make_result(cmd.command_id, CommandStatus::SystemError, error_codes::INVALID_PAYLOAD, 0)
+                let rules = self.genome.emergent_subsystems.as_ref();
+                match self.subsystem_candidate_store.approve_with_rules(candidate_id, rules) {
+                    Ok(()) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 0),
+                    Err(_) => make_result(cmd.command_id, CommandStatus::SystemError, error_codes::INVALID_PAYLOAD, 0),
                 }
             }
             // Опкоды протокола, физика которых не реализована — принимаются без ошибки (no-op)
@@ -1384,11 +1383,15 @@ impl AxiomEngine {
     /// H1: кластеризация approved EmergentPrimitives в SubsystemCandidate'ы.
     /// Вызывается один раз за DREAM-цикл (на Complete).
     fn discover_subsystem_candidates(&mut self) {
+        let min_primitives = self.genome.emergent_subsystems.as_ref()
+            .map_or(2, |r| r.min_primitives);
         let primitives: Vec<_> = self.neural_advisor.emergent_store().get_all().to_vec();
         let clusters = cluster_emergent_primitives(&primitives, &self.subsystem_candidate_store);
         let event_id = self.com_next_id;
         for (octant, ids) in clusters {
-            self.subsystem_candidate_store.insert(ids, octant, event_id);
+            if ids.len() >= min_primitives {
+                self.subsystem_candidate_store.insert(ids, octant, event_id);
+            }
         }
     }
 

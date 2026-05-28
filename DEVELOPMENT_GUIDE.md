@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.1  
-**Дата:** 2026-05-24
+**Версия:** 3.2  
+**Дата:** 2026-05-28
 
 ---
 
@@ -27,11 +27,18 @@ Axiom/
 │   │       └── weavers/
 │   │           └── frame.rs       # FrameWeaver V1.3
 │   ├── axiom-persist/     # Персистентность: bincode, AutoSaver, exchange
-│   ├── axiom-agent/       # CLI, tick_loop, External Adapters, MLEngine
+│   ├── axiom-protocol/    # UCL protocol: адаптеры, bench-команды, низкоуровневые типы
+│   ├── axiom-experience/  # FatigueStore, SubsystemFatigue — семантические хранилища
+│   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, TickSnapshot
+│   ├── axiom-workstation/ # Workstation V2: native GUI (egui/eframe), connection, UI
+│   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors (TextPerceptor, L0VisionPerceptor)
+│   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
+│   ├── axiom-observe/     # ObsRunner, OBS-01: автоматизация прогонов, MetricsCollector, report.md
 │   ├── axiom-bench/       # Criterion бенчмарки
 │   └── axiom-node/        # HTTP-сервер: WS JSON bridge, advisory REST, /metrics, ServeDir
 ├── tools/
 │   ├── axiom-dashboard/   # egui/eframe GUI (legacy)
+│   ├── axiom-tray/        # Системный трей (ksni): poll /metrics, Start/Stop axiom-node
 │   ├── axiom-web/         # Workstation V2: React 18 SPA (Vite + Zustand)
 │   │   ├── src/           # App, components, store, ws/
 │   │   └── vite.config.ts # proxy /api → axiom-node (dev), outDir=dist
@@ -111,7 +118,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1487 тестов
+cargo test --workspace          # 1631 тестов
 cargo build --release
 
 # Запуск одной командой
