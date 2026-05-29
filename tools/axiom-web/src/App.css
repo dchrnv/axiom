@@ -465,3 +465,39 @@
 .log-err        { color: var(--red); }
 .log-bench      { color: var(--yellow); }
 .log-obs        { color: #8ab4f8; }
+
+/* ── Lab Results panel ────────────────────────────────────────────────────── */
+.lab-results { display: flex; flex-direction: column; gap: 6px; }
+.lab-results-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.lab-res-ok   { color: var(--green); }
+.lab-res-fail { color: var(--red); }
+.lab-res-line { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--text-dim); }
+.lab-res-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.lab-res-hint code { color: var(--accent); background: rgba(91,141,238,.1); padding: 1px 4px; border-radius: 2px; }
+.lab-res-bench-lines { display: flex; flex-direction: column; gap: 2px; }
+.lab-res-bench-line { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--yellow); }
+
+/* ── Lab History panel ────────────────────────────────────────────────────── */
+.lab-history { display: flex; flex-direction: column; gap: 8px; }
+.lab-history-header { display: flex; align-items: center; gap: 10px; }
+.lab-history-header h2 { margin: 0; font-size: 13px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; flex: 1; }
+.lab-history-list { display: flex; flex-direction: column; gap: 4px; }
+.lab-history-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--surface2);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.lab-hist-ok   { border-left: 2px solid var(--green); }
+.lab-hist-fail { border-left: 2px solid var(--red); }
+.lab-hist-icon { font-size: 11px; width: 12px; flex-shrink: 0; }
+.lab-hist-ok .lab-hist-icon   { color: var(--green); }
+.lab-hist-fail .lab-hist-icon { color: var(--red); }
+.lab-hist-job  { font-weight: 600; color: var(--text); min-width: 80px; }
+.lab-hist-dur  { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 50px; }
+.lab-hist-time { color: var(--text-dim); font-size: 11px; }
+.lab-hist-summary { color: var(--text-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

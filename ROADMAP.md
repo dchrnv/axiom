@@ -97,29 +97,12 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 ---
 
-### DEV-01 — Lab Panel в Workstation V2 UI 🟢
+### DEV-01 — Lab Panel в Workstation V2 UI ✅
 
-> (из DEFERRED DEV-PANEL-01 — перенесён как активная задача)
-
-Вкладка **"Lab"** в Workstation V2 для запуска инструментов прямо из браузера.
-
-**Серверная часть (axiom-node):**
-- Endpoint `POST /api/lab/run` с `{ job: "obs" | "bench_hot" | "bench_od" | "bench_stress" | "test" | "showcase" }` + опциональные параметры (corpus path, bench filter)
-- `tokio::process::Command` — спавнит нужный процесс, stdout/stderr → WebSocket канал `/ws/lab/log`
-- State machine: `Idle → Running → Done | Failed`; один активный job одновременно
-- По завершении — автосохранение артефактов в нужные файлы (`showcase/SHOWCASE.md`, `bench_out/*.txt`)
-
-**UI (React, Workstation V2):**
-- **Run-панель:** кнопки OBS / Hot Bench / OverDomain Bench / Stress / Tests / Full Showcase; при выборе OBS — дропдаун корпуса
-- **Лог-монитор:** `<pre>` с auto-scroll, цветная подсветка `[observe] …%`, `criterion … time:`, `test … ok/FAILED`; кнопка "Stop"
-- **Progress bar:** парсинг строк `[observe] {n}/{total} ({pct}%)` → визуальная полоса с % и ETA
-- **Results panel:** после завершения — красивое отображение итогов:
-  - OBS → таблица subsystem accuracy + энергетика + граф снапшотов (линейный chart)
-  - Bench → таблица time/thrpt с delta к предыдущему прогону
-  - Tests → счётчик passed/failed + список failed
-- **История прогонов:** последние N результатов в sidebar с timestamp + статусом
-
-**Критерий готовности:** нажать "Full Showcase" в браузере → видеть прогресс в реальном времени → после завершения видеть результаты → `showcase/SHOWCASE.md` обновлён автоматически.
+- **Сервер:** `axiom-node/src/lab.rs` — `POST /api/lab/run`, `POST /api/lab/stop`, `GET /api/lab/status`, `GET /api/lab/ws/log` (WebSocket stdout stream)
+- **UI:** вкладка "Lab" — run-кнопки (OBS/HotBench/OverDomain/Stress/Tests/Showcase), прогресс-бар OBS (парсинг `[observe] N/M (%)`), цветной лог-монитор с auto-scroll
+- **Results panel:** после завершения — парсинг итогов: OBS → done/ticks-per-sec + report path; Bench → time/thrpt строки; Tests → test result summary
+- **Run history:** последние 10 прогонов в localStorage с job, статусом, duration, timestamp, summary-строкой
 
 ---
 
