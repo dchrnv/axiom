@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 65.0  
+**Версия:** 66.0  
 **Дата:** 2026-05-29
 
 ---
@@ -79,18 +79,9 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 **Где:** `crates/axiom-domain/src/ashti_core.rs` → `tick()`
 
-#### 3b. Параллельный OBS: несколько corpus shards на разных потоках
+#### 3b. Параллельный OBS: несколько corpus shards на разных потоках ✅
 
-Текущее состояние: OBS runner — один инстанс движка, один поток, 1M тиков последовательно.
-
-**Что нужно:**
-- Разбить corpus на N шардов (по subsystem или произвольно)
-- Запустить N `ObsRunner` в параллельных потоках (каждый — свой `AxiomEngine`)
-- Merge результатов: snapshots и events агрегируются по tick, report строится из объединённых данных
-- `corpus_large.yaml` → параметр `shards: 4` (или авто по CPU count)
-- Ожидаемый прирост: 4-ядерный запуск → ~4x (каждый shard независим)
-
-**Где:** `crates/axiom-observe/src/runner.rs` + новый `crates/axiom-observe/src/shard.rs`
+**Реализовано:** `crates/axiom-observe/src/shard.rs` — round-robin split, `std::thread::spawn`, merge (events concat, snapshots от shard 0). `corpus_large.yaml` → `shards: 4`. Ожидаемый прирост: ~4x на 4 ядрах.
 
 #### 3c. SIMD/AVX2 расширение горячих путей
 

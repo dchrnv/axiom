@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct CorpusEntry {
     pub id: String,
     pub content: String,
@@ -33,8 +33,15 @@ pub struct Corpus {
     /// Set to keep tick time stable on long runs. Recommended: 1000–3000.
     #[serde(default)]
     pub max_tokens_per_domain: Option<usize>,
+    /// Split corpus texts across this many independent engine instances running in parallel.
+    /// Each shard gets a round-robin slice of texts. Results are merged on completion.
+    /// Default: 1 (single-threaded). Set to num_cpus for maximum throughput.
+    #[serde(default = "default_shards")]
+    pub shards: usize,
     pub texts: Vec<CorpusEntry>,
 }
+
+fn default_shards() -> usize { 1 }
 
 impl Corpus {
     pub fn from_yaml(path: &std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {

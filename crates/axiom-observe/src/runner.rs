@@ -62,10 +62,29 @@ impl ObsRunner {
         Ok(Self { engine, perceptor })
     }
 
-    pub fn run(
+    pub fn run(&mut self, corpus: &Corpus) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
+        self.run_inner(corpus, None)
+    }
+
+    /// Run as shard `shard_id` of a parallel split — prefixes progress output.
+    pub fn run_shard(
         &mut self,
+        shard_id: usize,
         corpus: &Corpus,
     ) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
+        self.run_inner(corpus, Some(shard_id))
+    }
+
+    fn run_inner(
+        &mut self,
+        corpus: &Corpus,
+        shard_id: Option<usize>,
+    ) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
+        let prefix = match shard_id {
+            Some(id) => format!("[observe/shard{id}]"),
+            None => "[observe]".to_string(),
+        };
+
         // Build injection schedule: tick -> list of entry indices
         let mut schedule: HashMap<u64, Vec<usize>> = HashMap::new();
         for (i, entry) in corpus.texts.iter().enumerate() {
@@ -129,7 +148,7 @@ impl ObsRunner {
                 let pct = tick as f64 / total as f64 * 100.0;
                 let eta = if pct > 0.0 { elapsed / pct * (100.0 - pct) } else { 0.0 };
                 eprintln!(
-                    "[observe] {tick}/{total} ({pct:.0}%) — {elapsed:.0}s elapsed, ~{eta:.0}s left"
+                    "{prefix} {tick}/{total} ({pct:.0}%) — {elapsed:.0}s elapsed, ~{eta:.0}s left"
                 );
             }
 
@@ -145,7 +164,7 @@ impl ObsRunner {
 
         let elapsed = started.elapsed().as_secs_f64();
         let tps = if elapsed > 0.0 { total as f64 / elapsed } else { 0.0 };
-        eprintln!("[observe] done in {elapsed:.1}s ({tps:.0} ticks/sec)");
+        eprintln!("{prefix} done in {elapsed:.1}s ({tps:.0} ticks/sec)");
 
         (snapshots, events)
     }

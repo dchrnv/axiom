@@ -2,6 +2,7 @@ mod corpus;
 mod metrics;
 mod report;
 mod runner;
+mod shard;
 
 use std::path::PathBuf;
 
@@ -41,16 +42,22 @@ fn main() {
         None
     };
 
-    let mut runner = match runner::ObsRunner::new(anchors_arg) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[observe] engine init failed: {e}");
-            std::process::exit(1);
-        }
-    };
+    let n_shards = corpus.shards.max(1);
 
-    eprintln!("[observe] running…");
-    let (snapshots, events) = runner.run(&corpus);
+    let (snapshots, events) = if n_shards > 1 {
+        eprintln!("[observe] running… ({n_shards} parallel shards)");
+        shard::run_parallel(&corpus, anchors_arg, n_shards)
+    } else {
+        let mut runner = match runner::ObsRunner::new(anchors_arg) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("[observe] engine init failed: {e}");
+                std::process::exit(1);
+            }
+        };
+        eprintln!("[observe] running…");
+        runner.run(&corpus)
+    };
     eprintln!("[observe] done. {} snapshots, {} injection events", snapshots.len(), events.len());
 
     // Write report
