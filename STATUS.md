@@ -1,6 +1,6 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-28
+**Обновлено:** 2026-05-29
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
@@ -202,13 +202,17 @@ axiom-space:
   ├── apply_gravity_batch_avx2 — AVX2 f32, Linear, 8 tok/iter; 6.74 ms@1M (S4b ✅)
   └── apply_gravity_batch_chunked + L2_CHUNK_TOKENS — L2-cache-friendly batch для N>1M (S3)
 
-axiom-node HTTP ✅ (2026-05-24):
+axiom-node HTTP ✅ (2026-05-29):
   axum HTTP-сервер на :8080; маршруты:
     GET  /api/ws                    — WebSocket JSON bridge (snapshot при подключении + EngineEvent)
     POST /api/advisory/confirm/{id} — NodeCmd::AdvisoryConfirm → engine.confirm_pending_advisory()
     POST /api/advisory/reject/{id}  — NodeCmd::AdvisoryReject → engine.reject_pending_advisory()
     POST /api/text/submit           — NodeCmd::SubmitText → perceptor.perceive() → engine
     GET  /metrics                   — Prometheus text format (~30 метрик)
+    POST /api/lab/run               — запустить lab job (obs/bench_*/test/showcase)
+    POST /api/lab/stop              — остановить текущий job
+    GET  /api/lab/status            — статус текущего job (JSON)
+    GET  /api/lab/ws/log            — WebSocket stream stdout/stderr текущего job
     GET  *                          — ServeDir(web_dist) статика Workstation V2
   NodeCmd channel: unbounded mpsc HTTP→tick_loop; нет Mutex на AxiomEngine
   BroadcastHandle: subscribe_events() → Receiver<EngineMessage>; latest_snapshot() → Option<SystemSnapshot>;
@@ -216,12 +220,26 @@ axiom-node HTTP ✅ (2026-05-24):
 
 Workstation V2.0 ✅ (2026-05-24):
   axiom-web — React 18 SPA + Zustand + Vite (tools/axiom-web/):
-    4 таба: Overview (metrics, fatigue, FrameWeaver), Conversation (feed + textarea),
-            Phase C (octant depth, emergent, advisory queue), Patterns (sparklines L1–L8, domain grid)
-  Advisory Queue: confirm/reject кнопки → POST /api/advisory/confirm|reject/{id}, TTL bar
+    8 табов: Overview / Domains / Traces / Internals / Conversation / Phase C / Patterns / Lab
+  Advisory Queue: confirm/reject → POST /api/advisory/confirm|reject/{id}, TTL bar
   SVG sparklines (zero-dep, rolling 120 snapshots), domain activity grid
   Авто-переподключение WS каждые 2s; badge на Phase C tab при pending advisories
   Grafana + Prometheus (tools/grafana/docker-compose.yml): 3 provisioned дашборда, scrape 5s
+
+Lab панель ✅ (2026-05-29):
+  axiom-node/src/lab.rs: POST /api/lab/run|stop, GET /api/lab/status, GET /api/lab/ws/log
+  Запуск OBS / Hot Bench / OverDomain Bench / Stress / Tests / Full Showcase из браузера
+  Прогресс-бар OBS (парсинг [observe] N/M (%)), цветной лог, Results panel, история прогонов
+
+Performance & Tooling Sprint ✅ (2026-05-29):
+  Token lifecycle: check_decay → TokenDecayed → STATE_SLEEPING (valence=0); scan_region
+    пропускает спящие токены; add_token вытесняет спящие при переполнении; eviction hook → Experience
+  Parallel ticks: AshtiCore::tick() — sequential heartbeat + parallel process_frontier (rayon)
+  Parallel OBS shards: N AxiomEngine на N потоках; corpus_large.yaml: shards=4
+  OBS streaming: run_streaming() → snapshots.jsonl + events.jsonl (BufWriter, RAM flat)
+  corpus_showcase.yaml: 18 текстов, 9 подсистем, 200K тиков, ~3-5 мин
+  corpus_profile.yaml: 4 текста, 50K тиков — для cargo flamegraph профилирования
+  INVARIANTS.md v11: правило о жизненном цикле токенов (не удаляются, → STATE_SLEEPING)
 
 ```
 

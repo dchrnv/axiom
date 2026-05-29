@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 66.0  
+**Версия:** 67.0  
 **Дата:** 2026-05-29
 
 ---
@@ -17,10 +17,9 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1631 тестов, 0 failures.**  
-Phases E–H завершены. NeuralAdvisor V3, OverDomainArbiter V3, DREAM Phase V1.1, CR V6 — в продакшне.  
-Workstation V2, axiom-node, axiom-corpus — в продакшне.  
-V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, directed cascade, CompositeSubsystem, SubsystemVersionStore, SplitMergeDetector, SubsystemDependencies, EmergentSubsystemRules (GUARDIAN), L0VisionPerceptor.
+**1592 тестов, 0 failures.**  
+Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
+token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.
 
 ---
 
