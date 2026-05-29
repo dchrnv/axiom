@@ -393,3 +393,40 @@ All measurements: release build, Criterion 0.5, Freedesktop SDK 25.08 (Flatpak r
 Criterion HTML reports: `target/criterion/`  
 Raw bench logs: `showcase/bench_out/`  
 OBS snapshots: `showcase/obs_out/`  
+
+---
+
+## Stress Benchmarks
+
+`axiom-space` под нагрузкой (10K → 10M токенов).
+
+### apply_gravity_batch
+
+| N токенов | Scalar | AVX2 | Speedup |
+|-----------|--------|------|---------|
+| 10K | 481 µs | 99 µs | ~5x |
+| 100K | 3.97 ms | 1.08 ms | ~4x |
+| 1M | 38.5 ms | 17.6 ms | ~2x |
+| 10M | 397 ms | — | — |
+
+### SpatialHashGrid::rebuild
+
+| N токенов | Время |
+|-----------|-------|
+| 10K | 123 µs |
+| 100K | 1.04 ms |
+| 500K | 5.39 ms |
+| 1M | 10.76 ms |
+
+### resonance_search (ExperienceModule)
+
+| Traces | Время |
+|--------|-------|
+| 1K | 17.8 µs |
+| 5K | 22.3 µs |
+| 10K | 17.6 µs |
+| 50K | 15.3 µs |
+
+Grid-хэш Phase 1 эффективен — время практически не растёт с числом трейсов.
+
+> При `max_tokens_per_domain: 2000` все операции работают в диапазоне < 1 µs на тик.
