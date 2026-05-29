@@ -4,7 +4,7 @@
 // Domain V1.3: DomainState — предвыделённые буферы токенов и связей
 
 use axiom_config::DomainConfig;
-use axiom_core::{Connection, Token};
+use axiom_core::{Connection, Token, STATE_LOCKED};
 
 /// Ошибка превышения ёмкости домена.
 #[derive(Debug, PartialEq)]
@@ -72,23 +72,76 @@ impl DomainState {
         self.connections.len()
     }
 
-    /// Evict excess tokens down to `max_keep`, removing the coldest (lowest temperature)
-    /// unprotected tokens first. Tokens with any bit in `protected_flags` are never evicted.
-    /// Returns the number of evicted tokens.
-    pub fn evict_excess(&mut self, max_keep: usize, protected_flags: u16) -> usize {
+    /// True если токен защищён от eviction/decay.
+    /// Защищены: токены с protected_flags ИЛИ с state==STATE_LOCKED (якоря — temp=0 изначально).
+    fn is_protected(token: &Token, protected_flags: u16) -> bool {
+        token.type_flags & protected_flags != 0 || token.state == STATE_LOCKED
+    }
+
+    /// Уменьшить temperature всех незащищённых токенов на `rate`.
+    /// STATE_LOCKED токены (anchor-токены, temperature=0 изначально) не затрагиваются.
+    /// Возвращает количество токенов достигших temperature == 0.
+    pub fn decay_temperatures(&mut self, rate: u8, protected_flags: u16) -> usize {
+        let mut dead = 0;
+        for token in &mut self.tokens {
+            if Self::is_protected(token, protected_flags) {
+                continue;
+            }
+            token.temperature = token.temperature.saturating_sub(rate);
+            if token.temperature == 0 {
+                dead += 1;
+            }
+        }
+        dead
+    }
+
+    /// Удалить мёртвые токены (temperature == 0) которые не защищены.
+    /// STATE_LOCKED токены никогда не удаляются (они являются якорями).
+    /// Возвращает удалённые токены (для eviction hook).
+    pub fn evict_dead(&mut self, protected_flags: u16) -> Vec<Token> {
+        let mut evicted = Vec::new();
+        self.tokens.retain(|t| {
+            if Self::is_protected(t, protected_flags) {
+                return true;
+            }
+            if t.temperature == 0 {
+                evicted.push(*t);
+                false
+            } else {
+                true
+            }
+        });
+        evicted
+    }
+
+    /// Evict excess tokens down to `max_keep`, removing coldest (lowest temperature)
+    /// unprotected tokens first. Protected (flags or STATE_LOCKED) tokens are never evicted.
+    /// Returns the evicted tokens (for eviction hook processing by caller).
+    pub fn evict_excess(&mut self, max_keep: usize, protected_flags: u16) -> Vec<Token> {
         if self.tokens.len() <= max_keep {
-            return 0;
+            return vec![];
         }
         let (mut keep, mut evictable): (Vec<_>, Vec<_>) = std::mem::take(&mut self.tokens)
             .into_iter()
-            .partition(|t| t.type_flags & protected_flags != 0);
+            .partition(|t| Self::is_protected(t, protected_flags));
 
         let slots = max_keep.saturating_sub(keep.len());
         evictable.sort_unstable_by(|a, b| b.temperature.cmp(&a.temperature));
-        let removed = evictable.len().saturating_sub(slots);
-        evictable.truncate(slots);
+        let evicted = if evictable.len() > slots {
+            evictable.split_off(slots)
+        } else {
+            vec![]
+        };
         keep.extend(evictable);
         self.tokens = keep;
-        removed
+        evicted
+    }
+
+    /// True если sutra_id упоминается как source или target в любой связи домена.
+    /// Используется eviction hook для определения «структурно важных» токенов.
+    pub fn is_connection_referenced(&self, sutra_id: u32) -> bool {
+        self.connections
+            .iter()
+            .any(|c| c.source_id == sutra_id || c.target_id == sutra_id)
     }
 }

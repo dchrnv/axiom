@@ -561,21 +561,46 @@ impl AshtiCore {
         pruned_total
     }
 
-    /// Evict excess tokens in all domains, keeping at most `max_per_domain` per domain.
-    /// Coldest (lowest temperature) non-protected tokens are evicted first.
+    /// Reduce temperature of all unprotected tokens in all domains by `rate`.
     /// Protected: TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL.
-    /// Returns total evicted token count.
-    pub fn cap_tokens(&mut self, max_per_domain: usize) -> usize {
+    pub fn apply_decay(&mut self, rate: u8) {
         use axiom_core::{TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_GOAL};
         let protected = TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL;
-        let mut total = 0;
+        for state in &mut self.states {
+            state.decay_temperatures(rate, protected);
+        }
+    }
+
+    /// Evict dead tokens (temperature == 0) from all domains.
+    /// Returns the evicted tokens for eviction hook processing.
+    pub fn evict_dead_tokens(&mut self) -> Vec<axiom_core::Token> {
+        use axiom_core::{TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_GOAL};
+        let protected = TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL;
+        let mut all_evicted = Vec::new();
         for i in 0..self.states.len() {
-            let evicted = self.states[i].evict_excess(max_per_domain, protected);
-            if evicted > 0 {
+            let evicted = self.states[i].evict_dead(protected);
+            if !evicted.is_empty() {
                 self.domains[i].active_tokens = self.states[i].token_count();
-                total += evicted;
+                all_evicted.extend(evicted);
             }
         }
-        total
+        all_evicted
+    }
+
+    /// Evict excess tokens in all domains, keeping at most `max_per_domain` per domain.
+    /// Coldest non-protected tokens evicted first.
+    /// Returns evicted tokens for eviction hook processing.
+    pub fn cap_tokens(&mut self, max_per_domain: usize) -> Vec<axiom_core::Token> {
+        use axiom_core::{TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_GOAL};
+        let protected = TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL;
+        let mut all_evicted = Vec::new();
+        for i in 0..self.states.len() {
+            let evicted = self.states[i].evict_excess(max_per_domain, protected);
+            if !evicted.is_empty() {
+                self.domains[i].active_tokens = self.states[i].token_count();
+                all_evicted.extend(evicted);
+            }
+        }
+        all_evicted
     }
 }

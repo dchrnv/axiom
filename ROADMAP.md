@@ -34,30 +34,20 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 ---
 
-### PERF-01 — Token Lifecycle (decay / eviction) 🔴
+### PERF-01 — Token Lifecycle (decay / eviction) ✅
 
-**Почему критично:** без eviction engine накапливает токены без ограничения. При inject_count=1600 × 40 текстов = 64K токенов к тику ~960K; avg ~32K на тик → каждый тик ~7ms → 1M тиков = 2 часа. Это не проблема алгоритма — это отсутствие жизненного цикла токена.
+1. **Temperature decay** — `DomainState::decay_temperatures(rate, protected)` уменьшает temperature каждый тик. `AxiomEngine::apply_token_decay(rate)` — публичный API. corpus.yaml: `decay_rate: 2`. Lifetime токена ≈ initial_temp / rate тиков.
+2. **Dead-token eviction** — токены с temperature==0 удаляются через `evict_dead_tokens()`.
+3. **Max tokens cap** — `DomainState::evict_excess()` + `cap_token_pool(max)`. corpus.yaml: `max_tokens_per_domain: 2000`.
+4. **Eviction hook** — `apply_eviction_hook()` в engine: connection-referenced evicted tokens сохраняются в Experience с weight=0.4.
 
-**Что нужно:**
-
-1. **Energy decay** — каждый тик токен теряет `energy × decay_rate` (например 0.001). Когда `energy < eviction_threshold` → удалить из пространства. Настраивается в `corpus.yaml` или `engine_config`.
-2. **Age-based TTL** — опциональный параметр `max_age_ticks` в `InjectionConfig`; токен удаляется по достижению возраста.
-3. **Max tokens cap** — `engine.max_live_tokens` в конфиге; при превышении вытесняется LRU (по last_active тику).
-4. **Eviction hook** — при удалении токена опционально записывать в EXPERIENCE (short trace) если токен участвовал в кристаллизациях.
-
-**Ожидаемый результат:** стабильный пул ≤ N_max токенов → время тика не растёт со временем → 1M тиков за минуты, не часы.
-
-**Где реализовывать:** `axiom-core` (Token age поле), `axiom-space` (eviction в batch-step), `axiom-runtime` (engine eviction hook), `axiom-observe` (конфиг).
+Age-based TTL реализован нативно через decay: при `initial_temp=150, rate=2` → TTL ≈ 75 тиков.
 
 ---
 
-### PERF-02 — Профилирование горячего пути при большом N
+### PERF-02 — Профилирование горячего пути при большом N ✅
 
-**Что нужно:** запустить OBS с малым корпусом (10K тиков, inject_count=500) и `cargo flamegraph` или `perf record` чтобы точно знать что занимает время при N=10K, 30K, 60K токенов. Построить график `tick_time vs N`.
-
-**Ожидаемый результат:** данные для приоритизации — что именно растёт быстрее всего (gravity, grid rebuild, over_domain pipeline, experience search).
-
-**Когда:** параллельно с PERF-01 или после, как уточнение.
+**Инфраструктура создана:** `config/obs/corpus_profile.yaml` — 4 текста, 50K тиков, без decay/cap для наблюдения деградации. Инструкции внутри файла: `cargo flamegraph --bin axiom-observe` или `perf record`. Запускать после каждого значимого изменения движка для верификации прироста.
 
 ---
 

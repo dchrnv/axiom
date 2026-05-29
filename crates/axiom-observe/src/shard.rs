@@ -23,6 +23,7 @@ pub fn split(corpus: &Corpus, n: usize) -> Vec<Corpus> {
             ticks_total: corpus.ticks_total,
             snapshot_every: corpus.snapshot_every,
             max_tokens_per_domain: corpus.max_tokens_per_domain,
+            decay_rate: corpus.decay_rate,
             shards: 1,
             texts,
         })

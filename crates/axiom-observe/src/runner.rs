@@ -137,6 +137,12 @@ impl ObsRunner {
 
             self.engine.process_command(&tick_cmd);
 
+            // Energy decay: reduce temperature each tick, evict dead tokens
+            if let Some(rate) = corpus.decay_rate {
+                self.engine.apply_token_decay(rate);
+            }
+
+            // Cap eviction: hard ceiling on live tokens per domain
             if let Some(cap) = corpus.max_tokens_per_domain {
                 if tick > 0 && tick % 5_000 == 0 {
                     self.engine.cap_token_pool(cap);

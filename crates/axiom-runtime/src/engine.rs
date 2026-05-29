@@ -335,9 +335,44 @@ impl AxiomEngine {
     }
 
     /// Evict excess tokens across all domains, keeping at most `max_per_domain` per domain.
+    /// Runs eviction hook: connection-referenced evicted tokens are saved to Experience.
     /// Returns total number of evicted tokens.
     pub fn cap_token_pool(&mut self, max_per_domain: usize) -> usize {
-        self.ashti.cap_tokens(max_per_domain)
+        let evicted = self.ashti.cap_tokens(max_per_domain);
+        let n = evicted.len();
+        self.apply_eviction_hook(evicted);
+        n
+    }
+
+    /// Decay token temperatures by `rate` per tick, then evict dead tokens (temperature == 0).
+    /// Runs eviction hook on dead tokens. Called from OBS runner each tick when decay is enabled.
+    pub fn apply_token_decay(&mut self, rate: u8) {
+        self.ashti.apply_decay(rate);
+        let dead = self.ashti.evict_dead_tokens();
+        self.apply_eviction_hook(dead);
+    }
+
+    /// Eviction hook: for each evicted token that is connection-referenced in its domain,
+    /// record a short trace in Experience so the pattern isn't lost on eviction.
+    fn apply_eviction_hook(&mut self, evicted: Vec<axiom_core::Token>) {
+        if evicted.is_empty() {
+            return;
+        }
+        let event_id = self.next_event_id();
+        for token in &evicted {
+            // Check if this token is referenced by any connection in any domain
+            let referenced = (0..11).any(|i| {
+                self.ashti
+                    .state(i)
+                    .map_or(false, |s| s.is_connection_referenced(token.sutra_id))
+            });
+            if referenced {
+                // Save trace with reduced weight — the pattern existed and was active
+                self.ashti
+                    .experience_mut()
+                    .add_trace(*token, 0.4, event_id);
+            }
+        }
     }
 
     // ── DREAM Phase accessors (pub для интеграционных тестов) ─────────────────

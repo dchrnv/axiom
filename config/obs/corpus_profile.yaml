@@ -1,0 +1,46 @@
+# corpus_profile.yaml — маленький корпус для профилирования горячего пути
+#
+# Цель: запустить с cargo flamegraph или perf record чтобы найти узкие места
+# при разных размерах token pool.
+#
+# Команда:
+#   cargo flamegraph --bin axiom-observe -- config/obs/corpus_profile.yaml profile_out config/anchors
+#
+# Или через perf:
+#   perf record -g ./target/release/axiom-observe config/obs/corpus_profile.yaml profile_out config/anchors
+#   perf report
+#
+# Параметры намеренно без decay_rate и max_tokens_per_domain — чтобы накапливать токены
+# и видеть деградацию производительности при росте N.
+
+ticks_total: 50000
+snapshot_every: 5000
+
+texts:
+  - id: math_arith
+    content: "Сложение и вычитание — основы арифметики. Умножение ускоряет повторное сложение."
+    expected_subsystem: mathematics
+    inject_every: 50
+    inject_count: 500
+    start_at_tick: 0
+
+  - id: logic_deduct
+    content: "Дедуктивное мышление строится от общего к частному. Истинные посылки дают истинный вывод."
+    expected_subsystem: logic
+    inject_every: 50
+    inject_count: 500
+    start_at_tick: 0
+
+  - id: writing_narr
+    content: "Повествование строится на конфликте и его разрешении. Персонаж меняется под давлением обстоятельств."
+    expected_subsystem: writing
+    inject_every: 50
+    inject_count: 500
+    start_at_tick: 0
+
+  - id: values_eth
+    content: "Честность и справедливость составляют основу этического поведения в обществе."
+    expected_subsystem: values
+    inject_every: 50
+    inject_count: 500
+    start_at_tick: 0

@@ -1,6 +1,7 @@
 ticks_total: 1000000
 snapshot_every: 10000
 max_tokens_per_domain: 2000
+decay_rate: 2
 shards: 4
 
 texts:
