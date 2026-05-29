@@ -1,0 +1,154 @@
+# corpus_showcase.yaml — быстрый showcase-прогон (~3–5 минут)
+#
+# Цель: демонстрационный прогон с полным набором подсистем и наглядным отчётом.
+# Параметры подобраны под 4 шарда + STATE_SLEEPING decay.
+#
+# Запуск: just showcase-obs (использует corpus_showcase.yaml)
+# Или:    ./target/release/axiom-observe config/obs/corpus_showcase.yaml showcase/obs_out config/anchors
+
+ticks_total: 200000
+snapshot_every: 2000
+shards: 4
+
+texts:
+
+  # ── MATHEMATICS (3) ─────────────────────────────────────────────────────────
+  - id: math_arithmetic
+    content: "Сложение и вычитание — основы арифметики. Умножение ускоряет повторное сложение. Деление — обратная операция умножению."
+    expected_subsystem: mathematics
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 0
+
+  - id: math_calculus
+    content: "Производная функции — предел отношения приращений. Интеграл суммирует бесконечно малые величины. Фундаментальная теорема анализа связывает их."
+    expected_subsystem: mathematics
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 1000
+
+  - id: math_geometry
+    content: "Евклидова геометрия строится на пяти аксиомах. Параллельные прямые не пересекаются. Сумма углов треугольника равна 180 градусам."
+    expected_subsystem: mathematics
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 2000
+
+  # ── WRITING (3) ─────────────────────────────────────────────────────────────
+  - id: writing_narrative
+    content: "Повествование строится на конфликте и его разрешении. Персонаж меняется под давлением обстоятельств. Развязка отвечает на главный вопрос истории."
+    expected_subsystem: writing
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 0
+
+  - id: writing_style
+    content: "Краткость — сестра таланта. Каждое слово должно нести смысл. Ритм фразы создаёт настроение текста."
+    expected_subsystem: writing
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 1500
+
+  - id: writing_metaphor
+    content: "Метафора переносит значение с одного предмета на другой. Сравнение делает абстрактное конкретным. Символ сжимает сложную идею до образа."
+    expected_subsystem: writing
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 3000
+
+  # ── LOGIC (3) ───────────────────────────────────────────────────────────────
+  - id: logic_deductive
+    content: "Дедуктивное мышление строится от общего к частному. Истинные посылки дают истинный вывод. Силлогизм — классическая форма дедукции."
+    expected_subsystem: logic
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 0
+
+  - id: logic_inductive
+    content: "Индуктивное мышление обобщает частные случаи. Наблюдение паттернов ведёт к гипотезе. Вывод вероятен, но не гарантирован."
+    expected_subsystem: logic
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 2000
+
+  - id: logic_fallacies
+    content: "Логические ошибки нарушают правила умозаключения. Ad hominem атакует личность вместо аргумента. Круговое доказательство использует вывод как посылку."
+    expected_subsystem: logic
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 4000
+
+  # ── MUSIC (2) ───────────────────────────────────────────────────────────────
+  - id: music_harmony
+    content: "Гармония — одновременное звучание нескольких нот. Аккорд создаёт эмоциональный контекст. Диссонанс требует разрешения в консонанс."
+    expected_subsystem: music
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 500
+
+  - id: music_rhythm
+    content: "Ритм — временная организация звуков. Такт делит музыку на равные единицы. Синкопа акцентирует слабые доли."
+    expected_subsystem: music
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 2500
+
+  # ── VALUES (2) ──────────────────────────────────────────────────────────────
+  - id: values_honesty
+    content: "Честность — основа доверия между людьми. Ложь разрушает отношения даже когда сиюминутно удобна. Правда укрепляет связи в долгосрочной перспективе."
+    expected_subsystem: values
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 1000
+
+  - id: values_justice
+    content: "Справедливость требует равного отношения к равным случаям. Беспристрастность — не бесчувственность, а честность суждения. Наказание должно быть соразмерным."
+    expected_subsystem: values
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 3500
+
+  # ── MORALITY (2) ────────────────────────────────────────────────────────────
+  - id: morality_duty
+    content: "Долг определяет обязательства независимо от последствий. Кантовский категорический императив требует универсализуемости поступков. Моральный закон внутри нас."
+    expected_subsystem: morality
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 500
+
+  - id: morality_consequences
+    content: "Утилитаризм оценивает действие по его последствиям. Наибольшее благо для наибольшего числа людей. Счастье измеримо и максимизируемо."
+    expected_subsystem: morality
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 2000
+
+  # ── TIME (2) ────────────────────────────────────────────────────────────────
+  - id: time_perception
+    content: "Восприятие времени субъективно. Скучное ожидание тянется, насыщенные моменты пролетают. Память реконструирует прошлое, а не воспроизводит."
+    expected_subsystem: time
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 1500
+
+  - id: time_arrow
+    content: "Стрела времени указывает от прошлого к будущему. Энтропия растёт — обратного хода нет. Причина всегда предшествует следствию."
+    expected_subsystem: time
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 3000
+
+  # ── ABSTRACTIONS (2) ────────────────────────────────────────────────────────
+  - id: abstract_infinity
+    content: "Бесконечность не является числом, но имеет разные размеры. Множество натуральных и множество вещественных чисел — разные бесконечности. Теорема Кантора это доказывает."
+    expected_subsystem: abstractions
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 0
+
+  - id: abstract_emergence
+    content: "Эмерджентность — свойства целого не сводимые к свойствам частей. Сознание возникает из нейронов. Жизнь возникает из молекул. Целое превосходит сумму частей."
+    expected_subsystem: abstractions
+    inject_every: 300
+    inject_count: 400
+    start_at_tick: 2500

@@ -1,5 +1,5 @@
 /// Snapshot of engine state at a given tick.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TickSnapshot {
     pub tick: u64,
     pub frame_count: usize,
@@ -32,7 +32,7 @@ pub struct TickSnapshot {
 }
 
 /// Event recorded when a text is injected, with routing diagnostics.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InjectionEvent {
     pub tick: u64,
     pub entry_id: String,

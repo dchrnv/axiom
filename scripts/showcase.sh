@@ -17,7 +17,7 @@ SHOWCASE_DIR="showcase"
 OBS_OUT="$SHOWCASE_DIR/obs_out"
 BENCH_OUT="$SHOWCASE_DIR/bench_out"
 REPORT="$SHOWCASE_DIR/SHOWCASE.md"
-CORPUS="config/obs/corpus_large.yaml"
+CORPUS="${AXIOM_CORPUS:-config/obs/corpus_showcase.yaml}"
 ANCHORS="config/anchors"
 GENERATED_AT="$(date '+%Y-%m-%d %H:%M')"
 

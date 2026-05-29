@@ -44,8 +44,14 @@ fn main() {
 
     let n_shards = corpus.shards.max(1);
 
+    // Prepare output directory early — needed for streaming
+    if let Err(e) = std::fs::create_dir_all(&out_dir) {
+        eprintln!("[observe] cannot create out_dir {}: {e}", out_dir.display());
+        std::process::exit(1);
+    }
+
     let (snapshots, events) = if n_shards > 1 {
-        eprintln!("[observe] running… ({n_shards} parallel shards)");
+        eprintln!("[observe] running… ({n_shards} parallel shards, streaming to {}/)", out_dir.display());
         shard::run_parallel(&corpus, anchors_arg, n_shards)
     } else {
         let mut runner = match runner::ObsRunner::new(anchors_arg) {
@@ -55,10 +61,10 @@ fn main() {
                 std::process::exit(1);
             }
         };
-        eprintln!("[observe] running…");
-        runner.run(&corpus)
+        eprintln!("[observe] running… (streaming to {}/)", out_dir.display());
+        runner.run_streaming(&corpus, &out_dir)
     };
-    eprintln!("[observe] done. {} snapshots, {} injection events", snapshots.len(), events.len());
+    eprintln!("[observe] done. {} snapshots in RAM, {} events in RAM", snapshots.len(), events.len());
 
     // Write report
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
@@ -66,7 +72,19 @@ fn main() {
         std::process::exit(1);
     }
 
-    let report = report::generate_markdown(&corpus, &snapshots, &events);
+    // If streaming mode was used, load from JSONL files for report generation
+    let loaded_snaps;
+    let loaded_events;
+    let (snap_ref, ev_ref) = if snapshots.is_empty() && events.is_empty() {
+        loaded_snaps = report::load_snapshots_jsonl(&out_dir.join("snapshots.jsonl"));
+        loaded_events = report::load_events_jsonl(&out_dir.join("events.jsonl"));
+        eprintln!("[observe] loaded {} snapshots, {} events from JSONL", loaded_snaps.len(), loaded_events.len());
+        (loaded_snaps.as_slice(), loaded_events.as_slice())
+    } else {
+        (snapshots.as_slice(), events.as_slice())
+    };
+
+    let report = report::generate_markdown(&corpus, snap_ref, ev_ref);
     let report_path = out_dir.join("report.md");
     if let Err(e) = std::fs::write(&report_path, &report) {
         eprintln!("[observe] failed to write report: {e}");

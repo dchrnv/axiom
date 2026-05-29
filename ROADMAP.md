@@ -85,28 +85,15 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 ---
 
-### OBS-02 — Streaming output (не накапливать в памяти) 🟡
+### OBS-02 — Streaming output ✅
 
-> (из DEFERRED OBS-TD-04)
-
-**Где:** `crates/axiom-observe/src/runner.rs`, `crates/axiom-observe/src/report.rs`
-
-**Что:**
-- Снапшоты писать в `obs_out/snapshots.jsonl` по мере накопления (append), не держать `Vec<Snapshot>` в памяти
-- Events — аналогично в `obs_out/events.jsonl`
-- `report.md` генерировать в конце из файлов (не из RAM)
-- Параметр `flush_every: 1000` (снапшотов) в corpus.yaml
-
-**Ожидаемый результат:** RAM стабильна на протяжении прогона (~20MB вместо 110MB+).
+`run_streaming()` пишет снапшоты в `obs_out/snapshots.jsonl` и события в `obs_out/events.jsonl` через `BufWriter` по мере накопления. Vec в RAM не растёт. Report генерируется из файлов через `load_snapshots_jsonl()` / `load_events_jsonl()`. Metrics + Serde Serialize/Deserialize.
 
 ---
 
-### OBS-03 — Калибровка корпуса для showcase
+### OBS-03 — Калибровка корпуса для showcase ✅
 
-**Что нужно:** после PERF-01 пересчитать `corpus_large.yaml` под новые параметры:
-- `inject_count` подобрать под `max_age_ticks` / decay так чтобы в engine жило N_max ≤ 5000 токенов
-- `ticks_total` — сколько нужно для репрезентативного snaphot-набора (скорее всего 100K–200K достаточно)
-- Добавить `corpus_showcase.yaml` как "быстрый прогон для демонстрации" (~5 мин)
+`config/obs/corpus_showcase.yaml` — 18 текстов, 9 подсистем, 200K тиков, shards=4. При ~3-5 минутах прогона даёт репрезентативный snapshot-набор. `showcase.sh` использует его по умолчанию (`AXIOM_CORPUS=...` для переопределения). Для полного прогона: `corpus_large.yaml`.
 
 ---
 

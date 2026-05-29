@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -63,7 +64,17 @@ impl ObsRunner {
     }
 
     pub fn run(&mut self, corpus: &Corpus) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
-        self.run_inner(corpus, None)
+        self.run_inner(corpus, None, None)
+    }
+
+    /// Run with JSONL streaming — write snapshots/events to files in `out_dir` as they arrive.
+    /// Returns empty Vecs (data is in the files, not in RAM).
+    pub fn run_streaming(
+        &mut self,
+        corpus: &Corpus,
+        out_dir: &Path,
+    ) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
+        self.run_inner(corpus, None, Some(out_dir))
     }
 
     /// Run as shard `shard_id` of a parallel split — prefixes progress output.
@@ -72,13 +83,14 @@ impl ObsRunner {
         shard_id: usize,
         corpus: &Corpus,
     ) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
-        self.run_inner(corpus, Some(shard_id))
+        self.run_inner(corpus, Some(shard_id), None)
     }
 
     fn run_inner(
         &mut self,
         corpus: &Corpus,
         shard_id: Option<usize>,
+        stream_to: Option<&Path>,
     ) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
         let prefix = match shard_id {
             Some(id) => format!("[observe/shard{id}]"),
@@ -94,6 +106,17 @@ impl ObsRunner {
                 }
             }
         }
+
+        // Streaming writers — если задан out_dir, пишем сразу в файлы вместо Vec
+        let shard_prefix = shard_id.map(|id| format!("shard{id}_")).unwrap_or_default();
+        let mut snap_writer: Option<BufWriter<std::fs::File>> = stream_to.and_then(|dir| {
+            let path = dir.join(format!("{shard_prefix}snapshots.jsonl"));
+            std::fs::File::create(&path).ok().map(BufWriter::new)
+        });
+        let mut event_writer: Option<BufWriter<std::fs::File>> = stream_to.and_then(|dir| {
+            let path = dir.join(format!("{shard_prefix}events.jsonl"));
+            std::fs::File::create(&path).ok().map(BufWriter::new)
+        });
 
         let mut snapshots: Vec<TickSnapshot> = Vec::new();
         let mut events: Vec<InjectionEvent> = Vec::new();
@@ -121,7 +144,7 @@ impl ObsRunner {
 
                     let exp_traces = self.engine.ashti.experience().trace_count();
 
-                    events.push(InjectionEvent {
+                    let ev = InjectionEvent {
                         tick,
                         entry_id: entry.id.clone(),
                         expected_subsystem: entry.expected_subsystem.clone(),
@@ -131,7 +154,14 @@ impl ObsRunner {
                         passes: result.passes,
                         experience_traces_at_injection: exp_traces,
                         per_text_detected,
-                    });
+                    };
+                    if let Some(w) = &mut event_writer {
+                        if let Ok(line) = serde_json::to_string(&ev) {
+                            let _ = writeln!(w, "{line}");
+                        }
+                    } else {
+                        events.push(ev);
+                    }
                 }
             }
 
@@ -148,14 +178,32 @@ impl ObsRunner {
             }
 
             if tick % corpus.snapshot_every == 0 {
-                snapshots.push(self.capture_snapshot(tick));
+                let snap = self.capture_snapshot(tick);
+                if let Some(w) = &mut snap_writer {
+                    if let Ok(line) = serde_json::to_string(&snap) {
+                        let _ = writeln!(w, "{line}");
+                    }
+                } else {
+                    snapshots.push(snap);
+                }
             }
         }
 
         // Always capture final state
         if corpus.ticks_total % corpus.snapshot_every != 0 {
-            snapshots.push(self.capture_snapshot(corpus.ticks_total));
+            let snap = self.capture_snapshot(corpus.ticks_total);
+            if let Some(w) = &mut snap_writer {
+                if let Ok(line) = serde_json::to_string(&snap) {
+                    let _ = writeln!(w, "{line}");
+                }
+            } else {
+                snapshots.push(snap);
+            }
         }
+
+        // Flush stream writers
+        if let Some(w) = snap_writer.as_mut() { let _ = w.flush(); }
+        if let Some(w) = event_writer.as_mut() { let _ = w.flush(); }
 
         let elapsed = started.elapsed().as_secs_f64();
         let tps = if elapsed > 0.0 { total as f64 / elapsed } else { 0.0 };

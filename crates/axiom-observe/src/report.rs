@@ -3,6 +3,22 @@ use axiom_runtime::over_domain::neural_advisor::implementations::EMERGENT_CANDID
 use crate::corpus::Corpus;
 use crate::metrics::{InjectionEvent, TickSnapshot};
 
+/// Load snapshots from JSONL file (written by streaming runner).
+pub fn load_snapshots_jsonl(path: &std::path::Path) -> Vec<TickSnapshot> {
+    let Ok(content) = std::fs::read_to_string(path) else { return vec![]; };
+    content.lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+/// Load events from JSONL file.
+pub fn load_events_jsonl(path: &std::path::Path) -> Vec<InjectionEvent> {
+    let Ok(content) = std::fs::read_to_string(path) else { return vec![]; };
+    content.lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
 pub fn generate_markdown(
     corpus: &Corpus,
     snapshots: &[TickSnapshot],
