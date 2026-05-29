@@ -29,6 +29,16 @@ async fn main() -> Result<()> {
 
     info!("axiom-node starting up");
 
+    // 0. Rayon thread pool — 3/4 от доступных ядер, минимум 2.
+    //    Оставляем 1/4 ядер для ОС и других процессов.
+    let total_cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
+    let rayon_threads = (total_cpus * 3 / 4).max(2);
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(rayon_threads)
+        .build_global()
+        .ok();
+    info!("rayon thread pool: {rayon_threads}/{total_cpus} cores (3/4)");
+
     // 1. Инициализация движка, хранилища, якорей
     let state = startup::init(&cfg)?;
 
