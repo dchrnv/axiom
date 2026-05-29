@@ -150,19 +150,33 @@ impl AshtiCore {
     /// Вызывает `on_event()`, `handle_heartbeat()` и `process_frontier()` для каждого домена.
     /// Возвращает все физические события, сгенерированные за этот тик.
     pub fn tick(&mut self) -> Vec<Event> {
+        use rayon::prelude::*;
+
         self.pulse += 1;
-        let mut all_events = Vec::new();
-        for i in 0..self.domains.len() {
-            if let Some(pulse) = self.domains[i].on_event() {
-                self.domains[i].handle_heartbeat(pulse);
-                let tokens = &self.states[i].tokens;
-                let conns = &self.states[i].connections;
-                let mut gen = crate::physics::EventGenerator::new();
-                gen.set_pulse_id(pulse);
-                let events = self.domains[i].process_frontier(tokens, conns, &mut gen);
-                all_events.extend(events);
-            }
-        }
+
+        // Phase 1 (sequential): heartbeat mutations — on_event + handle_heartbeat per domain.
+        // These modify internal heartbeat/frontier state and must run sequentially.
+        let pulses: Vec<Option<u64>> = self.domains.iter_mut()
+            .map(|d| d.on_event().map(|p| { d.handle_heartbeat(p); p }))
+            .collect();
+
+        // Phase 2 (parallel): process_frontier — reads tokens/connections, writes only to
+        // each domain's own frontier. Domains are independent so all 11 run concurrently.
+        let states = &self.states;
+        let all_events: Vec<Event> = self.domains
+            .par_iter_mut()
+            .zip(pulses.par_iter())
+            .zip(states.par_iter())
+            .filter_map(|((domain, pulse_opt), state)| {
+                pulse_opt.map(|pulse| {
+                    let mut gen = crate::physics::EventGenerator::new();
+                    gen.set_pulse_id(pulse);
+                    domain.process_frontier(&state.tokens, &state.connections, &mut gen)
+                })
+            })
+            .flatten()
+            .collect();
+
         all_events
     }
 

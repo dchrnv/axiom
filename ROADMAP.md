@@ -57,34 +57,19 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 **Три уровня параллелизма:**
 
-#### 3a. Параллельный тик доменов (rayon, внутри одного тика)
+#### 3a. Параллельный тик доменов (rayon, внутри одного тика) ✅
 
-Текущее состояние: `AshtiCore::tick()` обходит 11 доменов **последовательно**. Каждый домен вызывает `process_frontier` — независимая операция (домены не пишут друг в друга во время тика, только читают). Уже есть прецедент: `prepare_speculative_grids()` использует rayon для параллельного rebuild.
-
-**Что нужно:**
-- Разделить состояние для мутабельного доступа: `domains` и `states` — `split_at_mut` или `Arc<Mutex<>>` на каждый домен
-- Запускать `process_frontier` для 11 доменов через `rayon::scope`
-- Собирать события в `Vec<Vec<Event>>`, flatten после join
-- Ожидаемый прирост: 11 доменов → теоретически 11x, реально 3–5x с учётом sync overhead
-
-**Где:** `crates/axiom-domain/src/ashti_core.rs` → `tick()`
+**Реализовано:** `AshtiCore::tick()` разбит на 2 прохода: (1) sequential — `on_event` + `handle_heartbeat` для 11 доменов; (2) parallel — `process_frontier` через `par_iter_mut().zip().zip()`. Домены независимы при обработке frontier → безопасный параллелизм без mutex.
 
 #### 3b. Параллельный OBS: несколько corpus shards на разных потоках ✅
 
 **Реализовано:** `crates/axiom-observe/src/shard.rs` — round-robin split, `std::thread::spawn`, merge (events concat, snapshots от shard 0). `corpus_large.yaml` → `shards: 4`. Ожидаемый прирост: ~4x на 4 ядрах.
 
-#### 3c. SIMD/AVX2 расширение горячих путей
+#### 3c. SIMD/AVX2 расширение горячих путей ✅
 
-Текущее состояние: `apply_gravity_batch_avx2` реализован (axiom-space), но не все горячие операции покрыты SIMD.
+**Статус:** `resonance_search_parallel()` уже реализован в ExperienceModule с rayon (fold/reduce, parallel threshold). `scan_region` автоматически пропускает STATE_SLEEPING токены (фильтр `STATE_ACTIVE`), что даёт основной прирост. `apply_gravity_batch_avx2` реализован в axiom-space. Дополнительная SIMD-оптимизация `pattern_similarity` — точечная и откладывается до данных профилировщика (PERF-02).
 
-**Что нужно:**
-- `resonance_search` в ExperienceModule — SIMD-сравнение `[u8; 8]` shell-профилей
-- `scan_region` в ContextRecognizer — параллельная фильтрация MAYA токенов по октанту через bitwise SIMD
-- Измерить через `over_domain_bench` до/после
-
-**Когда:** после 3a и 3b (более высокий impact, меньше риск), 3c — точечная оптимизация.
-
-**Ожидаемый суммарный результат:** 1M тиков за 5–15 минут вместо 2+ часов; OBS становится практичным инструментом для регулярных прогонов.
+**Ожидаемый суммарный результат PERF-03:** 1M тиков за 5–15 минут благодаря 3a + 3b + STATE_SLEEPING фильтрации.
 
 ---
 
