@@ -95,28 +95,30 @@ pub fn generate_markdown(
         out.push_str(&format!("★ = depth ≥ {} (emergent candidate threshold)\n\n", EMERGENT_CANDIDATE_MIN_DEPTH));
     }
 
-    // 5. Injection events with routing diagnostics
-    out.push_str("## Injection Events\n\n");
-    out.push_str("| Tick | Entry | Expected | Per-text | Detected | Coherence | Reflex | Passes | Exp traces |\n");
-    out.push_str("|---|---|---|---|---|---|---|---|---|\n");
+    // 5. Per-text accuracy summary
+    out.push_str("## Detection Accuracy\n\n");
+    out.push_str("| Entry | Expected | Correct | Total | Accuracy |\n");
+    out.push_str("|---|---|---|---|---|\n");
+
+    // Group events by entry_id
+    let mut entry_stats: std::collections::BTreeMap<String, (String, usize, usize)> =
+        std::collections::BTreeMap::new();
     for ev in events {
-        let expected = ev.expected_subsystem.as_deref().unwrap_or("—");
-        let per_text = ev.per_text_detected.as_deref().unwrap_or("—");
-        let detected = ev.detected_subsystem.map_or("—".into(), |s| s.to_string());
-        let coherence = ev.coherence.map_or("—".into(), |c| format!("{:.2}", c));
-        let reflex = if ev.reflex_hit { "✓" } else { "—" };
-        // Mark per-text match
-        let per_text_display = match &ev.expected_subsystem {
-            Some(exp) if ev.per_text_detected.as_deref() == Some(exp.as_str()) => {
-                format!("✓ {}", per_text)
+        let entry = entry_stats.entry(ev.entry_id.clone()).or_insert_with(|| {
+            (ev.expected_subsystem.clone().unwrap_or_default(), 0, 0)
+        });
+        if ev.per_text_detected.is_some() {
+            entry.2 += 1;
+            if ev.per_text_detected.as_deref() == ev.expected_subsystem.as_deref() {
+                entry.1 += 1;
             }
-            _ => per_text.to_string(),
-        };
-        out.push_str(&format!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
-            ev.tick, ev.entry_id, expected, per_text_display, detected,
-            coherence, reflex, ev.passes, ev.experience_traces_at_injection
-        ));
+        }
+    }
+    for (id, (expected, correct, total)) in &entry_stats {
+        let pct = if *total > 0 { *correct as f32 / *total as f32 * 100.0 } else { 0.0 };
+        let mark = if pct >= 70.0 { "✓" } else if pct >= 40.0 { "~" } else { "✗" };
+        out.push_str(&format!("| {} | {} | {} | {} | {mark} {:.0}% |\n",
+            id, expected, correct, total, pct));
     }
     out.push('\n');
 
