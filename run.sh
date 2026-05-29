@@ -44,6 +44,12 @@ fi
 
 # ── Grafana (опционально) ───────────────────────────────────────────────────
 if [[ $GRAFANA -eq 1 ]]; then
+    if ! command -v docker &>/dev/null; then
+        echo "[axiom] error: docker not found — install Docker to use --grafana"
+        echo "[axiom]   Arch: sudo pacman -S docker && sudo systemctl enable --now docker"
+        echo "[axiom]   Or:   https://docs.docker.com/engine/install/"
+        exit 1
+    fi
     echo "[axiom] starting Grafana + Prometheus..."
     (cd tools/grafana && docker compose up -d)
     echo "[axiom] → Grafana: http://localhost:3000"
