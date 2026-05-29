@@ -28,7 +28,7 @@ pacman -S nodejs npm
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
 
-cargo test --workspace   # 1539 тестов, 0 failures
+cargo test --workspace   # 1592 тестов, 0 failures
 cargo build --release    # production build (~7 мин первый раз)
 ```
 
@@ -420,10 +420,100 @@ engine.process_and_observe(&cmd);
 
 ---
 
+## axiom-observe (OBS)
+
+Автоматический прогон корпуса текстов через движок — измеряет точность распознавания подсистем, собирает снапшоты состояния, генерирует отчёт.
+
+### Быстрый запуск
+
+```bash
+just showcase-obs   # showcase-корпус: 18 текстов, 9 подсистем, ~3–5 мин
+just showcase       # OBS + все бенчи → showcase/SHOWCASE.md
+```
+
+Или через скрипт:
+
+```bash
+./scripts/showcase.sh --obs-only   # только OBS
+./scripts/showcase.sh              # OBS + бенчи
+```
+
+### Напрямую
+
+```bash
+# Сборка
+cargo build --release -p axiom-observe
+
+# Запуск
+./target/release/axiom-observe <corpus.yaml> <out_dir> <anchors_dir>
+
+# Примеры
+./target/release/axiom-observe \
+  config/obs/corpus_showcase.yaml \
+  showcase/obs_out \
+  config/anchors
+
+# Большой корпус (40 текстов, 1M тиков, 4 шарда)
+./target/release/axiom-observe \
+  config/obs/corpus_large.yaml \
+  showcase/obs_out \
+  config/anchors
+```
+
+### Корпусы
+
+| Файл | Тексты | Тиков | Шарды | Время |
+|------|--------|-------|-------|-------|
+| `corpus_showcase.yaml` | 18 | 200K | 4 | ~3–5 мин |
+| `corpus_large.yaml` | 40 | 1M | 4 | ~20–40 мин |
+| `corpus_profile.yaml` | 4 | 50K | 1 | ~1 мин (flamegraph) |
+| `corpus.yaml` | базовый | — | 1 | быстро |
+
+### Вывод
+
+```
+showcase/obs_out/
+  snapshots.jsonl   — состояние движка каждые snapshot_every тиков
+  events.jsonl      — все инжекции с результатами детекции
+  report.md         — итоговый Markdown-отчёт
+```
+
+Прогресс выводится в stderr каждые ~5%:
+```
+[observe] 10000/200000 (5%) — 12s elapsed, ~228s left
+[observe] done in 240.1s (833 ticks/sec)
+```
+
+### Через Lab панель
+
+Если запущен `axiom-node` — можно запустить OBS прямо из браузера через вкладку **Lab** (`http://localhost:8080`): кнопка **OBS** или **Full Showcase**, прогресс-бар в реальном времени.
+
+### Формат corpus.yaml
+
+```yaml
+ticks_total: 200000
+snapshot_every: 2000
+shards: 4              # параллельные потоки (по числу ядер)
+
+texts:
+  - id: math_example
+    content: "Производная функции — предел отношения приращений."
+    expected_subsystem: mathematics
+    inject_every: 300   # каждые N тиков
+    inject_count: 400   # всего инжекций для этого текста
+    start_at_tick: 0
+```
+
+---
+
 ## Benchmarks
 
 ```bash
-cargo bench -p axiom-bench
+just bench                          # все бенчмарки
+cargo bench -p axiom-bench          # то же
+cargo bench --bench hot_path_regression -- --noplot
+cargo bench --bench over_domain_bench -- --noplot
+cargo bench --bench stress_bench -- --noplot
 ```
 
 Результаты: [docs/bench/RESULTS.md](docs/bench/RESULTS.md)
