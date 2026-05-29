@@ -36,6 +36,13 @@ ensure_npm() {
     fi
 }
 
+# ── остановить предыдущий axiom-node ────────────────────────────────────────
+if pgrep -x axiom-node &>/dev/null; then
+    echo "[axiom] stopping previous axiom-node..."
+    pkill -x axiom-node || true
+    sleep 0.5
+fi
+
 # ── сборка axiom-node ───────────────────────────────────────────────────────
 if [[ $BUILD -eq 1 || ! -f "$BIN_NODE" ]]; then
     echo "[axiom] building axiom-node..."
