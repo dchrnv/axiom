@@ -46,8 +46,9 @@ fi
 if [[ $GRAFANA -eq 1 ]]; then
     if ! command -v docker &>/dev/null; then
         echo "[axiom] error: docker not found — install Docker to use --grafana"
-        echo "[axiom]   Arch: sudo pacman -S docker && sudo systemctl enable --now docker"
-        echo "[axiom]   Or:   https://docs.docker.com/engine/install/"
+        echo "[axiom]   sudo pacman -S docker"
+        echo "[axiom]   sudo systemctl enable --now docker"
+        echo "[axiom]   sudo usermod -aG docker \$USER  # затем перелогиниться"
         exit 1
     fi
     echo "[axiom] starting Grafana + Prometheus..."
