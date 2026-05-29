@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Instant;
 
 use axiom_agent::perceptors::text::TextPerceptor;
 use axiom_config::AnchorSet;
@@ -79,8 +80,11 @@ impl ObsRunner {
         let mut events: Vec<InjectionEvent> = Vec::new();
 
         let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+        let total = corpus.ticks_total;
+        let progress_every = (total / 20).max(10_000); // ~5% intervals, min 10K
+        let started = Instant::now();
 
-        for tick in 0..corpus.ticks_total {
+        for tick in 0..total {
             // Inject texts scheduled for this tick
             if let Some(indices) = schedule.get(&tick) {
                 for &idx in indices {
@@ -114,6 +118,21 @@ impl ObsRunner {
 
             self.engine.process_command(&tick_cmd);
 
+            if let Some(cap) = corpus.max_tokens_per_domain {
+                if tick > 0 && tick % 5_000 == 0 {
+                    self.engine.cap_token_pool(cap);
+                }
+            }
+
+            if tick > 0 && tick % progress_every == 0 {
+                let elapsed = started.elapsed().as_secs_f64();
+                let pct = tick as f64 / total as f64 * 100.0;
+                let eta = if pct > 0.0 { elapsed / pct * (100.0 - pct) } else { 0.0 };
+                eprintln!(
+                    "[observe] {tick}/{total} ({pct:.0}%) — {elapsed:.0}s elapsed, ~{eta:.0}s left"
+                );
+            }
+
             if tick % corpus.snapshot_every == 0 {
                 snapshots.push(self.capture_snapshot(tick));
             }
@@ -123,6 +142,10 @@ impl ObsRunner {
         if corpus.ticks_total % corpus.snapshot_every != 0 {
             snapshots.push(self.capture_snapshot(corpus.ticks_total));
         }
+
+        let elapsed = started.elapsed().as_secs_f64();
+        let tps = if elapsed > 0.0 { total as f64 / elapsed } else { 0.0 };
+        eprintln!("[observe] done in {elapsed:.1}s ({tps:.0} ticks/sec)");
 
         (snapshots, events)
     }

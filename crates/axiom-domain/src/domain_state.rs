@@ -71,4 +71,24 @@ impl DomainState {
     pub fn connection_count(&self) -> usize {
         self.connections.len()
     }
+
+    /// Evict excess tokens down to `max_keep`, removing the coldest (lowest temperature)
+    /// unprotected tokens first. Tokens with any bit in `protected_flags` are never evicted.
+    /// Returns the number of evicted tokens.
+    pub fn evict_excess(&mut self, max_keep: usize, protected_flags: u16) -> usize {
+        if self.tokens.len() <= max_keep {
+            return 0;
+        }
+        let (mut keep, mut evictable): (Vec<_>, Vec<_>) = std::mem::take(&mut self.tokens)
+            .into_iter()
+            .partition(|t| t.type_flags & protected_flags != 0);
+
+        let slots = max_keep.saturating_sub(keep.len());
+        evictable.sort_unstable_by(|a, b| b.temperature.cmp(&a.temperature));
+        let removed = evictable.len().saturating_sub(slots);
+        evictable.truncate(slots);
+        keep.extend(evictable);
+        self.tokens = keep;
+        removed
+    }
 }

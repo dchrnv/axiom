@@ -11,6 +11,10 @@
 //   POST /api/text/submit          — отправить текст в движок
 //   GET  /api/corpus/generate      — сгенерировать текстовый корпус (mode/count/seed)
 //   GET  /metrics                  — Prometheus text format
+//   POST /api/lab/run              — запустить lab job (obs/bench/test/showcase)
+//   POST /api/lab/stop             — остановить текущий job
+//   GET  /api/lab/status           — статус текущего job
+//   GET  /api/lab/ws/log           — WebSocket stream лога текущего job
 //   GET  /*                        — статика React SPA из web_dist/
 
 use std::net::SocketAddr;
@@ -31,6 +35,7 @@ use tracing::{info, warn};
 use axiom_broadcasting::BroadcastHandle;
 use axiom_corpus::{GenerateMode, generate};
 use axiom_protocol::snapshot::SystemSnapshot;
+
 
 /// Команды из HTTP → tick loop.
 pub enum NodeCmd {
@@ -56,8 +61,16 @@ pub async fn run(
     handle: Arc<BroadcastHandle>,
     web_dist: PathBuf,
     cmd_tx: mpsc::UnboundedSender<NodeCmd>,
+    lab: Arc<crate::lab::LabHandle>,
 ) {
     let state = Arc::new(AppState { handle, cmd_tx });
+
+    let lab_router = Router::new()
+        .route("/run", post(crate::lab::route_run))
+        .route("/stop", post(crate::lab::route_stop))
+        .route("/status", get(crate::lab::route_status))
+        .route("/ws/log", get(crate::lab::route_log_ws))
+        .with_state(lab);
 
     let app = Router::new()
         .route("/api/ws", get(ws_handler))
@@ -66,6 +79,7 @@ pub async fn run(
         .route("/api/text/submit", post(api_text_submit))
         .route("/api/corpus/generate", get(api_corpus_generate))
         .route("/metrics", get(metrics_handler))
+        .nest("/api/lab", lab_router)
         .fallback_service(ServeDir::new(&web_dist).append_index_html_on_directories(true))
         .with_state(state);
 

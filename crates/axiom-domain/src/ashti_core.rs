@@ -560,4 +560,22 @@ impl AshtiCore {
 
         pruned_total
     }
+
+    /// Evict excess tokens in all domains, keeping at most `max_per_domain` per domain.
+    /// Coldest (lowest temperature) non-protected tokens are evicted first.
+    /// Protected: TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL.
+    /// Returns total evicted token count.
+    pub fn cap_tokens(&mut self, max_per_domain: usize) -> usize {
+        use axiom_core::{TOKEN_FLAG_FRAME_ANCHOR, TOKEN_FLAG_GOAL};
+        let protected = TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_GOAL;
+        let mut total = 0;
+        for i in 0..self.states.len() {
+            let evicted = self.states[i].evict_excess(max_per_domain, protected);
+            if evicted > 0 {
+                self.domains[i].active_tokens = self.states[i].token_count();
+                total += evicted;
+            }
+        }
+        total
+    }
 }

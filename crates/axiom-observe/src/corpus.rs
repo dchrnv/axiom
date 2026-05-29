@@ -29,6 +29,10 @@ pub struct Corpus {
     pub ticks_total: u64,
     #[serde(default = "default_snapshot_every")]
     pub snapshot_every: u64,
+    /// Cap live tokens per domain. Coldest non-protected tokens are evicted when exceeded.
+    /// Set to keep tick time stable on long runs. Recommended: 1000–3000.
+    #[serde(default)]
+    pub max_tokens_per_domain: Option<usize>,
     pub texts: Vec<CorpusEntry>,
 }
 

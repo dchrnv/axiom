@@ -334,6 +334,12 @@ impl AxiomEngine {
         self.ashti.token_count(domain_id)
     }
 
+    /// Evict excess tokens across all domains, keeping at most `max_per_domain` per domain.
+    /// Returns total number of evicted tokens.
+    pub fn cap_token_pool(&mut self, max_per_domain: usize) -> usize {
+        self.ashti.cap_tokens(max_per_domain)
+    }
+
     // ── DREAM Phase accessors (pub для интеграционных тестов) ─────────────────
 
     /// true — если в текущем тике был внешний ввод (InjectToken через process_and_observe).

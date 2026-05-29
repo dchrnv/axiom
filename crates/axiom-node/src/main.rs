@@ -7,6 +7,7 @@
 mod commands;
 mod config;
 mod http;
+mod lab;
 mod shutdown;
 mod startup;
 mod tick;
@@ -47,8 +48,10 @@ async fn main() -> Result<()> {
     let http_addr = cfg.http_addr.parse().with_context(|| format!("invalid http_addr: {}", cfg.http_addr))?;
     let http_handle = handle.clone();
     let web_dist = cfg.web_dist.clone();
+    let repo_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let lab = lab::LabHandle::new(repo_root);
     tokio::spawn(async move {
-        http::run(http_addr, http_handle, web_dist, cmd_tx).await;
+        http::run(http_addr, http_handle, web_dist, cmd_tx, lab).await;
     });
 
     // 4. Graceful shutdown

@@ -8,9 +8,10 @@ import { Patterns } from './components/Patterns';
 import { Domains } from './components/Domains';
 import { Traces } from './components/Traces';
 import { Internals } from './components/Internals';
+import { Lab } from './components/Lab';
 import './App.css';
 
-type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns';
+type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns' | 'lab';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',     label: 'Overview' },
@@ -20,6 +21,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'conversation', label: 'Conversation' },
   { id: 'phase-c',      label: 'Phase C' },
   { id: 'patterns',     label: 'Patterns' },
+  { id: 'lab',          label: 'Lab' },
 ];
 
 export default function App() {
@@ -61,9 +63,13 @@ export default function App() {
         </div>
       </header>
 
-      {!snapshot ? (
+      {tab === 'lab' && <main className="main"><Lab /></main>}
+
+      {tab !== 'lab' && !snapshot && (
         <div className="waiting">Waiting for engine snapshot…</div>
-      ) : (
+      )}
+
+      {tab !== 'lab' && snapshot && (
         <main className="main">
           {tab === 'overview' && (
             <>
