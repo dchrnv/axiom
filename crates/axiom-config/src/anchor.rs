@@ -32,7 +32,9 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum AnchorLayer {
+    /// L0 — перцептивные якоря (visual, audio, spatial primitives).
     L0,
+    /// L1 — когнитивные якоря (subsystem-level: writing, mathematics, ...).
     #[default]
     L1,
 }
