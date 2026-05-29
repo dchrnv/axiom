@@ -1,7 +1,21 @@
 // Этап 9C — Gateway::set_config_watcher / check_config_reload
 use axiom_config::ConfigWatcher;
 use axiom_runtime::Gateway;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Ждём до `timeout_ms` пока `check_config_reload` вернёт Some.
+fn wait_for_reload(gw: &mut Gateway, timeout_ms: u64) -> Option<axiom_config::LoadedAxiomConfig> {
+    let deadline = Instant::now() + Duration::from_millis(timeout_ms);
+    loop {
+        if let Some(cfg) = gw.check_config_reload() {
+            return Some(cfg);
+        }
+        if Instant::now() >= deadline {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
 
 const AXIOM_YAML_V1: &str = r#"
 runtime:
@@ -73,13 +87,9 @@ fn test_gateway_detects_config_change() {
     let _ = gw.check_config_reload(); // drain startup events
 
     std::fs::write(&path, AXIOM_YAML_V2).unwrap();
-    std::thread::sleep(Duration::from_millis(150));
 
-    let result = gw.check_config_reload();
-    assert!(
-        result.is_some(),
-        "check_config_reload должен вернуть новую конфигурацию"
-    );
+    let result = wait_for_reload(&mut gw, 1000);
+    assert!(result.is_some(), "check_config_reload должен вернуть новую конфигурацию");
     std::fs::remove_dir_all(dir).ok();
 }
 
@@ -97,9 +107,8 @@ fn test_gateway_reload_config_values() {
     let _ = gw.check_config_reload();
 
     std::fs::write(&path, AXIOM_YAML_V2).unwrap();
-    std::thread::sleep(Duration::from_millis(150));
 
-    let cfg = gw.check_config_reload().expect("expected config");
+    let cfg = wait_for_reload(&mut gw, 1000).expect("expected config");
     assert!(cfg.root.loader.cache_enabled);
     assert_eq!(cfg.root.loader.validation, "relaxed");
     std::fs::remove_dir_all(dir).ok();
@@ -120,9 +129,8 @@ fn test_gateway_genome_not_in_reloaded_config() {
     let _ = gw.check_config_reload();
 
     std::fs::write(&path, AXIOM_YAML_V2).unwrap();
-    std::thread::sleep(Duration::from_millis(150));
 
-    let cfg = gw.check_config_reload().expect("expected config");
+    let cfg = wait_for_reload(&mut gw, 1000).expect("expected config");
     // Статически: LoadedAxiomConfig не имеет поля genome — GENOME вне reload
     assert!(cfg.domains.is_empty()); // нет presets.domains_dir в temp yaml
     assert!(cfg.heartbeat.is_none());
