@@ -36,12 +36,12 @@ V7 (A–E) завершён: TransitionMatrix, FatigueStore→experience, direct
 
 ### PERF-01 — Token Lifecycle (decay / eviction) ✅
 
-1. **Temperature decay** — `DomainState::decay_temperatures(rate, protected)` уменьшает temperature каждый тик. `AxiomEngine::apply_token_decay(rate)` — публичный API. corpus.yaml: `decay_rate: 2`. Lifetime токена ≈ initial_temp / rate тиков.
-2. **Dead-token eviction** — токены с temperature==0 удаляются через `evict_dead_tokens()`.
-3. **Max tokens cap** — `DomainState::evict_excess()` + `cap_token_pool(max)`. corpus.yaml: `max_tokens_per_domain: 2000`.
-4. **Eviction hook** — `apply_eviction_hook()` в engine: connection-referenced evicted tokens сохраняются в Experience с weight=0.4.
+По дизайну токены **не удаляются** — они угасают до инертного состояния (`STATE_SLEEPING`).
 
-Age-based TTL реализован нативно через decay: при `initial_temp=150, rate=2` → TTL ≈ 75 тиков.
+1. **Decay через TokenDecayed события** — `EventGenerator::check_decay()` уже генерирует `TokenDecayed` когда причинный возраст токена превышает порог (1/decay_rate событий). Теперь engine применяет эти события: `apply_token_decay_events()` в `tick_wake()` — переводит токен в `STATE_SLEEPING`, `valence=0`.
+2. **Scan filtering** — `scan_region()` в ContextRecognizer уже фильтрует `t.state == STATE_ACTIVE`. Спящие токены автоматически невидимы для всех сканеров.
+3. **Capacity management** — `DomainState::add_token()` при переполнении вызывает `evict_sleeping(1)` — освобождает слот от спящего токена для нового активного.
+4. **Eviction hook** — при переходе в сон: если токен был connection-referenced → добавить trace в Experience (weight=0.4).
 
 ---
 

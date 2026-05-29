@@ -33,12 +33,6 @@ pub struct Corpus {
     /// Set to keep tick time stable on long runs. Recommended: 1000–3000.
     #[serde(default)]
     pub max_tokens_per_domain: Option<usize>,
-    /// Temperature decay per tick for non-protected tokens.
-    /// Token lifetime ≈ initial_temperature / decay_rate ticks.
-    /// Tokens reaching temperature=0 are evicted (eviction hook saves connection-referenced ones).
-    /// Recommended: 1–3. Default: None (no decay).
-    #[serde(default)]
-    pub decay_rate: Option<u8>,
     /// Split corpus texts across this many independent engine instances running in parallel.
     /// Each shard gets a round-robin slice of texts. Results are merged on completion.
     /// Default: 1 (single-threaded). Set to num_cpus for maximum throughput.
