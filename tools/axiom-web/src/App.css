@@ -501,3 +501,25 @@
 .lab-hist-dur  { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 50px; }
 .lab-hist-time { color: var(--text-dim); font-size: 11px; }
 .lab-hist-summary { color: var(--text-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Charts tab ──────────────────────────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chart-header { display: flex; justify-content: space-between; align-items: baseline; }
+.chart-label  { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+.chart-value  { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chart-svg    { display: block; width: 100%; overflow: visible; }
+.chart-range  { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); }
+.chart-waiting { font-size: 12px; color: var(--text-dim); padding: 20px 0; text-align: center; }

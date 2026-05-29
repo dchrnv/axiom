@@ -11,12 +11,22 @@ export interface FeedMessage {
 const HISTORY_MAX = 120;
 let msgIdCounter = 0;
 
+export interface MetricPoint {
+  tick: number;
+  hz: number;
+  tick_ns: number;
+  tokens: number;
+  traces: number;
+  tension: number;
+  fatigue: number;
+}
+
 interface EngineStore {
   snapshot: SystemSnapshot | null;
   connected: boolean;
   feed: FeedMessage[];
-  // Rolling history of over_domain.layer_activations (last HISTORY_MAX snapshots)
   layerHistory: number[][];
+  metricHistory: MetricPoint[];
 
   setSnapshot: (s: SystemSnapshot) => void;
   setConnected: (c: boolean) => void;
@@ -28,12 +38,25 @@ export const useEngineStore = create<EngineStore>((set) => ({
   connected: false,
   feed: [],
   layerHistory: [],
+  metricHistory: [],
 
   setSnapshot: (snapshot) =>
     set((state) => {
       const activations = snapshot.over_domain.layer_activations;
       const layerHistory = [...state.layerHistory, activations].slice(-HISTORY_MAX);
-      return { snapshot, layerHistory };
+
+      const point: MetricPoint = {
+        tick:    snapshot.current_tick,
+        hz:      snapshot.perf.actual_hz,
+        tick_ns: snapshot.perf.tick_ns_avg,
+        tokens:  snapshot.over_domain.total_tokens,
+        traces:  snapshot.traces_count,
+        tension: snapshot.tension_count,
+        fatigue: snapshot.fatigue.current * 100,
+      };
+      const metricHistory = [...state.metricHistory, point].slice(-HISTORY_MAX);
+
+      return { snapshot, layerHistory, metricHistory };
     }),
 
   setConnected: (connected) => set({ connected }),

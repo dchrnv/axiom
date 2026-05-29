@@ -9,12 +9,14 @@ import { Domains } from './components/Domains';
 import { Traces } from './components/Traces';
 import { Internals } from './components/Internals';
 import { Lab } from './components/Lab';
+import { Charts } from './components/Charts';
 import './App.css';
 
-type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns' | 'lab';
+type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns' | 'charts' | 'lab';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',     label: 'Overview' },
+  { id: 'charts',       label: 'Charts' },
   { id: 'domains',      label: 'Domains' },
   { id: 'traces',       label: 'Traces' },
   { id: 'internals',    label: 'Internals' },
@@ -121,6 +123,7 @@ export default function App() {
           {tab === 'conversation' && <Conversation />}
           {tab === 'phase-c'      && <PhaseC />}
           {tab === 'patterns'     && <Patterns />}
+          {tab === 'charts'       && <Charts />}
         </main>
       )}
     </div>
