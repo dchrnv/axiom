@@ -17,7 +17,7 @@ pub struct NodeConfig {
     pub addr: String,
 
     /// Адрес HTTP-сервера (React SPA + /api/ws JSON bridge)
-    #[arg(long, default_value = "127.0.0.1:8080")]
+    #[arg(long, default_value = "0.0.0.0:8080")]
     pub http_addr: String,
 
     /// Путь к dist/ директории React SPA (axiom-web)
