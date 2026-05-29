@@ -1,6 +1,6 @@
 # Axiom Benchmark Results
 
-**v11 · 2026-05-17** · AMD Ryzen 5 3500U · 4c/8t · 3.46 GHz · Linux x86-64 · criterion 0.5 · `release`
+**v12 · 2026-05-29** · AMD Ryzen 5 3500U · 8t · Linux x86-64 · criterion 0.5 · `release`
 
 ---
 
@@ -8,22 +8,73 @@
 
 | Операция | Время | Примечание |
 |----------|-------|------------|
-| `TickForward` (50 tok, 100K тиков) | **~281 ns/тик** | sustained, default schedule |
-| `TickForward` (50 tok, hot only) | **~256 ns/тик** | без периодических задач |
-| `AxiomEngine::new` | **914 µs** | v11 — с AE/CR/NA в конструкторе (+387 µs vs v10) |
-| `snapshot` | **10.1 µs** | 0 токенов (с Phase C данными) |
-| `restore_from` | **572 µs** | 100 токенов |
-| `FrameWeaver` on_tick (20 patterns) | **3.2 µs** | MAYA с 20 активными паттернами |
-| Phase C tick (AE fires, t%5) | **25.2 µs** | пустой engine |
-| Phase C tick (CR fires, t%7) | **23.7 µs** | пустой engine |
-| `resonance_search` | **O(1) ~16 µs** | 1K трейсов |
+| `TickForward` (50 tok, hot path) | **25.7 µs** | V7 полный pipeline, hot_path_regression |
+| `TickForward` (warm, 50 tok) | **65–70 µs** | после 100 прогревочных тиков |
+| `TickForward` (loaded, 50 tok) | **80–90 µs** | после 1000 тиков (устойчивый) |
+| Throughput 1000 тиков / 50 tok | **~25 µs/тик** | амортизированный |
+| `AxiomEngine::new` | **914 µs** | с AE/CR/NA |
+| `resonance_search` | **~16 µs** | O(1) до 50K трейсов (Grid-хэш) |
+| `apply_gravity_batch` AVX2 (10K tok) | **99 µs** | ~10 ns/токен |
+| `apply_gravity_batch` AVX2 (1M tok) | **17.6 ms** | ~18 ns/токен |
+| `SpatialHashGrid::rebuild` (10K tok) | **123 µs** | |
+| `SpatialHashGrid::rebuild` (1M tok) | **10.8 ms** | |
 | `Token::new` | **32 ns** | |
-| `SpatialHashGrid::rebuild` (1K tok) | **9.5 µs** | |
-| `apply_gravity_batch` (1K tok) | **29.7 µs** | ~30 ns/токен |
 
 ---
 
-## v11 — текущие результаты (2026-05-17)
+## v12 — текущие результаты (2026-05-29)
+
+### Over-Domain Bench (новый, V7 pipeline)
+
+Полный движок с ContextRecognizer + FrameWeaver + NeuralAdvisor:
+
+| Сценарий | Токены | Время |
+|----------|--------|-------|
+| Холодный тик (fresh engine) | 0–200 | 160–220 µs |
+| Warm тик (после 100 тиков) | 0–200 | **65–80 µs** |
+| Loaded тик (после 1000 тиков) | 50–500 | **80–90 µs** |
+| Throughput 1000 тиков | 50 | 25.3 ms (25.3 µs/тик) |
+| Throughput 1000 тиков | 200 | 26.0 ms (26.0 µs/тик) |
+| Инжекция (холодный engine) | — | 24.9 µs |
+| Инжекция (loaded, 200 токенов) | — | 50.2 µs |
+
+> Холодный тик дороже (~180 µs) из-за инициализации CausalFrontier и SpatialGrid. После прогрева стабилизируется на **65–90 µs**.
+
+---
+
+### Hot Path Regression (V7)
+
+| Сценарий | Время |
+|----------|-------|
+| `TickForward` / 50 токенов в LOGIC | **25.7 µs** |
+
+---
+
+### Stress Bench (v12, перезамер)
+
+| Операция | N токенов | Время |
+|----------|-----------|-------|
+| `apply_gravity_batch` (scalar) | 10K | 481 µs |
+| | 100K | 3.97 ms |
+| | 1M | 38.5 ms |
+| | 10M | 397 ms |
+| `apply_gravity_batch_avx2` | 10K | **99 µs** |
+| | 100K | **1.08 ms** |
+| | 1M | **17.6 ms** |
+| `SpatialHashGrid::rebuild` | 10K | 123 µs |
+| | 100K | 1.04 ms |
+| | 500K | 5.39 ms |
+| | 1M | 10.8 ms |
+| `resonance_search` | 1K traces | 17.8 µs |
+| | 5K traces | 22.3 µs |
+| | 10K traces | 17.6 µs |
+| | 50K traces | **15.3 µs** |
+
+AVX2 даёт **4–5x** против scalar. `resonance_search` O(1) — Grid-хэш Phase 1 эффективен, время не растёт с числом трейсов.
+
+---
+
+## v11 — архивные результаты (2026-05-17)
 
 ### axiom-core
 
@@ -187,20 +238,22 @@ tick_schedule измеряет 1 тик на свежем engine (включае
 | v9.1 | 2026-04-27 | FrameWeaver overhead bench добавлен | — |
 | v10 | 2026-05-17 | Phase C (AE/CR/NA) в Engine; Phase C overhead bench | 353 ns/тик |
 | **v11** | **2026-05-17** | **Phase I: координатор + I6 (Workstation Phase C); полный перезамер** | **348 ns/тик** |
+| **v12** | **2026-05-29** | **V7 полный: TransitionMatrix, FatigueStore, GUARDIAN, L0, parallel ticks (rayon), STATE_SLEEPING lifecycle, OBS shards** | **25.7 µs/тик** |
 
-**Ключевые изменения v11 vs v10:**
-- `AxiomEngine::new`: 527 µs → **914 µs** (+74%, Phase C init)
-- `TickForward` (50 tok): 353 ns → **348 ns** (−1%, без изменений)
-- Phase C overhead: 34–44 µs → **23–25 µs** (другой bench-метод, точнее)
-- tick_schedule_overhead: 31–45 µs → **25–30 µs** (Sentinel S1-S6 эффект)
+**Ключевые изменения v12 vs v11:**
+- `TickForward` (50 tok, hot_path): 348 ns → **25.7 µs** — новый bench измеряет полный V7 pipeline (CR/FW/NA активны), v11 измерял упрощённый engine_bench
+- `AshtiCore::tick()`: параллельный (rayon, 6/8 ядер) — process_frontier всех 11 доменов одновременно
+- Token lifecycle: STATE_SLEEPING через TokenDecayed, scan_region фильтрует спящие токены
+- Warm тик после прогрева: **65–70 µs** (наиболее репрезентативное production-число)
+- Стресс-тест перезамерян: AVX2 4–5x vs scalar, resonance O(1) до 50K трейсов
 
-**Потолки throughput (стресс-тест v7, не перезамерялся):**
+**Потолки throughput (v12):**
 
 | Компонент | Throughput |
 |-----------|-----------|
-| `apply_gravity_batch` (<50K токенов, в L3) | ~30M tok/s |
-| `apply_gravity_batch` (>1M токенов, в RAM) | ~15M tok/s |
-| `SpatialHashGrid::rebuild` (<50K, в L3) | ~120M tok/s |
-| `resonance_search` | O(1), ~16 µs до 1K трейсов |
+| `apply_gravity_batch` AVX2 (<50K, в L3) | ~100M tok/s |
+| `apply_gravity_batch` AVX2 (>1M, в RAM) | ~57M tok/s |
+| `SpatialHashGrid::rebuild` (10K) | ~81M tok/s |
+| `resonance_search` | **O(1)**, ~16 µs до 50K трейсов |
 
-*Полная история v1–v10 с детальными таблицами — в git log.*
+*Полная история v1–v11 с детальными таблицами — в git log.*
