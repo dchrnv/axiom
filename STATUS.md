@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-29
+**Обновлено:** 2026-05-30
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1592 тестов, 0 failures**
+**1594 тестов, 0 failures**
 
 ```
 AxiomEngine
@@ -49,6 +49,16 @@ AxiomEngine
         │     SplitMergeDetector ✅ (V7-D2) — Split(load≥0.6·MAX + entropy≥1.5) / Merge(bidirectional≥0.25);
         │           split_merge_candidates() accessor; 9 unit-тестов; on_tick после fatigue.update()
         │     compute_raw_energies(&AshtiCore) → HashMap<SubsystemId, u8> — снимок энергий для OBS
+        │     ActivityDynamics fix ✅ (2026-05-30) — CR on_tick: N=1 most-recent MAYA token (by last_event_id)
+        │           вместо cumulative compute_energies; dominant_subsystem_confident (threshold 5e-9);
+        │           AshtiCore::sleep_oldest_active_token(domain_id) — eviction при переполнении MAYA;
+        │           E1-fix: valence=1 + retry on CapacityExceeded → динамика жива весь прогон
+        │           (corpus_mixed 60K тиков: Cascade=1.00, Fill=16, Fatigue=4, Signature=Cascading)
+        │     Morality detection ✅ (2026-05-30) — SUBSYSTEM_NAMES += "morality"; moral_ prefix в
+        │           subsystem_from_anchor_id; word_signals для 7 moral_* якорей (moral_care/harm/fair/
+        │           betrayal/loyalty/purity/desecration); SubsystemId::Morality в build_subsystem_refs;
+        │           corpus_mixed: config/obs/corpus_mixed.yaml (диагностический корпус 15 текстов,
+        │           типы A/Б/В, inject_every=20, stagger=5 тиков/шард)
         │     FrameCompositionStore ✅ (V7-A1) — иерархия Frame-композиций; detect_composed_of() — участники
         │       совпадающие с Frame-анкерами EXPERIENCE = родители; COMPOSITION_BOND (0x0901) в UCL;
         │       composition_level(anchor_id) → FrameComposition (C1Atom..C5Plus);
@@ -263,7 +273,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 46 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
-| axiom-runtime | 603 (623 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState, ApproveError; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands; TransitionMatrix, FatigueStore→experience, directed_cascade_score, CompositeSubsystemProfile, SubsystemVersionStore, SplitMergeDetector |
+| axiom-runtime | 605 (625 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState, ApproveError; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands; TransitionMatrix, FatigueStore→experience, directed_cascade_score, CompositeSubsystemProfile, SubsystemVersionStore, SplitMergeDetector |
 | axiom-agent | 148 (171 telegram,opensearch) | TextPerceptor (2-path detect_subsystem, anchor-aware), L0VisionPerceptor (V7-E2: Sobel→stroke primitives→SUTRA), MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands, MLEngine (explicit ShapeMismatch); tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |

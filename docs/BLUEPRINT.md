@@ -402,6 +402,10 @@ event_id: u64
   AxialStore::override_octant(sutra_id, octant) — помечает override, AE уважает флаг при пересчёте
 - ContextRecognizer V6.0 (tick=7, ModuleId=18) — scan MAYA → SubsystemEnergy → InterpretationProfile;
   ScanningPlan по активным октантам; SutraDepthStore (only DREAM updates);
+  ActivityDynamics: N=1 most-recent MAYA token (max by last_event_id) для compute_energies —
+    предотвращает frozen dynamics из-за накопления E1-fix токенов в MAYA (CR-TD-01 workaround);
+    dominant_subsystem_confident(threshold=5e-9) фильтрует позиции далеко от кластеров;
+    AshtiCore::sleep_oldest_active_token(domain_id) — eviction MAYA при CapacityExceeded;
   V6A: ActivityTrace { short: RingBuf[16], mid: RingBuf[64], long: RingBuf[256] } → ActivityDynamics
   { entropy_gradient, oscillation_score, cascade_score, dominant_persistence, fill_count };
   classify(dynamics) → Vec<ActivitySignature> (Uncertain/Steady/Oscillating/Cascading/Converging/Diverging);
@@ -736,9 +740,13 @@ let subsystem = match_table.dominant_subsystem(text, &decomposition_table);
 - `word_signals`: weight=1.0 за каждое совпадение (полное слово)
 - `char_signals`: weight=0.4 за совпадение символа
 - `decomposition_table.subsystem_from_anchor_id(id)`: `math_*→mathematics`, `prim_*→writing`,
-  `logic_*→logic`, `time_*→time`, `music_*→music`, `values_*→values`
+  `logic_*→logic`, `time_*→time`, `music_*→music`, `values_*→values`, `moral_*→morality`
+- morality word_signals: moral_care(забота), moral_harm(боль/тревога), moral_fair(несправедливость),
+  moral_betrayal(предательство), moral_loyalty(верность), moral_purity(священно),
+  moral_desecration(осквернение/табу)
 
-OBS-02 accuracy: 100% по всем 6 подсистемам (8 корпусных текстов, 415 инъекций).
+OBS-02 accuracy: 100% по всем 6 базовым подсистемам (8 корпусных текстов, 415 инъекций).
+corpus_mixed.yaml: диагностический корпус (15 текстов, типы A/Б/В, inject_every=20, stagger=5 тиков/шард).
 
 ---
 
@@ -861,8 +869,8 @@ domains: Vec<Vec<Anchor>> — D1–D8 → ASHTI[1..=8]
 fn match_text(text: &str) -> Vec<AnchorMatch>  // L0 исключены (только VisionPerceptor)
 fn dominant_subsystem_of(matches: &[AnchorMatch]) -> Option<SubsystemId>  // TextPerceptor Path1
 fn perceptual_anchors() -> &[Anchor]           // V7-A2: L0 visual/spatial/causal (22 шт.)
-const SUBSYSTEM_NAMES: [&str; 6]  — ["writing","mathematics","logic","time","music","values"]
-// + morality, abstractions, dilemmas (SubsystemId, не загружаются через SUBSYSTEM_NAMES)
+const SUBSYSTEM_NAMES: [&str; 7]  — ["writing","mathematics","logic","time","music","values","morality"]
+// abstractions, dilemmas: SubsystemId но не в SUBSYSTEM_NAMES (abstractions = мета-слой, не текст)
 ```
 
 **Подсистемные якорные файлы (config/anchors/{subsystem}/primitives.yaml):**
