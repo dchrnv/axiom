@@ -342,6 +342,7 @@ fn build_subsystem_refs(anchors: &AnchorSet) -> HashMap<SubsystemId, Vec<[i16; 3
         SubsystemId::Time,
         SubsystemId::Logic,
         SubsystemId::Values,
+        SubsystemId::Morality,
     ];
     let mut refs = HashMap::new();
     for id in known {
@@ -365,6 +366,7 @@ fn build_subsystem_shell_refs(anchors: &AnchorSet) -> SubsystemShellRefs {
         SubsystemId::Time,
         SubsystemId::Logic,
         SubsystemId::Values,
+        SubsystemId::Morality,
     ];
     let mut refs = HashMap::new();
     for id in known {

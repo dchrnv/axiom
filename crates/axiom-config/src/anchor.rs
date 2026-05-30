@@ -549,7 +549,7 @@ impl AnchorSet {
     // ─── Subsystem detection ─────────────────────────────────────────────────
 
     const SUBSYSTEM_NAMES: &'static [&'static str] =
-        &["mathematics", "writing", "music", "time", "logic", "values"];
+        &["mathematics", "writing", "music", "time", "logic", "values", "morality"];
 
     /// Determine the dominant subsystem from anchor matches (by cumulative score).
     /// Returns None if no subsystem tag found in matches.
