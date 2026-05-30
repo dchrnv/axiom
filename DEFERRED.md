@@ -1,7 +1,23 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 72.0
-**Обновлён:** 2026-05-29
+**Версия:** 74.0
+**Обновлён:** 2026-05-30
+
+---
+
+## ContextRecognizer (CR) — frontier issue для MAYA-токенов
+
+### CR-TD-01 — MAYA E1-fix токены не попадают в CausalFrontier
+
+**Где:** `engine.rs` (E1 fix, ~строка 761), `domain.rs` (check_decay)
+
+**Что:** `inject_token(maya_id, maya_tok)` добавляет токен в `DomainState.tokens` но не в `Domain.frontier`. `check_decay` вызывается только для токенов в frontier. Результат: E1-fix токены никогда не переходят в `STATE_SLEEPING` — накапливаются до заполнения MAYA (capacity=5000).
+
+**Текущий workaround:** `record_injection_signal()` в CR — прямой сигнал активности при InjectToken, минует MAYA. E1-fix токены остаются для FrameWeaver (connections), но ActivityTrace теперь питается напрямую.
+
+**Правильный фикс:** добавить метод `AshtiCore::push_to_frontier(domain_id, token_idx)` и вызывать его после `inject_token` в E1-fix. Тогда MAYA-токены попадут в frontier → check_decay → STATE_SLEEPING при превышении порога.
+
+**Приоритет:** низкий (workaround работает). Актуально при >5000 инжекций за прогон.
 
 ---
 

@@ -805,8 +805,8 @@ mod tests {
         if !config_dir.exists() { return }
 
         let s = AnchorSet::load_or_empty(&config_dir);
-        // writing/primitives.yaml → 7 anchors
-        assert_eq!(s.get_subsystem("writing").len(), 7, "writing primitives");
+        // writing/primitives.yaml → 8 anchors (7 graphical + prim_narrative semantic anchor)
+        assert_eq!(s.get_subsystem("writing").len(), 8, "writing primitives");
         // mathematics/primitives.yaml → 7 anchors
         assert_eq!(s.get_subsystem("mathematics").len(), 7, "mathematics primitives");
         // octants.yaml → 8 anchors

@@ -756,17 +756,25 @@ impl AxiomEngine {
                 make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1);
             let routing = orchestrator::route_token(self, token);
 
-            // Разместить входной токен в MAYA для compute_energies (E1 fix).
-            // sutra_id = event_id совпадает с source_id MAYA-связей из bridge_to_maya (E2 fix).
+            // Разместить входной токен в MAYA для compute_energies (E1 fix) и FrameWeaver (E2 fix).
+            // valence=1: позволяет sleep_oldest_active_token вытеснять старые токены при переполнении.
+            // E1-fix токены не попадают в frontier → не decay через check_decay (CR-TD-01).
+            // При переполнении MAYA явно переводим самый старый active-токен в SLEEPING.
             {
                 let maya_id = self.ashti.level_id() * 100 + 10;
                 let mass = (p.mass.round() as u8).max(50);
                 let mut maya_tok = Token::new(event_id as u32, maya_id, input_position, event_id);
                 maya_tok.mass = mass;
                 maya_tok.temperature = p.temperature.round().clamp(0.0, 255.0) as u8;
+                maya_tok.valence = 1;
                 maya_tok.state = axiom_core::STATE_ACTIVE;
-                let _ = self.ashti.inject_token(maya_id, maya_tok);
+                if self.ashti.inject_token(maya_id, maya_tok).is_err() {
+                    // MAYA заполнена — вытесняем самый старый E1-fix токен и повторяем
+                    self.ashti.sleep_oldest_active_token(maya_id);
+                    let _ = self.ashti.inject_token(maya_id, maya_tok);
+                }
             }
+
 
             let tension_created = self.ashti.experience().tension_count() > tension_before;
             let reflex_hit = routing.reflex.is_some();

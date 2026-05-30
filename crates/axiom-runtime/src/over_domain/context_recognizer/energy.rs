@@ -71,6 +71,29 @@ pub fn dominant_subsystem(energies: &[SubsystemEnergy]) -> SubsystemId {
         .unwrap_or(SubsystemId::Unknown)
 }
 
+/// Минимальная энергия для достоверной классификации подсистемы.
+///
+/// energy = 1 / (dist² + 1). При threshold = 5e-9 токен должен быть
+/// не дальше ~14142 единиц от ближайшего якоря (sqrt(1/5e-9 - 1) ≈ 14142).
+/// Низкий порог нужен потому что TextPerceptor даёт BLENDED позиции
+/// (weighted avg нескольких якорей) — они дальше от каждого конкретного якоря.
+/// FNV-токены (random in 32767³) в среднем на ~16000 единиц от любого кластера
+/// → для них dominant определяется случайно, но classify_position отличает их
+/// по меньшей уверенности относительно других подсистем.
+const SUBSYSTEM_CONFIDENCE_THRESHOLD: f32 = 5e-9;
+
+/// Определить доминирующую подсистему с порогом достоверности.
+///
+/// Возвращает Unknown если нет совпадений с достаточно высокой энергией.
+/// Используется вместо dominant_subsystem в on_tick для фильтрации FNV-шума.
+pub fn dominant_subsystem_confident(energies: &[SubsystemEnergy]) -> SubsystemId {
+    energies
+        .first()
+        .filter(|e| e.energy >= SUBSYSTEM_CONFIDENCE_THRESHOLD)
+        .map(|e| e.subsystem)
+        .unwrap_or(SubsystemId::Unknown)
+}
+
 /// Конвертировать энергии в веса 0..255.
 pub fn energies_to_weights(energies: &[SubsystemEnergy]) -> HashMap<SubsystemId, u8> {
     let total: f32 = energies.iter().map(|e| e.energy).sum();
@@ -176,6 +199,37 @@ fn cosine_sim_8(a: [u8; 8], b: &[f32; 8]) -> f32 {
     (dot / (norm_a * norm_b)).clamp(0.0, 1.0)
 }
 
+/// Определить подсистему для позиции по ближайшему кластеру (без токена).
+///
+/// Возвращает Unknown если расстояние до ближайшего якоря превышает порог
+/// (FNV-хэши и случайные позиции отфильтровываются).
+pub fn classify_position(
+    position: [i16; 3],
+    refs: &HashMap<SubsystemId, Vec<[i16; 3]>>,
+) -> SubsystemId {
+    let mut best_energy = SUBSYSTEM_CONFIDENCE_THRESHOLD;
+    let mut best_sub = SubsystemId::Unknown;
+    for (&sub, positions) in refs {
+        let min_dist2 = positions
+            .iter()
+            .map(|&p| sq_dist_pub(position, p))
+            .fold(f32::MAX, f32::min);
+        let energy = 1.0 / (min_dist2 + 1.0);
+        if energy > best_energy {
+            best_energy = energy;
+            best_sub = sub;
+        }
+    }
+    best_sub
+}
+
+fn sq_dist_pub(a: [i16; 3], b: [i16; 3]) -> f32 {
+    let dx = (a[0] as f32) - (b[0] as f32);
+    let dy = (a[1] as f32) - (b[1] as f32);
+    let dz = (a[2] as f32) - (b[2] as f32);
+    dx * dx + dy * dy + dz * dz
+}
+
 fn sq_dist(a: [i16; 3], b: [i16; 3]) -> f32 {
     let dx = (a[0] as f32) - (b[0] as f32);
     let dy = (a[1] as f32) - (b[1] as f32);
@@ -251,6 +305,24 @@ mod tests {
         let sum: u32 = weights.values().map(|&w| w as u32).sum();
         // Both should be ~127-128, sum ~254-256 range
         assert!(sum >= 254 && sum <= 256);
+    }
+
+    #[test]
+    fn test_classify_position_exact_match() {
+        let r = refs();
+        // position exactly on prim_vline of Writing → should return Writing
+        let sub = classify_position([10000i16, 3000, 12000], &r);
+        assert_eq!(sub, SubsystemId::Writing, "exact match should return Writing");
+    }
+
+    #[test]
+    fn test_classify_position_fnv_random_returns_unknown() {
+        let r = refs();
+        // random far position → low energy → Unknown
+        let sub = classify_position([20000i16, 20000, 20000], &r);
+        // dist² to nearest Writing: (20000-10000)²+(20000-3000)²+(20000-12000)² = 100M+289M+64M=453M
+        // energy = 1/(453M+1) ≈ 2.2e-9 < threshold 5e-7 → Unknown
+        assert_eq!(sub, SubsystemId::Unknown, "far position should return Unknown");
     }
 
     #[test]

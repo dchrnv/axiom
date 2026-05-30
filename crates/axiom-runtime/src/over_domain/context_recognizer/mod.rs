@@ -251,6 +251,25 @@ impl ContextRecognizer {
         self.subsystem_shell_templates = templates;
     }
 
+    /// Записать прямой сигнал активности подсистемы из позиции входного токена.
+    ///
+    /// Вызывается из engine::process_command при обработке InjectToken.
+    /// Обходит MAYA-накопление: определяет подсистему по позиции (confidence threshold
+    /// фильтрует FNV-токены) и напрямую записывает в ActivityTrace и FatigueStore.
+    pub fn record_injection_signal(&mut self, position: [i16; 3], event_id: u64) {
+        let sub = energy::classify_position(position, &self.subsystem_refs);
+        if sub == SubsystemId::Unknown {
+            return;
+        }
+        self.activity_trace.push(sub, event_id);
+        let transition = self.transition_detector.update(sub, event_id);
+        if let Some(ref t) = transition {
+            self.transition_matrix.record(t.from, t.to);
+        }
+        self.fatigue_store.update(sub);
+        self.activity_dynamics = self.activity_trace.compute_dynamics();
+    }
+
     /// Вычислить энергии подсистем прямо сейчас из переданных MAYA-токенов.
     /// Используется для per-text delta-метрики в axiom-observe: до/после инъекции.
     pub fn compute_raw_energies(&self, maya_tokens: &[Token]) -> HashMap<SubsystemId, f32> {
@@ -455,13 +474,25 @@ impl OverDomainComponent for ContextRecognizer {
             .flat_map(|region| scanner::scan_region(maya_state, region, &depth_cache).tokens)
             .collect();
 
-        // Вычислить энергии подсистем (с shell-бонусом если доступны shell refs)
-        let energies = if !self.subsystem_shell_refs.is_empty() {
-            energy::compute_energies_with_shell(&all_tokens, &self.subsystem_shell_refs)
-        } else {
-            energy::compute_energies(&all_tokens, &self.subsystem_refs)
+        // Вычислить энергии подсистем.
+        //
+        // Проблема накопления: MAYA-токены из E1-fix не попадают в frontier и никогда не
+        // переходят в STATE_SLEEPING. За долгие прогоны накапливаются тысячи токенов,
+        // из которых cumulative compute_energies всегда возвращает одну доминанту
+        // → ActivityDynamics замирает.
+        //
+        // Решение: использовать только САМЫЙ ПОСЛЕДНИЙ токен (по last_event_id).
+        // Отражает текущую активность, а не исторический срез.
+        let energy_tokens: Vec<Token> = match all_tokens.iter().max_by_key(|t| t.last_event_id) {
+            Some(t) => vec![*t],
+            None => vec![],
         };
-        let dominant = energy::dominant_subsystem(&energies);
+        let energies = if !self.subsystem_shell_refs.is_empty() {
+            energy::compute_energies_with_shell(&energy_tokens, &self.subsystem_shell_refs)
+        } else {
+            energy::compute_energies(&energy_tokens, &self.subsystem_refs)
+        };
+        let dominant = energy::dominant_subsystem_confident(&energies);
         let weights = energy::energies_to_weights(&energies);
 
         // Первичный октант: наиболее активный из плана, либо fallback

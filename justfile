@@ -50,6 +50,10 @@ showcase-bench:
 showcase-obs:
     ./scripts/showcase.sh --obs-only
 
+# Диагностический прогон на смешанном corpus (corpus_mixed.yaml)
+obs-mixed:
+    AXIOM_CORPUS=config/obs/corpus_mixed.yaml ./scripts/showcase.sh --obs-only
+
 # Все бенчмарки
 bench:
     cargo bench -p axiom-bench

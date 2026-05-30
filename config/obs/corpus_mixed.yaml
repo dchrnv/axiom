@@ -1,0 +1,137 @@
+# corpus_mixed.yaml — диагностика динамики
+#
+# Цель: проверить гипотезу "стерильный corpus" (Task_Dynamics_Diagnosis.md §2).
+# Тексты намеренно пересекают границы подсистем:
+#   Тип А — переход внутри текста (одна подсистема → другая)
+#   Тип Б — наложение (текст одновременно про две подсистемы)
+#   Тип В — конфликт (две подсистемы дают несовместимые оценки)
+#
+# Запуск: just obs-mixed  (или cargo run -p axiom-observe ... corpus_mixed.yaml)
+# Ожидаемый результат при живой динамике: Oscillation>0, Cascade>0, Entropy>0
+
+ticks_total: 60000
+snapshot_every: 1000
+shards: 4
+
+texts:
+
+  # Тексты распределяются по шардам round-robin по позиции в списке:
+  # shard 0: индексы 0, 4, 8,  12  → start_at_tick = 0, 5, 10, 15
+  # shard 1: индексы 1, 5, 9,  13  → start_at_tick = 0, 5, 10, 15
+  # shard 2: индексы 2, 6, 10, 14  → start_at_tick = 0, 5, 10, 15
+  # shard 3: индексы 3, 7, 11      → start_at_tick = 0, 7, 14
+  #
+  # Стаггеринг (5 тиков между текстами, inject_every=20): тексты в шарде
+  # инжектируют в разные тики → CR (интервал 7) видит смены доминанты.
+  # inject_count=3000 с inject_every=20 покрывает 60000 тиков (весь прогон).
+
+  # ── ТИП А: переходы ─────────────────────────────────────────────────────────
+
+  - id: "transition_math_to_morality"          # shard 0, local 0
+    content: "Тысяча жизней против одной — арифметика проста, ответ очевиден. Но кто вправе стоять у весов и решать, кто умрёт?"
+    expected_subsystem: mathematics
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 0
+
+  - id: "transition_time_to_values"            # shard 1, local 0
+    content: "Обещание дано год назад. С тех пор всё изменилось: он, она, обстоятельства. Слово — это слово, или контекст важнее честности?"
+    expected_subsystem: time
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 0
+
+  - id: "transition_logic_to_morality"         # shard 2, local 0
+    content: "Если ложь спасает жизнь — она морально допустима. Посылка принята, вывод следует. Но откуда берётся посылка — из логики или из страха?"
+    expected_subsystem: logic
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 0
+
+  - id: "transition_writing_to_values"         # shard 3, local 0
+    content: "Ложный нарратив убеждает эффективнее правдивого — риторика это знает. Но убеждение через обман разрушает то самое доверие, ради которого говорят."
+    expected_subsystem: writing
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 0
+
+  - id: "transition_music_to_time"             # shard 0, local 1
+    content: "Темп — это сердцебиение музыки. Accelerando ускоряет время внутри такта. Ritardando растягивает момент до бесконечности."
+    expected_subsystem: music
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 5
+
+  # ── ТИП Б: наложение ────────────────────────────────────────────────────────
+
+  - id: "overlap_math_music"                   # shard 1, local 1
+    content: "Фуга Баха математически безупречна: восемь голосов как восемь уравнений с общим решением. Их пересечение — гармония, их расхождение — диссонанс."
+    expected_subsystem: mathematics
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 5
+
+  - id: "overlap_writing_time"                 # shard 2, local 1
+    content: "История всегда рассказывается после события: конец известен рассказчику. Это меняет выбор слов — настоящее время прошлого окрашено знанием будущего."
+    expected_subsystem: writing
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 5
+
+  - id: "overlap_logic_values"                 # shard 3, local 1
+    content: "Категорический императив — это логическая форма морали: поступай так, чтобы максима твоего поступка могла стать всеобщим законом. Универсальность как критерий."
+    expected_subsystem: logic
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 7
+
+  - id: "overlap_math_abstractions"            # shard 0, local 2
+    content: "Бесконечность имеет иерархию: счётное множество меньше несчётного. Это не интуиция — это строгое доказательство. Некоторые бесконечности больше других."
+    expected_subsystem: mathematics
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 10
+
+  - id: "overlap_time_morality"                # shard 1, local 2
+    content: "Он знал тогда, что делал. Но тогда — другой человек. Можно ли судить прошлое по меркам настоящего, если прошлое сформировало настоящего судью?"
+    expected_subsystem: time
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 10
+
+  # ── ТИП В: конфликт/дилемма ─────────────────────────────────────────────────
+
+  - id: "conflict_safety_freedom"              # shard 2, local 2
+    content: "Запереть двери — значит спасти их от бури снаружи. Запереть двери — значит лишить их права уйти. Одно действие, два следствия, одна дилемма."
+    expected_subsystem: values
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 10
+
+  - id: "conflict_truth_compassion"            # shard 3, local 2
+    content: "Правда ранит. Молчание лжёт. Мягкая ложь утешает и разрушает. Есть ли форма честности, которая не причиняет вреда — или это иллюзия?"
+    expected_subsystem: values
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 14
+
+  - id: "conflict_individual_collective"       # shard 0, local 3
+    content: "Личная свобода кончается там, где начинается вред другим — классическая формула. Но кто и как определяет границу вреда? Большинство? Закон? Страдающий?"
+    expected_subsystem: values
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 15
+
+  - id: "conflict_logic_morality"              # shard 1, local 3
+    content: "Логически верный вывод из верных посылок — убить одного, чтобы спасти пятерых. Математика жизней сходится. Но что-то внутри отказывается считать."
+    expected_subsystem: logic
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 15
+
+  - id: "conflict_music_values"               # shard 2, local 3
+    content: "Великая музыка создана чудовищными людьми. Вагнер. Геснер. Слушать их — принять или отвергнуть? Красота и мораль — разные измерения или одно?"
+    expected_subsystem: music
+    inject_every: 20
+    inject_count: 3000
+    start_at_tick: 15

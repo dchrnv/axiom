@@ -315,6 +315,28 @@ impl AshtiCore {
         Ok(result)
     }
 
+    /// Перевести самый старый ACTIVE (valence!=0, не LOCKED) токен домена в STATE_SLEEPING.
+    ///
+    /// Используется E1-fix при переполнении MAYA: E1-fix токены имеют valence=1 и
+    /// не попадают в frontier (поэтому никогда не засыпают через check_decay).
+    /// Принудительный перевод в SLEEPING освобождает слот для нового токена.
+    pub fn sleep_oldest_active_token(&mut self, domain_id: u16) {
+        use axiom_core::{STATE_ACTIVE, STATE_LOCKED, STATE_SLEEPING};
+        let idx = match self.index_of(domain_id) {
+            Some(i) => i,
+            None => return,
+        };
+        let oldest = self.states[idx]
+            .tokens
+            .iter_mut()
+            .filter(|t| t.state == STATE_ACTIVE && t.state != STATE_LOCKED && t.valence != 0)
+            .min_by_key(|t| t.last_event_id);
+        if let Some(t) = oldest {
+            t.state = STATE_SLEEPING;
+            t.valence = 0;
+        }
+    }
+
     /// Добавить Connection в указанный домен.
     ///
     /// Используется Over-Domain компонентами (FrameWeaver) для кристаллизации
