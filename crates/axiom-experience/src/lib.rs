@@ -13,6 +13,7 @@
 #![deny(unsafe_code)]
 
 pub mod axial_store;
+pub mod modality_store;
 pub mod emergent_primitive_store;
 pub mod fatigue_store;
 pub mod interpretation_profile_store;
@@ -42,6 +43,7 @@ pub use meta_store::{
     META_ANALYSIS, META_DIALOGUE, META_IMAGINATION, META_PERCEPTION,
     META_RECALL, META_REFLECTION, META_SYNTHESIS,
 };
+pub use modality_store::{Modality, ModalityStore};
 pub use types::{
     AxialDominant, AxialScore, ContextSnapshot, EvaluationLevel, FrameComposition, Octant,
     SubsystemId,

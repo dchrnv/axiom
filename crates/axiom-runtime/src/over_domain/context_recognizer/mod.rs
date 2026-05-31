@@ -15,7 +15,7 @@ use axiom_core::{Token, STATE_ACTIVE, TOKEN_FLAG_FRAME_ANCHOR};
 use axiom_domain::AshtiCore;
 use axiom_experience::{
     AxialStore, EmergentPrimitiveStore, FrameComposition, InterpretationProfileStore, MetaStore,
-    Octant, SubsystemId, SutraDepthEntry, SutraDepthStore,
+    Modality, ModalityStore, Octant, SubsystemId, SutraDepthEntry, SutraDepthStore,
 };
 use energy::SubsystemShellRefs;
 use axiom_genome::{Genome, ModuleId};
@@ -25,6 +25,7 @@ use crate::over_domain::traits::{OverDomainComponent, OverDomainError};
 
 pub mod activity_trace;
 pub mod axial_bridge;
+pub mod cross_modal;
 pub mod composite;
 pub mod conflicts;
 pub mod depth_bridge;
@@ -50,6 +51,7 @@ pub use composite::{
 };
 pub use conflicts::SubsystemConflict;
 pub use dilemma::DilemmaDetector;
+pub use cross_modal::{CrossModalDetector, MIN_CROSS_MODAL_COACTIVATION};
 pub use dilemma_store::{
     crystallize_to_experience_commands, DilemmaRecord, DilemmaResolution, DilemmaStore, DilemmaType,
 };
@@ -123,6 +125,10 @@ pub struct ContextRecognizer {
     pub dilemma_store: DilemmaStore,
     /// Детектор конфликтов подсистем (DilemmaDetector V2.0).
     dilemma_detector: DilemmaDetector,
+    /// Модальности Frame-анкеров (Cross_Modal_Binding_V1_0 §2).
+    pub modality_store: ModalityStore,
+    /// Детектор cross-modal ко-активации (Cross_Modal_Binding_V1_0 §3).
+    cross_modal_detector: CrossModalDetector,
 }
 
 impl ContextRecognizer {
@@ -157,6 +163,8 @@ impl ContextRecognizer {
             split_merge_candidates: SplitMergeCandidateStore::new(),
             dilemma_store: DilemmaStore::new(),
             dilemma_detector: DilemmaDetector::new(),
+            modality_store: ModalityStore::new(),
+            cross_modal_detector: CrossModalDetector::new(),
         }
     }
 
@@ -193,6 +201,33 @@ impl ContextRecognizer {
     /// Активные дилеммы (DilemmaDetector V2.0).
     pub fn dilemma_store(&self) -> &DilemmaStore {
         &self.dilemma_store
+    }
+
+    /// Зарегистрировать модальность Frame-анкера.
+    ///
+    /// Вызывается из engine при обработке InjectFrameAnchorPayload.
+    pub fn register_frame_modality(&mut self, sutra_id: u32, modality: Modality) {
+        self.modality_store.insert(sutra_id, modality);
+    }
+
+    /// Число кандидатов cross-modal ко-активации.
+    pub fn cross_modal_candidate_count(&self) -> usize {
+        self.cross_modal_detector.candidate_count()
+    }
+
+    /// Число cross-modal bond, ожидающих DREAM Phase.
+    pub fn cross_modal_pending_count(&self) -> usize {
+        self.cross_modal_detector.pending_count()
+    }
+
+    /// Число уже созданных cross-modal bond.
+    pub fn cross_modal_bond_count(&self) -> usize {
+        self.cross_modal_detector.bond_count()
+    }
+
+    /// Дрейнировать UCL-команды для cross-modal bond (вызывается после DREAM-цикла).
+    pub fn drain_cross_modal_bond_commands(&mut self, exp_domain_id: u16) -> Vec<axiom_ucl::UclCommand> {
+        self.cross_modal_detector.drain_pending_bond_commands(exp_domain_id)
     }
 
     /// Передать граф зависимостей подсистем детектору дилемм.
@@ -606,6 +641,10 @@ impl OverDomainComponent for ContextRecognizer {
             // Аккумулировать активацию для DREAM depth update
             *self.dream_activation_acc.entry((frame_id, primary_octant)).or_insert(0) += 1;
         }
+
+        // Обновить модальности известных Frame + cross-modal ко-активация (V1.0)
+        self.modality_store.retain_known(&frame_ids);
+        self.cross_modal_detector.update(&frame_ids, &self.modality_store, tick);
 
         Ok(dilemma_cmds)
     }

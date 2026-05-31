@@ -946,7 +946,7 @@ impl AxiomEngine {
         token.valence = p.valence;
         token.lineage_hash = p.lineage_hash;
 
-        match self.ashti.inject_token(domain_id, token) {
+        let result = match self.ashti.inject_token(domain_id, token) {
             Ok(_) => make_result(cmd.command_id, CommandStatus::Success, error_codes::OK, 1),
             Err(_) => make_result(
                 cmd.command_id,
@@ -954,7 +954,19 @@ impl AxiomEngine {
                 error_codes::CAPACITY_EXCEEDED,
                 0,
             ),
+        };
+
+        // Регистрировать модальность Frame-анкера в EXPERIENCE для CrossModalDetector.
+        // Позиционная эвристика: L0-перцептуальные якоря → отрицательный X;
+        // subsystem-якоря (text) → положительный X. Работает без изменений протокола.
+        let exp_domain_id = self.ashti.level_id() * 100 + 9;
+        if domain_id == exp_domain_id {
+            use axiom_experience::Modality;
+            let modality = if p.position[0] < 0 { Modality::Vision } else { Modality::Text };
+            self.context_recognizer.register_frame_modality(sutra_id, modality);
         }
+
+        result
     }
 
     fn handle_bond_tokens(&mut self, cmd: &UclCommand) -> UclResult {
@@ -1514,6 +1526,13 @@ impl AxiomEngine {
         let known_ids: Vec<u32> = self.context_recognizer.all_known_frame_ids().to_vec();
         let event_id = self.com_next_id;
         self.context_recognizer.apply_dream_update(&activations, &known_ids, event_id);
+
+        // Cross-modal bond proposals (Cross_Modal_Binding_V1_0 §4)
+        let exp_domain_id = self.ashti.level_id() * 100 + 9;
+        let bond_cmds = self.context_recognizer.drain_cross_modal_bond_commands(exp_domain_id);
+        for cmd in bond_cmds {
+            let _ = self.process_command(&cmd);
+        }
     }
 
     /// Зарегистрировать Critical-команду для выполнения во время/после DREAMING.

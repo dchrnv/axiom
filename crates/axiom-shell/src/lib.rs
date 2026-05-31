@@ -272,6 +272,10 @@ impl SemanticContributionTable {
             [0, 0, 0, 0, 15, 0, 0, 25],
         );
 
+        // 0x0A: CrossModal (Cross_Modal_Binding_V1_0) — Sensory + Cognitive grounding
+        // L2 Sensory высокий (перцепт), L5 Cognitive (символ) — мост сенсорного и когнитивного.
+        table.set_category(0x0A, [0, 20, 0, 0, 10, 0, 0, 10]);
+
         table
         })
     }
@@ -608,6 +612,15 @@ pub mod link_types {
 
     /// Дочерний Frame → родительский Frame (child composed_of parent).
     pub const COMPOSITION_BOND: u16 = 0x0901;
+
+    // --- Cross-modal bonds (категория 0x0A) —
+    // Связь между Frame-анкерами из разных модальностей (Text↔Vision).
+    // Возникает emergentно через ко-активацию (порог MIN_CROSS_MODAL_COACTIVATION=50).
+    // Создаётся только в DREAM Phase, валидируется GUARDIAN, требует подтверждения chrnv.
+    // Источник: Cross_Modal_Binding_V1_0.md §4
+
+    /// Bidirectional grounding bond между символом (Text) и перцептом (Vision).
+    pub const CROSS_MODAL_BOND: u16 = 0x0A01;
 }
 
 // ============================================================================
