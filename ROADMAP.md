@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 69.0  
+**Версия:** 70.0  
 **Дата:** 2026-05-31
 
 ---
@@ -22,7 +22,8 @@ Phases E–H завершены. V7 (A–E) завершён. Performance & Tool
 token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
 DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  
 OBS §9 верификация: 8/8 дилемм, DilemmaDetector рабочий.  
-Фикс: SubsystemDependencies YAML wrapper, TextPerceptor subsystem-позиция, engine.rs record_injection_signal.
+Фикс: SubsystemDependencies YAML wrapper, TextPerceptor subsystem-позиция, engine.rs record_injection_signal.  
+Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModalDetector, CROSS_MODAL_BOND=0x0A01; 1623 тестов.
 
 ---
 

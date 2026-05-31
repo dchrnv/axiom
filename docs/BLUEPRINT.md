@@ -13,6 +13,7 @@ axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(6
 axiom-ucl        — UclCommand, OpCode, UclResult
 axiom-genome     — Genome (конституция, frozen в Arc после boot); EmergentSubsystemRules (V7-D4)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
+                   ModalityStore (sutra_id→Modality; Text/Vision/Internal; Cross_Modal_Binding_V1_0);
                    Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);
                    MetaSubsystemId (0x1001–0x1007), MetaActivation, MetaStore (CR-V6 Фаза C)
 axiom-frontier   — CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection
@@ -436,6 +437,13 @@ event_id: u64
     cooldown 50 тиков CR на пару; centroid позиций обеих подсистем как позиция Frame;
     AnchorSet::subsystem_dependencies (загружается из config/subsystem_dependencies.yaml в load());
     CR::dilemma_store() → &DilemmaStore; CR::set_subsystem_dependencies(deps)
+    Путь 2: coactivation_window[32] через record_injection_signal (engine wired); MIN_COACTIVATION_COUNT=2
+  CrossModalDetector V1.0: cross_modal_detector + modality_store (поля CR);
+    ModalityStore: frame_id→Modality (Text/Vision/Internal); дефолт Text для всех существующих Frame;
+    позиционная эвристика: position.x<0 → Vision (L0 якоря в отриц. X), ≥0 → Text;
+    CrossModalCandidate { frame_a, frame_b, modality_a, modality_b, co_activation_count };
+    MIN_CROSS_MODAL_COACTIVATION=50; drain_cross_modal_bond_commands(exp_domain_id) → BondTokens;
+    CROSS_MODAL_BOND=0x0A01; категория 0x0A [0,20,0,0,10,0,0,10]; drain в apply_dream_depth_update;
 - NeuralAdvisor V3.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
   V2 реализации (все 5 слотов заполнены):

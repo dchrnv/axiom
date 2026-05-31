@@ -50,7 +50,7 @@
 | `source_id` | `u32` | **> 0** |
 | `target_id` | `u32` | **> 0** |
 | `domain_id` | `u16` | **> 0** |
-| `link_type` | `u16` | старший байт = категория (0x01..0x08) |
+| `link_type` | `u16` | старший байт = категория (0x01..0x0A) |
 | `flags` | `u32` | битовая маска (см. §8) |
 | `strength` | `f32` | **> 0.0** |
 | `current_stress` | `f32` | >= 0.0 |
@@ -162,6 +162,15 @@
 | 0x06 Temporal | [0, 0, 0, 0, 5, 0, 25, 0] |
 | 0x07 Motor | [10, 0, 25, 0, 5, 0, 0, 0] |
 | 0x08 Syntactic | [0, 0, 0, 0, 10, 5, 0, 15] |
+| 0x09 Spatial/Composition | [10, 15, 0, 0, 8, 0, 0, 5] |
+| 0x0A CrossModal | [0, 20, 0, 0, 10, 0, 0, 10] |
+
+**Именованные link_type константы (axiom-shell):**
+
+| Константа | Значение | Назначение |
+|-----------|----------|------------|
+| `COMPOSITION_BOND` | `0x0901` | FrameWeaver: дочерний → родительский Frame |
+| `CROSS_MODAL_BOND` | `0x0A01` | CrossModalDetector: Text↔Vision grounding |
 
 ---
 
