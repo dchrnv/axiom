@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1623 тестов, 0 failures**
+**1628 тестов, 0 failures**
 
 Primitive_Nature_and_Connections_V1_0 ✅ (2026-05-30): spatial/causal L0 переведены из якорей-призраков
 в Connection link_type определения (config/schema/link_types/); 0x09 Spatial добавлен в

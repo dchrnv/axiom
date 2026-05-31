@@ -44,10 +44,9 @@ pub static COMPOSITE_DEFS: &[CompositeSubsystemDef] = &[
         name: "Narrative",
         components: &[SubsystemId::Writing, SubsystemId::Time],
     },
-    // V7: добавить Values, Dilemmas, Morality → Ethics
     CompositeSubsystemDef {
         name: "Ethics",
-        components: &[SubsystemId::Logic],
+        components: &[SubsystemId::Values, SubsystemId::Morality, SubsystemId::Dilemmas],
     },
 ];
 
@@ -291,6 +290,53 @@ mod tests {
     #[test]
     fn test_composite_defs_count() {
         assert_eq!(COMPOSITE_DEFS.len(), 5);
+    }
+
+    #[test]
+    fn test_ethics_detected_with_values_morality_dilemmas() {
+        let subs = vec![SubsystemId::Values, SubsystemId::Morality, SubsystemId::Dilemmas];
+        let result = detect_composite_suspects(&subs, &[]);
+        let ethics = result.iter().find(|s| s.name == "Ethics");
+        assert!(ethics.is_some(), "Ethics should be detected with Values+Morality+Dilemmas");
+        assert!((ethics.unwrap().confidence - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_ethics_partial_two_of_three() {
+        let subs = vec![SubsystemId::Values, SubsystemId::Morality];
+        let result = detect_composite_suspects(&subs, &[]);
+        let ethics = result.iter().find(|s| s.name == "Ethics");
+        assert!(ethics.is_some(), "Ethics: 2/3 components should still trigger (matched >= 2)");
+        // confidence = 2/3 ≈ 0.666
+        assert!((ethics.unwrap().confidence - 2.0 / 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_ethics_not_detected_with_logic_only() {
+        let subs = vec![SubsystemId::Logic];
+        let result = detect_composite_suspects(&subs, &[]);
+        assert!(
+            result.iter().all(|s| s.name != "Ethics"),
+            "Logic alone should not trigger Ethics (components.len() < 2 guard)"
+        );
+    }
+
+    #[test]
+    fn test_ethics_not_detected_with_single_component() {
+        let subs = vec![SubsystemId::Values];
+        let result = detect_composite_suspects(&subs, &[]);
+        assert!(result.iter().all(|s| s.name != "Ethics"), "single component → no Ethics");
+    }
+
+    #[test]
+    fn test_ethics_converging_boost() {
+        let subs = vec![SubsystemId::Values, SubsystemId::Morality, SubsystemId::Dilemmas];
+        let without = detect_composite_suspects(&subs, &[]);
+        let with_conv = detect_composite_suspects(&subs, &[ActivitySignature::Converging]);
+        let c_without = without.iter().find(|s| s.name == "Ethics").unwrap().confidence;
+        let c_with = with_conv.iter().find(|s| s.name == "Ethics").unwrap().confidence;
+        // base=1.0, cap=1.0 → оба 1.0
+        assert!(c_with >= c_without);
     }
 
     // ── V7-C2: detect_composite_profiles ────────────────────────────────────
