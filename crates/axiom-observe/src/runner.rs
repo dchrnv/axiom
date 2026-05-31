@@ -45,6 +45,16 @@ impl ObsRunner {
             eprintln!("[observe] injected {n} anchor tokens");
         }
 
+        // Load SubsystemDependencies from config/ (parent of anchors/) for DilemmaDetector.
+        if let Some(dir) = anchors_dir {
+            if let Some(config_dir) = dir.parent() {
+                let deps =
+                    axiom_config::SubsystemDependencies::load_or_empty(config_dir);
+                engine.context_recognizer.set_subsystem_dependencies(deps);
+                eprintln!("[observe] subsystem_dependencies loaded from {}", config_dir.display());
+            }
+        }
+
         // Load MetaDetector
         let meta_path = std::path::Path::new("config/meta_primitives.yaml");
         match MetaDetector::from_yaml(meta_path) {
@@ -256,6 +266,8 @@ impl ObsRunner {
                 .collect(),
             fatigue_count: cr.fatigue_store().len(),
             avg_shell_similarity: self.engine.frame_weaver.avg_candidate_shell_similarity(),
+            dilemma_active: cr.dilemma_store().active_count(),
+            dilemma_resolved: cr.dilemma_store().resolved.len(),
         }
     }
 }

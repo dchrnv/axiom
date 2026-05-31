@@ -65,6 +65,8 @@ pub fn generate_markdown(
         out.push_str(&format!("| Cascade score | {:.3} |\n", last.cascade_score));
         out.push_str(&format!("| Fatigue entries | {} |\n", last.fatigue_count));
         out.push_str(&format!("| Avg shell similarity | {:.3} |\n", last.avg_shell_similarity));
+        out.push_str(&format!("| Dilemmas active | {} |\n", last.dilemma_active));
+        out.push_str(&format!("| Dilemmas resolved | {} |\n", last.dilemma_resolved));
         out.push_str(&format!(
             "| Meta dominant | {} |\n\n",
             last.meta_dominant.as_deref().unwrap_or("none")
@@ -259,6 +261,30 @@ pub fn generate_markdown(
             last.meta_active_count,
             last.meta_dominant.as_deref().unwrap_or("none"),
         ));
+
+        // Dilemmas (DilemmaDetector V2.0)
+        out.push_str("## Dilemmas (DilemmaDetector V2.0)\n\n");
+        if last.dilemma_active == 0 && last.dilemma_resolved == 0 {
+            out.push_str("No dilemmas detected. Check: SubsystemDependencies loaded, conflict corpus has morality+values coactivation.\n\n");
+        } else {
+            out.push_str(&format!("- Active: {}\n", last.dilemma_active));
+            out.push_str(&format!("- Resolved: {}\n\n", last.dilemma_resolved));
+            if last.dilemma_active > 0 {
+                out.push_str("✓ DilemmaDetector V2.0 working — conflicts registered in EXPERIENCE.\n\n");
+            }
+        }
+    }
+
+    // Dilemma timeline (if any non-zero)
+    let has_dilemmas = snapshots.iter().any(|s| s.dilemma_active > 0 || s.dilemma_resolved > 0);
+    if has_dilemmas {
+        out.push_str("## Dilemma Timeline\n\n");
+        out.push_str("| Tick | Active | Resolved |\n|---|---|---|\n");
+        for snap in snapshots.iter().filter(|s| s.dilemma_active > 0 || s.dilemma_resolved > 0) {
+            out.push_str(&format!("| {} | {} | {} |\n",
+                snap.tick, snap.dilemma_active, snap.dilemma_resolved));
+        }
+        out.push('\n');
     }
 
     out

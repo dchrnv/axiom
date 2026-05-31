@@ -29,6 +29,12 @@ pub struct TickSnapshot {
     pub fatigue_count: usize,
     /// Average shell_similarity across active FrameWeaver candidates.
     pub avg_shell_similarity: f32,
+    /// Active dilemmas in DilemmaStore (DilemmaDetector V2.0).
+    #[serde(default)]
+    pub dilemma_active: usize,
+    /// Resolved dilemmas accumulated since run start.
+    #[serde(default)]
+    pub dilemma_resolved: usize,
 }
 
 /// Event recorded when a text is injected, with routing diagnostics.
