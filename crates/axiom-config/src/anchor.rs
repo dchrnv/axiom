@@ -815,8 +815,8 @@ mod tests {
         assert_eq!(s.semantic_centers.len(), 10, "semantic centers");
         // all axes loaded
         assert_eq!(s.axes.len(), 6, "axes");
-        // perceptual/: visual(8) + spatial(8) + causal(6) = 22
-        assert_eq!(s.perceptual.len(), 22, "perceptual L0 anchors");
+        // perceptual/: visual(8); spatial(8) и causal(6) перенесены в schema/link_types/
+        assert_eq!(s.perceptual.len(), 8, "perceptual L0 anchors");
         // perceptual NOT in subsystems
         assert!(!s.subsystems.contains_key("perceptual"), "perceptual не должен быть в subsystems");
     }

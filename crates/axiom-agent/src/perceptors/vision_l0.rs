@@ -7,6 +7,13 @@
 //
 // Результат: один InjectToken в SUTRA (domain 100) для каждого L0 примитива,
 // чья обнаруженная плотность превышает порог.
+//
+// TODO(spatial-bonds): когда VisionPerceptor научится детектировать пары объектов,
+// пространственные отношения между ними должны эмитироваться через BondTokens (opcode 2003):
+//   BondTokens { source_sutra_id: token_a, target_sutra_id: token_b,
+//                link_type: 0x0901 (spatial_above), strength: confidence }
+// Определения link_type: config/schema/link_types/spatial.yaml
+// Основание: Primitive_Nature_and_Connections_V1_0.md §7.2
 
 use axiom_config::Anchor;
 use axiom_ucl::{OpCode, UclCommand};

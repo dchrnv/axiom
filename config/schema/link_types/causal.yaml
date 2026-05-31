@@ -1,0 +1,44 @@
+# Causal Link Types — каузальные отношения-примитивы (интуитивная физика)
+#
+# Примитивы-отношения L0 (Primitive_Nature_and_Connections_V1_0.md §2).
+# Реализованы как Connection в категориях 0x03 (Causal) и 0x06 (Temporal).
+#
+# Был: causal_primitives.yaml в config/anchors/perceptual/ — якорь-призрак.
+# Стало: определение link_type здесь; CausalPerceptor (будущий) создаёт
+# BondTokens при распознавании каузальных отношений.
+#
+# Источник: Primitive_Nature_and_Connections_V1_0.md §3.2, §7.1
+
+relations:
+  - id: cause_precedes
+    link_type: 0x0601  # Temporal
+    category: 6
+    description: "событие A предшествует событию B (темпоральная причинность)"
+    maps_to_existing: true  # 0x06 Temporal уже в semantic_contributions.yaml
+
+  - id: cause_enables
+    link_type: 0x0301  # Causal: Enables
+    category: 3
+    description: "событие A делает возможным событие B"
+    maps_to_existing: true  # 0x03 Causal уже в semantic_contributions.yaml
+
+  - id: contact_force
+    link_type: 0x0302  # Causal: физический контакт
+    category: 3
+    description: "физический контакт — передача силы"
+
+  - id: object_persists
+    link_type: 0x0101  # Structural: сохранение идентичности
+    category: 1
+    description: "объект продолжает существовать при отсутствии наблюдения"
+    maps_to_existing: true
+
+  - id: gravity_down
+    link_type: 0x0701  # Motor: направленное действие
+    category: 7
+    description: "объекты падают вниз при отсутствии опоры (биас силы тяжести)"
+
+  - id: cause_blocks
+    link_type: 0x0303  # Causal: блокирование
+    category: 3
+    description: "объект A блокирует движение объекта B"

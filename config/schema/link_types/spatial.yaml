@@ -1,0 +1,58 @@
+# Spatial Link Types — пространственные отношения-примитивы
+#
+# Примитивы-отношения L0 (Primitive_Nature_and_Connections_V1_0.md §2).
+# Реализованы как Connection с link_type категории 0x09 (Spatial),
+# а НЕ как якоря-токены — потому что отношение не является точкой в пространстве.
+#
+# Был: spatial_primitives.yaml в config/anchors/perceptual/ — якорь-призрак.
+# Стало: определение link_type здесь; VisionPerceptor создаёт BondTokens при
+# распознавании пространственного отношения между двумя объектами.
+#
+# Кодирование link_type: 0x09xx (category=9, subtype=xx)
+# BondTokens opcode 2003 уже поддерживает link_type u16.
+#
+# Источник: Primitive_Nature_and_Connections_V1_0.md §3.2, §7.1
+
+category: 9
+category_name: Spatial
+semantic_contribution: [10, 15, 0, 0, 8, 0, 0, 5]  # Physical + Sensory + Cognitive
+
+relations:
+  - id: spatial_above
+    link_type: 0x0901
+    description: "объект A находится выше объекта B"
+    inverse: spatial_below
+
+  - id: spatial_below
+    link_type: 0x0902
+    description: "объект A находится ниже объекта B"
+    inverse: spatial_above
+
+  - id: spatial_left_of
+    link_type: 0x0903
+    description: "объект A левее объекта B"
+    inverse: spatial_right_of
+
+  - id: spatial_right_of
+    link_type: 0x0904
+    description: "объект A правее объекта B"
+    inverse: spatial_left_of
+
+  - id: spatial_inside
+    link_type: 0x0905
+    description: "объект A внутри объекта B"
+    inverse: spatial_contains
+
+  - id: spatial_outside
+    link_type: 0x0906
+    description: "объект A снаружи объекта B"
+
+  - id: spatial_near
+    link_type: 0x0907
+    description: "объекты A и B расположены близко (симметрично)"
+    symmetric: true
+
+  - id: spatial_contains
+    link_type: 0x0908
+    description: "объект A содержит объект B (topological)"
+    inverse: spatial_inside

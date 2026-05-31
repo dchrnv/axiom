@@ -868,14 +868,18 @@ domains: Vec<Vec<Anchor>> — D1–D8 → ASHTI[1..=8]
 ```rust
 fn match_text(text: &str) -> Vec<AnchorMatch>  // L0 исключены (только VisionPerceptor)
 fn dominant_subsystem_of(matches: &[AnchorMatch]) -> Option<SubsystemId>  // TextPerceptor Path1
-fn perceptual_anchors() -> &[Anchor]           // V7-A2: L0 visual/spatial/causal (22 шт.)
+fn perceptual_anchors() -> &[Anchor]           // V7-A2: L0 visual (8 шт.); spatial/causal → Connection link_types
 const SUBSYSTEM_NAMES: [&str; 7]  — ["writing","mathematics","logic","time","music","values","morality"]
 // abstractions, dilemmas: SubsystemId но не в SUBSYSTEM_NAMES (abstractions = мета-слой, не текст)
 ```
 
 **Подсистемные якорные файлы (config/anchors/{subsystem}/primitives.yaml):**
 writing, mathematics, logic, time, music, values, morality, abstractions — загружены.
-Perceptual L0: visual_primitives(8) + spatial_primitives(8) + causal_primitives(6) = 22 якоря.
+Perceptual L0: visual_primitives(8) — только вещи-якоря (strokes).
+spatial_primitives → config/schema/link_types/spatial.yaml (Connection, category 0x09 Spatial).
+causal_primitives  → config/schema/link_types/causal.yaml  (Connection, категории 0x03/0x06).
+config/schema/semantic_contributions.yaml: 0x09 Spatial добавлен [10,15,0,0,8,0,0,5].
+config/primitives_nature.yaml: реестр природ (entity/relation/operation/formula).
 FNV-1a fallback активен при отсутствии совпадений.
 
 ---

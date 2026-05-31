@@ -1,0 +1,95 @@
+# Реестр природы примитивов AXIOM
+#
+# Примитив — атом понимания. Природа примитива определяет механизм его воплощения.
+# Источник: Primitive_Nature_and_Connections_V1_0.md §2
+#
+# Природы:
+#   entity    — вещь с идентичностью → Token (якорь в позиции)
+#   relation  → Connection (link_type)
+#   operation → Frame с ролями через Syntactic-связи (0x08)
+#   formula   → Frame-композиция (composed_of, COMPOSITION_BOND 0x0901)
+
+# ─── ПРИМИТИВЫ-ВЕЩИ (entity → Token) ─────────────────────────────────────────
+
+entities:
+  writing:
+    - prim_dot        # точка — минимальная единица присутствия
+    - prim_vline      # вертикальная линия
+    - prim_hline      # горизонтальная линия
+    - prim_dslash     # диагональ /
+    - prim_bslash     # обратная косая \
+    - prim_hook       # крюк
+    - prim_arc        # дуга
+    - prim_narrative  # семантический якорь нарратива/метафоры/стиля
+
+  mathematics:
+    - math_element    # элемент множества
+    - math_function   # функция/отображение
+    - math_relation   # отношение/эквивалентность
+    - math_operation  # операция
+    - math_limit      # предел/бесконечность
+    - math_group      # группа/структура
+    - math_fractal    # фрактал/самоподобие
+
+  visual_l0:          # L0 перцептивные (VisionPerceptor), файл: anchors/perceptual/visual_primitives.yaml
+    - visual_edge
+    - stroke_horizontal
+    - stroke_vertical
+    - stroke_diagonal
+
+# ─── ПРИМИТИВЫ-ОТНОШЕНИЯ (relation → Connection) ──────────────────────────────
+
+relations:
+  spatial:            # категория 0x09 Spatial, файл: schema/link_types/spatial.yaml
+    - spatial_above   # 0x0901
+    - spatial_below   # 0x0902
+    - spatial_left_of # 0x0903
+    - spatial_right_of # 0x0904
+    - spatial_inside  # 0x0905
+    - spatial_outside # 0x0906
+    - spatial_near    # 0x0907
+    - spatial_contains # 0x0908
+
+  causal:             # категории 0x03/0x06/0x07, файл: schema/link_types/causal.yaml
+    - cause_precedes  # → 0x06 Temporal
+    - cause_enables   # → 0x03 Causal
+    - contact_force   # → 0x03 Causal
+    - object_persists # → 0x01 Structural
+    - gravity_down    # → 0x07 Motor
+    - cause_blocks    # → 0x03 Causal
+
+  values:
+    - val_conflicts_with  # две ценности конфликтуют → дилемма (Dilemma = отношение-примитив)
+    - val_supports        # одна ценность поддерживает другую
+
+# ─── ПРИМИТИВЫ-ОПЕРАЦИИ (operation → Frame с ролями) ─────────────────────────
+
+operations:
+  mathematics:
+    - math_plus       # operand_a + operand_b → result
+    - math_compose    # f ∘ g → h
+    - math_negate     # a → -a
+
+# ─── ПРИМИТИВЫ-ФОРМУЛЫ (formula → Frame-композиция) ──────────────────────────
+
+formulas:
+  mathematics:
+    - id: math_derivative
+      composed_of: [math_function, time_arrow]
+      note: "скорость изменения функции по времени"
+
+    - id: math_ratio
+      composed_of: [math_element, math_element]
+      note: "отношение двух величин"
+
+  composite_subsystems:  # эмерджентно обнаруживаются CompositeSubsystemProfile
+    - id: Calculus
+      composed_of: [Mathematics, Time]
+    - id: Rhythm
+      composed_of: [Music, Time]
+    - id: Geometry
+      composed_of: [Mathematics, Writing]
+    - id: Narrative
+      composed_of: [Writing, Time]
+    - id: Ethics
+      composed_of: [Logic, Values]

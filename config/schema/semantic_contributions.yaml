@@ -47,6 +47,13 @@ categories:
   - category: 8
     contribution: [0, 0, 0, 0, 10, 5, 0, 15]
 
+  # 0x09: Spatial — пространственные отношения (above, left_of, inside, contains)
+  # Physical + Sensory + немного Cognitive: пространство телесно и воспринимаемо
+  # Примитивы-отношения L0: реализованы как Connection, не как Token-якорь
+  # Источник: Primitive_Nature_and_Connections_V1_0.md §3.2
+  - category: 9
+    contribution: [10, 15, 0, 0, 8, 0, 0, 5]
+
 overrides:
   # ADDRESSEE (0x0830) — адресат высказывания: сильный Social
   - link_type: 2096
