@@ -606,15 +606,25 @@ impl OverDomainComponent for ContextRecognizer {
         let mut fatigued_weights = weights.clone();
         self.fatigue_store.apply_to_weights(&mut fatigued_weights);
 
-        // Детектировать конфликт подсистем + регистрировать дилемму (DilemmaDetector V2.0)
+        // Детектировать конфликт подсистем + регистрировать дилемму (DilemmaDetector V2.1)
         let conflict = conflicts::detect_conflict(&energies, SUBSYSTEM_CONFLICT_THRESHOLD);
-        let dilemma_cmds = self.dilemma_detector.detect(
+        let mut dilemma_cmds = self.dilemma_detector.detect(
             conflict,
             &mut self.dilemma_store,
             &self.subsystem_refs,
             exp_domain_id,
             tick,
         );
+        // Сигнал B: стресс связей MAYA
+        let stress_cmds = self.dilemma_detector.detect_signal_b(
+            &maya_state.connections,
+            dominant,
+            &self.subsystem_refs,
+            &mut self.dilemma_store,
+            exp_domain_id,
+            tick,
+        );
+        dilemma_cmds.extend(stress_cmds);
 
         // Попытка детектировать эмерджентные примитивы (V1: no-op, всегда false)
         for &frame_id in &frame_ids {

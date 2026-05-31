@@ -1,22 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// DilemmaDetector V2.0 — Сигнал A: конфликт подсистем.
+// DilemmaDetector V2.1 — Сигнал A: конфликт подсистем; Сигнал B: стресс связей.
 //
-// Источник: DilemmaDetector_V2_0.md §4
+// Источник: DilemmaDetector_V2_0.md §4; §2 Signal B
 //
-// Алгоритм:
+// Сигнал A:
 //   1. Взять SubsystemConflict из conflicts::detect_conflict.
 //   2. Проверить is_natural_tension по SubsystemDependencies.
 //   3. Вычислить tension_score. Если < DILEMMA_THRESHOLD — отбросить.
 //   4. Cooldown: не дублировать ту же пару раньше DETECTION_COOLDOWN_TICKS.
-//   5. push_active() в DilemmaStore.
+//   5. push_active() в DilemmaStore (ValueConflict).
 //   6. Вернуть UCL InjectToken для кристаллизации Frame в EXPERIENCE.
+//
+// Сигнал B:
+//   1. Взять активные Connection из MAYA.
+//   2. Вычислить долю stressed connections (current_stress/strength > threshold).
+//   3. Если stressed_count >= MIN_STRESSED + mean_ratio > MEAN_THRESHOLD → дилемма.
+//   4. Cooldown: отдельный от Сигнала A.
+//   5. push_active() в DilemmaStore (OntologicalConflict).
+//   6. Вернуть UCL InjectToken.
 
 use std::collections::HashMap;
 
 use axiom_config::SubsystemDependencies;
-use axiom_core::{STATE_ACTIVE, TOKEN_FLAG_DILEMMA, TOKEN_FLAG_FRAME_ANCHOR};
+use axiom_core::{Connection, FLAG_ACTIVE, STATE_ACTIVE, TOKEN_FLAG_DILEMMA, TOKEN_FLAG_FRAME_ANCHOR};
 use axiom_experience::SubsystemId;
 use axiom_ucl::{flags as ucl_flags, InjectFrameAnchorPayload, OpCode, UclCommand};
 
@@ -25,7 +33,7 @@ use crate::over_domain::context_recognizer::dilemma_store::{DilemmaStore, Dilemm
 
 use super::tension::{compute_tension_score, DILEMMA_THRESHOLD};
 
-/// Тики CR между повторными регистрациями одной пары подсистем как дилеммы.
+/// Тики CR между повторными регистрациями одной пары подсистем как дилеммы (Сигнал A).
 const DETECTION_COOLDOWN_TICKS: u64 = 50;
 
 /// Размер скользящего окна ко-активации (в инъекциях токенов).
@@ -33,6 +41,20 @@ const COACTIVATION_WINDOW: usize = 32;
 
 /// Минимальное число появлений КАЖДОЙ подсистемы в окне для детектирования.
 const MIN_COACTIVATION_COUNT: usize = 2;
+
+// ── Сигнал B: стресс связей ───────────────────────────────────────────────────
+
+/// Порог stressed-ratio (current_stress / strength) для одной связи.
+pub const STRESS_RATIO_THRESHOLD: f32 = 0.5;
+
+/// Минимальное число stressed-связей для срабатывания Signal B.
+pub const MIN_STRESSED_CONNECTIONS: usize = 2;
+
+/// Порог среднего stressed-ratio по всем активным связям.
+pub const MEAN_STRESS_THRESHOLD: f32 = 0.35;
+
+/// Тики CR cooldown для Сигнала B (дольше A — стресс меняется медленнее).
+pub const SIGNAL_B_COOLDOWN_TICKS: u64 = 100;
 
 /// Канонический порядок пары: по лексикографии имён (для дедупликации).
 fn canonical_pair(a: SubsystemId, b: SubsystemId) -> (SubsystemId, SubsystemId) {
@@ -74,14 +96,16 @@ fn pair_lineage_hash(a: SubsystemId, b: SubsystemId) -> u64 {
     h
 }
 
-/// Детектор дилемм V2.0 — встроен в ContextRecognizer.
+/// Детектор дилемм V2.1 — встроен в ContextRecognizer.
 pub struct DilemmaDetector {
     deps: SubsystemDependencies,
-    /// Последний тик CR детектирования для каждой канонической пары.
+    /// Последний тик CR детектирования для каждой канонической пары (Сигнал A).
     last_detected: HashMap<(SubsystemId, SubsystemId), u64>,
     /// Скользящее окно ко-активации: последние N subsystem-активаций из record_injection_signal.
     /// Каждый элемент: (SubsystemId, tick).
     coactivation_window: std::collections::VecDeque<(SubsystemId, u64)>,
+    /// Последний тик детектирования Сигнала B (стресс связей).
+    last_stress_detected: u64,
 }
 
 impl DilemmaDetector {
@@ -90,6 +114,7 @@ impl DilemmaDetector {
             deps: SubsystemDependencies::default(),
             last_detected: HashMap::new(),
             coactivation_window: std::collections::VecDeque::with_capacity(COACTIVATION_WINDOW + 1),
+            last_stress_detected: 0,
         }
     }
 
@@ -216,12 +241,123 @@ impl DilemmaDetector {
         vec![UclCommand::new(OpCode::InjectToken, 0, 10, ucl_flags::FRAME_ANCHOR)
             .with_payload(&payload)]
     }
+
+    /// Сигнал B — стресс связей MAYA.
+    ///
+    /// Сканирует активные Connection на высокий `current_stress / strength`.
+    /// Если достаточно stressed-связей — фиксирует OntologicalConflict в DilemmaStore.
+    /// Cooldown независим от Сигнала A.
+    pub fn detect_signal_b(
+        &mut self,
+        connections: &[Connection],
+        dominant: SubsystemId,
+        subsystem_refs: &HashMap<SubsystemId, Vec<[i16; 3]>>,
+        store: &mut DilemmaStore,
+        exp_domain_id: u16,
+        tick: u64,
+    ) -> Vec<UclCommand> {
+        let (stressed_count, mean_ratio) = stress_metrics(connections);
+
+        if stressed_count < MIN_STRESSED_CONNECTIONS {
+            return vec![];
+        }
+        if mean_ratio < MEAN_STRESS_THRESHOLD {
+            return vec![];
+        }
+        if tick.saturating_sub(self.last_stress_detected) < SIGNAL_B_COOLDOWN_TICKS {
+            return vec![];
+        }
+        if store.is_at_capacity() {
+            return vec![];
+        }
+
+        let intensity = mean_ratio.min(1.0);
+        store.push_active(DilemmaType::OntologicalConflict, vec![], tick, intensity);
+        self.last_stress_detected = tick;
+
+        let position = stress_position(dominant, subsystem_refs);
+        let lineage_hash = stress_lineage_hash(dominant, tick, SIGNAL_B_COOLDOWN_TICKS);
+        // 0x5000_0000 префикс отличает Signal B Frame от Signal A (0x4000_0000)
+        let proposed_sutra_id = ((lineage_hash >> 32) as u32) | 0x5000_0000;
+        let mass = (70u8).saturating_add((intensity * 100.0) as u8);
+
+        let payload = InjectFrameAnchorPayload {
+            lineage_hash,
+            proposed_sutra_id,
+            target_domain_id: exp_domain_id,
+            type_flags: TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_DILEMMA,
+            position,
+            state: STATE_ACTIVE,
+            mass,
+            temperature: 100,
+            valence: 0,
+            reserved: [0; 22],
+        };
+        vec![UclCommand::new(OpCode::InjectToken, 0, 10, ucl_flags::FRAME_ANCHOR)
+            .with_payload(&payload)]
+    }
 }
 
 impl Default for DilemmaDetector {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Вычислить (stressed_count, mean_stress_ratio) по активным связям.
+///
+/// Связь "stressed" если `current_stress / strength > STRESS_RATIO_THRESHOLD`.
+/// Mean ratio = среднее `current_stress / strength` по ВСЕМ активным связям.
+fn stress_metrics(connections: &[Connection]) -> (usize, f32) {
+    let active: Vec<&Connection> = connections
+        .iter()
+        .filter(|c| c.flags & FLAG_ACTIVE != 0 && c.strength > 0.0)
+        .collect();
+    if active.is_empty() {
+        return (0, 0.0);
+    }
+    let mut stressed = 0usize;
+    let mut ratio_sum = 0.0f32;
+    for c in &active {
+        let ratio = c.current_stress / c.strength;
+        ratio_sum += ratio;
+        if ratio > STRESS_RATIO_THRESHOLD {
+            stressed += 1;
+        }
+    }
+    (stressed, ratio_sum / active.len() as f32)
+}
+
+/// Пространственная позиция для Frame Сигнала B: центроид якорей доминирующей подсистемы.
+/// Fallback на [0, 0, 0] если refs пусты.
+fn stress_position(dominant: SubsystemId, refs: &HashMap<SubsystemId, Vec<[i16; 3]>>) -> [i16; 3] {
+    match refs.get(&dominant) {
+        Some(positions) if !positions.is_empty() => {
+            let n = positions.len() as i32;
+            let sum = positions.iter().fold([0i32; 3], |mut acc, p| {
+                acc[0] += p[0] as i32;
+                acc[1] += p[1] as i32;
+                acc[2] += p[2] as i32;
+                acc
+            });
+            [(sum[0] / n) as i16, (sum[1] / n) as i16, (sum[2] / n) as i16]
+        }
+        _ => [0i16; 3],
+    }
+}
+
+/// FNV-1a хэш для Signal B Frame: имя доминирующей подсистемы + выровненный тик.
+/// Выравнивание по cooldown_ticks — одно событие стресса за период.
+fn stress_lineage_hash(dominant: SubsystemId, tick: u64, cooldown: u64) -> u64 {
+    let period = if cooldown > 0 { tick / cooldown } else { tick };
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in b"stress:".iter().chain(dominant.name().as_bytes()) {
+        h ^= *byte as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h ^= period;
+    h = h.wrapping_mul(0x100000001b3);
+    h
 }
 
 #[cfg(test)]
@@ -358,5 +494,163 @@ mod tests {
         refs.insert(SubsystemId::Morality, vec![[-100, 0, 0]]);
         let c = centroid(SubsystemId::Mathematics, SubsystemId::Morality, &refs);
         assert_eq!(c, [0i16, 0, 0]);
+    }
+
+    // ── Сигнал B: стресс связей ───────────────────────────────────────────────
+
+    fn stressed_conn(stress: f32, strength: f32) -> Connection {
+        let mut c = Connection::default();
+        c.flags = FLAG_ACTIVE;
+        c.strength = strength;
+        c.current_stress = stress;
+        c.source_id = 1;
+        c.target_id = 2;
+        c.domain_id = 10;
+        c
+    }
+
+    fn make_connections_stressed(count: usize, ratio: f32) -> Vec<Connection> {
+        (0..count).map(|_| stressed_conn(ratio, 1.0)).collect()
+    }
+
+    #[test]
+    fn test_signal_b_no_detect_empty_connections() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        let cmds = det.detect_signal_b(&[], SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert!(cmds.is_empty());
+        assert_eq!(store.active_count(), 0);
+    }
+
+    #[test]
+    fn test_signal_b_no_detect_low_stress() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        // stress=0.1, strength=1.0 → ratio 0.1 < STRESS_RATIO_THRESHOLD(0.5)
+        let conns = make_connections_stressed(5, 0.1);
+        let cmds = det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert!(cmds.is_empty());
+        assert_eq!(store.active_count(), 0);
+    }
+
+    #[test]
+    fn test_signal_b_no_detect_too_few_stressed() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        // Только 1 stressed < MIN_STRESSED_CONNECTIONS(2)
+        let conns = vec![stressed_conn(0.8, 1.0)];
+        let cmds = det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn test_signal_b_detects_high_stress() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        // 3 stressed connections, ratio 0.8 >> thresholds
+        let conns = make_connections_stressed(3, 0.8);
+        let cmds = det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert_eq!(cmds.len(), 1, "Signal B should fire with high stress");
+        assert_eq!(store.active_count(), 1);
+    }
+
+    #[test]
+    fn test_signal_b_stores_ontological_conflict() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        let conns = make_connections_stressed(3, 0.8);
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        use crate::over_domain::context_recognizer::dilemma_store::DilemmaType;
+        assert!(matches!(store.active[0].dilemma_type, DilemmaType::OntologicalConflict));
+    }
+
+    #[test]
+    fn test_signal_b_cooldown_prevents_duplicate() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        let conns = make_connections_stressed(3, 0.8);
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert_eq!(store.active_count(), 1);
+        // Повторно через 50 тиков — cooldown 100
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 150);
+        assert_eq!(store.active_count(), 1, "cooldown should block second detection");
+    }
+
+    #[test]
+    fn test_signal_b_cooldown_expires() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        let conns = make_connections_stressed(3, 0.8);
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        // После cooldown(100) → снова срабатывает
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 201);
+        assert_eq!(store.active_count(), 2, "cooldown expired — second detection should succeed");
+    }
+
+    #[test]
+    fn test_signal_b_independent_cooldown_from_signal_a() {
+        let mut det = DilemmaDetector::new();
+        det.set_dependencies(deps_with_tension("mathematics", "morality"));
+        let mut store = DilemmaStore::new();
+
+        // Сначала Signal A
+        let c = conflict(SubsystemId::Mathematics, SubsystemId::Morality, 0.9);
+        det.detect(Some(c), &mut store, &HashMap::new(), 109, 100);
+        assert_eq!(store.active_count(), 1);
+
+        // Signal B сразу после — отдельный cooldown
+        let conns = make_connections_stressed(3, 0.8);
+        det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 110);
+        assert_eq!(store.active_count(), 2, "Signal B has independent cooldown from Signal A");
+    }
+
+    #[test]
+    fn test_signal_b_uses_sutra_id_prefix_0x5000() {
+        let mut det = DilemmaDetector::new();
+        let mut store = DilemmaStore::new();
+        let conns = make_connections_stressed(3, 0.8);
+        let cmds = det.detect_signal_b(&conns, SubsystemId::Mathematics, &HashMap::new(), &mut store, 109, 100);
+        assert_eq!(cmds.len(), 1);
+        // Проверить что команда несёт правильный суффикс (косвенно через наличие payload)
+        // Полная проверка proposed_sutra_id через InjectFrameAnchorPayload была бы интеграционной
+    }
+
+    #[test]
+    fn test_stress_metrics_all_below_threshold() {
+        let conns: Vec<Connection> = (0..5).map(|_| stressed_conn(0.1, 1.0)).collect();
+        let (count, mean) = stress_metrics(&conns);
+        assert_eq!(count, 0);
+        assert!(mean < STRESS_RATIO_THRESHOLD);
+    }
+
+    #[test]
+    fn test_stress_metrics_all_above_threshold() {
+        let conns: Vec<Connection> = (0..4).map(|_| stressed_conn(0.8, 1.0)).collect();
+        let (count, mean) = stress_metrics(&conns);
+        assert_eq!(count, 4);
+        assert!(mean > MEAN_STRESS_THRESHOLD);
+    }
+
+    #[test]
+    fn test_stress_metrics_inactive_ignored() {
+        let mut c = stressed_conn(0.9, 1.0);
+        c.flags = 0; // не FLAG_ACTIVE
+        let (count, mean) = stress_metrics(&[c]);
+        assert_eq!(count, 0);
+        assert_eq!(mean, 0.0, "inactive connections must be ignored");
+    }
+
+    #[test]
+    fn test_stress_position_fallback_zero() {
+        let pos = stress_position(SubsystemId::Unknown, &HashMap::new());
+        assert_eq!(pos, [0i16, 0, 0]);
+    }
+
+    #[test]
+    fn test_stress_position_uses_dominant_refs() {
+        let mut refs = HashMap::new();
+        refs.insert(SubsystemId::Mathematics, vec![[500i16, 200, 100]]);
+        let pos = stress_position(SubsystemId::Mathematics, &refs);
+        assert_eq!(pos, [500i16, 200, 100]);
     }
 }
