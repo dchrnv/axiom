@@ -289,7 +289,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1592** | |
+| **Итого** | **1608** | |
 
 ---
 

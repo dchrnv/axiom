@@ -119,23 +119,9 @@ Morality_V1_0.md §4 описывает детектор моральных си
 
 **Что нужно:** `MoralSignalDetector::detect(matches: &[AnchorMatch]) → Option<MoralSignal>`; `MoralSignal { intensity: f32, dominant: AnchorId, secondary: Option<AnchorId> }`.
 
-**Зависимости:** DilemmaDetector (будущий).
+**Зависимости:** DilemmaDetector V2.0 (✅ реализован 2026-05-31).
 
-**Когда:** V7 или при реализации DilemmaDetector.
-
----
-
-### PRIM-TD-02 — DilemmaDetector V1.0
-
-**Где:** `crates/axiom-runtime/src/over_domain/context_recognizer/` (новый файл)
-
-Dilemmas_V1_0.md §3 описывает детектор: сравнивает энергии конфликтующих подсистем, проверяет `is_natural_tension()` из SubsystemDependencies, классифицирует тип дилеммы (I–V) и создаёт DilemmaRecord для DilemmaStore.
-
-**Что нужно:** `DilemmaDetector::on_tick(energies: &HashMap<SubsystemId, u8>, deps: &SubsystemDependencies) → Vec<DilemmaRecord>`.
-
-**Зависимости:** DilemmaStore V1.1 (✅), SubsystemDependencies (✅), MoralSignalDetector (PRIM-TD-01).
-
-**Когда:** V7-C или позже (требует TransitionMatrix для правильного определения «конфликта»).
+**Когда:** После DilemmaDetector V2.1 (Сигнал B: stress связей).
 
 ---
 

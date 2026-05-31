@@ -35,6 +35,10 @@ pub const TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE: u16 = 0x0020;
 /// Записывается в EXPERIENCE (domain_id=109) после каждого Consolidation этапа.
 pub const TOKEN_FLAG_DREAM_REPORT: u16 = 0x0040;
 
+/// Frame-анкер является кристаллизованной дилеммой.
+/// Устанавливается DilemmaDetector при фиксации конфликта подсистем в EXPERIENCE.
+pub const TOKEN_FLAG_DILEMMA: u16 = 0x0080;
+
 /// Маска для выделения категории Frame из type_flags (старший байт).
 pub const FRAME_CATEGORY_MASK: u16 = 0xFF00;
 

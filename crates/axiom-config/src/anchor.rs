@@ -178,6 +178,8 @@ pub struct AnchorSet {
     pub subsystems: HashMap<String, Vec<Anchor>>,
     /// Версии загруженных подсистем (V7-D1): "writing" → "1.0", ...
     pub subsystem_versions: HashMap<String, String>,
+    /// Граф зависимостей и natural tensions подсистем (для DilemmaDetector).
+    pub subsystem_dependencies: crate::SubsystemDependencies,
 }
 
 impl AnchorSet {
@@ -192,6 +194,7 @@ impl AnchorSet {
             perceptual: Vec::new(),
             subsystems: HashMap::new(),
             subsystem_versions: HashMap::new(),
+            subsystem_dependencies: crate::SubsystemDependencies::default(),
         }
     }
 
@@ -261,7 +264,7 @@ impl AnchorSet {
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
         let perceptual = Self::load_perceptual(anchors_dir)?;
         let (subsystems, subsystem_versions) = Self::load_subsystems(anchors_dir)?;
-        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems, subsystem_versions })
+        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems, subsystem_versions, subsystem_dependencies: crate::SubsystemDependencies::default() })
     }
 
     /// Загрузить из `config_dir/anchors/`. Возвращает ошибку при YAML-синтаксических проблемах.
@@ -299,6 +302,7 @@ impl AnchorSet {
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
         let perceptual = Self::load_perceptual(&anchors_dir)?;
         let (subsystems, subsystem_versions) = Self::load_subsystems(&anchors_dir)?;
+        let subsystem_dependencies = crate::SubsystemDependencies::load_or_empty(config_dir);
 
         Ok(Self {
             axes,
@@ -309,6 +313,7 @@ impl AnchorSet {
             perceptual,
             subsystems,
             subsystem_versions,
+            subsystem_dependencies,
         })
     }
 

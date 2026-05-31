@@ -28,6 +28,7 @@ pub mod axial_bridge;
 pub mod composite;
 pub mod conflicts;
 pub mod depth_bridge;
+pub mod dilemma;
 pub mod dilemma_store;
 pub mod emergent;
 pub mod energy;
@@ -48,6 +49,7 @@ pub use composite::{
     CompositeSubsystemProfile, BIDIRECTIONAL_COUPLING_THRESHOLD, COMPOSITE_DEFS,
 };
 pub use conflicts::SubsystemConflict;
+pub use dilemma::DilemmaDetector;
 pub use dilemma_store::{
     crystallize_to_experience_commands, DilemmaRecord, DilemmaResolution, DilemmaStore, DilemmaType,
 };
@@ -117,6 +119,10 @@ pub struct ContextRecognizer {
     version_store: SubsystemVersionStore,
     /// Split/Merge кандидаты (V7-D2). Обновляются в DREAM-фазе on_tick.
     split_merge_candidates: SplitMergeCandidateStore,
+    /// Хранилище активных дилемм (DilemmaDetector V2.0).
+    pub dilemma_store: DilemmaStore,
+    /// Детектор конфликтов подсистем (DilemmaDetector V2.0).
+    dilemma_detector: DilemmaDetector,
 }
 
 impl ContextRecognizer {
@@ -149,6 +155,8 @@ impl ContextRecognizer {
             transition_matrix: TransitionMatrix::new(),
             version_store: SubsystemVersionStore::new(),
             split_merge_candidates: SplitMergeCandidateStore::new(),
+            dilemma_store: DilemmaStore::new(),
+            dilemma_detector: DilemmaDetector::new(),
         }
     }
 
@@ -180,6 +188,16 @@ impl ContextRecognizer {
     /// Split/Merge кандидаты (V7-D2).
     pub fn split_merge_candidates(&self) -> &SplitMergeCandidateStore {
         &self.split_merge_candidates
+    }
+
+    /// Активные дилеммы (DilemmaDetector V2.0).
+    pub fn dilemma_store(&self) -> &DilemmaStore {
+        &self.dilemma_store
+    }
+
+    /// Передать граф зависимостей подсистем детектору дилемм.
+    pub fn set_subsystem_dependencies(&mut self, deps: axiom_config::SubsystemDependencies) {
+        self.dilemma_detector.set_dependencies(deps);
     }
 
     /// Инициализировать версии подсистем из AnchorSet (первичная загрузка).
@@ -243,6 +261,7 @@ impl ContextRecognizer {
         let mut cr = Self::new(subsystem_refs);
         cr.subsystem_shell_refs = subsystem_shell_refs;
         cr.version_store.init(&anchors.subsystem_versions);
+        cr.dilemma_detector.set_dependencies(anchors.subsystem_dependencies.clone());
         cr
     }
 
@@ -551,8 +570,15 @@ impl OverDomainComponent for ContextRecognizer {
         let mut fatigued_weights = weights.clone();
         self.fatigue_store.apply_to_weights(&mut fatigued_weights);
 
-        // Детектировать конфликт подсистем (V1: не записываем, только детектируем)
-        let _conflict = conflicts::detect_conflict(&energies, SUBSYSTEM_CONFLICT_THRESHOLD);
+        // Детектировать конфликт подсистем + регистрировать дилемму (DilemmaDetector V2.0)
+        let conflict = conflicts::detect_conflict(&energies, SUBSYSTEM_CONFLICT_THRESHOLD);
+        let dilemma_cmds = self.dilemma_detector.detect(
+            conflict,
+            &mut self.dilemma_store,
+            &self.subsystem_refs,
+            exp_domain_id,
+            tick,
+        );
 
         // Попытка детектировать эмерджентные примитивы (V1: no-op, всегда false)
         for &frame_id in &frame_ids {
@@ -580,7 +606,7 @@ impl OverDomainComponent for ContextRecognizer {
             *self.dream_activation_acc.entry((frame_id, primary_octant)).or_insert(0) += 1;
         }
 
-        Ok(vec![])
+        Ok(dilemma_cmds)
     }
 
     fn on_shutdown(&mut self) -> Vec<UclCommand> {

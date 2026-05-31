@@ -71,7 +71,9 @@ sutra_id: u32          — ID потока (> 0, инвариант)
 domain_id: u16         — домен (> 0)
 type_flags: u16        — TOKEN_FLAG_GOAL=0x0001, TOKEN_FLAG_IMPULSE=0x0002,
                          TOKEN_FLAG_FRAME_ANCHOR=0x0010,
-                         TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE=0x0020
+                         TOKEN_FLAG_PROMOTED_FROM_EXPERIENCE=0x0020,
+                         TOKEN_FLAG_DREAM_REPORT=0x0040,
+                         TOKEN_FLAG_DILEMMA=0x0080 (DilemmaDetector V2.0: Frame конфликта в EXPERIENCE)
 position: [i16; 3]    — XYZ в семантическом пространстве
 velocity: [i16; 3]
 target: [i16; 3]
@@ -428,6 +430,12 @@ event_id: u64
   Narrative(Writing+Time), Ethics(Logic) [V7: +Values/Dilemmas/Morality];
   detect_composite_suspects(recent, signatures) → Vec<CompositeActivationSuspected { name, confidence }>;
   Converging boost: min(conf * 1.5, 1.0); ContextRecognizer::composite_suspects()
+  V7-DilemmaDetector V2.0: dilemma_store: DilemmaStore + dilemma_detector: DilemmaDetector (поля CR);
+    Сигнал A: detect_conflict → is_natural_tension(SubsystemDependencies) → tension_score >= 0.5 →
+    push_active(ValueConflict) + InjectToken(EXPERIENCE, TOKEN_FLAG_FRAME_ANCHOR|TOKEN_FLAG_DILEMMA);
+    cooldown 50 тиков CR на пару; centroid позиций обеих подсистем как позиция Frame;
+    AnchorSet::subsystem_dependencies (загружается из config/subsystem_dependencies.yaml в load());
+    CR::dilemma_store() → &DilemmaStore; CR::set_subsystem_dependencies(deps)
 - NeuralAdvisor V3.0 (tick=11, ModuleId=19) — advisory-only; 5 трейтов (DepthPredictionAdvisor,
   OctantCorrectionAdvisor, CorpusCallosumResolver, SubsystemAttributionAdvisor, EmergentPatternAdvisor);
   V2 реализации (все 5 слотов заполнены):
