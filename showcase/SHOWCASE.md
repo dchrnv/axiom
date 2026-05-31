@@ -1,8 +1,8 @@
 # Axiom — Showcase Report
 
-> Generated: 2026-05-29 20:35  
+> Generated: 2026-05-29 21:28  
 > Engine: V7 (ContextRecognizer V7, NeuralAdvisor V3, DREAM V1.1, FractalChain)  
-> Corpus: `config/obs/corpus_showcase.yaml`
+> Corpus: `config/obs/corpus_mixed.yaml`
 
 ---
 
@@ -25,56 +25,111 @@
 
 ## Parameters
 
-- Ticks: 200000
-- Snapshot every: 2000
-- Corpus entries: 19
+- Ticks: 60000
+- Snapshot every: 1000
+- Corpus entries: 15
 
 ## Final State
 
 | Metric | Value |
 |---|---|
-| Frames | 2000 |
-| Total evaluations | 2007 |
+| Frames | 320 |
+| Total evaluations | 327 |
 | Total conflicts | 0 |
-| Profile count | 2000 |
-| Dominant subsystem | 3 |
+| Profile count | 320 |
+| Dominant subsystem | 0 |
 | Dominant octant | 0 |
-| Depth store entries | 2000 |
-| Emergent pending | 1000 |
+| Depth store entries | 320 |
+| Emergent pending | 196 |
 | Emergent approved | 0 |
-| Experience traces | 7 |
+| Experience traces | 4 |
 | Tension traces | 0 |
 | Activity fill | 16 |
 | Dominant persistence | 1.000 |
 | Entropy gradient | 0.000 |
 | Oscillation score | 0.000 |
 | Cascade score | 0.000 |
-| Fatigue entries | 1 |
+| Fatigue entries | 2 |
 | Avg shell similarity | 0.000 |
-| Meta dominant | none |
+| Meta dominant | meta_synthesis |
 
 ## Experience Trace Growth
 
-| Метрика | Начало | Конец |
-|---|---|---|
-| Exp traces | 1 | **7** (plateau — малый корпус) |
-| Frames | 0 | **2000** (линейный рост) |
-| Tension | 0 | 0 |
-| Shell similarity | 0.000 | 0.000 |
-
+| Tick | Exp traces | Tension | Frames | Profiles | ShellSim |
+|---|---|---|---|---|---|
+| 0 | 1 | 0 | 0 | 0 | 0.000 |
+| 1000 | 2 | 0 | 2 | 2 | 0.000 |
+| 2000 | 2 | 0 | 6 | 6 | 0.000 |
+| 3000 | 2 | 0 | 10 | 10 | 0.000 |
+| 4000 | 2 | 0 | 14 | 14 | 0.000 |
+| 5000 | 2 | 0 | 18 | 18 | 0.000 |
+| 6000 | 2 | 0 | 22 | 22 | 0.000 |
+| 7000 | 2 | 0 | 26 | 26 | 0.000 |
+| 8000 | 3 | 0 | 30 | 30 | 0.000 |
+| 9000 | 4 | 0 | 36 | 36 | 0.000 |
+| 10000 | 4 | 0 | 44 | 44 | 0.000 |
+| 11000 | 4 | 0 | 52 | 52 | 0.000 |
+| 12000 | 4 | 0 | 60 | 60 | 0.000 |
+| 13000 | 4 | 0 | 68 | 68 | 0.000 |
+| 14000 | 4 | 0 | 76 | 76 | 0.000 |
+| 15000 | 4 | 0 | 84 | 84 | 0.000 |
+| 16000 | 4 | 0 | 92 | 92 | 0.000 |
+| 17000 | 4 | 0 | 100 | 100 | 0.000 |
+| 18000 | 4 | 0 | 108 | 108 | 0.000 |
+| 19000 | 4 | 0 | 116 | 116 | 0.000 |
+| 20000 | 4 | 0 | 124 | 124 | 0.000 |
+| 21000 | 4 | 0 | 132 | 132 | 0.000 |
+| 22000 | 4 | 0 | 140 | 140 | 0.000 |
+| 23000 | 4 | 0 | 148 | 148 | 0.000 |
+| 24000 | 4 | 0 | 156 | 156 | 0.000 |
+| 25000 | 4 | 0 | 164 | 164 | 0.000 |
+| 26000 | 4 | 0 | 172 | 172 | 0.000 |
+| 27000 | 4 | 0 | 180 | 180 | 0.000 |
+| 28000 | 4 | 0 | 188 | 188 | 0.000 |
+| 29000 | 4 | 0 | 196 | 196 | 0.000 |
+| 30000 | 4 | 0 | 204 | 204 | 0.000 |
+| 31000 | 4 | 0 | 212 | 212 | 0.000 |
+| 32000 | 4 | 0 | 220 | 220 | 0.000 |
+| 33000 | 4 | 0 | 228 | 228 | 0.000 |
+| 34000 | 4 | 0 | 236 | 236 | 0.000 |
+| 35000 | 4 | 0 | 244 | 244 | 0.000 |
+| 36000 | 4 | 0 | 252 | 252 | 0.000 |
+| 37000 | 4 | 0 | 260 | 260 | 0.000 |
+| 38000 | 4 | 0 | 268 | 268 | 0.000 |
+| 39000 | 4 | 0 | 276 | 276 | 0.000 |
+| 40000 | 4 | 0 | 284 | 284 | 0.000 |
+| 41000 | 4 | 0 | 290 | 290 | 0.000 |
+| 42000 | 4 | 0 | 294 | 294 | 0.000 |
+| 43000 | 4 | 0 | 298 | 298 | 0.000 |
+| 44000 | 4 | 0 | 302 | 302 | 0.000 |
+| 45000 | 4 | 0 | 306 | 306 | 0.000 |
+| 46000 | 4 | 0 | 310 | 310 | 0.000 |
+| 47000 | 4 | 0 | 314 | 314 | 0.000 |
+| 48000 | 4 | 0 | 318 | 318 | 0.000 |
+| 49000 | 4 | 0 | 320 | 320 | 0.000 |
+| 50000 | 4 | 0 | 320 | 320 | 0.000 |
+| 51000 | 4 | 0 | 320 | 320 | 0.000 |
+| 52000 | 4 | 0 | 320 | 320 | 0.000 |
+| 53000 | 4 | 0 | 320 | 320 | 0.000 |
+| 54000 | 4 | 0 | 320 | 320 | 0.000 |
+| 55000 | 4 | 0 | 320 | 320 | 0.000 |
+| 56000 | 4 | 0 | 320 | 320 | 0.000 |
+| 57000 | 4 | 0 | 320 | 320 | 0.000 |
+| 58000 | 4 | 0 | 320 | 320 | 0.000 |
+| 59000 | 4 | 0 | 320 | 320 | 0.000 |
 
 ## Avg Depth per Octant (final)
 
 | Octant | Avg depth |
 |---|---|
-| O1 | 7500 ★ |
-| O2 | 0 |
+| O1 | 3416 ★ |
+| O2 | 192 |
 | O3 | 0 |
-| O4 | 0 |
+| O4 | 28 |
 | O5 | 0 |
 | O6 | 0 |
 | O7 | 0 |
-| O8 | 144 |
+| O8 | 0 |
 
 ★ = depth ≥ 3000 (emergent candidate threshold)
 
@@ -82,36 +137,30 @@
 
 | Entry | Expected | Correct | Total | Accuracy |
 |---|---|---|---|---|
-| abstract_emergence | abstractions | 0 | 400 | ✗ 0% |
-| abstract_infinity | abstractions | 0 | 400 | ✗ 0% |
-| logic_deductive | logic | 400 | 400 | ✓ 100% |
-| logic_fallacies | logic | 400 | 400 | ✓ 100% |
-| logic_inductive | logic | 400 | 400 | ✓ 100% |
-| math_arithmetic | mathematics | 400 | 400 | ✓ 100% |
-| math_calculus | mathematics | 400 | 400 | ✓ 100% |
-| math_geometry | mathematics | 0 | 400 | ✗ 0% |
-| morality_consequences | morality | 0 | 400 | ✗ 0% |
-| morality_duty | morality | 0 | 400 | ✗ 0% |
-| music_harmony | music | 400 | 400 | ✓ 100% |
-| music_rhythm | music | 400 | 400 | ✓ 100% |
-| time_arrow | time | 400 | 400 | ✓ 100% |
-| time_perception | time | 400 | 400 | ✓ 100% |
-| values_honesty | values | 400 | 400 | ✓ 100% |
-| values_justice | values | 400 | 400 | ✓ 100% |
-| writing_metaphor | writing | 0 | 400 | ✗ 0% |
-| writing_narrative | writing | 400 | 400 | ✓ 100% |
-| writing_style | writing | 0 | 400 | ✗ 0% |
-
-
+| conflict_individual_collective | values | 80 | 80 | ✓ 100% |
+| conflict_logic_morality | logic | 80 | 80 | ✓ 100% |
+| conflict_music_values | music | 0 | 80 | ✗ 0% |
+| conflict_safety_freedom | values | 0 | 80 | ✗ 0% |
+| conflict_truth_compassion | values | 80 | 80 | ✓ 100% |
+| overlap_logic_values | logic | 80 | 80 | ✓ 100% |
+| overlap_math_abstractions | mathematics | 38 | 80 | ~ 48% |
+| overlap_math_music | mathematics | 0 | 80 | ✗ 0% |
+| overlap_time_morality | time | 80 | 80 | ✓ 100% |
+| overlap_writing_time | writing | 0 | 80 | ✗ 0% |
+| transition_logic_to_morality | logic | 80 | 80 | ✓ 100% |
+| transition_math_to_morality | mathematics | 0 | 80 | ✗ 0% |
+| transition_music_to_time | music | 42 | 80 | ~ 52% |
+| transition_time_to_values | time | 0 | 80 | ✗ 0% |
+| transition_writing_to_values | writing | 80 | 80 | ✓ 100% |
 
 ## Coherence Analysis
 
 - Average coherence: 1.000
 - Min coherence: 0.750
 - Max coherence: 1.000
-- Reflex hits: 7593 / 7600
-- Multi-pass events: 0 / 7600
-- Per-text accuracy: 4800 / 7600 (63.2%)
+- Reflex hits: 1194 / 1200
+- Multi-pass events: 0 / 1200
+- Per-text accuracy: 640 / 1200 (53.3%)
 
 ✓ High coherence — system has built good resonance patterns.
 
@@ -119,16 +168,74 @@
 
 Octants above depth threshold (≥3000): O1
 
-⚠ 1000 emergent candidate(s) pending — not yet above approval threshold.
+⚠ 196 emergent candidate(s) pending — not yet above approval threshold.
 
-Conflict rate: 0.0% (0 / 2007 evaluations)
+Conflict rate: 0.0% (0 / 327 evaluations)
 
 ## V6 Activity Dynamics
 
-Signature stable throughout: **Steady, Uncertain**  
-Fill=16 · Persistence=1.00 · Entropy=0.00 · Oscillation=0.00 · Cascade=0.00  
-Fatigue=1 · Meta=—
-
+| Tick | Fill | Persistence | Entropy | Oscillation | Cascade | Fatigue | Meta | Signatures |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | — | Uncertain |
+| 1000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | — | Steady |
+| 2000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 3000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 4000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 5000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 6000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 7000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 8000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 9000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 10000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 11000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 12000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 13000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 14000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 15000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 16000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 17000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 18000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 19000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 20000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 21000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 22000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 23000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 24000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 25000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 26000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 27000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 28000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 29000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 30000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 31000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 32000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 33000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 34000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 35000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 36000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 37000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 38000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 39000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 40000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 41000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 42000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 43000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 44000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 45000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 46000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 47000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 48000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 49000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 50000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 51000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 52000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 53000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 54000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 55000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 56000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 57000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 58000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 59000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
 
 ## Composite Co-activation Suspects (final)
 
@@ -136,7 +243,7 @@ None detected.
 
 ## Meta-subsystem Activations (final)
 
-Active: 0  |  Dominant: none
+Active: 3  |  Dominant: meta_synthesis
 
 
 ---
@@ -193,47 +300,10 @@ All measurements: release build, Criterion 0.5, Freedesktop SDK 25.08 (Flatpak r
 
 | Parameter | Value |
 |-----------|-------|
-| Engine ticks | 200000 |
-| Corpus texts | 19 |
+| Engine ticks | 60000 |
+| Corpus texts | 15 |
 | Subsystems covered | mathematics · writing · logic · music · time · values · morality · abstractions · dilemmas |
 
 Criterion HTML reports: `target/criterion/`  
 Raw bench logs: `showcase/bench_out/`  
 OBS snapshots: `showcase/obs_out/`  
-
----
-
-## Stress Benchmarks
-
-`axiom-space` под нагрузкой (10K → 10M токенов).
-
-### apply_gravity_batch
-
-| N токенов | Scalar | AVX2 | Speedup |
-|-----------|--------|------|---------|
-| 10K | 481 µs | 99 µs | ~5x |
-| 100K | 3.97 ms | 1.08 ms | ~4x |
-| 1M | 38.5 ms | 17.6 ms | ~2x |
-| 10M | 397 ms | — | — |
-
-### SpatialHashGrid::rebuild
-
-| N токенов | Время |
-|-----------|-------|
-| 10K | 123 µs |
-| 100K | 1.04 ms |
-| 500K | 5.39 ms |
-| 1M | 10.76 ms |
-
-### resonance_search (ExperienceModule)
-
-| Traces | Время |
-|--------|-------|
-| 1K | 17.8 µs |
-| 5K | 22.3 µs |
-| 10K | 17.6 µs |
-| 50K | 15.3 µs |
-
-Grid-хэш Phase 1 эффективен — время практически не растёт с числом трейсов.
-
-> При `max_tokens_per_domain: 2000` все операции работают в диапазоне < 1 µs на тик.

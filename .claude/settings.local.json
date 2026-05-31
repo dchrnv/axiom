@@ -6,7 +6,8 @@
       "Bash(git add:*)",
       "Bash(cargo clippy:*)",
       "Bash(grep -v \"^$\")",
-      "Bash(cargo bench:*)"
+      "Bash(cargo bench:*)",
+      "Read(//home/chrnv/.var/app/com.vscodium.codium/data/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ksni-0.2.2/src/**)"
     ]
   }
 }
