@@ -87,12 +87,18 @@ impl TextPerceptor {
             (base + excl * 15.0 + ques * 10.0).min(255.0)
         };
 
-        // Путь 1: word-level match_text (exact/alias/substring из AnchorSet)
+        // Путь 1: word-level match_text (exact/alias/substring из AnchorSet).
+        // Позиция вычисляется ТОЛЬКО по subsystem-якорям — это обеспечивает
+        // семантически корректное размещение в пространстве подсистем.
+        // Структурные якоря (axes/layers/domains/octants) не загрязняют позицию.
         if let Some(ref anchors) = self.anchor_set {
-            let matches = anchors.match_text(text);
-            if !matches.is_empty() {
-                let pos = anchors.compute_position(&matches);
-                let semantic_weight = anchors.compute_semantic_weight(&matches);
+            let all_matches = anchors.match_text(text);
+            if !all_matches.is_empty() {
+                // Предпочесть subsystem-позицию; если нет subsystem-хитов — all-anchor
+                let sub_matches = anchors.match_subsystem_text(text);
+                let pos_matches = if !sub_matches.is_empty() { &sub_matches } else { &all_matches };
+                let pos = anchors.compute_position(pos_matches);
+                let semantic_weight = anchors.compute_semantic_weight(&all_matches);
                 return build_inject_token_command(
                     SUTRA_DOMAIN_ID,
                     pos[0],

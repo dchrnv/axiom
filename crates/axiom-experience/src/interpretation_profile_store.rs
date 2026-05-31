@@ -130,12 +130,13 @@ impl InterpretationProfileStore {
         })
     }
 
-    /// Most common primary subsystem as u8. Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Values=5 Unknown=6.
+    /// Most common primary subsystem as u8.
+    /// Encoding: Writing=0 Mathematics=1 Music=2 Time=3 Logic=4 Values=5 Unknown=6 Morality=7 Abstractions=8 Dilemmas=9.
     pub fn dominant_primary_as_u8(&self) -> Option<u8> {
         if self.profiles.is_empty() {
             return None;
         }
-        let mut counts = [0u32; 7];
+        let mut counts = [0u32; 10];
         for p in self.profiles.values() {
             counts[subsystem_to_u8(p.primary) as usize] += 1;
         }

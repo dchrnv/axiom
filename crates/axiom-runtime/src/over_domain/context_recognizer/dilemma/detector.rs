@@ -28,6 +28,12 @@ use super::tension::{compute_tension_score, DILEMMA_THRESHOLD};
 /// Тики CR между повторными регистрациями одной пары подсистем как дилеммы.
 const DETECTION_COOLDOWN_TICKS: u64 = 50;
 
+/// Размер скользящего окна ко-активации (в инъекциях токенов).
+const COACTIVATION_WINDOW: usize = 32;
+
+/// Минимальное число появлений КАЖДОЙ подсистемы в окне для детектирования.
+const MIN_COACTIVATION_COUNT: usize = 2;
+
 /// Канонический порядок пары: по лексикографии имён (для дедупликации).
 fn canonical_pair(a: SubsystemId, b: SubsystemId) -> (SubsystemId, SubsystemId) {
     if a.name() <= b.name() { (a, b) } else { (b, a) }
@@ -73,6 +79,9 @@ pub struct DilemmaDetector {
     deps: SubsystemDependencies,
     /// Последний тик CR детектирования для каждой канонической пары.
     last_detected: HashMap<(SubsystemId, SubsystemId), u64>,
+    /// Скользящее окно ко-активации: последние N subsystem-активаций из record_injection_signal.
+    /// Каждый элемент: (SubsystemId, tick).
+    coactivation_window: std::collections::VecDeque<(SubsystemId, u64)>,
 }
 
 impl DilemmaDetector {
@@ -80,7 +89,53 @@ impl DilemmaDetector {
         Self {
             deps: SubsystemDependencies::default(),
             last_detected: HashMap::new(),
+            coactivation_window: std::collections::VecDeque::with_capacity(COACTIVATION_WINDOW + 1),
         }
+    }
+
+    /// Записать активацию подсистемы из record_injection_signal.
+    ///
+    /// Вызывается из ContextRecognizer::record_injection_signal при каждом InjectToken.
+    pub fn record_injection(&mut self, sub: SubsystemId, tick: u64) {
+        if sub == SubsystemId::Unknown {
+            return;
+        }
+        if self.coactivation_window.len() >= COACTIVATION_WINDOW {
+            self.coactivation_window.pop_front();
+        }
+        self.coactivation_window.push_back((sub, tick));
+    }
+
+    /// Найти пару подсистем в окне ко-активации с достаточным числом появлений.
+    ///
+    /// Возвращает (primary, secondary, intensity) если обе подсистемы появляются
+    /// не менее MIN_COACTIVATION_COUNT раз и являются natural tension.
+    fn detect_coactivation_pair(&self) -> Option<(SubsystemId, SubsystemId, f32)> {
+        use std::collections::HashMap;
+        let mut counts: HashMap<SubsystemId, usize> = HashMap::new();
+        for &(sub, _) in &self.coactivation_window {
+            *counts.entry(sub).or_insert(0) += 1;
+        }
+        let qualifying: Vec<(SubsystemId, usize)> = counts
+            .into_iter()
+            .filter(|(_, c)| *c >= MIN_COACTIVATION_COUNT)
+            .collect();
+        for i in 0..qualifying.len() {
+            for j in (i + 1)..qualifying.len() {
+                let (sa, ca) = qualifying[i];
+                let (sb, cb) = qualifying[j];
+                if self.deps.is_natural_tension(sa.name(), sb.name()) {
+                    // Интенсивность: насколько сбалансированы появления
+                    let min_c = ca.min(cb) as f32;
+                    let max_c = ca.max(cb) as f32;
+                    let intensity = (min_c / max_c).min(1.0) * 0.75 + 0.25;
+                    // primary = та что встречалась чаще
+                    let (primary, secondary) = if ca >= cb { (sa, sb) } else { (sb, sa) };
+                    return Some((primary, secondary, intensity));
+                }
+            }
+        }
+        None
     }
 
     /// Заменить граф зависимостей (вызывается из from_anchor_set).
@@ -100,25 +155,37 @@ impl DilemmaDetector {
         exp_domain_id: u16,
         tick: u64,
     ) -> Vec<UclCommand> {
-        let Some(conflict) = conflict else {
-            return vec![];
+        // Путь 1: энергетический конфликт из MAYA (если доступен)
+        let (pair, tension) = if let Some(ref c) = conflict {
+            if self.deps.is_natural_tension(c.primary.name(), c.secondary.name()) {
+                let t = compute_tension_score(c);
+                if t >= DILEMMA_THRESHOLD {
+                    (canonical_pair(c.primary, c.secondary), t)
+                } else {
+                    // Путь 2: ко-активация из окна инъекций
+                    match self.detect_coactivation_pair() {
+                        Some((a, b, t)) if t >= DILEMMA_THRESHOLD => (canonical_pair(a, b), t),
+                        _ => return vec![],
+                    }
+                }
+            } else {
+                match self.detect_coactivation_pair() {
+                    Some((a, b, t)) if t >= DILEMMA_THRESHOLD => (canonical_pair(a, b), t),
+                    _ => return vec![],
+                }
+            }
+        } else {
+            // Путь 2: ко-активация из окна инъекций (MAYA-конфликта нет)
+            match self.detect_coactivation_pair() {
+                Some((a, b, t)) if t >= DILEMMA_THRESHOLD => (canonical_pair(a, b), t),
+                _ => return vec![],
+            }
         };
-
-        if !self.deps.is_natural_tension(conflict.primary.name(), conflict.secondary.name()) {
-            return vec![];
-        }
-
-        let pair = canonical_pair(conflict.primary, conflict.secondary);
 
         if let Some(&last) = self.last_detected.get(&pair) {
             if tick.saturating_sub(last) < DETECTION_COOLDOWN_TICKS {
                 return vec![];
             }
-        }
-
-        let tension = compute_tension_score(&conflict);
-        if tension < DILEMMA_THRESHOLD {
-            return vec![];
         }
 
         if store.is_at_capacity() {

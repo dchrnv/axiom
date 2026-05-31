@@ -467,10 +467,27 @@ impl AnchorSet {
     // ─── Text matching ────────────────────────────────────────────────────────
 
     /// Найти якоря, совпадающие с текстом.
+    /// Матчинг текста только по subsystem-примитивам (без axes/layers/domains/octants).
+    ///
+    /// Используется в TextPerceptor для вычисления семантической позиции токена.
+    /// Благодаря исключению структурных якорей позиция отражает subsystem-контент,
+    /// а не смешанную структуру пространства.
+    pub fn match_subsystem_text<'a>(&'a self, text: &str) -> Vec<AnchorMatch<'a>> {
+        self.match_text_over(text, self.subsystems.values().flatten())
+    }
+
     ///
     /// Порядок проверки: Exact → Alias → Substring (≥4 символов).
     /// Возвращает до 5 лучших совпадений, отсортированных по score.
     pub fn match_text<'a>(&'a self, text: &str) -> Vec<AnchorMatch<'a>> {
+        self.match_text_over(text, self.all_anchors())
+    }
+
+    fn match_text_over<'a>(
+        &'a self,
+        text: &str,
+        anchors: impl Iterator<Item = &'a Anchor>,
+    ) -> Vec<AnchorMatch<'a>> {
         let text_lower = text.to_lowercase();
         let words: Vec<&str> = text_lower.split_whitespace().collect();
         if words.is_empty() {
@@ -479,7 +496,7 @@ impl AnchorSet {
 
         let mut matches = Vec::new();
 
-        for anchor in self.all_anchors() {
+        for anchor in anchors {
             let word_lower = anchor.word.to_lowercase();
 
             // 1. Точное совпадение

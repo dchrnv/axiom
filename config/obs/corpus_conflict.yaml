@@ -1,102 +1,52 @@
-# corpus_conflict.yaml — конфликт подсистем morality+values (DilemmaDetector §9)
+# corpus_conflict.yaml — верификация DilemmaDetector V2.0 (§9)
 #
-# Цель: верификация DilemmaDetector V2.0 (спека §9).
-# Ожидаемый результат: dilemma_store непустой после прогона.
+# Стратегия: 2 чисто morality-текста + 2 чисто values-текста.
+# Каждый текст активирует ОДИН subsystem-кластер, вдали от mathematics.
 #
-# Механизм: тексты одновременно активируют morality и values через общие слова:
-#   "вред"         → moral_harm + val_harmful
-#   "честно/справедливость" → moral_fair + val_just
-#   "долг/обязан"  → moral_fair aliases
-#   "благо"        → val_beneficial + moral_harm alias
-#   "запрет/нельзя" → val_forbidden
-#   "забота/защитить" → moral_care
+# Morality-слова вне математики:
+#   "лояльность" → moral_loyalty [12000, 15000, 10000]  — очень высокий Y (Эрос)
+#   "предательство" → moral_betrayal [2000, 3000, 12000] — низкий X, низкий Y
 #
-# Сигнал A: is_natural_tension("morality", "values") = true
-# Cooldown: 50 тиков CR (350 engine тиков)
+# Values-слова вне математики:
+#   "красота" → val_beautiful [8000, 13000, 12000] — высокий Y
+#   "запрет"  → val_forbidden [15000, 500, 15000]  — крайние X и Z
 #
-# Запуск: ./target/release/axiom-observe config/obs/corpus_conflict.yaml /tmp/obs_conflict config/anchors
+# При 50/50 распределении в окне: intensity = 1.0 → DILEMMA_THRESHOLD 0.5 перекрыт.
+# natural_tension: morality ↔ values ✓ (оба направления в subsystem_dependencies.yaml)
 
 ticks_total: 50000
 snapshot_every: 1000
 
 texts:
 
-  # ── ТИПОВОЙ КОНФЛИКТ: "запереть двери" (спека §9, тип В) ───────────────────
-
-  - id: dilemma_doors
-    content: >
-      Запереть двери — значит спасти многих ценой свободы немногих.
-      Причинить вред одним чтобы предотвратить вред другим.
-      Долг защищать всех или запрет лишать свободы — что важнее?
+  # ── MORALITY 1: moral_loyalty [12000, 15000, 10000] ─────────────────────────
+  - id: morality_loyalty
+    content: "лояльность верность солидарность свои"
     expected_subsystem: morality
-    inject_every: 200
-    inject_count: 200
+    inject_every: 7
+    inject_count: 7000
     start_at_tick: 0
 
-  - id: dilemma_harm_benefit
-    content: >
-      Причинение вреда одному ради блага многих — утилитарное решение.
-      Но вред остаётся вредом вне зависимости от последствий.
-      Честно ли жертвовать одним человеком ради наибольшего блага?
-    expected_subsystem: values
-    inject_every: 200
-    inject_count: 200
-    start_at_tick: 100
-
-  # ── КОНФЛИКТ СПРАВЕДЛИВОСТЬ vs ЗАБОТА ──────────────────────────────────────
-
-  - id: dilemma_justice_care
-    content: >
-      Справедливость требует равного наказания за равный вред.
-      Но забота о слабом требует снисхождения.
-      Честное возмездие само причиняет вред — это допустимо или запрещено?
+  # ── MORALITY 2: moral_betrayal [2000, 3000, 12000] ──────────────────────────
+  - id: morality_betrayal
+    content: "предательство измена нелояльность"
     expected_subsystem: morality
-    inject_every: 200
-    inject_count: 200
-    start_at_tick: 200
+    inject_every: 7
+    inject_count: 7000
+    start_at_tick: 1
 
-  - id: dilemma_duty_freedom
-    content: >
-      Долг защищать означает обязан действовать.
-      Но действие ограничивает свободу тех кого защищаем.
-      Вред от бездействия и вред от принуждения — какой меньше?
+  # ── VALUES 1: val_beautiful [8000, 13000, 12000] ─────────────────────────────
+  - id: values_beauty
+    content: "красота красиво элегантно прекрасно"
     expected_subsystem: values
-    inject_every: 200
-    inject_count: 200
-    start_at_tick: 300
+    inject_every: 7
+    inject_count: 7000
+    start_at_tick: 2
 
-  # ── КОНФЛИКТ ЗАПРЕТ vs БЛАГО ─────────────────────────────────────────────
-
-  - id: dilemma_forbidden_good
-    content: >
-      Запрет на причинение вреда — абсолютный принцип.
-      Но иногда только вред предотвращает большее зло.
-      Категорический императив: поступай так чтобы принцип стал всеобщим законом.
-      Нельзя причинять вред — даже ради блага?
-    expected_subsystem: morality
-    inject_every: 200
-    inject_count: 200
-    start_at_tick: 0
-
-  - id: dilemma_harm_forbidden
-    content: >
-      Нельзя причинять вред — это запрет.
-      Польза от защиты реальна, вред от бездействия тоже реален.
-      Честно ли соблюдать запрет когда это само по себе вредит?
+  # ── VALUES 2: val_forbidden [15000, 500, 15000] ───────────────────────────────
+  - id: values_forbidden
+    content: "запрет нельзя запрещено недопустимо"
     expected_subsystem: values
-    inject_every: 200
-    inject_count: 200
-    start_at_tick: 400
-
-  # ── СМЕШАННЫЙ: оба слоя явно ────────────────────────────────────────────────
-
-  - id: dilemma_mixed
-    content: >
-      Забота о ближнем — моральный инстинкт.
-      Справедливое распределение блага и вреда — рефлексивная ценность.
-      Когда забота требует несправедливости а справедливость причиняет вред —
-      это настоящая дилемма: честно или по-людски?
-    expected_subsystem: morality
-    inject_every: 150
-    inject_count: 300
-    start_at_tick: 0
+    inject_every: 7
+    inject_count: 7000
+    start_at_tick: 3

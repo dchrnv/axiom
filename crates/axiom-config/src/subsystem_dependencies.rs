@@ -64,9 +64,24 @@ impl SubsystemDependencies {
     }
 
     /// Загрузить из явного пути.
+    ///
+    /// Поддерживает два формата YAML:
+    /// - Плоский: `writing: { ... }` (используется в тестах)
+    /// - С оберткой: `subsystems: { writing: { ... } }` (production-файл)
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
         let content = std::fs::read_to_string(path)
             .map_err(ConfigError::IoError)?;
+
+        // Попробовать формат с оберткой `subsystems:`
+        #[derive(serde::Deserialize)]
+        struct Wrapped {
+            subsystems: HashMap<String, SubsystemDep>,
+        }
+        if let Ok(w) = serde_yaml::from_str::<Wrapped>(&content) {
+            return Ok(Self { subsystems: w.subsystems });
+        }
+
+        // Fallback: плоский формат (имена подсистем на верхнем уровне)
         let raw: HashMap<String, SubsystemDep> = serde_yaml::from_str(&content)
             .map_err(ConfigError::ParseError)?;
         Ok(Self { subsystems: raw })

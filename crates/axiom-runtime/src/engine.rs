@@ -774,7 +774,10 @@ impl AxiomEngine {
                     let _ = self.ashti.inject_token(maya_id, maya_tok);
                 }
             }
-
+            // Только текстовые инъекции (SUTRA=100) записываются в subsystem-сигнал.
+            if p.target_domain_id == 100 {
+                self.context_recognizer.record_injection_signal(input_position, event_id);
+            }
 
             let tension_created = self.ashti.experience().tension_count() > tension_before;
             let reflex_hit = routing.reflex.is_some();

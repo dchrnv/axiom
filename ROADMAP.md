@@ -20,7 +20,9 @@ axiom-corpus                                        ↑
 **1608 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
 token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
-DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.
+DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  
+OBS §9 верификация: 8/8 дилемм, DilemmaDetector рабочий.  
+Фикс: SubsystemDependencies YAML wrapper, TextPerceptor subsystem-позиция, engine.rs record_injection_signal.
 
 ---
 

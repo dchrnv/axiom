@@ -287,6 +287,7 @@ impl ContextRecognizer {
         }
         self.fatigue_store.update(sub);
         self.activity_dynamics = self.activity_trace.compute_dynamics();
+        self.dilemma_detector.record_injection(sub, event_id);
     }
 
     /// Вычислить энергии подсистем прямо сейчас из переданных MAYA-токенов.
