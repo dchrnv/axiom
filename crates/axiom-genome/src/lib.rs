@@ -19,6 +19,6 @@ pub mod types;
 
 pub use genome::{Genome, GenomeError};
 pub use index::GenomeIndex;
-pub use rules::{AccessRule, EmergentSubsystemRules, GenomeConfig, GenomeInvariants, ProtocolRule};
+pub use rules::{AccessRule, CrossModalConfig, EmergentSubsystemRules, GenomeConfig, GenomeInvariants, ProtocolRule};
 pub use subscriber::GenomeSubscriber;
 pub use types::{DataType, ModuleId, Permission, ResourceId, MAX_MODULES, MAX_RESOURCES};

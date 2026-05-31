@@ -88,6 +88,14 @@ emergent_subsystems:
   require_review: true
   max_active_candidates: ~
 
+# CMB-TD-02: Cross-modal binding parameters (Cross_Modal_Binding_V1_0.md §5)
+cross_modal:
+  allow_binding: true
+  min_co_activation: 50
+  require_chrnv_approval: true
+  max_bonds_total: ~
+  allow_revocation: true
+
 # G3: NeuralAdvisor — per-advisor enable/disable
 neural_advisor:
   depth:

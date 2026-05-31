@@ -1,13 +1,13 @@
 # AXIOM — ContextRecognizer Roadmap V6-V9
 
-**Версия документа:** 2.0  
-**Обновлено:** 2026-05-26 (актуализация по итогам Phases E–H)  
+**Версия документа:** 2.1  
+**Обновлено:** 2026-05-31 (актуализация по итогам V7-D1/D2/D4, DilemmaDetector V2.0, Cross-Modal Binding V1.0)  
 **Опирается на:** `ContextRecognizer_V6_0.md`, `NeuralAdvisor_V3.md`, `INVARIANTS.md`, `Дилеммы.md`, `Axiom_Semantic_Core.md`
 
 | Версия | Статус | Детали |
 |--------|--------|--------|
 | **V6** | ✅ Завершено | CR V6.0 в продакшне: A (ActivityTrace/Dynamics), B (SubsystemFatigue), C (MetaDetector), D (CompositeSubsystem), SyntacticBridge |
-| **V7** | 🔄 В процессе | H1/H2 done (SubsystemDiscovery: SubsystemCandidate, lifecycle); Versioning/Splitting/Merging/DependencyGraph/TransitionGraph — deferred |
+| **V7** | 🔄 В процессе | Частично реализовано — см. §2 для деталей. Deferred: CompositeSubsystem full detection, Workstation-нотификации, Export/Import |
 | **V8** | ⏳ Deferred | После 6+ месяцев реальной работы. Требует накопленных конфликтов. |
 | **V9** | ⏳ Deferred | После истории ActivityTrace. NeuralAdvisor V3 (G1/G2/G3) — промежуточный шаг. |
 
@@ -15,7 +15,7 @@
 
 ## 0. Контекст
 
-**Состояние на 2026-05-26:** V6 завершён (ContextRecognizer V6.0 в продакшне), V7 начат (SubsystemDiscovery H1/H2 done), V8/V9 deferred.
+**Состояние на 2026-05-31:** V6 завершён. V7 продвинулся значительно дальше H1/H2: TransitionMatrix, FatigueStore→axiom-experience, SubsystemVersionStore (V7-D1), SplitMergeDetector (V7-D2), V7-D4 (approve_with_rules), DilemmaDetector V2.0 + DilemmaStore V1.1, CrossModalDetector V1.0. Deferred: CompositeSubsystem full detection через TransitionMatrix, Workstation-нотификации split/merge/version, Export/Import. V8/V9 deferred.
 
 ~~V5 реализован: SutraDepth, ScanningPlan, координация с AxialEvaluator. NeuralAdvisor V1 — отдельный шестой модуль, Advisory-Only. Координатор для cross-module чтения в работе.~~ → **V6 завершён:** SyntacticBridge (`bridge_to_maya` в orchestrator.rs), ActivityTrace/Dynamics (3-ring buffer), SubsystemFatigue/FatigueStore, MetaDetector (5 мета-режимов из yaml), CompositeSubsystem (5 defs). **NeuralAdvisor V3:** DivergenceLog (G1), PatternLearningResolver (G2), NeuralAdvisorConfig genome (G3).
 
@@ -224,7 +224,18 @@ pub struct InterpretationProfile {
 
 V4 ввёл **emergent primitives** — система предлагает отдельные новые примитивы. V7 идёт дальше: система предлагает **целые новые подсистемы** на основе паттернов emergent primitives.
 
-**Что реализовано (H1/H2, 2026-05-26):** SubsystemCandidate, SubsystemCandidateStore, SubsystemLifecycleState (7 состояний), cluster_emergent_primitives(), ApproveSubsystemCandidate UCL 5301. Остальные разделы (2.4–2.10) — deferred.
+**Что реализовано:**
+- **H1/H2** (SubsystemDiscovery): `SubsystemCandidate`, `SubsystemCandidateStore`, `SubsystemLifecycleState` (7 состояний), `cluster_emergent_primitives()`, ApproveSubsystemCandidate UCL 5301
+- **V7-D1** `SubsystemVersionStore` (`version_store.rs`) — отслеживание версий yaml при hot-reload, migration trace
+- **V7-D2** `SplitMergeDetector` (`split_merge.rs`) — детекция split-сигналов (high load + high entropy) и merge-сигналов (bidirectional coupling); не применяется авто — только предлагается chrnv
+- **V7-D4** `approve_with_rules` в `SubsystemCandidateStore` — GUARDIAN проверяет `EmergentSubsystemRules` из Genome
+- **TransitionMatrix** (`transitions.rs`) — 16×16 decaying f32 matrix; `record()`, `decay()`, `probability_of()`, `most_likely_next()`; используется SplitMergeDetector
+- **FatigueStore → axiom-experience** ✅ — перенесён в `axiom-experience/src/fatigue_store.rs`
+- **DilemmaDetector V2.0** (`dilemma/detector.rs`) — Сигнал A (конфликт подсистем через `SubsystemDependencies::natural_tensions`), cooldown, `InjectFrameAnchorPayload`
+- **DilemmaStore V1.1** (`dilemma_store.rs`) — Types III/IV/V, кристаллизация в EXPERIENCE
+- **CrossModalDetector V1.0** (`cross_modal/`) — ко-активация Frame из разных модальностей, pending_dream queue; `ModalityStore` в axiom-experience *(отдельный трек, вне V7-spec)*
+
+**Deferred** (разделы 2.4–2.10, кроме перечисленного выше): CompositeSubsystem full detection через TransitionMatrix, Workstation-нотификации (split/merge/version candidates → chrnv), Subsystem Export/Import, Genome `cross_modal:` раздел (CMB-TD-02).
 
 ```
 V4: эмерджентный примитив = новая точка в SUTRA
@@ -273,7 +284,7 @@ proposed → candidate → in_review → active → mature → deprecated → ar
 | deprecated | подсистема устарела или конфликтует с новой |
 | archived | yaml сохранён, но не загружается; примитивы в SUTRA остаются |
 
-### 2.4 SubsystemVersioning ⏳ DEFERRED
+### 2.4 SubsystemVersioning 🔄 ЧАСТИЧНО РЕАЛИЗОВАНО
 
 Подсистема может **эволюционировать**. В неё добавляются примитивы, корректируются позиции, обновляется shell. Это требует **версионирования yaml**:
 
@@ -296,7 +307,9 @@ config/anchors/subsystems/
 3. Frame'ы которые были профилированы по старой версии получают migration trace
 4. В Workstation видно "Mathematics: v1 → v2 migration"
 
-### 2.5 Subsystem Splitting ⏳ DEFERRED
+**Реализовано (V7-D1):** `SubsystemVersionStore` отслеживает версии при hot-reload, помечает изменившиеся подсистемы как stale, DREAM/chrnv обрабатывает через `drain_stale()`. Пункты 1–2 — ответственность оператора yaml; пункт 4 (Workstation) — ⏳ deferred (нотификации).
+
+### 2.5 Subsystem Splitting 🔄 ДЕТЕКЦИЯ РЕАЛИЗОВАНА
 
 Большая подсистема может **разделиться** на две если её внутренняя структура расщепляется на два кластера.
 
@@ -311,13 +324,17 @@ config/anchors/subsystems/
 
 Расщепление **предлагается chrnv** через `NotifySubsystemSplit`, не происходит автоматически.
 
-### 2.6 Subsystem Merging ⏳ DEFERRED
+**Реализовано (V7-D2):** `SplitMergeDetector::detect()` вычисляет `SplitCandidate` (high load + high outgoing entropy из TransitionMatrix). Нотификация chrnv через Workstation — ⏳ deferred.
+
+### 2.6 Subsystem Merging 🔄 ДЕТЕКЦИЯ РЕАЛИЗОВАНА
 
 Обратная операция: две похожие подсистемы могут **объединиться** если оказывается что они описывают одно и то же.
 
 Пример: chrnv создал отдельно Music и Rhythm. Через год работы DREAM Phase обнаруживает что Rhythm на 80% перекрывается с Music (через Time). NeuralAdvisor предлагает объединение.
 
-### 2.7 Subsystem Dependency Graph ⏳ DEFERRED
+**Реализовано (V7-D2):** `SplitMergeDetector::detect()` вычисляет `MergeCandidate` (P(A→B) ≥ 0.25 AND P(B→A) ≥ 0.25 из TransitionMatrix). Нотификация chrnv через Workstation — ⏳ deferred.
+
+### 2.7 Subsystem Dependency Graph 🔄 ЧАСТИЧНО РЕАЛИЗОВАНО
 
 *(Решение зафиксировано 2026-05-27, обновлено — Вариант C+)*
 
@@ -451,9 +468,9 @@ GUARDIAN валидирует каждое предложение по этим 
 
 *(зафиксировано по итогам проектирования V6)*
 
-- **TransitionMatrix** *(решение зафиксировано 2026-05-27)* — **не граф-структура, а живая decaying-матрица** `[[f32; 16]; 16]` в ContextRecognizer рядом с FatigueStore. Обновляется в той же точке что и ActivityTrace (O(1) per push: `counts[from][to] += 1.0`), decay на каждом тике (`counts[i][j] *= DECAY`). Размер: ≤ 1 KB (SubsystemId-пространство замкнуто и ≤ 16 вариантов). Назначение: (1) заменить V6-Cascading "sequence diversity" на directed propagation chains — настоящий каскад; (2) bidirectional coupling (A→B И B→A оба сильные) = принципиальный критерий CompositeSubsystem вместо нынешнего "оба в mid-окне"; (3) фиксированный тензор `[[f32; 16]; 16]` готов к подаче в будущие NeuralAdvisor LM-модели без предобработки.
-- **FatigueStore → axiom-experience** — в V6 `SubsystemFatigue` живёт в CR. В V7 переносится в `axiom-experience` как `FatigueStore` (аналогично `SutraDepthStore`), чтобы жизненный цикл fatigue не зависел от CR.
-- **CompositeSubsystem full detection** — stable co-activation topology через TransitionGraph. V6 даёт только сигнал `CompositeActivationSuspected`; V7 строит полный профиль и предлагает chrnv.
+- **TransitionMatrix** ✅ РЕАЛИЗОВАНО — `[[f32; 16]; 16]` в `transitions.rs`. `record()`, `decay()`, `probability_of()`, `most_likely_next()`, `raw()`. Используется в `SplitMergeDetector`. Назначение: (1) заменить V6-Cascading "sequence diversity" на directed propagation chains; (2) bidirectional coupling — критерий для MergeCandidate; (3) тензор готов к V9 моделям без предобработки.
+- **FatigueStore → axiom-experience** ✅ РЕАЛИЗОВАНО — `axiom-experience/src/fatigue_store.rs`; `SplitMergeDetector` и CR импортируют из `axiom_experience::FatigueStore`.
+- **CompositeSubsystem full detection** ⏳ DEFERRED — stable co-activation topology через TransitionMatrix. V6 даёт только сигнал `CompositeActivationSuspected`; V7 должен строить полный профиль и предлагать chrnv.
 
 ---
 
@@ -962,6 +979,7 @@ V6 → V7 → V8 идут последовательно. V9 может разр
 - **V6** ✅ (завершено ~2026-05): SyntacticBridge, ActivityTrace/Dynamics (3-ring), SubsystemFatigue/FatigueStore, MetaDetector (5 мета-режимов), CompositeSubsystem (Calculus/Rhythm/Geometry/Narrative/Ethics)
 - **NeuralAdvisor V3** ✅ (2026-05-26): DivergenceLog G1, PatternLearningResolver G2, NeuralAdvisorConfig G3
 - **V7 partial** 🔄 (2026-05-26): SubsystemDiscovery H1/H2 — cluster_emergent_primitives(), SubsystemCandidateStore, SubsystemLifecycleState (7 состояний)
-- **V7 remaining** ⏳: Versioning, Splitting, Merging, DependencyGraph, Export/Import, TransitionGraph, FatigueStore→axiom-experience
+- **V7 additional** ✅ (2026-05-31): TransitionMatrix [[f32;16];16] + decay; FatigueStore→axiom-experience; SubsystemVersionStore (V7-D1); SplitMergeDetector V7-D2 (SplitCandidate + MergeCandidate); approve_with_rules V7-D4; DilemmaDetector V2.0 + DilemmaStore V1.1; CrossModalDetector V1.0 + ModalityStore (extra track)
+- **V7 remaining** ⏳: CompositeSubsystem full detection via TransitionMatrix; Workstation-нотификации (split/merge/version); Export/Import подсистем
 - **V8** ⏳: Axiogenesis through Dilemmas, wisdom store, transcendence logic, moral reasoning foundation
 - **V9** ⏳: Active NeuralAdvisor — обученные модели, calibration, distillation, gradual promotion to Override

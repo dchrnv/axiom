@@ -61,6 +61,46 @@ pub struct ProtocolRule {
 fn default_min_primitives() -> usize { 2 }
 fn default_min_evidence() -> f32 { 0.3 }
 fn default_require_review() -> bool { true }
+fn default_min_co_activation() -> u32 { 50 }
+fn default_max_bonds_total() -> Option<u32> { None }
+fn default_allow_binding() -> bool { true }
+fn default_allow_revocation() -> bool { true }
+fn default_require_approval() -> bool { true }
+
+/// Конфигурация cross-modal binding (CMB-TD-02).
+///
+/// Параметры из спеки Cross_Modal_Binding_V1_0.md §5.
+/// Дефолты совпадают с константами в `cross_modal/candidate.rs`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CrossModalConfig {
+    /// Разрешить создание cross-modal bonds.
+    #[serde(default = "default_allow_binding")]
+    pub allow_binding: bool,
+    /// Минимум ко-активаций пары Frame перед предложением bond.
+    #[serde(default = "default_min_co_activation")]
+    pub min_co_activation: u32,
+    /// chrnv должен явно одобрить bond (всегда true в V1).
+    #[serde(default = "default_require_approval")]
+    pub require_chrnv_approval: bool,
+    /// Максимум одновременных bonds (None = без ограничений).
+    #[serde(default = "default_max_bonds_total")]
+    pub max_bonds_total: Option<u32>,
+    /// Разрешить отзыв bonds по stress-сигналу (stress-driven revocation — CMB-TD-01).
+    #[serde(default = "default_allow_revocation")]
+    pub allow_revocation: bool,
+}
+
+impl Default for CrossModalConfig {
+    fn default() -> Self {
+        Self {
+            allow_binding: default_allow_binding(),
+            min_co_activation: default_min_co_activation(),
+            require_chrnv_approval: default_require_approval(),
+            max_bonds_total: default_max_bonds_total(),
+            allow_revocation: default_allow_revocation(),
+        }
+    }
+}
 
 /// Правила для emergent subsystem lifecycle (V7-D4).
 ///

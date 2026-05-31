@@ -264,6 +264,15 @@ fn test_from_yaml_matches_default() {
         yaml_genome.config.default_heartbeat_interval,
         default_genome.config.default_heartbeat_interval
     );
+
+    // CrossModalConfig совпадает (CMB-TD-02)
+    let yaml_cm = yaml_genome.cross_modal.as_ref().expect("cross_modal must be present in genome.yaml");
+    let default_cm = default_genome.cross_modal.as_ref().expect("cross_modal must be present in default_ashti_core()");
+    assert_eq!(yaml_cm.allow_binding, default_cm.allow_binding);
+    assert_eq!(yaml_cm.min_co_activation, default_cm.min_co_activation);
+    assert_eq!(yaml_cm.require_chrnv_approval, default_cm.require_chrnv_approval);
+    assert_eq!(yaml_cm.max_bonds_total, default_cm.max_bonds_total);
+    assert_eq!(yaml_cm.allow_revocation, default_cm.allow_revocation);
 }
 
 #[test]

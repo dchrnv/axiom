@@ -11,7 +11,7 @@
 ```
 axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(64)))
 axiom-ucl        — UclCommand, OpCode, UclResult
-axiom-genome     — Genome (конституция, frozen в Arc после boot); EmergentSubsystemRules (V7-D4)
+axiom-genome     — Genome (конституция, frozen в Arc после boot); EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    ModalityStore (sutra_id→Modality; Text/Vision/Internal; Cross_Modal_Binding_V1_0);
                    Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);

@@ -1,13 +1,13 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-30
+**Обновлено:** 2026-05-31
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1594 тестов, 0 failures**
+**1623 тестов, 0 failures**
 
 Primitive_Nature_and_Connections_V1_0 ✅ (2026-05-30): spatial/causal L0 переведены из якорей-призраков
 в Connection link_type определения (config/schema/link_types/); 0x09 Spatial добавлен в
@@ -266,7 +266,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 34 | Token, Connection, Event |
-| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21; EmergentSubsystemRules (V7-D4) |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02) |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
