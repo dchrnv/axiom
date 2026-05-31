@@ -1,7 +1,7 @@
 # AXIOM — ContextRecognizer Roadmap V6-V9
 
-**Версия документа:** 2.1  
-**Обновлено:** 2026-05-31 (актуализация по итогам V7-D1/D2/D4, DilemmaDetector V2.0, Cross-Modal Binding V1.0)  
+**Версия документа:** 2.2  
+**Обновлено:** 2026-05-31 (актуализация V7; добавлен §9 — активный план P1-P4)  
 **Опирается на:** `ContextRecognizer_V6_0.md`, `NeuralAdvisor_V3.md`, `INVARIANTS.md`, `Дилеммы.md`, `Axiom_Semantic_Core.md`
 
 | Версия | Статус | Детали |
@@ -970,6 +970,108 @@ V6 → V7 → V8 идут последовательно. V9 может разр
 - **Творчество в человеческом смысле**. Генеративные подсистемы (V7) и аксиогенез (V8) — это **обнаружение паттернов**, не творение.
 - **Полная автономность от chrnv**. Все значимые решения (новые подсистемы, новые ценности) требуют его одобрения через Workstation.
 - **Замена детерминированной логики**. Даже в V9 rule-based fallback всегда доступен.
+
+---
+
+## 9. Активный план — ближайшие шаги
+
+Задачи, разблокированные на текущем состоянии V7. Отсортированы по приоритету (P1 → P4).
+Блокированное (Vision pipeline, production data, V8+) — в DEFERRED.md.
+
+---
+
+### P1 — CR-TD-03: Ethics composite — добавить Values / Dilemmas / Morality
+
+**Где:** `axiom-experience/src/types.rs` → `SubsystemId`; `context_recognizer/composite.rs` → `COMPOSITE_DEFS`
+
+Сейчас `Ethics = [Logic]` — неполный. Правильный состав: `[Values, Morality, Dilemmas]`.  
+Нужно: добавить три `SubsystemId` варианта в `axiom-experience`, обновить `COMPOSITE_DEFS` и yaml-якоря.
+
+**Разблокирует:**
+- Ethics-ко-активации в `detect_composite_suspects` — реальный сигнал вместо заглушки
+- Более точные DilemmaStore записи (Values ↔ Morality конфликты получат правильную подсистему)
+- PRIM-TD-01 (MoralSignalDetector) становится осмысленным
+
+---
+
+### P2a — DilemmaDetector V2.1: Сигнал B (stress связей)
+
+**Где:** `context_recognizer/dilemma/detector.rs`
+
+V2.0 реализует Сигнал A (конфликт подсистем через `natural_tensions` + coactivation window).  
+Сигнал B: устойчивый высокий `current_stress` на существующих связях MAYA → дилемма не из смены подсистем, а из напряжения внутри активного состояния.
+
+**Разблокирует:**
+- PRIM-TD-01 (MoralSignalDetector) — зависит именно от Signal B
+- Более полный охват DilemmaStore (сейчас только межподсистемные конфликты)
+
+---
+
+### P2b — AE-TD-08: Полное подключение якорей при инъекции
+
+**Где:** `axiom-agent/src/perceptors/text.rs`, `over_domain/axial_evaluator/mod.rs`
+
+TextPerceptor вычисляет позицию из якорей, но не создаёт рёбра-связи к ним (`ConnectToken`).  
+Нужно: при `perceive(text)` эмитировать `ConnectToken` от нового токена к каждому matched anchor-токену.  
+Тогда `participants` в AE будут непустыми → заработают реальные entropy/density/will метрики.
+
+**Разблокирует:**
+- Ненулевые `entropy`/`density`/`will` в `AxialEvaluatorMetrics`
+- Более точные `ConflictDiagnosis` advisories от NeuralAdvisor
+- Лучший сигнал для DilemmaDetector (реальные stress-значения на связях)
+
+---
+
+### P3a — PRIM-TD-01: MoralSignalDetector
+
+**Где:** `context_recognizer/` (новый файл)  
+**Зависит от:** P1 (Values/Morality SubsystemId) + P2a (Signal B)
+
+`MoralSignalDetector::detect(matches: &[AnchorMatch]) → Option<MoralSignal>` — сумма весов активных moral-якорей → `moral_intensity: f32`, `dominant_foundation: AnchorId`, `secondary: Option<AnchorId>`.  
+Подаёт сигнал в DilemmaDetector при конфликте оснований.
+
+**Разблокирует:**
+- Morality-driven дилеммы в DilemmaStore (Type III ValueConflict с moral-контекстом)
+- Foundation для V8 Axiogenesis (моральные основания нужны для аксиогенетических кандидатов)
+
+---
+
+### P3b — CR-TD-04: ActivityTrace сериализация
+
+**Где:** `context_recognizer/activity_trace.rs`
+
+`#[derive(serde::Serialize, serde::Deserialize)]` на `ActivityTrace` / `RingBuf`.  
+Интеграция с `axiom-persist` — сохранение/восстановление истории активности через рестарт.
+
+**Разблокирует:**
+- V9 NeuralAdvisor: `ActivityTrace` как observation sequence для тренировочных данных HMM-подобных моделей
+- OBS: непрерывная история активности через прогоны без потерь
+
+---
+
+### P4a — Shell-TD-01: ShellProximity — stability_threshold как baseline
+
+**Где:** `over_domain/weavers/frame.rs` → `evaluate_crystallization_rules`
+
+При непустом `crystallization_rules` stability_threshold не применяется → все кандидаты `Defer` → Frames=0.  
+Нужно: `stability_threshold` работает как minimum-baseline независимо от наличия других правил в списке.
+
+**Разблокирует:**
+- Безопасное использование `ShellProximity` без ломающего side-effect
+- Дальнейшую работу с crystallization rules
+
+---
+
+### P4b — Anchor-id: Domain / Layer якоря с id
+
+**Где:** `config/anchors/domains/D*.yaml`, `config/anchors/layers/L*.yaml`
+
+Поле `id:` пустое → `AnchorMatchTable` не видит domain/layer якоря при поиске.  
+Нужно: добавить `id:` с префиксами (`exec_*`, `L1_*`); расширить `subsystem_from_anchor_id()`.
+
+**Разблокирует:**
+- Расширение coverage AnchorMatchTable на domain/layer контексты
+- Более точный `detect_subsystem()` в TextPerceptor для domain-специфичных текстов
 
 ---
 
