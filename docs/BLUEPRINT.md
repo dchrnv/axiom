@@ -440,11 +440,16 @@ event_id: u64
     Сигнал B: detect_signal_b(connections) → mean_stress_ratio по активным связям MAYA;
     STRESS_RATIO_THRESHOLD=0.5; MIN_STRESSED_CONNECTIONS=2; MEAN_STRESS_THRESHOLD=0.35;
     cooldown 100 тиков (отдельный от A); push_active(OntologicalConflict); prefix sutra_id 0x5000_0000
+    Сигнал C (Corpus Callosum): detect_signal_c(axial_store, frame_ids) → AxialConflict per Frame;
+    CORPUS_CALLOSUM_THRESHOLD=170 (≥2 axes diff); cooldown 150 тиков per Frame sutra_id;
+    позиция = mid(analytic_octant_centroid, synthetic_octant_centroid); prefix 0x6000_0000;
+    DilemmaDetector V2.1 закрыт полностью (A+B+C)
   MoralSignalDetector (moral_signal.rs): detect(&[AnchorMatch]) → Option<MoralSignal>;
     MoralSignal { intensity: f32 (saturating 1.0), dominant: MoralFoundation, secondary, conflict_detected };
     7 moral_* anchors (care/harm/fair/betrayal/loyalty/purity/desecration); порог 0.3;
     is_antagonistic_pair: care/harm, fair/betrayal, loyalty/desecration, purity/harm
-  ActivityTrace serde ✅: #[derive(Serialize, Deserialize)] на ActivityTrace + RingBuf; SubsystemId serde feature
+  ActivityTrace serde ✅ + persist ✅: serde on ActivityTrace+RingBuf; StoredEngineState.activity_trace: Option<Vec<u8>>;
+    writer.rs: bincode encode; loader.rs: decode+restore_activity_trace(); backward compat (None→cold start)
   CrossModalDetector V1.0: cross_modal_detector + modality_store (поля CR);
     ModalityStore: frame_id→Modality (Text/Vision/Internal); дефолт Text для всех существующих Frame;
     позиционная эвристика: position.x<0 → Vision (L0 якоря в отриц. X), ≥0 → Text;
@@ -911,21 +916,21 @@ FNV-1a fallback активен при отсутствии совпадений.
 
 | ID | Суть |
 |----|------|
-| **CR-TD-01** | FatigueStore → axiom-experience. V7. |
+| **CR-TD-01** ✅ | push_to_frontier(domain_id, idx) в AshtiCore; engine.rs E1-fix вызывает после inject_token. |
 | **CR-TD-02** | TransitionGraph для directed Cascading (vs случайного чередования). V7. |
-| **CR-TD-03** | Ethics composite неполный: только Logic. Нет Values/Dilemmas/Morality. V7. |
-| **CR-TD-04** | ActivityTrace не сериализуется. Нужно для V9 NeuralAdvisor. V7. |
+| **CR-TD-03** ✅ | Ethics composite = [Values, Morality, Dilemmas]. |
+| **CR-TD-04** ✅ | ActivityTrace serde + persist (StoredEngineState.activity_trace bincode). |
 | **FW-TD-01** | RequestFrameDetails не реализован. При Workstation V2.0. |
 | **FW-TD-02** | Per-pair co-activation. Ждёт CausalWeaver. Структуру не выбирать заранее. |
 
 | **COMP-01** | Vital Signs окно (Companion, ambient display). |
 | **AGENT-TD-01** | TextPerceptor: lookup anchor-matching (Path A) → embeddings. Path A реализован (2-path detect_subsystem, 100% accuracy). Следующий шаг: заменить word/char lookup на векторные embeddings. |
-| **OBS-TD-02** | avg_shell_similarity всегда 0.000: кандидаты FrameWeaver кристаллизуются за ~60 тиков, до snapshot_every=500 их уже нет. Нужно либо capture per-crystallization event, либо накапливать rolling avg. |
+| **OBS-TD-02** ✅ | shell_similarity_ema EMA (α=0.3) в ObsRunner — обновляется при non-zero current. |
 | **OBS-TD-03** | delta-energy per-text нерабочий: позиции текстовых токенов (центроид якорей) и subsystem refs не совпадают, sq_dist в миллионах → energy ≈ 0. `compute_raw_energies` + `snapshot_subsystem_energies` оставлены — пригодятся при embeddings. |
 | **Shell-TD-01** ✅ | stability_threshold теперь minimum-baseline: если ни одно правило не сработало но threshold достигнут → CrystallizeFull. ShellProximity можно использовать без явного StabilityReached. |
 | **Shell-TD-02** | resonance_search shell bonus требует изменений axiom-arbiter. |
 | **EMERGENT-TD-01** | Пороги DepthThresholdEmergentDetector откалиброваны по OBS-02 однородного корпуса (depth=1000, reactivations=5). При неоднородном корпусе нужна повторная калибровка: часть Frame должна не проходить порог. |
-| **EMERGENT-TD-02** | reactivation_count считает DREAM-циклы с evidence>0 (~10-15 за 30k тиков). Для более гранулярного сигнала: считать per-injection реактивации (инкрементировать при каждом on_tick где Frame активен, не только в DREAM). |
+| **EMERGENT-TD-02** ✅ | record_reactivations(count) — гранулярный счётчик. apply_evidence больше не управляет reactivation_count; learning.rs передаёт count из dream_activation_acc. |
 | **EMERGENT-TD-03** | SubsystemCandidateStore (Phase H) — Workstation V2 не показывает кандидатов. Нужен REST endpoint GET /api/subsystem-candidates + UI таб. |
 | **AE-TD-06** | NARRATIVE_WINDOW_SIZE=8 захардкожено, не калибровалось. Слишком малое → ложные сдвиги; слишком большое → медленная реакция. |
 | **Anchor-id** | Domain/Layer якоря (D1-D8, L1-L8) загружаются, но не имеют поля `id:` — AnchorMatchTable их не видит. Добавить id-префиксы по аналогии с subsystem-примитивами. |
