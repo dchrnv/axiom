@@ -75,7 +75,7 @@ pub struct ActivityDynamics {
 ///
 /// `push(subsystem, event_id)` одновременно пишет во все три буфера.
 /// `compute_dynamics()` возвращает метрики по текущему состоянию.
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ActivityTrace {
     short: RingBuf,
     mid: RingBuf,
@@ -213,7 +213,7 @@ pub fn classify(dynamics: &ActivityDynamics) -> Vec<ActivitySignature> {
 
 // ── Кольцевой буфер ─────────────────────────────────────────────────────────
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct RingBuf {
     data: VecDeque<(SubsystemId, u64)>,
     cap: usize,
@@ -715,5 +715,21 @@ mod tests {
         };
         let sigs = classify(&d);
         assert!(sigs.contains(&ActivitySignature::Cascading), "backward compat: cascade_score fallback failed, got {:?}", sigs);
+    }
+
+    #[test]
+    fn test_activity_trace_serde_roundtrip() {
+        let mut trace = ActivityTrace::new();
+        trace.push(SubsystemId::Mathematics, 1);
+        trace.push(SubsystemId::Writing, 2);
+        trace.push(SubsystemId::Logic, 3);
+
+        let json = serde_yaml::to_string(&trace).expect("serialize");
+        let restored: ActivityTrace = serde_yaml::from_str(&json).expect("deserialize");
+
+        assert_eq!(trace.fill_count(), restored.fill_count());
+        let d1 = trace.compute_dynamics();
+        let d2 = restored.compute_dynamics();
+        assert!((d1.dominant_persistence - d2.dominant_persistence).abs() < 1e-6);
     }
 }
