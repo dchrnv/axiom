@@ -40,11 +40,6 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 
 ---
 
-### P5 — CR-TD-04 persist: ActivityTrace → AutoSaver
-**Файл:** `engine.rs` (init/shutdown), `axiom-persist`  
-**Что:** serde уже есть ✅. Подключить к AutoSaver: сохранять ActivityTrace в bincode snapshot при DREAM-цикле; загружать при старте AxiomEngine.  
-**Почему пятый:** V9 подготовка — observation sequence переживает рестарт. Инфраструктура готова, нужна только wire.
-
 ---
 
 ### P6 — word_signals() domain/layer expansion

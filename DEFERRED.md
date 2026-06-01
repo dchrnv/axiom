@@ -157,16 +157,6 @@ Abstractions_V1_0.md §7.2 (NOTE): A0 `abstraction_raw` — L0/L1 граница
 
 ---
 
-### CR-TD-04 — ActivityTrace: интеграция с axiom-persist
-
-**Где:** `crates/axiom-runtime/src/over_domain/context_recognizer/activity_trace.rs`
-
-Serde derives добавлены ✅ (ActivityTrace + RingBuf + SubsystemId serde feature). Остаётся подключить к AutoSaver из axiom-persist чтобы история пережила рестарт.
-
-**Что нужно:** сохранять ActivityTrace в AutoSaver snapshot (bincode) при каждом DREAM-цикле или по таймеру; загружать при старте AxiomEngine.
-
-**Когда:** При первой необходимости восстанавливать историю между запусками (V9 подготовка).
-
 ---
 
 ## axiom-agent

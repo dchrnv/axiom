@@ -272,6 +272,16 @@ impl ContextRecognizer {
         self.meta_detector = detector;
     }
 
+    /// Снапшот ActivityTrace для персистентности (CR-TD-04).
+    pub fn activity_trace_snapshot(&self) -> &ActivityTrace {
+        &self.activity_trace
+    }
+
+    /// Восстановить ActivityTrace из сохранённого снапшота (CR-TD-04).
+    pub fn restore_activity_trace(&mut self, trace: ActivityTrace) {
+        self.activity_trace = trace;
+    }
+
     /// Дренировать аккумулятор активаций для DREAM depth update.
     /// Возвращает (sutra_id, octant, count) и очищает аккумулятор.
     pub fn drain_dream_activations(&mut self) -> Vec<(u32, Octant, u32)> {

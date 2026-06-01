@@ -89,6 +89,12 @@ pub fn save(
     // ARB-TD-06: CognitiveProfile octant_weights
     let octant_weights = Some(engine.over_domain_arbiter.cognitive_profile().octant_weights);
 
+    // CR-TD-04: ActivityTrace history
+    let activity_trace = bincode::serde::encode_to_vec(
+        engine.context_recognizer.activity_trace_snapshot(),
+        bincode::config::standard(),
+    ).ok();
+
     let state = StoredEngineState {
         tick_count: snapshot.tick_count,
         com_next_id: snapshot.com_next_id,
@@ -97,6 +103,7 @@ pub fn save(
         tension,
         trust_calibration,
         octant_weights,
+        activity_trace,
     };
 
     // Атомарная запись engine_state.bin:

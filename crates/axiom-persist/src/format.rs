@@ -113,4 +113,8 @@ pub struct StoredEngineState {
     /// ARB-TD-06: веса октантов CognitiveProfile.
     #[serde(default)]
     pub octant_weights: Option<[f32; 8]>,
+    /// CR-TD-04: ActivityTrace history (bincode bytes).
+    /// None в старых файлах → холодный старт истории активности.
+    #[serde(default)]
+    pub activity_trace: Option<Vec<u8>>,
 }

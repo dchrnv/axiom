@@ -88,6 +88,17 @@ pub fn load(dir: &Path) -> Result<LoadResult, PersistError> {
         *engine.over_domain_arbiter.cognitive_profile_mut() = CognitiveProfile::with_weights(weights);
     }
 
+    // 8. CR-TD-04: восстановить ActivityTrace history
+    if let Some(bytes) = state.activity_trace {
+        use axiom_runtime::over_domain::context_recognizer::ActivityTrace;
+        if let Ok((trace, _)) = bincode::serde::decode_from_slice::<ActivityTrace, _>(
+            &bytes,
+            bincode::config::standard(),
+        ) {
+            engine.context_recognizer.restore_activity_trace(trace);
+        }
+    }
+
     Ok(LoadResult {
         engine,
         manifest,
