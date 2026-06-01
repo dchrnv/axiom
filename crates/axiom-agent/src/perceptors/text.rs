@@ -23,13 +23,18 @@
 //   [36..40] temperature       f32 LE
 
 use axiom_config::AnchorSet;
-use axiom_ucl::{OpCode, UclCommand};
+use axiom_core::FLAG_ACTIVE;
+use axiom_shell::link_types;
+use axiom_ucl::{BondTokensPayload, OpCode, UclCommand};
 use std::sync::Arc;
 
 use super::anchor_match::AnchorMatchTable;
 
 /// SUTRA domain_id на уровне 1: level_id * 100 + 0 = 100
 const SUTRA_DOMAIN_ID: u16 = 100;
+
+/// MAYA domain_id на уровне 1: level_id * 100 + 10 = 110
+const MAYA_DOMAIN_ID: u16 = 110;
 
 /// Преобразует строку UTF-8 в `UclCommand(InjectToken)` с осмысленным токеном.
 ///
@@ -134,6 +139,62 @@ impl TextPerceptor {
 
         build_inject_token_command(SUTRA_DOMAIN_ID, x, y, z, mass, temperature, 0.8)
     }
+
+    /// Преобразовать текст в InjectToken + BondTokens к совпавшим якорям (AE-TD-08).
+    ///
+    /// InjectToken получает детерминированный `proposed_sutra_id` (записывается в reserved[0..4]).
+    /// Для каждого matched anchor-ID — BondTokens в MAYA domain (110).
+    /// Возвращает пустой Vec при ошибке (не должна паниковать).
+    ///
+    /// Если якори недоступны — возвращает один InjectToken без bonds (деградирует к perceive()).
+    pub fn perceive_and_bond(&self, text: &str) -> Vec<UclCommand> {
+        let inject = self.perceive_with_stable_id(text);
+        let stable_id = text_stable_id(text);
+
+        let anchor_ids: Vec<String> = match self.match_table.as_ref() {
+            Some(table) => table.matched_anchor_ids(text),
+            None => {
+                if let Some(ref anchors) = self.anchor_set {
+                    anchors.match_subsystem_text(text)
+                        .iter()
+                        .map(|m| m.anchor.id.clone())
+                        .collect()
+                } else {
+                    vec![]
+                }
+            }
+        };
+
+        let mut cmds = vec![inject];
+        for anchor_id in &anchor_ids {
+            let target_id = anchor_sutra_id(anchor_id);
+            if target_id == stable_id {
+                continue; // коллизия
+            }
+            let bond = BondTokensPayload {
+                source_id: stable_id,
+                target_id,
+                domain_id: MAYA_DOMAIN_ID,
+                link_type: link_types::SEMANTIC_ANCHOR_BOND,
+                strength: 1.0,
+                conn_flags: FLAG_ACTIVE,
+                origin_domain: SUTRA_DOMAIN_ID,
+                role_id: 0,
+                reserved: [0; 24],
+            };
+            cmds.push(UclCommand::new(OpCode::BondTokens, 0, 10, 0).with_payload(&bond));
+        }
+        cmds
+    }
+
+    /// Как perceive(), но записывает proposed_sutra_id в reserved[0..4] payload.
+    fn perceive_with_stable_id(&self, text: &str) -> UclCommand {
+        let stable_id = text_stable_id(text);
+        let mut cmd = self.perceive(text);
+        // reserved начинается с байта 40 (см. build_inject_token_command layout)
+        cmd.payload[40..44].copy_from_slice(&stable_id.to_le_bytes());
+        cmd
+    }
 }
 
 impl Default for TextPerceptor {
@@ -174,6 +235,33 @@ fn build_inject_token_command(
     cmd.payload[36..40].copy_from_slice(&temperature.to_le_bytes());
 
     cmd
+}
+
+/// Детерминированный sutra_id для текстового токена (AE-TD-08).
+///
+/// Диапазон: 0x4000_0001..=0x7FFF_FFFF (бит 30 установлен, бит 31 снят).
+/// Не пересекается с:
+///   - anchor sutra_ids (бит 31 установлен: 0x8000_0001+)
+///   - sequential event_ids (малые значения)
+///   - domain_position_hash (28 бит: 0x0001..0x0FFF_FFFF)
+fn text_stable_id(text: &str) -> u32 {
+    let h = fnv1a_hash(text.as_bytes());
+    let id = (h & 0x3FFF_FFFF) as u32;
+    // Устанавливаем бит 30 и гарантируем non-zero
+    (id | 0x4000_0000).max(0x4000_0001)
+}
+
+/// Детерминированный sutra_id примитивного якоря по его строковому ID (зеркало engine.rs).
+///
+/// Диапазон: 0x8000_0001..=0xFFFF_FFFF (бит 31 установлен).
+fn anchor_sutra_id(id: &str) -> u32 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in id.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let low = (h & 0x7FFF_FFFF) as u32;
+    (low | 0x8000_0000).max(0x8000_0001)
 }
 
 /// FNV-1a 64-bit hash (детерминированный, без внешних зависимостей).

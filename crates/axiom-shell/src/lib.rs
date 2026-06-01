@@ -621,6 +621,14 @@ pub mod link_types {
 
     /// Bidirectional grounding bond между символом (Text) и перцептом (Vision).
     pub const CROSS_MODAL_BOND: u16 = 0x0A01;
+
+    // --- Semantic anchor bonds (категория 0x0B) —
+    // Связь от текстового токена к совпавшим примитивным якорям.
+    // Создаётся TextPerceptor при perceive_and_bond() — enriches FrameWeaver participants.
+    // Источник: AE-TD-08
+
+    /// Текстовый токен → примитивный якорь (по результату anchor matching).
+    pub const SEMANTIC_ANCHOR_BOND: u16 = 0x0B01;
 }
 
 // ============================================================================

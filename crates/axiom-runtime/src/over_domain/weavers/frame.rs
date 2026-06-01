@@ -618,6 +618,24 @@ impl FrameWeaver {
                 });
             }
 
+            // AE-TD-08: добавить semantic anchor bonds (0x0B) как доп. участников.
+            // TextPerceptor::perceive_and_bond() создаёт эти связи в MAYA.
+            // Уже существующие sutra_id не дублируются.
+            let existing_ids: std::collections::HashSet<u32> =
+                participants.iter().map(|p| p.sutra_id).collect();
+            for conn in maya_state.connections.iter() {
+                if conn.source_id != source_id { continue; }
+                if (conn.flags & FLAG_ACTIVE) == 0 { continue; }
+                if (conn.link_type >> 8) != 0x0B { continue; }
+                if existing_ids.contains(&conn.target_id) { continue; }
+                participants.push(Participant {
+                    sutra_id: conn.target_id,
+                    origin_domain_id: maya_domain_id,
+                    role_link_type: conn.link_type,
+                    layer: 0, // semantic anchors — слой не задан
+                });
+            }
+
             let all_ids: Vec<u32> = participants.iter().map(|p| p.sutra_id).collect();
             let lineage_hash = Self::fnv1a_lineage_hash(&all_ids);
             let anchor_position = Self::compute_centroid(&participants, &maya_state.tokens);

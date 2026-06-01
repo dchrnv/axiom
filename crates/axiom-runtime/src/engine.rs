@@ -2092,7 +2092,9 @@ fn parse_inject_token_payload(payload: &[u8; 48]) -> InjectTokenPayload {
         ],
         semantic_weight: read_f32_le(payload, 32),
         temperature: read_f32_le(payload, 36),
-        reserved: [0; 6],
+        // reserved[0..4] = proposed_sutra_id (AE-TD-08): использовать как sutra_id если != 0.
+        // Позволяет TextPerceptor эмитировать детерминированный ID для связывания с якорями.
+        reserved: [payload[40], payload[41], payload[42], payload[43], payload[44], payload[45]],
     }
 }
 
@@ -2199,7 +2201,12 @@ fn build_token_from_inject(p: &InjectTokenPayload, domain_id: u16, event_id: u64
     let mass = p.mass.clamp(0.0, 255.0) as u8;
     let temperature = p.temperature.clamp(0.0, 255.0) as u8;
 
-    let mut token = Token::new(event_id as u32, domain_id, pos, event_id);
+    // AE-TD-08: если reserved[0..4] != 0 → использовать как proposed_sutra_id.
+    // Позволяет TextPerceptor назначить детерминированный ID для связывания с якорями.
+    let proposed = u32::from_le_bytes([p.reserved[0], p.reserved[1], p.reserved[2], p.reserved[3]]);
+    let sutra_id = if proposed != 0 { proposed } else { event_id as u32 };
+
+    let mut token = Token::new(sutra_id, domain_id, pos, event_id);
     token.velocity = vel;
     token.mass = mass;
     token.temperature = temperature;

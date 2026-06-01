@@ -66,6 +66,30 @@ impl AnchorMatchTable {
             .map(|(name, _)| name.to_string())
     }
 
+    /// Собрать уникальные anchor ID, совпавшие с текстом (словарный + символьный уровни).
+    ///
+    /// Используется в perceive_and_bond() для создания SEMANTIC_ANCHOR_BOND связей.
+    pub fn matched_anchor_ids(&self, text: &str) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        let text_lower = text.to_lowercase();
+        for word in text_lower.split(|c: char| !c.is_alphabetic()) {
+            if word.len() < 2 { continue; }
+            for &(anchor_id, _weight) in word_signals(word) {
+                if self.id_to_position.contains_key(anchor_id) {
+                    seen.insert(anchor_id.to_string());
+                }
+            }
+        }
+        for c in text.chars() {
+            for &(anchor_id, _weight) in char_signals(c) {
+                if self.id_to_position.contains_key(anchor_id) {
+                    seen.insert(anchor_id.to_string());
+                }
+            }
+        }
+        seen.into_iter().collect()
+    }
+
     /// Вычислить позицию токена через декомпозицию текста.
     ///
     /// Возвращает `None` если ни один символ/слово не дал совпадения с известными примитивами.

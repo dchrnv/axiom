@@ -16,6 +16,7 @@ path = "bin/axiom-cli.rs"
 [dependencies]
 axiom-core = { path = "../axiom-core" }
 axiom-config = { path = "../axiom-config" }
+axiom-shell = { path = "../axiom-shell" }
 axiom-ucl = { path = "../axiom-ucl" }
 axiom-runtime = { path = "../axiom-runtime", features = ["adapters"] }
 axiom-genome = { path = "../axiom-genome" }

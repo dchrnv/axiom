@@ -38,8 +38,9 @@ pub fn handle_engine_command(
     match cmd {
         EngineCommand::SubmitText { text, .. } => {
             debug!("SubmitText: {:?}", text);
-            let ucl = perceptor.perceive(&text);
-            engine.process_and_observe(&ucl);
+            let mut cmds = perceptor.perceive_and_bond(&text);
+            engine.process_and_observe(&cmds.remove(0));
+            for cmd in &cmds { engine.process_command(&cmd); }
             handle.publish(EngineMessage::CommandResult {
                 command_id: cmd_id,
                 result: Ok(CommandResultData::None),

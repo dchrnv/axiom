@@ -19,7 +19,7 @@ axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, Em
 axiom-frontier   — CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection
 axiom-config     — DomainConfig, AnchorSet, ConfigWatcher, HeartbeatConfig, JsonSchema
 axiom-space      — SpatialHashGrid, apply_gravity_batch (SIMD-ready, feature "simd")
-axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_shell
+axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_shell; link_types: 0x08 syntactic, 0x09 composition, 0x0A cross-modal, 0x0B semantic-anchor (AE-TD-08)
 axiom-domain     — Domain, DomainState, AshtiCore (11 доменов), CausalHorizon, FractalChain
 axiom-arbiter    — Arbiter (dual-path), Experience, Reflector, SkillSet, GridHash, COM
 axiom-heartbeat  — HeartbeatGenerator V2.0
@@ -37,7 +37,8 @@ axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>> (хранит живой снапшот)
-axiom-agent      — TextPerceptor (2-path detect_subsystem), L0VisionPerceptor (V7-E2),
+axiom-agent      — TextPerceptor (2-path detect_subsystem + perceive_and_bond → SEMANTIC_ANCHOR_BOND),
+                   text_stable_id(0x4000_0000+), anchor_sutra_id mirror; L0VisionPerceptor (V7-E2),
                    MessageEffector, CliChannel, meta_commands, tick_loop (9 params),
                    AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)

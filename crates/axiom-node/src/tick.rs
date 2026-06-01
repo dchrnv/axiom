@@ -140,8 +140,9 @@ pub async fn run(
                 NodeCmd::AdvisoryConfirm(id) => engine.confirm_pending_advisory(id),
                 NodeCmd::AdvisoryReject(id)  => engine.reject_pending_advisory(id),
                 NodeCmd::SubmitText(text)    => {
-                    let ucl = perceptor.perceive(&text);
-                    engine.process_and_observe(&ucl);
+                    let mut cmds = perceptor.perceive_and_bond(&text);
+                    engine.process_and_observe(&cmds.remove(0));
+                    for cmd in &cmds { engine.process_command(&cmd); }
                     had_commands = true;
                 }
             }

@@ -141,10 +141,10 @@ impl ObsRunner {
             if let Some(indices) = schedule.get(&tick) {
                 for &idx in indices {
                     let entry: &CorpusEntry = &corpus.texts[idx];
-                    let cmd = self.perceptor.perceive(&entry.content);
-
+                    let mut cmds = self.perceptor.perceive_and_bond(&entry.content);
                     let per_text_detected = self.perceptor.detect_subsystem(&entry.content);
-                    let result = self.engine.process_and_observe(&cmd);
+                    let result = self.engine.process_and_observe(&cmds.remove(0));
+                    for cmd in &cmds { self.engine.process_command(&cmd); }
 
                     let detected = self
                         .engine
