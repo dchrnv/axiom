@@ -17,7 +17,7 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1656 тестов, 0 failures.**  
+**1663 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
 token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
 DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  

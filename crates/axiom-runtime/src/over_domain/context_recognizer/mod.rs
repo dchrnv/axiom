@@ -626,6 +626,15 @@ impl OverDomainComponent for ContextRecognizer {
             tick,
         );
         dilemma_cmds.extend(stress_cmds);
+        // Сигнал C: Corpus Callosum — analytic ≠ synthetic octant из AxialStore
+        let cc_cmds = self.dilemma_detector.detect_signal_c(
+            &self.axial_store_snapshot,
+            &frame_ids,
+            &mut self.dilemma_store,
+            exp_domain_id,
+            tick,
+        );
+        dilemma_cmds.extend(cc_cmds);
 
         // Попытка детектировать эмерджентные примитивы (V1: no-op, всегда false)
         for &frame_id in &frame_ids {

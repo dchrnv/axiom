@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// DilemmaDetector V2.1 — Сигнал A: конфликт подсистем; Сигнал B: стресс связей.
+// DilemmaDetector V2.1 — Сигнал A: конфликт подсистем; B: стресс связей; C: Corpus Callosum.
 //
-// Источник: DilemmaDetector_V2_0.md §4; §2 Signal B
+// Источник: DilemmaDetector_V2_0.md §4; §2 Signal B/C
 //
 // Сигнал A:
 //   1. Взять SubsystemConflict из conflicts::detect_conflict.
@@ -20,12 +20,19 @@
 //   4. Cooldown: отдельный от Сигнала A.
 //   5. push_active() в DilemmaStore (OntologicalConflict).
 //   6. Вернуть UCL InjectToken.
+//
+// Сигнал C (Corpus Callosum):
+//   1. Сканировать AxialStore на Frame с conflict (analytic ≠ synthetic octant).
+//   2. Если conflict_strength >= CORPUS_CALLOSUM_THRESHOLD → дилемма уровня 3.
+//   3. Cooldown per Frame sutra_id.
+//   4. push_active() в DilemmaStore (ModelConflict = OntologicalConflict).
+//   5. Вернуть UCL InjectToken.
 
 use std::collections::HashMap;
 
 use axiom_config::SubsystemDependencies;
 use axiom_core::{Connection, FLAG_ACTIVE, STATE_ACTIVE, TOKEN_FLAG_DILEMMA, TOKEN_FLAG_FRAME_ANCHOR};
-use axiom_experience::SubsystemId;
+use axiom_experience::{AxialStore, Octant, SubsystemId};
 use axiom_ucl::{flags as ucl_flags, InjectFrameAnchorPayload, OpCode, UclCommand};
 
 use crate::over_domain::context_recognizer::conflicts::SubsystemConflict;
@@ -55,6 +62,14 @@ pub const MEAN_STRESS_THRESHOLD: f32 = 0.35;
 
 /// Тики CR cooldown для Сигнала B (дольше A — стресс меняется медленнее).
 pub const SIGNAL_B_COOLDOWN_TICKS: u64 = 100;
+
+// ── Сигнал C: Corpus Callosum ─────────────────────────────────────────────────
+
+/// Минимальная сила AxialConflict для срабатывания Signal C (≥ 2 различающихся оси).
+pub const CORPUS_CALLOSUM_THRESHOLD: u8 = 170;
+
+/// Тики CR cooldown для Сигнала C на один Frame sutra_id.
+pub const SIGNAL_C_COOLDOWN_TICKS: u64 = 150;
 
 /// Канонический порядок пары: по лексикографии имён (для дедупликации).
 fn canonical_pair(a: SubsystemId, b: SubsystemId) -> (SubsystemId, SubsystemId) {
@@ -102,10 +117,11 @@ pub struct DilemmaDetector {
     /// Последний тик CR детектирования для каждой канонической пары (Сигнал A).
     last_detected: HashMap<(SubsystemId, SubsystemId), u64>,
     /// Скользящее окно ко-активации: последние N subsystem-активаций из record_injection_signal.
-    /// Каждый элемент: (SubsystemId, tick).
     coactivation_window: std::collections::VecDeque<(SubsystemId, u64)>,
     /// Последний тик детектирования Сигнала B (стресс связей).
     last_stress_detected: u64,
+    /// Последний тик детектирования Сигнала C per Frame sutra_id (Corpus Callosum).
+    last_cc_detected: HashMap<u32, u64>,
 }
 
 impl DilemmaDetector {
@@ -115,6 +131,7 @@ impl DilemmaDetector {
             last_detected: HashMap::new(),
             coactivation_window: std::collections::VecDeque::with_capacity(COACTIVATION_WINDOW + 1),
             last_stress_detected: 0,
+            last_cc_detected: HashMap::new(),
         }
     }
 
@@ -296,6 +313,73 @@ impl DilemmaDetector {
         vec![UclCommand::new(OpCode::InjectToken, 0, 10, ucl_flags::FRAME_ANCHOR)
             .with_payload(&payload)]
     }
+
+    /// Детектировать Сигнал C (Corpus Callosum) из AxialStore.
+    ///
+    /// Для каждого Frame в `frame_ids`: если latest eval имеет conflict_strength >=
+    /// CORPUS_CALLOSUM_THRESHOLD — ModelConflict дилемма (analytic ≠ synthetic octant).
+    /// Cooldown per Frame sutra_id.
+    pub fn detect_signal_c(
+        &mut self,
+        axial_store: &AxialStore,
+        frame_ids: &[u32],
+        store: &mut DilemmaStore,
+        exp_domain_id: u16,
+        tick: u64,
+    ) -> Vec<UclCommand> {
+        if frame_ids.is_empty() || store.is_at_capacity() {
+            return vec![];
+        }
+
+        let mut cmds = Vec::new();
+
+        for &frame_id in frame_ids {
+            if let Some(&last) = self.last_cc_detected.get(&frame_id) {
+                if tick.saturating_sub(last) < SIGNAL_C_COOLDOWN_TICKS {
+                    continue;
+                }
+            }
+
+            let eval = match axial_store.get_latest(frame_id) {
+                Some(e) => e,
+                None => continue,
+            };
+
+            let conflict = match &eval.conflict {
+                Some(c) if c.conflict_strength >= CORPUS_CALLOSUM_THRESHOLD => c.clone(),
+                _ => continue,
+            };
+
+            if store.is_at_capacity() {
+                break;
+            }
+
+            let intensity = conflict.conflict_strength as f32 / 255.0;
+            store.push_active(DilemmaType::OntologicalConflict, vec![frame_id], tick, intensity);
+            self.last_cc_detected.insert(frame_id, tick);
+
+            let position = cc_position(conflict.analytic_octant, conflict.synthetic_octant);
+            let lineage_hash = cc_lineage_hash(frame_id, tick, SIGNAL_C_COOLDOWN_TICKS);
+            let proposed_sutra_id = ((lineage_hash >> 32) as u32) | 0x6000_0000;
+            let mass = (60u8).saturating_add((intensity * 100.0) as u8);
+
+            let payload = InjectFrameAnchorPayload {
+                lineage_hash,
+                proposed_sutra_id,
+                target_domain_id: exp_domain_id,
+                type_flags: TOKEN_FLAG_FRAME_ANCHOR | TOKEN_FLAG_DILEMMA,
+                position,
+                state: STATE_ACTIVE,
+                mass,
+                temperature: 130,
+                valence: 0,
+                reserved: [0; 22],
+            };
+            cmds.push(UclCommand::new(OpCode::InjectToken, 0, 10, ucl_flags::FRAME_ANCHOR)
+                .with_payload(&payload));
+        }
+        cmds
+    }
 }
 
 impl Default for DilemmaDetector {
@@ -352,6 +436,47 @@ fn stress_lineage_hash(dominant: SubsystemId, tick: u64, cooldown: u64) -> u64 {
     let period = if cooldown > 0 { tick / cooldown } else { tick };
     let mut h: u64 = 0xcbf29ce484222325;
     for byte in b"stress:".iter().chain(dominant.name().as_bytes()) {
+        h ^= *byte as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h ^= period;
+    h = h.wrapping_mul(0x100000001b3);
+    h
+}
+
+/// Пространственная позиция для Frame Сигнала C: середина между двумя октантами.
+///
+/// Конфликт «форма vs содержание» — позиция между аналитическим и синтетическим октантами.
+fn cc_position(analytic: Octant, synthetic: Octant) -> [i16; 3] {
+    let a = octant_centroid_pos(analytic);
+    let s = octant_centroid_pos(synthetic);
+    [
+        ((a[0] as i32 + s[0] as i32) / 2) as i16,
+        ((a[1] as i32 + s[1] as i32) / 2) as i16,
+        ((a[2] as i32 + s[2] as i32) / 2) as i16,
+    ]
+}
+
+/// Детерминированный центроид октанта в семантическом пространстве.
+///
+/// bit2=X_low, bit1=Y_low, bit0=Z_low → high=24000, low=8000.
+fn octant_centroid_pos(oct: Octant) -> [i16; 3] {
+    let idx = oct.index();
+    let x: i16 = if (idx & 4) == 0 { 24000 } else { 8000 };
+    let y: i16 = if (idx & 2) == 0 { 24000 } else { 8000 };
+    let z: i16 = if (idx & 1) == 0 { 24000 } else { 8000 };
+    [x, y, z]
+}
+
+/// FNV-1a хэш для Signal C Frame: "corpus_callosum:" + frame sutra_id + period.
+fn cc_lineage_hash(frame_id: u32, tick: u64, cooldown: u64) -> u64 {
+    let period = if cooldown > 0 { tick / cooldown } else { tick };
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in b"corpus_callosum:".iter() {
+        h ^= *byte as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    for byte in frame_id.to_le_bytes().iter() {
         h ^= *byte as u64;
         h = h.wrapping_mul(0x100000001b3);
     }
@@ -652,5 +777,126 @@ mod tests {
         refs.insert(SubsystemId::Mathematics, vec![[500i16, 200, 100]]);
         let pos = stress_position(SubsystemId::Mathematics, &refs);
         assert_eq!(pos, [500i16, 200, 100]);
+    }
+
+    // ── Signal C: Corpus Callosum ─────────────────────────────────────────────
+
+    fn axial_store_with_conflict(
+        frame_id: u32,
+        analytic: Octant,
+        synthetic: Octant,
+        strength: u8,
+    ) -> AxialStore {
+        use axiom_experience::{AxialConflict, AxialEvaluation, AxialScore, ConflictResolution, EvaluationLevel};
+        let conflict = AxialConflict {
+            analytic_octant: analytic,
+            synthetic_octant: synthetic,
+            conflict_strength: strength,
+            resolution: ConflictResolution::Unresolved,
+        };
+        let score = AxialScore::new(128, 128);
+        let eval = AxialEvaluation::new(frame_id, EvaluationLevel::Sensory, score, score, score, 100)
+            .with_conflict(conflict);
+        let mut store = AxialStore::new();
+        store.add(eval);
+        store
+    }
+
+    #[test]
+    fn test_signal_c_no_detect_empty_frame_ids() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        let axial = AxialStore::new();
+        let cmds = det.detect_signal_c(&axial, &[], &mut ds, 109, 100);
+        assert!(cmds.is_empty());
+        assert_eq!(ds.active_count(), 0);
+    }
+
+    #[test]
+    fn test_signal_c_no_detect_no_conflict() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        // AxialStore без conflict
+        use axiom_experience::{AxialEvaluation, AxialScore, EvaluationLevel};
+        let score = AxialScore::new(128, 128);
+        let eval = AxialEvaluation::new(42, EvaluationLevel::Sensory, score, score, score, 100);
+        let mut axial = AxialStore::new();
+        axial.add(eval);
+        let cmds = det.detect_signal_c(&axial, &[42], &mut ds, 109, 100);
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn test_signal_c_no_detect_below_threshold() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        // strength=85 (1 bit) < CORPUS_CALLOSUM_THRESHOLD(170)
+        let axial = axial_store_with_conflict(
+            42,
+            Octant::CreativeAffirmation,
+            Octant::EcstaticAffirmation,
+            85,
+        );
+        let cmds = det.detect_signal_c(&axial, &[42], &mut ds, 109, 100);
+        assert!(cmds.is_empty(), "strength 85 < threshold 170 → no detect");
+    }
+
+    #[test]
+    fn test_signal_c_detects_strong_conflict() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        // strength=170 (2 bits) = CORPUS_CALLOSUM_THRESHOLD
+        let axial = axial_store_with_conflict(
+            42,
+            Octant::CreativeAffirmation,
+            Octant::DestructiveActivating,
+            170,
+        );
+        let cmds = det.detect_signal_c(&axial, &[42], &mut ds, 109, 100);
+        assert_eq!(cmds.len(), 1, "should emit one dilemma Frame command");
+        assert_eq!(ds.active_count(), 1);
+    }
+
+    #[test]
+    fn test_signal_c_cooldown_per_frame() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        let axial = axial_store_with_conflict(
+            42, Octant::CreativeAffirmation, Octant::SelfDestructiveApathic, 255,
+        );
+        det.detect_signal_c(&axial, &[42], &mut ds, 109, 100);
+        assert_eq!(ds.active_count(), 1);
+        // Повтор через 50 тиков (< cooldown 150) → без дублирования
+        det.detect_signal_c(&axial, &[42], &mut ds, 109, 150);
+        assert_eq!(ds.active_count(), 1, "cooldown must prevent duplicate");
+        // Через 160 тиков (> cooldown) → новая дилемма
+        det.detect_signal_c(&axial, &[42], &mut ds, 109, 260);
+        assert_eq!(ds.active_count(), 2, "after cooldown new dilemma should register");
+    }
+
+    #[test]
+    fn test_signal_c_position_midpoint_between_octants() {
+        let a = octant_centroid_pos(Octant::CreativeAffirmation); // [24000, 24000, 24000]
+        let s = octant_centroid_pos(Octant::SelfDestructiveApathic); // [8000, 8000, 8000]
+        let pos = cc_position(Octant::CreativeAffirmation, Octant::SelfDestructiveApathic);
+        assert_eq!(pos[0], ((a[0] as i32 + s[0] as i32) / 2) as i16);
+        assert_eq!(pos[1], ((a[1] as i32 + s[1] as i32) / 2) as i16);
+        assert_eq!(pos[2], ((a[2] as i32 + s[2] as i32) / 2) as i16);
+    }
+
+    #[test]
+    fn test_signal_c_different_frames_independent_cooldown() {
+        let mut det = DilemmaDetector::new();
+        let mut ds = DilemmaStore::new();
+        let axial_42 = axial_store_with_conflict(42, Octant::CreativeAffirmation, Octant::SelfDestructiveApathic, 255);
+        let axial_99 = axial_store_with_conflict(99, Octant::HeroicFatal, Octant::PassiveSentimental, 170);
+
+        // Detect frame 42 at tick 100
+        det.detect_signal_c(&axial_42, &[42], &mut ds, 109, 100);
+        assert_eq!(ds.active_count(), 1);
+
+        // Frame 99 has separate cooldown → fires independently
+        det.detect_signal_c(&axial_99, &[99], &mut ds, 109, 110);
+        assert_eq!(ds.active_count(), 2, "different frames have independent cooldowns");
     }
 }
