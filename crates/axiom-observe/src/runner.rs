@@ -17,6 +17,11 @@ use crate::metrics::{InjectionEvent, TickSnapshot};
 pub struct ObsRunner {
     engine: AxiomEngine,
     perceptor: TextPerceptor,
+    /// Rolling average для avg_shell_similarity (OBS-TD-02).
+    /// EMA с α=0.3: обновляется только когда текущее значение > 0.
+    /// Кандидаты кристаллизуются быстро (~60 тиков) — между снапшотами (500 тиков)
+    /// активных кандидатов нет, поэтому сырое значение всегда 0.
+    shell_similarity_ema: f32,
 }
 
 impl ObsRunner {
@@ -70,7 +75,7 @@ impl ObsRunner {
             None => TextPerceptor::new(),
         };
 
-        Ok(Self { engine, perceptor })
+        Ok(Self { engine, perceptor, shell_similarity_ema: 0.0 })
     }
 
     pub fn run(&mut self, corpus: &Corpus) -> (Vec<TickSnapshot>, Vec<InjectionEvent>) {
@@ -222,7 +227,7 @@ impl ObsRunner {
         (snapshots, events)
     }
 
-    fn capture_snapshot(&self, tick: u64) -> TickSnapshot {
+    fn capture_snapshot(&mut self, tick: u64) -> TickSnapshot {
         let storage = self.engine.axial_evaluator.storage();
         let cr = &self.engine.context_recognizer;
         let profile_store = cr.profile_store();
@@ -265,7 +270,15 @@ impl ObsRunner {
                 .map(|c| format!("{}({:.2})", c.name, c.confidence))
                 .collect(),
             fatigue_count: cr.fatigue_store().len(),
-            avg_shell_similarity: self.engine.frame_weaver.avg_candidate_shell_similarity(),
+            avg_shell_similarity: {
+                // OBS-TD-02: EMA rolling avg — кандидаты живут ~60 тиков, снапшот каждые 500.
+                // Если текущее значение > 0 (есть активные кандидаты) — обновляем EMA.
+                let current = self.engine.frame_weaver.avg_candidate_shell_similarity();
+                if current > 0.0 {
+                    self.shell_similarity_ema = 0.3 * current + 0.7 * self.shell_similarity_ema;
+                }
+                self.shell_similarity_ema
+            },
             dilemma_active: cr.dilemma_store().active_count(),
             dilemma_resolved: cr.dilemma_store().resolved.len(),
         }

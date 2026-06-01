@@ -38,11 +38,6 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 
 ---
 
-### P4 — OBS-TD-02: avg_shell_similarity rolling avg
-**Файл:** `crates/axiom-observe/src/runner.rs`  
-**Что:** `avg_candidate_shell_similarity()` всегда 0 при `snapshot_every=500` (кандидаты кристаллизуются за ~60 тиков). Rolling avg за последние N кристаллизаций вместо снапшота активных кандидатов.  
-**Почему четвёртый:** улучшает observability quality, нужно для осмысленных OBS-метрик shell.
-
 ---
 
 ### P5 — CR-TD-04 persist: ActivityTrace → AutoSaver
