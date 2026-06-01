@@ -315,6 +315,17 @@ impl AshtiCore {
         Ok(result)
     }
 
+    /// Добавить токен по индексу во frontier домена (CR-TD-01).
+    ///
+    /// Вызывается после `inject_token` для E1-fix токенов чтобы они попадали
+    /// в frontier и переходили в STATE_SLEEPING через check_decay.
+    /// Игнорирует невалидные domain_id.
+    pub fn push_to_frontier(&mut self, domain_id: u16, token_idx: usize) {
+        if let Some(i) = self.index_of(domain_id) {
+            self.domains[i].frontier.push_token(token_idx as u32);
+        }
+    }
+
     /// Перевести самый старый ACTIVE (valence!=0, не LOCKED) токен домена в STATE_SLEEPING.
     ///
     /// Используется E1-fix при переполнении MAYA: E1-fix токены имеют valence=1 и

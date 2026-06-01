@@ -36,11 +36,6 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 
 ---
 
-### P3 — CR-TD-01: MAYA frontier fix
-**Файл:** `engine.rs` (E1 fix), `axiom-arbiter/src/` (AshtiCore)  
-**Что:** E1-fix токены не попадают в `Domain.frontier` → никогда не переходят в STATE_SLEEPING → накапливаются до 5000. Добавить `AshtiCore::push_to_frontier(domain_id, token_idx)` и вызывать после `inject_token`.  
-**Почему третий:** убирает реальный баг накопления при долгих прогонах. Workaround работает, но правильный фикс маленький.
-
 ---
 
 ### P4 — OBS-TD-02: avg_shell_similarity rolling avg

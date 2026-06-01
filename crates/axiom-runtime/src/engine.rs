@@ -758,8 +758,7 @@ impl AxiomEngine {
 
             // Разместить входной токен в MAYA для compute_energies (E1 fix) и FrameWeaver (E2 fix).
             // valence=1: позволяет sleep_oldest_active_token вытеснять старые токены при переполнении.
-            // E1-fix токены не попадают в frontier → не decay через check_decay (CR-TD-01).
-            // При переполнении MAYA явно переводим самый старый active-токен в SLEEPING.
+            // CR-TD-01: токен добавляется во frontier через push_to_frontier → check_decay работает.
             {
                 let maya_id = self.ashti.level_id() * 100 + 10;
                 let mass = (p.mass.round() as u8).max(50);
@@ -768,10 +767,18 @@ impl AxiomEngine {
                 maya_tok.temperature = p.temperature.round().clamp(0.0, 255.0) as u8;
                 maya_tok.valence = 1;
                 maya_tok.state = axiom_core::STATE_ACTIVE;
-                if self.ashti.inject_token(maya_id, maya_tok).is_err() {
-                    // MAYA заполнена — вытесняем самый старый E1-fix токен и повторяем
-                    self.ashti.sleep_oldest_active_token(maya_id);
-                    let _ = self.ashti.inject_token(maya_id, maya_tok);
+                match self.ashti.inject_token(maya_id, maya_tok) {
+                    Ok(token_idx) => {
+                        // CR-TD-01 fix: добавить во frontier → check_decay → STATE_SLEEPING
+                        self.ashti.push_to_frontier(maya_id, token_idx);
+                    }
+                    Err(_) => {
+                        // MAYA заполнена — вытесняем самый старый E1-fix токен и повторяем
+                        self.ashti.sleep_oldest_active_token(maya_id);
+                        if let Ok(idx) = self.ashti.inject_token(maya_id, maya_tok) {
+                            self.ashti.push_to_frontier(maya_id, idx);
+                        }
+                    }
                 }
             }
             // Только текстовые инъекции (SUTRA=100) записываются в subsystem-сигнал.
