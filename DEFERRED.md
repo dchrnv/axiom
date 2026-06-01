@@ -209,16 +209,6 @@ UCL-команда существует в протоколе, но обрабо
 
 ---
 
-### Shell-TD-01 — ShellProximity + crystallization_rules архитектура
-
-**Где:** `crates/axiom-runtime/src/over_domain/weavers/frame.rs` → `evaluate_crystallization_rules`
-
-`ShellProximity(threshold)` — opt-in правило. `crystallization_rules: vec![]` по умолчанию намеренно. Проблема: при добавлении любого правила в список `evaluate_crystallization_rules` перестаёт фолбэчить на `stability_threshold` → все кандидаты получают `Defer` → Frames=0.
-
-**Что нужно:** добавлять `ShellProximity` в паре с явным `StabilityReached`-правилом, **или** рефакторить `evaluate_crystallization_rules` чтобы stability_threshold работал как minimum-baseline независимо от списка.
-
-**Когда:** при следующей работе с кристаллизацией.
-
 ---
 
 ### Shell-TD-02 — resonance_search shell bonus

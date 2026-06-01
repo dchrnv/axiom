@@ -822,6 +822,11 @@ impl FrameWeaver {
 
         match best {
             Some((_, action)) => action.clone(),
+            // Shell-TD-01: stability_threshold — minimum-baseline независимо от rules.
+            // Если ни одно правило не сработало, но threshold достигнут → кристаллизуем.
+            None if candidate.stability_count >= self.config.stability_threshold => {
+                RuleAction::CrystallizeFull
+            }
             None => RuleAction::Defer {
                 ticks: self.config.scan_interval_ticks,
             },
@@ -1804,6 +1809,8 @@ mod tests {
         };
         let fw = FrameWeaver::new(FrameWeaverConfig {
             crystallization_rules: vec![rule],
+            // stability_threshold высокий чтобы baseline не мешал тесту правил
+            stability_threshold: 1000,
             ..Default::default()
         });
 
@@ -1847,6 +1854,8 @@ mod tests {
         let fw = FrameWeaver::new(FrameWeaverConfig {
             scan_interval_ticks: 20,
             crystallization_rules: vec![rule],
+            // stability_threshold высокий чтобы baseline не мешал тесту правил
+            stability_threshold: 1000,
             ..Default::default()
         });
 
@@ -2424,5 +2433,59 @@ mod tests {
             store.composition_level(42),
             FrameComposition::C3Structure
         ));
+    }
+
+    // ── Shell-TD-01: stability_threshold baseline ────────────────────────────
+
+    #[test]
+    fn shell_proximity_rule_alone_still_crystallizes_at_threshold() {
+        // Shell-TD-01: ShellProximity rule alone (threshold=1.1, невозможно достичь)
+        // при stability_count >= stability_threshold должна кристаллизовать через baseline.
+        use crate::over_domain::weavers::frame::{
+            CrystallizationRule, FrameWeaverConfig, RuleAction, RuleTrigger,
+        };
+        let config = FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 2,
+            crystallization_rules: vec![CrystallizationRule {
+                id: "shell_high".to_string(),
+                trigger: RuleTrigger::ShellProximity(1.1), // невозможный порог
+                conditions: vec![],
+                action: RuleAction::CrystallizeFull,
+                priority: 10,
+            }],
+            ..Default::default()
+        };
+        let mut fw = FrameWeaver::new(config);
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        fw.on_tick(1, &ashti).unwrap();
+        assert!(fw.drain_commands().is_empty(), "tick 1: below threshold");
+
+        fw.on_tick(2, &ashti).unwrap();
+        let cmds = fw.drain_commands();
+        assert!(!cmds.is_empty(),
+            "Shell-TD-01: stability_threshold baseline must fire even when ShellProximity rule never matches");
+    }
+
+    #[test]
+    fn no_rules_empty_list_crystallizes_at_threshold() {
+        // Убедиться что пустой список правил продолжает работать корректно
+        let mut fw = FrameWeaver::new(FrameWeaverConfig {
+            scan_interval_ticks: 1,
+            stability_threshold: 2,
+            crystallization_rules: vec![],
+            ..Default::default()
+        });
+        let mut ashti = AshtiCore::new(1);
+        ashti.inject_connection(110, make_syn_conn(10, 20, 1)).unwrap();
+        ashti.inject_connection(110, make_syn_conn(10, 30, 2)).unwrap();
+
+        fw.on_tick(1, &ashti).unwrap();
+        assert!(fw.drain_commands().is_empty());
+        fw.on_tick(2, &ashti).unwrap();
+        assert!(!fw.drain_commands().is_empty(), "empty rules: threshold baseline must work");
     }
 }
