@@ -111,18 +111,6 @@
 
 ## Generative Subsystems — примитивы и детекторы
 
-### PRIM-TD-01 — MoralSignalDetector
-
-**Где:** `crates/axiom-runtime/src/over_domain/context_recognizer/` (новый файл)
-
-Morality_V1_0.md §4 описывает детектор моральных сигналов: активация moral-якорей → расчёт moral_intensity (сумма весов) и dominant_foundation (якорь с максимальным весом). Подаёт сигнал в DilemmaDetector при конфликте оснований.
-
-**Что нужно:** `MoralSignalDetector::detect(matches: &[AnchorMatch]) → Option<MoralSignal>`; `MoralSignal { intensity: f32, dominant: AnchorId, secondary: Option<AnchorId> }`.
-
-**Зависимости:** DilemmaDetector V2.0 (✅ реализован 2026-05-31).
-
-**Когда:** После DilemmaDetector V2.1 (Сигнал B: stress связей).
-
 ---
 
 ### PRIM-TD-03 — ValueGravity и AbstractionGravity

@@ -36,6 +36,7 @@ pub mod energy;
 pub mod hot_reload;
 pub mod learning;
 pub mod meta_detector;
+pub mod moral_signal;
 pub mod profile;
 pub mod scanner;
 pub mod scanning_plan;
