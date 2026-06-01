@@ -26,13 +26,35 @@ impl AnchorMatchTable {
     /// Построить таблицу из AnchorSet. Кэширует позиции всех известных якорей.
     pub fn build(anchor_set: &AnchorSet) -> Self {
         let mut id_to_position = HashMap::new();
-        // Перебираем все известные якоря через pub API get_subsystem
-        for subsystem in ["writing", "mathematics", "music", "time", "logic", "values"] {
+
+        // Subsystem якоря
+        for subsystem in ["writing", "mathematics", "music", "time", "logic", "values",
+                          "morality", "abstractions"] {
             for anchor in anchor_set.get_subsystem(subsystem) {
-                id_to_position.insert(anchor.id.clone(), anchor.position);
+                if !anchor.id.is_empty() {
+                    id_to_position.insert(anchor.id.clone(), anchor.position);
+                }
             }
         }
-        // Также оси и слои (axes, layers через all_anchors нет, используем get_by_id fallback)
+
+        // Domain якоря (D1..D8) — AE-TD-08 / Anchor-id (P4b)
+        for domain_anchors in &anchor_set.domains {
+            for anchor in domain_anchors {
+                if !anchor.id.is_empty() {
+                    id_to_position.insert(anchor.id.clone(), anchor.position);
+                }
+            }
+        }
+
+        // Layer якоря (L1..L8) — AE-TD-08 / Anchor-id (P4b)
+        for layer_anchors in &anchor_set.layers {
+            for anchor in layer_anchors {
+                if !anchor.id.is_empty() {
+                    id_to_position.insert(anchor.id.clone(), anchor.position);
+                }
+            }
+        }
+
         Self { id_to_position }
     }
 
