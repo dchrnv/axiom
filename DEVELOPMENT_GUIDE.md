@@ -118,7 +118,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1631 тестов
+cargo test --workspace          # 1656 тестов
 cargo build --release
 
 # Запуск одной командой

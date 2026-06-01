@@ -164,6 +164,7 @@
 | 0x08 Syntactic | [0, 0, 0, 0, 10, 5, 0, 15] |
 | 0x09 Spatial/Composition | [10, 15, 0, 0, 8, 0, 0, 5] |
 | 0x0A CrossModal | [0, 20, 0, 0, 10, 0, 0, 10] |
+| 0x0B SemanticAnchor | [0, 0, 0, 0, 20, 0, 0, 15] |
 
 **Именованные link_type константы (axiom-shell):**
 
@@ -171,6 +172,16 @@
 |-----------|----------|------------|
 | `COMPOSITION_BOND` | `0x0901` | FrameWeaver: дочерний → родительский Frame |
 | `CROSS_MODAL_BOND` | `0x0A01` | CrossModalDetector: Text↔Vision grounding |
+| `SEMANTIC_ANCHOR_BOND` | `0x0B01` | TextPerceptor: текстовый токен → matched anchor (AE-TD-08) |
+
+**Диапазоны sutra_id (детерминированные):**
+
+| Диапазон | Назначение |
+|----------|------------|
+| `1..event_id` | Sequential tokens (event_id as u32) |
+| `0x0001..0x0FFF_FFFF` | domain_position_hash (28 бит) |
+| `0x4000_0001..0x7FFF_FFFF` | text_stable_id (TextPerceptor, бит 30) |
+| `0x8000_0001..0xFFFF_FFFF` | anchor_sutra_id (fnv1a_anchor_id, бит 31) |
 
 ---
 

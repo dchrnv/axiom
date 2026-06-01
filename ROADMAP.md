@@ -17,7 +17,7 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1608 тестов, 0 failures.**  
+**1656 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
 token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
 DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  
@@ -36,7 +36,6 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 ## Не в активном плане
 
 - **BRD-TD-06** — Pong timeout test: требует raw TCP клиент без WS framing.
-- **AE-TD-08** — Full semantic connections at injection time. Приоритет повышается в V7 (связан с L0 bonds). См. DEFERRED.md.
 - **OBS-MON-01/02** — Мониторинг трасс и activity dynamics. См. DEFERRED.md.
 - **COMP-01** — Vital Signs окно (Companion). См. DEFERRED.md.
 - **V7-D: SubsystemExport/Import** — обмен подсистемами между инстансами. После стабилизации SubsystemVersioning. См. §2.8.

@@ -429,16 +429,22 @@ event_id: u64
   ContextRecognizer::meta_store(), set_meta_detector();
   V6D: CompositeSubsystemDef { name: &'static str, components: &'static [SubsystemId] };
   COMPOSITE_DEFS[5]: Calculus(Math+Time), Rhythm(Music+Time), Geometry(Math+Writing),
-  Narrative(Writing+Time), Ethics(Logic) [V7: +Values/Dilemmas/Morality];
+  Narrative(Writing+Time), Ethics(Values+Morality+Dilemmas) [CR-TD-03 ✅];
   detect_composite_suspects(recent, signatures) → Vec<CompositeActivationSuspected { name, confidence }>;
   Converging boost: min(conf * 1.5, 1.0); ContextRecognizer::composite_suspects()
-  V7-DilemmaDetector V2.0: dilemma_store: DilemmaStore + dilemma_detector: DilemmaDetector (поля CR);
+  V7-DilemmaDetector V2.1: dilemma_store: DilemmaStore + dilemma_detector: DilemmaDetector (поля CR);
     Сигнал A: detect_conflict → is_natural_tension(SubsystemDependencies) → tension_score >= 0.5 →
     push_active(ValueConflict) + InjectToken(EXPERIENCE, TOKEN_FLAG_FRAME_ANCHOR|TOKEN_FLAG_DILEMMA);
     cooldown 50 тиков CR на пару; centroid позиций обеих подсистем как позиция Frame;
-    AnchorSet::subsystem_dependencies (загружается из config/subsystem_dependencies.yaml в load());
-    CR::dilemma_store() → &DilemmaStore; CR::set_subsystem_dependencies(deps)
-    Путь 2: coactivation_window[32] через record_injection_signal (engine wired); MIN_COACTIVATION_COUNT=2
+    Путь 2: coactivation_window[32] через record_injection_signal; MIN_COACTIVATION_COUNT=2
+    Сигнал B: detect_signal_b(connections) → mean_stress_ratio по активным связям MAYA;
+    STRESS_RATIO_THRESHOLD=0.5; MIN_STRESSED_CONNECTIONS=2; MEAN_STRESS_THRESHOLD=0.35;
+    cooldown 100 тиков (отдельный от A); push_active(OntologicalConflict); prefix sutra_id 0x5000_0000
+  MoralSignalDetector (moral_signal.rs): detect(&[AnchorMatch]) → Option<MoralSignal>;
+    MoralSignal { intensity: f32 (saturating 1.0), dominant: MoralFoundation, secondary, conflict_detected };
+    7 moral_* anchors (care/harm/fair/betrayal/loyalty/purity/desecration); порог 0.3;
+    is_antagonistic_pair: care/harm, fair/betrayal, loyalty/desecration, purity/harm
+  ActivityTrace serde ✅: #[derive(Serialize, Deserialize)] на ActivityTrace + RingBuf; SubsystemId serde feature
   CrossModalDetector V1.0: cross_modal_detector + modality_store (поля CR);
     ModalityStore: frame_id→Modality (Text/Vision/Internal); дефолт Text для всех существующих Frame;
     позиционная эвристика: position.x<0 → Vision (L0 якоря в отриц. X), ≥0 → Text;
@@ -916,7 +922,7 @@ FNV-1a fallback активен при отсутствии совпадений.
 | **AGENT-TD-01** | TextPerceptor: lookup anchor-matching (Path A) → embeddings. Path A реализован (2-path detect_subsystem, 100% accuracy). Следующий шаг: заменить word/char lookup на векторные embeddings. |
 | **OBS-TD-02** | avg_shell_similarity всегда 0.000: кандидаты FrameWeaver кристаллизуются за ~60 тиков, до snapshot_every=500 их уже нет. Нужно либо capture per-crystallization event, либо накапливать rolling avg. |
 | **OBS-TD-03** | delta-energy per-text нерабочий: позиции текстовых токенов (центроид якорей) и subsystem refs не совпадают, sq_dist в миллионах → energy ≈ 0. `compute_raw_energies` + `snapshot_subsystem_energies` оставлены — пригодятся при embeddings. |
-| **Shell-TD-01** | ShellProximity crystallization rule — opt-in. При непустом `crystallization_rules` stability_threshold fallback не работает → Frames=0. Нужен явный StabilityReached-rule в паре с ShellProximity или рефактор `evaluate_crystallization_rules`. |
+| **Shell-TD-01** ✅ | stability_threshold теперь minimum-baseline: если ни одно правило не сработало но threshold достигнут → CrystallizeFull. ShellProximity можно использовать без явного StabilityReached. |
 | **Shell-TD-02** | resonance_search shell bonus требует изменений axiom-arbiter. |
 | **EMERGENT-TD-01** | Пороги DepthThresholdEmergentDetector откалиброваны по OBS-02 однородного корпуса (depth=1000, reactivations=5). При неоднородном корпусе нужна повторная калибровка: часть Frame должна не проходить порог. |
 | **EMERGENT-TD-02** | reactivation_count считает DREAM-циклы с evidence>0 (~10-15 за 30k тиков). Для более гранулярного сигнала: считать per-injection реактивации (инкрементировать при каждом on_tick где Frame активен, не только в DREAM). |
