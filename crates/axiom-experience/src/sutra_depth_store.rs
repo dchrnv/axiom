@@ -127,10 +127,22 @@ impl SutraDepthStore {
             let growth = evidence.min(MAX_GROWTH_PER_CYCLE);
             entry.depth_per_octant[octant] =
                 entry.depth_per_octant[octant].saturating_add(growth);
-            entry.reactivation_count = entry.reactivation_count.saturating_add(1);
+            // reactivation_count теперь управляется через record_reactivations (EMERGENT-TD-02)
         } else {
             entry.depth_per_octant[octant] =
                 entry.depth_per_octant[octant].saturating_sub(DECAY_PER_CYCLE);
+        }
+    }
+
+    /// Записать N реактиваций Frame (EMERGENT-TD-02: гранулярный счётчик).
+    ///
+    /// Вызывается из apply_dream_depth_update с реальным числом тиков активности.
+    /// Примитивы игнорируются (depth==PRIMITIVE_DEPTH → вечны, не нужен счётчик).
+    pub fn record_reactivations(&mut self, sutra_id: u32, count: u32) {
+        if count == 0 { return; }
+        let entry = self.get_or_create(sutra_id);
+        if !entry.is_primitive() {
+            entry.reactivation_count = entry.reactivation_count.saturating_add(count);
         }
     }
 
@@ -272,5 +284,43 @@ mod tests {
         assert_eq!(store.len(), 1);
         store.remove(1);
         assert_eq!(store.len(), 0);
+    }
+
+    // ── EMERGENT-TD-02: record_reactivations ─────────────────────────────────
+
+    #[test]
+    fn test_record_reactivations_accumulates() {
+        let mut store = SutraDepthStore::new();
+        store.get_or_create(1);
+        store.record_reactivations(1, 50);
+        assert_eq!(store.get(1).unwrap().reactivation_count, 50);
+        store.record_reactivations(1, 20);
+        assert_eq!(store.get(1).unwrap().reactivation_count, 70);
+    }
+
+    #[test]
+    fn test_record_reactivations_zero_is_noop() {
+        let mut store = SutraDepthStore::new();
+        store.get_or_create(1);
+        store.record_reactivations(1, 0);
+        assert_eq!(store.get(1).unwrap().reactivation_count, 0);
+    }
+
+    #[test]
+    fn test_record_reactivations_saturates() {
+        let mut store = SutraDepthStore::new();
+        store.get_or_create(1);
+        store.record_reactivations(1, u32::MAX);
+        store.record_reactivations(1, 1); // должно насытиться, не паниковать
+        assert_eq!(store.get(1).unwrap().reactivation_count, u32::MAX);
+    }
+
+    #[test]
+    fn test_apply_evidence_no_longer_increments_reactivation_count() {
+        // apply_evidence больше не управляет reactivation_count (EMERGENT-TD-02)
+        // управление передано record_reactivations
+        let mut store = SutraDepthStore::new();
+        store.apply_evidence(1, 0, 100, 1);
+        assert_eq!(store.get(1).unwrap().reactivation_count, 0);
     }
 }

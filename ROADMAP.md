@@ -17,7 +17,7 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1663 тестов, 0 failures.**  
+**1667 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
 token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
 DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  
@@ -29,14 +29,7 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 
 ## Активные задачи
 
-### P1 — DilemmaDetector Signal C (Corpus Callosum)
-**Файл:** `dilemma/detector.rs`, `axial_bridge.rs`  
-**Что:** Signal C из спеки V2.1 — читать `AxialConflict` из AxialEvaluator: analytic octant ≠ synthetic octant → дилемма уровня 3 (ModelConflict). Закрывает DilemmaDetector V2.1 полностью.  
-**Почему первый:** закрывает целую версию, вся инфраструктура готова (AxialConflict существует в AE, CR читает AE через axial_bridge), высокий impact.
 
----
-
-### P2 — EMERGENT-TD-02: reactivation_count гранулярность
 **Файл:** `crates/axiom-experience/src/sutra_depth_store.rs` → `apply_evidence`  
 **Что:** `reactivation_count` считает DREAM-циклы (~10-15 за 30k тиков) — слишком грубо. Инкрементировать в `dream_activation_acc` (каждый Wake-тик где Frame активен) → быстрорастущий сигнал, отражает реальную частоту реактивации.  
 **Почему второй:** ~10 строк, снимает известное ограничение emergent primitive detection, разблокирует EMERGENT-TD-01.

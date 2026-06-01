@@ -21,6 +21,9 @@ pub fn apply_dream_depth_update(
     for &(sutra_id, octant, count) in activations {
         let evidence = count.min(MAX_GROWTH_PER_CYCLE as u32) as u16;
         store.apply_evidence(sutra_id, octant.index(), evidence, event_id);
+        // EMERGENT-TD-02: гранулярный reactivation_count = число CR-тиков активности.
+        // Быстрее растёт чем старый +1 за DREAM-цикл — лучше отражает реальную частоту.
+        store.record_reactivations(sutra_id, count);
     }
 
     // Применить decay для Frame без активности (по всем октантам через apply_evidence с 0)
