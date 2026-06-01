@@ -42,11 +42,6 @@ Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModa
 
 ---
 
-### P6 — word_signals() domain/layer expansion
-**Файл:** `crates/axiom-agent/src/perceptors/decomposition_table.rs`  
-**Что:** добавить domain (exec_*, shadow_*, ...) и layer (L1_*..L8_*) слова в `word_signals()`. id: и AnchorMatchTable уже готовы ✅. Path 2 (fallback) начнёт матчить domain/layer контекст.  
-**Почему шестой:** механический, Path 1 уже покрывает эти слова через AnchorSet.match_text(). Расширяет fallback coverage.
-
 ---
 
 ## Не в активном плане
