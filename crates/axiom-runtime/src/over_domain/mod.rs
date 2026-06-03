@@ -25,6 +25,8 @@ pub mod dream_phase;
 pub mod traits;
 /// Weavers — кристаллизация реляционных структур
 pub mod weavers;
+/// Sensorium — полный внутренний срез системы + выражение (только чтение, &self)
+pub mod sensorium;
 
 pub use axial_evaluator::{
     AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_SOURCE_ID, AXIAL_EVALUATOR_TICK_INTERVAL,
@@ -57,6 +59,11 @@ pub use weavers::{
     restore_frame_from_anchor, CrystallizationRule, CycleStrategy, FrameCandidate, FrameWeaver,
     FrameWeaverConfig, FrameWeaverStats, Participant, PromotionRule, RestoreError, RestoredFrame,
     RuleAction, RuleCondition, RuleTrigger, FRAME_WEAVER_ID,
+};
+
+pub use sensorium::{
+    CollectionLevel, ConsumerEntry, ConsumerRegistry, Sensorium, SensoriumExpression,
+    SensoriumSchedule, SensoriumState, SensoriumView, SubsystemActivity,
 };
 
 pub use dream_phase::{

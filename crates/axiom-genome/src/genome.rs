@@ -243,6 +243,27 @@ impl Genome {
                 resource: R::AshtiField,
                 permission: P::Read,
             },
+            // Sensorium — только чтение всего; никогда не управляет (GENOME-инвариант навсегда)
+            AccessRule {
+                module: M::Sensorium,
+                resource: R::ExperienceMemory,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::Sensorium,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::Sensorium,
+                resource: R::MayaOutput,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::Sensorium,
+                resource: R::SutraTokens,
+                permission: P::Read,
+            },
         ];
 
         let protocol_rules = vec![

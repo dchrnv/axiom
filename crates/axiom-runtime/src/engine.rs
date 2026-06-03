@@ -15,8 +15,8 @@ use crate::over_domain::{
     cluster_emergent_primitives, restore_frame_from_anchor, AdvisorySource, AxialEvaluator,
     ContextRecognizer, DreamCycle, DreamPhaseState, DreamPhaseStats, DreamProposalKind,
     DreamScheduler, FatigueSnapshot, FrameWeaver, GatewayPriority, NeuralAdvisor,
-    OverDomainArbiter, OverDomainComponent, SleepDecision, SleepTrigger, SleepTriggerKind,
-    SubsystemCandidateStore, WakeReason, WeaverId,
+    OverDomainArbiter, OverDomainComponent, Sensorium, SensoriumView, SleepDecision, SleepTrigger,
+    SleepTriggerKind, SubsystemCandidateStore, WakeReason, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
@@ -237,6 +237,9 @@ pub struct AxiomEngine {
     pub(crate) co_activation_window: HashMap<u32, u64>,
     /// H1+H2: кандидаты в новые подсистемы (обнаруживаются в DREAM Phase).
     pub subsystem_candidate_store: SubsystemCandidateStore,
+    /// Sensorium V1.0 — полный внутренний срез системы. Тикает последним.
+    /// Только читает состояние через SensoriumView. GENOME-инвариант: &self навсегда.
+    pub sensorium: Sensorium,
 }
 
 impl AxiomEngine {
@@ -254,6 +257,11 @@ impl AxiomEngine {
             .unwrap_or(1);
         let mut over_domain_arbiter = OverDomainArbiter::default_v1();
         let _ = over_domain_arbiter.on_boot(&genome);
+        let sensorium = {
+            let s = Sensorium::new();
+            let _ = s.on_boot(&genome);
+            s
+        };
         Ok(Self {
             genome: Arc::clone(&genome),
             ashti: AshtiCore::new(1),
@@ -291,6 +299,7 @@ impl AxiomEngine {
             subsystem_shell_templates: HashMap::new(),
             co_activation_window: HashMap::new(),
             subsystem_candidate_store: SubsystemCandidateStore::default(),
+            sensorium,
         })
     }
 
@@ -1356,6 +1365,21 @@ impl AxiomEngine {
             self.transition_to_falling_asleep(trigger);
         }
 
+        // Sensorium: собрать срез после всех OD-компонентов.
+        // SensoriumView строится из отдельных полей → borrow checker доволен.
+        let sensorium_view = SensoriumView {
+            tick: t,
+            causal_time: self.com_next_id,
+            dream_phase: self.dream_phase_state,
+            dream_stats: &self.dream_phase_stats,
+            context_recognizer: &self.context_recognizer,
+            axial_evaluator: &self.axial_evaluator,
+            frame_weaver: &self.frame_weaver,
+            over_domain_arbiter: &self.over_domain_arbiter,
+            neural_advisor: &self.neural_advisor,
+        };
+        self.sensorium.collect(&sensorium_view);
+
         count
     }
 
@@ -1490,6 +1514,7 @@ impl AxiomEngine {
         self.dream_phase_state = DreamPhaseState::Wake;
         self.frame_weaver.on_dream_wake();
         self.guardian.reset_wake_stats();
+        self.sensorium.on_dream_wake();
 
         count
     }

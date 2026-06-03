@@ -63,6 +63,12 @@ access_rules:
   - { module: OverDomainArbiter, resource: ExperienceMemory, permission: Control }
   - { module: OverDomainArbiter, resource: AshtiField,       permission: Read    }
 
+  # Sensorium — только чтение всего; никогда не управляет (GENOME-инвариант навсегда)
+  - { module: Sensorium, resource: ExperienceMemory, permission: Read }
+  - { module: Sensorium, resource: AshtiField,       permission: Read }
+  - { module: Sensorium, resource: MayaOutput,       permission: Read }
+  - { module: Sensorium, resource: SutraTokens,      permission: Read }
+
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }
   - { source: Experience, target: Arbiter,    data_type: ResonanceResponse, mandatory: true  }

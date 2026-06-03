@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-05-28  
-**Тесты:** 1631, 0 failures
+**Обновлено:** 2026-06-03  
+**Тесты:** 1683, 0 failures
 
 ---
 
@@ -11,7 +11,7 @@
 ```
 axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(64)))
 axiom-ucl        — UclCommand, OpCode, UclResult
-axiom-genome     — Genome (конституция, frozen в Arc после boot); EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
+axiom-genome     — Genome (конституция, frozen в Arc после boot); ModuleId=21(Sensorium), MAX_MODULES=22; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    ModalityStore (sutra_id→Modality; Text/Vision/Internal; Cross_Modal_Binding_V1_0);
                    Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);
@@ -320,6 +320,7 @@ genome: Arc<Genome>
 ashti: AshtiCore
 guardian: Guardian
 frame_weaver: FrameWeaver          — Over-Domain компонент V1.3
+sensorium: Sensorium               — Sensorium V1.0 (только чтение, тикает последним)
 pending_events: Vec<Event>
 com_next_id: u64
 tick_count: u64
@@ -479,6 +480,14 @@ event_id: u64
   G3: NeuralAdvisorConfig — парсит секцию [neural_advisor] из genome.yaml;
       per-advisor enable/disable применяется в NeuralAdvisorRegistry::with_default_v3()
 - OverDomainArbiter V3.0 (tick=13, ModuleId=20) — координатор advisory-источников;
+- **Sensorium V1.0 (ModuleId=21)** — полный внутренний срез системы, только чтение (&self);
+  collect(tick, &SensoriumView) тикает последним в handle_tick_wake (после DreamScheduler);
+  on_dream_wake() → schedule_memory_collection(); GENOME: Read-only на все ресурсы (инвариант навсегда);
+  SensoriumState: 4 группы полей (§2 спеки), уровни 0-3 (Pulse/State/Full/Memory);
+  SensoriumExpression: детерминированная функция §11, открытая вверх (V2.0 → языковой слой);
+  ConsumerRegistry: v1_defaults (Workstation/NeuralAdvisor/Debug); деградация в DREAMING → только Pulse;
+  НЕ заменяет TickSnapshot в V1 (параллельно); полное поглощение → V2.0 (DEFERRED SEN-TD-01);
+  crate: axiom-runtime/src/over_domain/sensorium/ (mod/state/levels/schedule/registry/expression)
   AdvisorySource трейт: poll_advisories() / on_feedback(); Advisory { id, source, advisory_type,
   subject_id, confidence, action, created_at_event, octant_hint:Option<usize> };
   AdvisoryAction: ApplyDepth{octant,depth} / NotifyWorkstation{label};

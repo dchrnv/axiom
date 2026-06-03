@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 71.0  
-**Дата:** 2026-06-01
+**Версия:** 72.0  
+**Дата:** 2026-06-03
 
 ---
 
@@ -17,30 +17,20 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1667 тестов, 0 failures.**  
-Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29):  
-token lifecycle (STATE_SLEEPING), parallel domain ticks, parallel OBS shards, streaming JSONL, Lab UI panel.  
-DilemmaDetector V2.0 завершён (2026-05-31): Сигнал A, кристаллизация Frame в EXPERIENCE.  
-OBS §9 верификация: 8/8 дилемм, DilemmaDetector рабочий.  
-Фикс: SubsystemDependencies YAML wrapper, TextPerceptor subsystem-позиция, engine.rs record_injection_signal.  
-Cross-Modal Binding V1.0 завершён (2026-05-31): ModalityStore, CrossModalDetector, CROSS_MODAL_BOND=0x0A01; 1623 тестов.
+**1683 тестов, 0 failures.**  
+Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29).  
+DilemmaDetector V2.0 завершён (2026-05-31). Cross-Modal Binding V1.0 завершён (2026-05-31).  
+**Sensorium V1.0 завершён (2026-06-03):** ModuleId=21, MAX_MODULES=22, SensoriumState (4 группы),
+SensoriumView/Schedule/Registry/Expression, collect() в конце wake-тика, on_dream_wake().
+Параллельно TickSnapshot (SEN-TD-01 → V2.0 полное поглощение в DEFERRED).
 
 ---
 
 ## Активные задачи
 
-
-**Файл:** `crates/axiom-experience/src/sutra_depth_store.rs` → `apply_evidence`  
-**Что:** `reactivation_count` считает DREAM-циклы (~10-15 за 30k тиков) — слишком грубо. Инкрементировать в `dream_activation_acc` (каждый Wake-тик где Frame активен) → быстрорастущий сигнал, отражает реальную частоту реактивации.  
-**Почему второй:** ~10 строк, снимает известное ограничение emergent primitive detection, разблокирует EMERGENT-TD-01.
-
----
-
----
-
----
-
----
+**Следующий этап: Волны V1.0 (Internal Drive)** — спека готова (`docs/spec/Waves_Internal_Drive_V1_0.md`).
+Три источника импульса (дилеммы / SutraDepth / FrameWeaver candidates), internal_dominance_factor,
+защиты от штормов. Зависит от готового материала (всё на месте).
 
 ---
 

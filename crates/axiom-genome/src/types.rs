@@ -28,9 +28,11 @@ pub enum ModuleId {
     ContextRecognizer = 18,
     NeuralAdvisor = 19,
     OverDomainArbiter = 20,
+    /// Sensorium — полный внутренний срез + выражение (только чтение, &self).
+    Sensorium = 21,
 }
 
-pub const MAX_MODULES: usize = 21;
+pub const MAX_MODULES: usize = 22;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

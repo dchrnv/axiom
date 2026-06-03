@@ -1,13 +1,20 @@
 # AXIOM Status
 
-**Обновлено:** 2026-05-31
+**Обновлено:** 2026-06-03
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1667 тестов, 0 failures**
+**1683 тестов, 0 failures**
+
+Sensorium V1.0 ✅ (2026-06-03): полный внутренний срез системы. ModuleId::Sensorium=21, MAX_MODULES=22.
+  `over_domain/sensorium/`: SensoriumState (4 группы полей §2), CollectionLevel (0-3),
+  SensoriumSchedule (big_cycle=32), ConsumerRegistry, SensoriumExpression (детерминированная функция §11).
+  collect() тикает последним в handle_tick_wake(), принимает SensoriumView (&-ссылки на все OD-компоненты).
+  on_dream_wake() → schedule_memory_collection(). GENOME: Read на все ресурсы (инвариант навсегда).
+  Параллельно TickSnapshot, не заменяет его (см. DEFERRED SEN-TD-01 → V2.0).
 
 Primitive_Nature_and_Connections_V1_0 ✅ (2026-05-30): spatial/causal L0 переведены из якорей-призраков
 в Connection link_type определения (config/schema/link_types/); 0x09 Spatial добавлен в
@@ -266,7 +273,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 34 | Token, Connection, Event |
-| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=20 (OverDomainArbiter), MAX_MODULES=21; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02) |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=21 (Sensorium), MAX_MODULES=22; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02) |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
@@ -277,7 +284,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 50 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); ModalityStore + Modality (Text/Vision/Internal); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
-| axiom-runtime | 620 (640 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState, ApproveError; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands; TransitionMatrix, FatigueStore→experience, directed_cascade_score, CompositeSubsystemProfile, SubsystemVersionStore, SplitMergeDetector; DilemmaDetector V2.1 (Signal A: coactivation+deps; Signal B: connection stress MEAN_STRESS≥0.35, MIN_STRESSED≥2); CrossModalDetector V1.0 (ModalityStore, CROSS_MODAL_BOND=0x0A01); Ethics composite [Values,Morality,Dilemmas]; MoralSignalDetector (7 moral_* anchors, intensity, antagonistic pairs); ActivityTrace serde; Shell-TD-01: stability_threshold baseline; FrameWeaver: 0x0B semantic anchor participants |
+| axiom-runtime | 636 (656 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0, **Sensorium V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule, ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); FrameWeaverStats; restore_frame_from_anchor; UnfoldFrame handler; AdvisoryHistory, CognitiveProfile; confirm/reject_pending_advisory; DivergenceLog, PatternLearningResolver, NeuralAdvisorConfig; SubsystemCandidateStore, SubsystemLifecycleState, ApproveError; drain_octant_overrides; DilemmaStore V1.1, crystallize_to_experience_commands; TransitionMatrix, FatigueStore→experience, directed_cascade_score, CompositeSubsystemProfile, SubsystemVersionStore, SplitMergeDetector; DilemmaDetector V2.1 (Signal A: coactivation+deps; Signal B: connection stress MEAN_STRESS≥0.35, MIN_STRESSED≥2); CrossModalDetector V1.0 (ModalityStore, CROSS_MODAL_BOND=0x0A01); Ethics composite [Values,Morality,Dilemmas]; MoralSignalDetector (7 moral_* anchors, intensity, antagonistic pairs); ActivityTrace serde; Shell-TD-01: stability_threshold baseline; FrameWeaver: 0x0B semantic anchor participants; **Sensorium**: SensoriumState/View/Expression, SensoriumSchedule, ConsumerRegistry, CollectionLevel 0-3 |
 | axiom-agent | 148 (171 telegram,opensearch) | TextPerceptor (2-path detect_subsystem + perceive_and_bond→SEMANTIC_ANCHOR_BOND=0x0B01; text_stable_id 0x4000_0001+; anchor_sutra_id mirror); AnchorMatchTable: domain+layer якоря в id_to_position (P4b); L0VisionPerceptor (V7-E2); MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands; tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
@@ -289,7 +296,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1623** | |
+| **Итого** | **1683** | |
 
 ---
 
