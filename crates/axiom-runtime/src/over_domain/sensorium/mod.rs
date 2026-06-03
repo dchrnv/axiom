@@ -32,7 +32,7 @@ use std::sync::Arc;
 
 use crate::over_domain::context_recognizer::DilemmaType;
 use crate::over_domain::{
-    AxialEvaluator, ContextRecognizer, FrameWeaver, NeuralAdvisor, OverDomainArbiter,
+    AxialEvaluator, ContextRecognizer, FrameWeaver, NeuralAdvisor, OverDomainArbiter, Waves,
 };
 use crate::over_domain::dream_phase::{DreamPhaseState, DreamPhaseStats};
 
@@ -52,6 +52,8 @@ pub struct SensoriumView<'a> {
     pub over_domain_arbiter: &'a OverDomainArbiter,
     #[allow(dead_code)]
     pub neural_advisor: &'a NeuralAdvisor,
+    /// Waves — для чтения impulse-полей (internal_dominance_factor, active_impulses).
+    pub waves: &'a Waves,
 }
 
 /// Sensorium — единая точка доступа к внутреннему срезу системы.
@@ -198,6 +200,20 @@ fn collect_pulse(view: &SensoriumView<'_>, state: &mut SensoriumState) {
 
     // Pending advisories.
     state.pending_advisories = view.over_domain_arbiter.pending_snapshot().len();
+
+    // — Внутренний импульс (Waves) —
+    state.internal_dominance_factor = view.waves.internal_dominance_factor;
+    state.active_impulse_count = view.waves.active_impulses.len();
+    state.impulse_sources = view
+        .waves
+        .active_impulses
+        .iter()
+        .map(|imp| match imp.source {
+            crate::over_domain::waves::ImpulseSource::Dilemma => "Dilemma",
+            crate::over_domain::waves::ImpulseSource::Resonance => "Resonance",
+            crate::over_domain::waves::ImpulseSource::Unfinished => "Unfinished",
+        })
+        .collect();
 }
 
 fn collect_state(view: &SensoriumView<'_>, state: &mut SensoriumState) {

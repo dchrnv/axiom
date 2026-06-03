@@ -27,6 +27,8 @@ pub mod traits;
 pub mod weavers;
 /// Sensorium — полный внутренний срез системы + выражение (только чтение, &self)
 pub mod sensorium;
+/// Waves — внутренний ветер; поднимает импульс изнутри в тишине
+pub mod waves;
 
 pub use axial_evaluator::{
     AxialEvaluator, EvaluatorStorage, AXIAL_EVALUATOR_SOURCE_ID, AXIAL_EVALUATOR_TICK_INTERVAL,
@@ -65,6 +67,8 @@ pub use sensorium::{
     CollectionLevel, ConsumerEntry, ConsumerRegistry, Sensorium, SensoriumExpression,
     SensoriumSchedule, SensoriumState, SensoriumView, SubsystemActivity,
 };
+
+pub use waves::{Impulse, ImpulseSource, Waves, WavesView, WAVES_TICK_INTERVAL};
 
 pub use dream_phase::{
     cluster_emergent_primitives, CycleAdvanceResult, CycleStage, DreamCycle, DreamCycleConfig,

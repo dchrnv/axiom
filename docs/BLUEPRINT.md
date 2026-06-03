@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-03  
-**Тесты:** 1683, 0 failures
+**Тесты:** 1706, 0 failures
 
 ---
 
@@ -11,7 +11,7 @@
 ```
 axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(64)))
 axiom-ucl        — UclCommand, OpCode, UclResult
-axiom-genome     — Genome (конституция, frozen в Arc после boot); ModuleId=21(Sensorium), MAX_MODULES=22; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
+axiom-genome     — Genome (конституция, frozen в Arc после boot); ModuleId=22(Waves), MAX_MODULES=23; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    ModalityStore (sutra_id→Modality; Text/Vision/Internal; Cross_Modal_Binding_V1_0);
                    Octant (8 вариантов), SubsystemId, EvaluationLevel (8 уровней);
@@ -321,6 +321,7 @@ ashti: AshtiCore
 guardian: Guardian
 frame_weaver: FrameWeaver          — Over-Domain компонент V1.3
 sensorium: Sensorium               — Sensorium V1.0 (только чтение, тикает последним)
+waves: Waves                       — Waves V1.0 (внутренний ветер, tick%19, до Sensorium)
 pending_events: Vec<Event>
 com_next_id: u64
 tick_count: u64
@@ -480,6 +481,14 @@ event_id: u64
   G3: NeuralAdvisorConfig — парсит секцию [neural_advisor] из genome.yaml;
       per-advisor enable/disable применяется в NeuralAdvisorRegistry::with_default_v3()
 - OverDomainArbiter V3.0 (tick=13, ModuleId=20) — координатор advisory-источников;
+- **Waves V1.0 (ModuleId=22, tick=19)** — внутренний ветер, WAKE-only, молчит в DREAMING;
+  WavesView: had_intake, dream_phase, context_recognizer, axial_evaluator, frame_weaver;
+  internal_dominance_factor 0..1 (плавный, вход снижает); MAX_ACTIVE_IMPULSES=4;
+  Источники: A=дилеммы (intensity×age), B=SutraDepth резонанс (depth>500, не примитив),
+  C=FrameWeaver candidates (stability≥3); merge+limit+decay (DECAY_RATE=15);
+  UCL: ReinforceFrame(delta_temp=8) для B/C; DREAM: dream_reset (75% силы);
+  Sensorium читает impulses через WavesView → SensoriumState.impulse_sources/active_impulse_count/internal_dominance_factor;
+  crate: axiom-runtime/src/over_domain/waves/ (mod/impulse/dominance/sources/storms)
 - **Sensorium V1.0 (ModuleId=21)** — полный внутренний срез системы, только чтение (&self);
   collect(tick, &SensoriumView) тикает последним в handle_tick_wake (после DreamScheduler);
   on_dream_wake() → schedule_memory_collection(); GENOME: Read-only на все ресурсы (инвариант навсегда);

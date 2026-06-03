@@ -87,8 +87,11 @@ pub struct SensoriumState {
     /// Cross-modal bonds накоплено.
     pub cross_modal_bonds: usize,
 
-    // — ВНУТРЕННИЙ ИМПУЛЬС (зарезервировано под ВОЛНЫ V2.0) —
-    // internal_drive: Vec<Impulse>    // пусто в V1
-    // unfinished: Vec<u32>            // пусто в V1
-    // curiosity_targets: Vec<u32>     // пусто в V1
+    // — ВНУТРЕННИЙ ИМПУЛЬС (заполняется Waves V1.0) —
+    /// Насколько система живёт изнутри vs реакция на вход (0.0..1.0).
+    pub internal_dominance_factor: f32,
+    /// Число активных импульсов от Waves.
+    pub active_impulse_count: usize,
+    /// Источники активных импульсов (краткий тег: "Dilemma"/"Resonance"/"Unfinished").
+    pub impulse_sources: Vec<&'static str>,
 }

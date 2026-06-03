@@ -30,9 +30,11 @@ pub enum ModuleId {
     OverDomainArbiter = 20,
     /// Sensorium — полный внутренний срез + выражение (только чтение, &self).
     Sensorium = 21,
+    /// Waves — внутренний ветер; поднимает импульс изнутри, не пишет SUTRA напрямую.
+    Waves = 22,
 }
 
-pub const MAX_MODULES: usize = 22;
+pub const MAX_MODULES: usize = 23;
 
 /// Идентификаторы ресурсов, к которым контролируется доступ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

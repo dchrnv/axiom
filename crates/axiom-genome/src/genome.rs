@@ -264,6 +264,22 @@ impl Genome {
                 resource: R::SutraTokens,
                 permission: P::Read,
             },
+            // Waves — поднимает импульс изнутри; пишет в EXPERIENCE через UCL (ReinforceFrame)
+            AccessRule {
+                module: M::Waves,
+                resource: R::ExperienceMemory,
+                permission: P::ReadWrite,
+            },
+            AccessRule {
+                module: M::Waves,
+                resource: R::AshtiField,
+                permission: P::Read,
+            },
+            AccessRule {
+                module: M::Waves,
+                resource: R::MayaOutput,
+                permission: P::Read,
+            },
         ];
 
         let protocol_rules = vec![

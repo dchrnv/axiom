@@ -16,7 +16,8 @@ use crate::over_domain::{
     ContextRecognizer, DreamCycle, DreamPhaseState, DreamPhaseStats, DreamProposalKind,
     DreamScheduler, FatigueSnapshot, FrameWeaver, GatewayPriority, NeuralAdvisor,
     OverDomainArbiter, OverDomainComponent, Sensorium, SensoriumView, SleepDecision, SleepTrigger,
-    SleepTriggerKind, SubsystemCandidateStore, WakeReason, WeaverId,
+    SleepTriggerKind, SubsystemCandidateStore, WakeReason, Waves, WavesView,
+    WAVES_TICK_INTERVAL, WeaverId,
 };
 use crate::snapshot::{DomainSnapshot, EngineSnapshot};
 use axiom_config::DomainConfig;
@@ -240,6 +241,9 @@ pub struct AxiomEngine {
     /// Sensorium V1.0 — полный внутренний срез системы. Тикает последним.
     /// Только читает состояние через SensoriumView. GENOME-инвариант: &self навсегда.
     pub sensorium: Sensorium,
+    /// Waves V1.0 — внутренний ветер. Тикает каждые 19 тиков в WAKE.
+    /// Поднимает импульсы из трёх источников A/B/C, генерирует UCL реактивации.
+    pub waves: Waves,
 }
 
 impl AxiomEngine {
@@ -261,6 +265,11 @@ impl AxiomEngine {
             let s = Sensorium::new();
             let _ = s.on_boot(&genome);
             s
+        };
+        let waves = {
+            let w = Waves::new();
+            let _ = w.on_boot(&genome);
+            w
         };
         Ok(Self {
             genome: Arc::clone(&genome),
@@ -300,6 +309,7 @@ impl AxiomEngine {
             co_activation_window: HashMap::new(),
             subsystem_candidate_store: SubsystemCandidateStore::default(),
             sensorium,
+            waves,
         })
     }
 
@@ -1365,6 +1375,23 @@ impl AxiomEngine {
             self.transition_to_falling_asleep(trigger);
         }
 
+        // Waves: каждые 19 тиков в WAKE — поднять внутренний ветер.
+        if t % WAVES_TICK_INTERVAL == 0 {
+            let waves_view = WavesView {
+                tick: t,
+                causal_time: self.com_next_id,
+                had_intake,
+                dream_phase: self.dream_phase_state,
+                context_recognizer: &self.context_recognizer,
+                axial_evaluator: &self.axial_evaluator,
+                frame_weaver: &self.frame_weaver,
+            };
+            let waves_cmds = self.waves.on_tick(&waves_view);
+            for cmd in waves_cmds {
+                let _ = self.process_command(&cmd);
+            }
+        }
+
         // Sensorium: собрать срез после всех OD-компонентов.
         // SensoriumView строится из отдельных полей → borrow checker доволен.
         let sensorium_view = SensoriumView {
@@ -1377,6 +1404,7 @@ impl AxiomEngine {
             frame_weaver: &self.frame_weaver,
             over_domain_arbiter: &self.over_domain_arbiter,
             neural_advisor: &self.neural_advisor,
+            waves: &self.waves,
         };
         self.sensorium.collect(&sensorium_view);
 
@@ -1515,6 +1543,7 @@ impl AxiomEngine {
         self.frame_weaver.on_dream_wake();
         self.guardian.reset_wake_stats();
         self.sensorium.on_dream_wake();
+        self.waves.on_dream_wake();
 
         count
     }

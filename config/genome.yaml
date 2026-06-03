@@ -69,6 +69,11 @@ access_rules:
   - { module: Sensorium, resource: MayaOutput,       permission: Read }
   - { module: Sensorium, resource: SutraTokens,      permission: Read }
 
+  # Waves — поднимает импульс изнутри; пишет в EXPERIENCE через UCL (ReinforceFrame)
+  - { module: Waves, resource: ExperienceMemory, permission: ReadWrite }
+  - { module: Waves, resource: AshtiField,       permission: Read }
+  - { module: Waves, resource: MayaOutput,       permission: Read }
+
 protocol_rules:
   - { source: Sutra,      target: Experience, data_type: TokenReference,    mandatory: true  }
   - { source: Experience, target: Arbiter,    data_type: ResonanceResponse, mandatory: true  }

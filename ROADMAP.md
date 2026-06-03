@@ -17,20 +17,22 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1683 тестов, 0 failures.**  
+**1706 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29).  
 DilemmaDetector V2.0 завершён (2026-05-31). Cross-Modal Binding V1.0 завершён (2026-05-31).  
-**Sensorium V1.0 завершён (2026-06-03):** ModuleId=21, MAX_MODULES=22, SensoriumState (4 группы),
-SensoriumView/Schedule/Registry/Expression, collect() в конце wake-тика, on_dream_wake().
-Параллельно TickSnapshot (SEN-TD-01 → V2.0 полное поглощение в DEFERRED).
+**Sensorium V1.0 завершён (2026-06-03):** ModuleId=21, MAX_MODULES=22, 4 группы полей,
+collect() в конце wake-тика, on_dream_wake(). Параллельно TickSnapshot (SEN-TD-01 в DEFERRED).
+**Waves V1.0 завершён (2026-06-03):** ModuleId=22, MAX_MODULES=23, три источника A/B/C,
+internal_dominance_factor, WAVES_TICK_INTERVAL=19, защиты от штормов, ReinforceFrame UCL.
+Sensorium видит impulses через WavesView. Голос обрёл жизнь.
 
 ---
 
 ## Активные задачи
 
-**Следующий этап: Волны V1.0 (Internal Drive)** — спека готова (`docs/spec/Waves_Internal_Drive_V1_0.md`).
-Три источника импульса (дилеммы / SutraDepth / FrameWeaver candidates), internal_dominance_factor,
-защиты от штормов. Зависит от готового материала (всё на месте).
+**Следующий этап — по roadmap:** Кросс V1.0 (Cross-Modal Binding полный пайплайн) или
+доработка Sensorium V1.1 (адаптер Workstation — первый реальный consumer).
+Также можно: DilemmaDetector V2.1 углубление, embeddings (AGENT-TD-01).
 
 ---
 

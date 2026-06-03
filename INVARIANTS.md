@@ -1,6 +1,6 @@
 # Axiom — Справочник инвариантов
 
-**Версия:** 12.0 (2026-06-03)  
+**Версия:** 13.0 (2026-06-03)  
 **Правило:** Значения помеченные **HARD** менять запрещено — они фиксированы в коде compile-time assert-ами, бинарным форматом или фундаментальной логикой. Всё остальное — soft (настраиваемый дефолт).
 
 ---
@@ -356,6 +356,7 @@ config/anchors/
 | **Токены не удаляются физически**. Жизненный цикл: `STATE_ACTIVE → STATE_SLEEPING`. Переход в `STATE_SLEEPING` происходит через `TokenDecayed` событие (причинный возраст > порога). Физическое удаление из `Vec` допустимо **только** для `STATE_SLEEPING` токенов — и только когда домен заполнен и нужен слот для нового активного токена. `AnnihilateToken` (UCL 2002) — **no-op** по дизайну. |
 | `STATE_LOCKED` токены (якоря, `temperature=0`) **никогда не затрагиваются** eviction/decay — это конституционные примитивы пространства |
 | **Sensorium только читает** — `collect()` принимает `&SensoriumView` (immutable), `on_boot()` принимает `&self`. Никаких `&mut` на данные движка. GENOME: ExperienceMemory/Read, AshtiField/Read, MayaOutput/Read, SutraTokens/Read. Инвариант навсегда. |
+| **Waves поднимает импульс, не управляет** — пишет только через UCL (ReinforceFrame в EXPERIENCE). Не пишет в SUTRA напрямую. В DREAMING молчит. MAX_ACTIVE_IMPULSES=4. |
 
 ---
 
@@ -364,7 +365,7 @@ config/anchors/
 ### ModuleId (axiom-genome)
 
 `ModuleId` — `#[repr(u8)]`, значения HARD (зафиксированы в GenomeIndex и GENOME rules).  
-`MAX_MODULES = 22`.
+`MAX_MODULES = 23`.
 
 | ModuleId | u8 | Описание |
 |----------|----|----------|
@@ -380,6 +381,7 @@ config/anchors/
 | NeuralAdvisor | **19** | Advisory-only; 5 советников; poll_advisories() |
 | OverDomainArbiter | **20** | Координатор advisory-источников; TrustConfig; PendingQueue |
 | Sensorium | **21** | Полный внутренний срез + выражение; только чтение (&self); GENOME-инвариант навсегда |
+| Waves | **22** | Внутренний ветер; поднимает импульс изнутри; не пишет SUTRA напрямую |
 
 ### Тик-интервалы Phase C (on_tick_interval)
 

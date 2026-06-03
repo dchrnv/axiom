@@ -448,6 +448,16 @@ impl FrameWeaver {
     /// Derived anchor IDs of all currently active Frame candidates.
     /// Equivalent to what their EXPERIENCE tokens will receive on crystallization.
     /// Used by AxiomEngine to maintain co_activation_window for DreamProposal priority.
+    /// Итератор по всем активным Frame-кандидатам (для Waves Source C).
+    pub fn iter_candidates(&self) -> impl Iterator<Item = &FrameCandidate> {
+        self.candidates.values()
+    }
+
+    /// Вычислить предполагаемый anchor sutra_id из lineage_hash кандидата (для Waves).
+    pub fn proposed_id_from_lineage_hash(hash: u64) -> u32 {
+        Self::proposed_id_from_hash(hash)
+    }
+
     pub fn active_candidate_anchor_ids(&self) -> Vec<u32> {
         self.candidates
             .values()
