@@ -331,6 +331,7 @@ fn should_send(
                 | EngineEvent::BenchProgress { .. }
                 | EngineEvent::BenchFinished { .. } => BENCHMARKS,
                 EngineEvent::Alert { .. } => ALERTS,
+                EngineEvent::CrossModalBondProposed { .. } => FRAMES,
             };
             categories & cat != 0
         }

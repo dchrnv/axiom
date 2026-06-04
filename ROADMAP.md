@@ -20,11 +20,10 @@ axiom-corpus                                        ↑
 **1706 тестов, 0 failures.**  
 Phases E–H завершены. V7 (A–E) завершён. Performance & Tooling Sprint завершён (2026-05-29).  
 DilemmaDetector V2.0 завершён (2026-05-31). Cross-Modal Binding V1.0 завершён (2026-05-31).  
-**Sensorium V1.0 завершён (2026-06-03):** ModuleId=21, MAX_MODULES=22, 4 группы полей,
-collect() в конце wake-тика, on_dream_wake(). Параллельно TickSnapshot (SEN-TD-01 в DEFERRED).
-**Waves V1.0 завершён (2026-06-03):** ModuleId=22, MAX_MODULES=23, три источника A/B/C,
-internal_dominance_factor, WAVES_TICK_INTERVAL=19, защиты от штормов, ReinforceFrame UCL.
-Sensorium видит impulses через WavesView. Голос обрёл жизнь.
+**Sensorium V1.0 завершён (2026-06-03).** **Waves V1.0 завершён (2026-06-03).**
+**Cross-Modal Binding pipeline замкнут (2026-06-03):** vision_anchor_stable_id (bit 29, FNV-1a),
+Vision Frames теперь кристаллизуются корректно; CMB-TD-03 закрыт (CrossModalBondProposed event);
+3 integration теста; BroadcastSnapshot += cross_modal_candidates/bonds. CMB-TD-01 (revocation) → DEFERRED.
 
 ---
 

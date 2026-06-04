@@ -745,4 +745,68 @@ mod tests {
         let cr = ContextRecognizer::default();
         assert!(cr.transition_matrix().most_likely_next(SubsystemId::Writing).is_none());
     }
+
+    // — Cross-Modal Binding integration —
+
+    #[test]
+    fn test_cross_modal_candidate_accumulates_with_two_modalities() {
+        // Проверяет что при одновременной активности Text + Vision Frame
+        // CrossModalDetector накапливает кандидата.
+        use axiom_experience::Modality;
+        let mut cr = ContextRecognizer::default();
+        let text_frame: u32 = 0x4000_0042; // stable text sutra_id (bit 30)
+        let vision_frame: u32 = 0x2000_0099; // stable vision sutra_id (bit 29)
+        cr.register_frame_modality(text_frame, Modality::Text);
+        cr.register_frame_modality(vision_frame, Modality::Vision);
+
+        for tick in 0..10u64 {
+            cr.cross_modal_detector.update(&[text_frame, vision_frame], &cr.modality_store, tick);
+        }
+        assert_eq!(cr.cross_modal_candidate_count(), 1, "should track one cross-modal candidate");
+        assert_eq!(cr.cross_modal_pending_count(), 0, "not yet at threshold (50)");
+    }
+
+    #[test]
+    fn test_cross_modal_bond_proposal_after_threshold() {
+        // Проверяет полный путь: co-activation × 50 → pending bond → drain → UCL BondTokens.
+        use axiom_experience::Modality;
+        use cross_modal::MIN_CROSS_MODAL_COACTIVATION;
+        let mut cr = ContextRecognizer::default();
+        let text_frame: u32 = 0x4000_1234;
+        let vision_frame: u32 = 0x2000_5678;
+        cr.register_frame_modality(text_frame, Modality::Text);
+        cr.register_frame_modality(vision_frame, Modality::Vision);
+
+        for tick in 0..=(MIN_CROSS_MODAL_COACTIVATION as u64) {
+            cr.cross_modal_detector.update(&[text_frame, vision_frame], &cr.modality_store, tick);
+        }
+        assert_eq!(cr.cross_modal_pending_count(), 1, "should have one bond pending DREAM");
+        assert_eq!(cr.cross_modal_candidate_count(), 0, "candidate moved to pending");
+
+        let cmds = cr.drain_cross_modal_bond_commands(109);
+        assert_eq!(cmds.len(), 1, "should produce one BondTokens UCL command");
+        assert_eq!(cr.cross_modal_bond_count(), 1, "bond registered as existing");
+
+        // Повторные co-activations не должны создавать дубль
+        for tick in 0..=(MIN_CROSS_MODAL_COACTIVATION as u64) {
+            cr.cross_modal_detector.update(&[text_frame, vision_frame], &cr.modality_store, tick);
+        }
+        assert_eq!(cr.cross_modal_pending_count(), 0, "no duplicate bond proposal");
+    }
+
+    #[test]
+    fn test_same_modality_no_cross_modal_candidate() {
+        // Два Text Frame → не создаёт cross-modal кандидата (оба одной модальности).
+        use axiom_experience::Modality;
+        let mut cr = ContextRecognizer::default();
+        let frame_a: u32 = 0x4000_0001;
+        let frame_b: u32 = 0x4000_0002;
+        cr.register_frame_modality(frame_a, Modality::Text);
+        cr.register_frame_modality(frame_b, Modality::Text);
+
+        for tick in 0..60u64 {
+            cr.cross_modal_detector.update(&[frame_a, frame_b], &cr.modality_store, tick);
+        }
+        assert_eq!(cr.cross_modal_candidate_count(), 0, "same modality → no cross-modal candidate");
+    }
 }

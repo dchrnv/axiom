@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-03  
-**Тесты:** 1706, 0 failures
+**Тесты:** 1725, 0 failures
 
 ---
 
@@ -455,6 +455,11 @@ event_id: u64
   CrossModalDetector V1.0: cross_modal_detector + modality_store (поля CR);
     ModalityStore: frame_id→Modality (Text/Vision/Internal); дефолт Text для всех существующих Frame;
     позиционная эвристика: position.x<0 → Vision (L0 якоря в отриц. X), ≥0 → Text;
+    vision_anchor_stable_id (бит 29, 0x2000_0001..0x3FFF_FFFF): L0VisionPerceptor пишет в reserved[0..4]
+    → стабильный sutra_id → Vision Frames кристаллизуются → CrossModalDetector находит Text+Vision пары;
+    CMB-TD-03 ✅: CrossModalBondProposed в EngineEvent, pending_cross_modal_bond_events в engine,
+    drain_cross_modal_bond_events(), tick.rs публикует при создании bond;
+    BroadcastSnapshot += cross_modal_candidates + cross_modal_bonds;
     CrossModalCandidate { frame_a, frame_b, modality_a, modality_b, co_activation_count };
     MIN_CROSS_MODAL_COACTIVATION=50; drain_cross_modal_bond_commands(exp_domain_id) → BondTokens;
     CROSS_MODAL_BOND=0x0A01; категория 0x0A [0,20,0,0,10,0,0,10]; drain в apply_dream_depth_update;

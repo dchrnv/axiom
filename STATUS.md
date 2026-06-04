@@ -7,7 +7,17 @@
 
 ## Текущее состояние
 
-**1706 тестов, 0 failures**
+**1725 тестов, 0 failures**
+
+Cross-Modal Binding V1.0 — pipeline замкнут (2026-06-03):
+  **vision_anchor_stable_id** (бит 29, FNV-1a, диапазон 0x2000_0001..0x3FFF_FFFF): L0VisionPerceptor
+  теперь записывает стабильный sutra_id в reserved[0..4] payload (как TextPerceptor text_stable_id).
+  Фикс: один и тот же визуальный якорь всегда получает один sutra_id → FrameWeaver видит стабильные
+  Vision токены → Vision Frames кристаллизуются → CrossModalDetector находит Text+Vision пары.
+  **CMB-TD-03**: CrossModalBondProposed в EngineEvent (axiom-protocol); pending_cross_modal_bond_events
+  в AxiomEngine; drain_cross_modal_bond_events(); tick.rs публикует WS-событие при создании bond;
+  BroadcastSnapshot += cross_modal_candidates + cross_modal_bonds.
+  **3 integration теста** CR: накопление candidates, bond after threshold, same-modality no candidate.
 
 Waves V1.0 ✅ (2026-06-03): внутренний ветер. ModuleId::Waves=22, MAX_MODULES=23.
   `over_domain/waves/`: Impulse (source/target/pull_strength/age/raise_count), ImpulseSource A/B/C,
@@ -305,7 +315,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1706** | |
+| **Итого** | **1725** | |
 
 ---
 

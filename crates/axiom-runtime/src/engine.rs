@@ -241,6 +241,9 @@ pub struct AxiomEngine {
     /// Sensorium V1.0 — полный внутренний срез системы. Тикает последним.
     /// Только читает состояние через SensoriumView. GENOME-инвариант: &self навсегда.
     pub sensorium: Sensorium,
+    /// Pending cross-modal bond events для axiom-node (CMB-TD-03).
+    /// Заполняется в apply_dream_depth_update, дрейнируется в tick.rs.
+    pub(crate) pending_cross_modal_bond_events: Vec<(u32, u32, f32)>,
     /// Waves V1.0 — внутренний ветер. Тикает каждые 19 тиков в WAKE.
     /// Поднимает импульсы из трёх источников A/B/C, генерирует UCL реактивации.
     pub waves: Waves,
@@ -310,6 +313,7 @@ impl AxiomEngine {
             subsystem_candidate_store: SubsystemCandidateStore::default(),
             sensorium,
             waves,
+            pending_cross_modal_bond_events: Vec::new(),
         })
     }
 
@@ -512,6 +516,8 @@ impl AxiomEngine {
             last_crystallization_tick: self.last_crystallization_tick,
             guardian_vetoes_since_wake: self.guardian.stats().vetoes_since_wake,
             last_dream_summary: self.last_dream_summary.clone(),
+            cross_modal_candidates: self.context_recognizer.cross_modal_candidate_count(),
+            cross_modal_bonds: self.context_recognizer.cross_modal_bond_count(),
         }
     }
 
@@ -1588,12 +1594,24 @@ impl AxiomEngine {
         let event_id = self.com_next_id;
         self.context_recognizer.apply_dream_update(&activations, &known_ids, event_id);
 
-        // Cross-modal bond proposals (Cross_Modal_Binding_V1_0 §4)
+        // Cross-modal bond proposals (Cross_Modal_Binding_V1_0 §4 + CMB-TD-03)
         let exp_domain_id = self.ashti.level_id() * 100 + 9;
         let bond_cmds = self.context_recognizer.drain_cross_modal_bond_commands(exp_domain_id);
         for cmd in bond_cmds {
+            // CMB-TD-03: сохранить событие для axiom-node (frame_a, frame_b, strength).
+            // Payload: [0..4]=source_id, [4..8]=target_id, [20..24]=strength (f32 LE).
+            let frame_a = u32::from_le_bytes(cmd.payload[0..4].try_into().unwrap_or([0; 4]));
+            let frame_b = u32::from_le_bytes(cmd.payload[4..8].try_into().unwrap_or([0; 4]));
+            let strength = f32::from_le_bytes(cmd.payload[20..24].try_into().unwrap_or([0; 4]));
+            self.pending_cross_modal_bond_events.push((frame_a, frame_b, strength));
             let _ = self.process_command(&cmd);
         }
+    }
+
+    /// Дрейнировать накопленные cross-modal bond события (CMB-TD-03).
+    /// Вызывается из axiom-node/tick.rs после обработки тика.
+    pub fn drain_cross_modal_bond_events(&mut self) -> Vec<(u32, u32, f32)> {
+        std::mem::take(&mut self.pending_cross_modal_bond_events)
     }
 
     /// Зарегистрировать Critical-команду для выполнения во время/после DREAMING.

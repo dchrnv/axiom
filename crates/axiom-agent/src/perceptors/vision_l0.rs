@@ -246,6 +246,11 @@ fn sobel_analysis(gray: &[u8], width: u32, height: u32) -> EdgeAnalysis {
 
 /// Преобразовать L0 якорь в InjectToken команду для SUTRA.
 /// `semantic_weight` = обнаруженная сила примитива (0..1).
+///
+/// Использует стабильный `vision_anchor_stable_id` в reserved[0..4] (как TextPerceptor
+/// использует text_stable_id). Это гарантирует что один и тот же визуальный якорь
+/// всегда получает один и тот же sutra_id → FrameWeaver видит стабильные токены
+/// → Vision Frames кристаллизуются → CrossModalDetector находит пары Text+Vision.
 fn anchor_to_ucl_command(anchor: &Anchor, semantic_weight: f32) -> UclCommand {
     let mut cmd = UclCommand::new(OpCode::InjectToken, L0_SUTRA_DOMAIN_ID as u32, 100, 0);
     let domain_id_bytes = L0_SUTRA_DOMAIN_ID.to_le_bytes();
@@ -263,7 +268,30 @@ fn anchor_to_ucl_command(anchor: &Anchor, semantic_weight: f32) -> UclCommand {
     cmd.payload[20..32].fill(0);
     cmd.payload[32..36].copy_from_slice(&semantic_weight.to_le_bytes());
     cmd.payload[36..40].copy_from_slice(&L0_VISUAL_TOKEN_TEMPERATURE.to_le_bytes());
+    // reserved[0..4] = vision_anchor_stable_id: стабильный sutra_id из anchor.id
+    // Движок читает reserved[0..4] как proposed_sutra_id (AE-TD-08 / build_token_from_inject).
+    let stable_id = vision_anchor_stable_id(&anchor.id);
+    cmd.payload[40..44].copy_from_slice(&stable_id.to_le_bytes());
     cmd
+}
+
+/// Детерминированный sutra_id для L0 визуального якоря.
+///
+/// Диапазон: `0x2000_0001..=0x3FFF_FFFF` (бит 29 установлен, бит 30 и 31 сброшены).
+/// Гарантированно не пересекается с:
+///   - sequential event_ids (малые значения 1, 2, 3, ...)
+///   - domain_position_hash (0x0001..0x0FFF_FFFF, 28 бит)
+///   - text_stable_id (бит 30: 0x4000_0001..0x7FFF_FFFF)
+///   - anchor_sutra_id (бит 31: 0x8000_0001..0xFFFF_FFFF)
+pub fn vision_anchor_stable_id(anchor_id: &str) -> u32 {
+    // FNV-1a hash
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in anchor_id.bytes() {
+        h ^= byte as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let id = (h as u32) & 0x1FFF_FFFF; // 29 бит без старшего
+    (id | 0x2000_0000).max(0x2000_0001) // бит 29 установлен, не ноль
 }
 
 #[cfg(test)]
@@ -365,6 +393,44 @@ mod tests {
         assert!((x - (-9500.0_f32)).abs() < 1.0);
         assert!((y - (-4500.0_f32)).abs() < 1.0);
         assert!((z - (-800.0_f32)).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_stable_id_in_reserved() {
+        let anchors = vec![make_visual_anchor("visual_edge", [-9500, -4500, -800])];
+        let mut vp = L0VisionPerceptor::new(&anchors);
+        vp.feed_analysis(&EdgeAnalysis {
+            edge_density: 0.1,
+            horizontal_fraction: 0.0,
+            vertical_fraction: 0.0,
+            diagonal_fraction: 0.0,
+        });
+        let cmd = vp.receive().unwrap();
+        // reserved[0..4] должен содержать стабильный sutra_id (не ноль, бит 29 установлен).
+        let stable = u32::from_le_bytes(cmd.payload[40..44].try_into().unwrap());
+        assert_ne!(stable, 0, "stable_id should not be zero");
+        assert!(stable & 0x2000_0000 != 0, "bit 29 should be set");
+        assert_eq!(stable, vision_anchor_stable_id("visual_edge"), "deterministic");
+    }
+
+    #[test]
+    fn test_stable_id_deterministic() {
+        // Тот же anchor_id всегда даёт тот же ID.
+        let id1 = vision_anchor_stable_id("visual_edge");
+        let id2 = vision_anchor_stable_id("visual_edge");
+        assert_eq!(id1, id2);
+        // Разные якоря → разные ID.
+        let id3 = vision_anchor_stable_id("visual_stroke_horizontal");
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_stable_id_range() {
+        for anchor in &["visual_edge", "visual_stroke_horizontal", "visual_stroke_vertical", "visual_stroke_diagonal"] {
+            let id = vision_anchor_stable_id(anchor);
+            assert!(id >= 0x2000_0001, "id={id:#010x} should be >= 0x2000_0001");
+            assert!(id <= 0x3FFF_FFFF, "id={id:#010x} should be <= 0x3FFF_FFFF");
+        }
     }
 
     #[test]

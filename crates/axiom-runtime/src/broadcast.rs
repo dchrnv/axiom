@@ -36,6 +36,10 @@ pub struct BroadcastSnapshot {
     pub guardian_vetoes_since_wake: u64,
     /// Последний завершённый dream-цикл
     pub last_dream_summary: Option<LastDreamSummary>,
+    /// Число активных cross-modal кандидатов (не достигших порога 50).
+    pub cross_modal_candidates: usize,
+    /// Число созданных cross-modal bonds (Text↔Vision связей в EXPERIENCE).
+    pub cross_modal_bonds: usize,
 }
 
 /// Сводка последнего завершённого dream-цикла.

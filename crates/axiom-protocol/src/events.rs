@@ -103,4 +103,14 @@ pub enum EngineEvent {
         category: String,
         message: String,
     },
+
+    /// Cross-modal bond предложен к созданию (Cross_Modal_Binding_V1_0 §4 + CMB-TD-03).
+    /// Генерируется при drain в DREAM Phase. chrnv может отозвать bond через Workstation.
+    CrossModalBondProposed {
+        frame_a: u32,
+        frame_b: u32,
+        modality_a: String,
+        modality_b: String,
+        strength: f32,
+    },
 }

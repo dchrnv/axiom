@@ -181,6 +181,17 @@ pub async fn run(
             }
         }
 
+        // CMB-TD-03: публиковать CrossModalBondProposed события после DREAM (если есть).
+        for (frame_a, frame_b, strength) in engine.drain_cross_modal_bond_events() {
+            handle.publish(EngineMessage::Event(EngineEvent::CrossModalBondProposed {
+                frame_a,
+                frame_b,
+                modality_a: "text".to_string(),
+                modality_b: "vision".to_string(),
+                strength,
+            }));
+        }
+
         // 3. Tick-событие → Workstation
         if cfg.tick_interval > 0 && tick % cfg.tick_interval as u64 == 0 {
             handle.publish(EngineMessage::Event(EngineEvent::Tick {
