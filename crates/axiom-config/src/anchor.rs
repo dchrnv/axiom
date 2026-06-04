@@ -559,13 +559,20 @@ impl AnchorSet {
     }
 
     fn all_anchors(&self) -> impl Iterator<Item = &Anchor> {
+        // L0 якоря из subsystems исключены из match_text (как и L0 из perceptual).
+        // L0 используется только перцепторами (VisionPerceptor, TemporalPerceptor и т.д.).
         self.axes
             .iter()
             .chain(self.layers.iter().flatten())
             .chain(self.domains.iter().flatten())
             .chain(self.octants.iter())
             .chain(self.semantic_centers.iter())
-            .chain(self.subsystems.values().flatten())
+            .chain(
+                self.subsystems
+                    .values()
+                    .flatten()
+                    .filter(|a| a.layer != AnchorLayer::L0),
+            )
     }
 
     // ─── Subsystem detection ─────────────────────────────────────────────────

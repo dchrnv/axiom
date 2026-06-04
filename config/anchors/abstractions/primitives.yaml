@@ -24,6 +24,7 @@ description: "Семь мета-якорей абстракции — форма
 anchors:
   - id: "abstraction_raw"
     word: "сырое"
+    layer: L0
     aliases: ["raw", "сырой", "необработанный", "сигнал", "данные", "стимул", "шум"]
     tags: ["meta", "abstraction", "C0", "a0_raw", "layer:L0"]
     position: [2000, 2000, 1000]

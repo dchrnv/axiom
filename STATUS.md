@@ -7,7 +7,12 @@
 
 ## Текущее состояние
 
-**1697 тестов, 0 failures**
+**1707 тестов, 0 failures**
+
+PRIM-TD-05 ✅ (2026-06-03): L0 уровень для abstraction_raw.
+  `config/anchors/abstractions/primitives.yaml`: `layer: L0` добавлен в `abstraction_raw` (C0).
+  `anchor.rs` all_anchors(): L0-якоря из subsystems теперь исключены из match_text() — как и L0
+  из perceptual. abstraction_raw (сырой сигнал) больше не матчится в тексте: правильно, C0 ≠ языковой концепт.
 
 TemporalPerceptor ✅ (PRIM-TD-04, 2026-06-03): темпоральные маркеры в тексте → time_*-якоря → SUTRA.
   `crates/axiom-agent/src/perceptors/temporal.rs`: temporal_anchor_stable_id (FNV-1a, бит 28,

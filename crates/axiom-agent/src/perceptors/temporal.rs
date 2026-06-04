@@ -38,7 +38,10 @@ pub struct TemporalPerceptor {
 impl TemporalPerceptor {
     /// Создать перцептор из time-якорей AnchorSet.
     ///
-    /// ```
+    /// ```no_run
+    /// # use axiom_agent::perceptors::temporal::TemporalPerceptor;
+    /// # use axiom_config::AnchorSet;
+    /// # let anchor_set = AnchorSet::empty();
     /// let vp = TemporalPerceptor::new(anchor_set.get_subsystem("time"));
     /// ```
     pub fn new(time_anchors: &[Anchor]) -> Self {
