@@ -4,7 +4,7 @@
 > Не нейросеть. Эксперимент с тем, что бывает, если сделать всё иначе.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1623%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1696%20passing-brightgreen.svg)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Weights License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Weights_License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Available-purple.svg)
@@ -14,7 +14,7 @@
 
 ### ⚠️ Project Status: Active Development
 
-**Axiom is in active development — core architecture complete, 1623 tests passing.**
+**Axiom is in active development — core architecture complete, 1696 tests passing.**
 
 ---
 
@@ -51,12 +51,19 @@
 - **AshtiCore** — 11 доменов с трёхчастной онтологией: **SUTRA** (первичные истины, вечные сущности) → домены ASHTI 1–8 → **EXPERIENCE** (накопленный опыт) → **MAYA** (живое состояние «сейчас»). Каждый домен — физическое поле со своей конфигурацией.
 - **Arbiter** — двойная маршрутизация: быстрый рефлекс через Experience или медленный проход по всем доменам. Как System 1 / System 2 — только без нейронов.
 - **Guardian** — CODEX-проверки и GENOME-ограничения. Системные правила, которые нельзя обойти.
-- **Over-Domain Layer** — слой компонентов над доменами. **FrameWeaver** сканирует синтаксические узоры в MAYA, кристаллизует стабильные структуры в EXPERIENCE и предлагает промоцию фундаментальных паттернов в SUTRA через CODEX. **AxialEvaluator** оценивает каждый Frame по философским осям (Apollo/Dionysus, Eros/Thanatos, Will/Nothing) — трёхмерная семантическая система координат. **ContextRecognizer** определяет активные подсистемы знания, строит InterpretationProfile, TransitionMatrix (вероятности переходов между контекстами), CompositeSubsystemProfile (bidirectional coupling) и SplitMergeDetector (предложения по жизненному циклу). **NeuralAdvisor** даёт второй голос: advisory-only рекомендации поверх детерминированных результатов, детектирование эмерджентных примитивов с GUARDIAN-валидацией через EmergentSubsystemRules (genome).
-- **DREAM Phase** — когнитивный сон. Система циклически переходит в состояние `Dreaming`, где FrameWeaver предлагает промоцию устойчивых Frame в SUTRA через `DreamCycle`. Три триггера входа: бездействие, усталость (composite fatigue score 0–255), явная команда. Запись в SUTRA разрешена только в `DREAMING` — онтологический инвариант системы.
-- **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего. Масштабирование глубины.
-- **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния, влияющие на обработку без внешнего сигнала.
-- **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock, никакой неопределённости.
-- **Workstation V2.0** — основной оперативный интерфейс: `axiom-node` (HTTP/WS сервер) + React 18 SPA (Vite + Zustand). Четыре вкладки: Overview (7 метрик + sparklines L1–L8), Domains (карточки 11 доменов), Advisory Queue (confirm/reject advisory), Feed (поток событий). Без зависимостей от нейронных сетей — чистый детерминированный поток. Запуск: `just run` (production) / `just dev` (hot reload).
+- **Over-Domain Layer** — слой компонентов над доменами:
+  - **FrameWeaver** сканирует синтаксические узоры в MAYA, кристаллизует стабильные структуры в EXPERIENCE и предлагает промоцию фундаментальных паттернов в SUTRA через CODEX.
+  - **AxialEvaluator** оценивает каждый Frame по философским осям (Apollo/Dionysus, Eros/Thanatos, Will/Nothing) — трёхмерная семантическая система координат.
+  - **ContextRecognizer** определяет активные подсистемы знания, строит InterpretationProfile, TransitionMatrix, CompositeSubsystemProfile, DilemmaDetector V2.1 (Signal A/B/C) и CrossModalDetector (Text↔Vision binding через co-activation, CROSS_MODAL_BOND=0x0A01).
+  - **NeuralAdvisor** даёт второй голос: advisory-only рекомендации, детектирование эмерджентных примитивов с GUARDIAN-валидацией.
+  - **OverDomainArbiter** координирует advisory-источники, TrustConfig, CognitiveProfile с online learning.
+  - **Waves** — внутренний ветер: impulses из незавершённых дилемм / глубокого резонанса / почти-кристаллизованных Frame. `internal_dominance_factor` переводит систему от реакции к когнитивному — в тишине она сама возвращается к незавершённому.
+  - **Sensorium** — полный внутренний срез: все хранилища в единой точке доступа. `SensoriumState` с 4 группами полей, 4 уровня глубины, ConsumerRegistry. Видит импульсы Waves и может сказать «не могу перестать думать об этом» вместо «у меня дилемма».
+- **DREAM Phase** — когнитивный сон. Система циклически переходит в `Dreaming`, где FrameWeaver предлагает промоцию устойчивых Frame в SUTRA. Три триггера: бездействие, усталость (composite fatigue 0–255), явная команда. Запись в SUTRA — только в DREAMING.
+- **FractalChain** — несколько уровней AshtiCore, где выход одного становится входом следующего.
+- **Cognitive Depth** — TensionTrace, InternalImpulse, GoalPersistence, Curiosity. Внутренние состояния без внешнего сигнала.
+- **CausalFrontier** — очередь событий с причинным порядком. Время в ядре — только `event_id: u64`. Никакого wall-clock.
+- **Workstation V2.0** — основной оперативный интерфейс: `axiom-node` (HTTP/WS сервер) + React 18 SPA. 8 вкладок: Overview, Domains, Traces, Internals, Conversation, Phase C, Patterns, Lab. Запуск: `just run` (production) / `just dev` (hot reload).
 
 
 #### Детерминизм — это не ограничение
@@ -72,7 +79,7 @@
 ```
   ┌───────────────────────────────────────────────────────────────┐
   │  Workstation V2  (React 18 SPA — axiom-web)                    │
-  │    Overview · Domains · Advisory Queue · Feed                  │
+  │    Overview · Domains · Traces · Internals · Phase C · Lab     │
   │    just run (prod :8080) / just dev (hot :5173)               │
   └───────────────────┬──────────────────────┬────────────────────┘
                       │ HTTP/WS (axiom-node)  │ WebSocket (axiom-broadcasting)
@@ -127,10 +134,16 @@
                     │      8 уровней абстракции, Corpus Callosum   │
                     │    ContextRecognizer (tick=7): SubsystemEnergy│
                     │      InterpretationProfile, TransitionMatrix  │
-                    │      CompositeSubsystemProfile, SplitMerge   │
+                    │      DilemmaDetector V2.1 (Sig A/B/C)        │
+                    │      CrossModalDetector (Text↔Vision bonds)  │
                     │    NeuralAdvisor (tick=11): advisory-only,   │
                     │      EmergentPatternDetector → UCL 5200      │
-                    │      EmergentSubsystemRules (GUARDIAN)        │
+                    │    OverDomainArbiter (tick=13): TrustConfig  │
+                    │      CognitiveProfile, advisory coordination │
+                    │    Waves (tick=19): internal_dominance_factor│
+                    │      impulses A/B/C, ReinforceFrame UCL      │
+                    │    Sensorium (every tick, last): full slice  │
+                    │      SensoriumState 4 levels, expression fn  │
                     │                                              │
                     │  DREAM Phase ────────────────────────────    │
                     │    Wake → FallingAsleep → Dreaming → Waking  │
@@ -159,7 +172,7 @@
 ```bash
 git clone https://github.com/dchrnv/axiom.git
 cd axiom
-cargo test --workspace   # 1623 тестов
+cargo test --workspace   # 1696 тестов
 just run                 # → http://127.0.0.1:8080
 # или: just dev          # → :8080 API + :5173 hot reload
 ```

@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1725 тестов, 0 failures**
+**1696 тестов, 0 failures**
 
 Cross-Modal Binding V1.0 — pipeline замкнут (2026-06-03):
   **vision_anchor_stable_id** (бит 29, FNV-1a, диапазон 0x2000_0001..0x3FFF_FFFF): L0VisionPerceptor
@@ -315,7 +315,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1725** | |
+| **Итого** | **1696** | |
 
 ---
 
