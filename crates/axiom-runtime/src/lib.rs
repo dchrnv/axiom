@@ -34,6 +34,8 @@ pub mod over_domain;
 pub mod result;
 /// Snapshot — сохранение и восстановление состояния
 pub mod snapshot;
+/// Subsystem Gravity — PRIM-TD-03: семантическое притяжение/отталкивание к якорям
+pub mod subsystem_gravity;
 
 pub use adapters::{DirectAdapter, Effector, EventBus, EventObserver, Perceptor, RuntimeAdapter};
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
@@ -44,6 +46,7 @@ pub use broadcast::{
 };
 pub use channel::{Channel, ChannelBatchResult};
 pub use engine::{domain_name, AxiomEngine, AxiomError, TickSchedule};
+pub use subsystem_gravity::SubsystemGravityRule;
 pub use gateway::Gateway;
 pub use guardian::{
     CodexAction, Guardian, GuardianConfig, GuardianError, GuardianStats, InhibitAction,

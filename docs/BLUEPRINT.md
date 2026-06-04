@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-06-03  
-**Тесты:** 1707, 0 failures
+**Обновлено:** 2026-06-04  
+**Тесты:** 1714, 0 failures
 
 ---
 
@@ -34,6 +34,9 @@ axiom-arbiter    — Arbiter (dual-path), Experience, Reflector, SkillSet, GridH
 axiom-heartbeat  — HeartbeatGenerator V2.0
 axiom-upo        — UPO v2.2: DynamicTrace, Screen, UPO::compute
 axiom-runtime    — AxiomEngine, Guardian, Gateway, Channel, EventBus, TickSchedule,
+                   SubsystemGravityRule, apply_subsystem_gravity, build_rules_from_anchor_set
+                   (subsystem_gravity.rs, PRIM-TD-03); AxiomEngine.subsystem_gravity_rules;
+                   TickSchedule.subsystem_gravity_interval=500;
                    ProcessingResult, AdaptiveTickRate, Orchestrator, domain_name(),
                    BroadcastSnapshot + types (feature "adapters"),
                    Over-Domain Layer: OverDomainComponent, Weaver traits,
@@ -482,7 +485,7 @@ ARB-TD-06: CognitiveProfile octant_weights roundtrip
 | EMERGENT-TD-01 | Калибровка порогов под неоднородный корпус | DEFERRED |
 | OBS-TD-03 | delta-energy per-text нерабочий, методы оставлены до embeddings | DEFERRED |
 | CMB-TD-01 | Stress-driven revocation cross-modal bonds | DEFERRED |
-| PRIM-TD-03 | ValueGravity/AbstractionGravity | ROADMAP |
+| PRIM-TD-03 | ValueGravity/AbstractionGravity | ✅ DONE 2026-06-04 |
 
 ---
 

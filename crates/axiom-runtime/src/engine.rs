@@ -104,6 +104,9 @@ pub struct TickSchedule {
     pub goal_check_interval: u32,
     /// Shell reconcile (default: 200)
     pub reconcile_interval: u32,
+    /// Subsystem gravity pass: Values pull/push + Abstractions pull (default: 500).
+    /// 0 = отключено. Медленное смысловое смещение — не каждый тик.
+    pub subsystem_gravity_interval: u32,
     /// Автосохранение состояния на диск (default: 0 = отключено).
     /// При ненулевом значении — сохраняет каждые N тиков.
     pub persist_check_interval: u32,
@@ -137,6 +140,7 @@ impl Default for TickSchedule {
             tension_check_interval: 10,
             goal_check_interval: 10,
             reconcile_interval: 200,
+            subsystem_gravity_interval: 500,
             persist_check_interval: 0,
             adaptive_tick: AdaptiveTickRate::default(),
             weaver_scan_intervals: HashMap::new(),
@@ -247,6 +251,9 @@ pub struct AxiomEngine {
     /// Waves V1.0 — внутренний ветер. Тикает каждые 19 тиков в WAKE.
     /// Поднимает импульсы из трёх источников A/B/C, генерирует UCL реактивации.
     pub waves: Waves,
+    /// Правила subsystem-гравитации (PRIM-TD-03). Строятся при boot из AnchorSet,
+    /// неизменны в runtime. Пуст до вызова inject_anchor_tokens.
+    pub subsystem_gravity_rules: Vec<crate::subsystem_gravity::SubsystemGravityRule>,
 }
 
 impl AxiomEngine {
@@ -314,6 +321,7 @@ impl AxiomEngine {
             sensorium,
             waves,
             pending_cross_modal_bond_events: Vec::new(),
+            subsystem_gravity_rules: Vec::new(),
         })
     }
 
@@ -1279,6 +1287,22 @@ impl AxiomEngine {
             let _ = self.ashti.reconcile_all();
         }
 
+        // Cold path: subsystem gravity (PRIM-TD-03)
+        // Медленное смысловое смещение — Values pull/push + Abstractions pull.
+        // НЕ в apply_gravity_batch — горячий путь не трогаем.
+        if s.subsystem_gravity_interval > 0
+            && t.is_multiple_of(s.subsystem_gravity_interval as u64)
+            && !self.subsystem_gravity_rules.is_empty()
+        {
+            let maya_id = self.ashti.level_id() * 100 + 10;
+            if let Some(idx) = self.ashti.index_of(maya_id) {
+                let rules = self.subsystem_gravity_rules.as_slice();
+                if let Some(state) = self.ashti.state_mut(idx) {
+                    crate::subsystem_gravity::apply_subsystem_gravity(state, rules);
+                }
+            }
+        }
+
         // Cold path: snapshot + prune
         if s.snapshot_interval > 0 && t.is_multiple_of(s.snapshot_interval as u64) {
             let _ = self.snapshot_and_prune();
@@ -1961,6 +1985,11 @@ impl AxiomEngine {
             .set_shell_registry(self.shell_registry.clone());
         self.frame_weaver
             .set_anchor_shell_refs(anchor_shell_refs);
+
+        // Subsystem gravity rules (PRIM-TD-03): построить из AnchorSet при boot.
+        let maya_id = self.ashti.level_id() * 100 + 10;
+        self.subsystem_gravity_rules =
+            crate::subsystem_gravity::build_rules_from_anchor_set(anchor_set, maya_id);
 
         injected
     }
