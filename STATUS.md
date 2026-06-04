@@ -7,7 +7,13 @@
 
 ## Текущее состояние
 
-**1696 тестов, 0 failures**
+**1697 тестов, 0 failures**
+
+TemporalPerceptor ✅ (PRIM-TD-04, 2026-06-03): темпоральные маркеры в тексте → time_*-якоря → SUTRA.
+  `crates/axiom-agent/src/perceptors/temporal.rs`: temporal_anchor_stable_id (FNV-1a, бит 28,
+  диапазон 0x1000_0001..0x1FFF_FFFF); 7 паттернов (time_before/after/simultaneous/duration/
+  periodic/irreversible/horizon); word + aliases (case-insensitive); stable_id в reserved[0..4].
+  Интеграция: TemporalPerceptor::new(anchor_set.get_subsystem("time")); 10 unit-тестов.
 
 Cross-Modal Binding V1.0 — pipeline замкнут (2026-06-03):
   **vision_anchor_stable_id** (бит 29, FNV-1a, диапазон 0x2000_0001..0x3FFF_FFFF): L0VisionPerceptor

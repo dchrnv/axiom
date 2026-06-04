@@ -39,6 +39,9 @@ axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
                    snapshot_live: RwLock<Option<SystemSnapshot>> (хранит живой снапшот)
 axiom-agent      — TextPerceptor (2-path detect_subsystem + perceive_and_bond → SEMANTIC_ANCHOR_BOND),
                    text_stable_id(0x4000_0000+), anchor_sutra_id mirror; L0VisionPerceptor (V7-E2),
+                   TemporalPerceptor (PRIM-TD-04): temporal_anchor_stable_id(0x1000_0001+, bit 28);
+                   7 anchors (time_before..time_horizon); word+aliases case-insensitive;
+                   new(anchor_set.get_subsystem("time")) → perceive(text) → pending InjectToken;
                    MessageEffector, CliChannel, meta_commands, tick_loop (9 params),
                    AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)

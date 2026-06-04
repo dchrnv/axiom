@@ -180,6 +180,7 @@
 |----------|------------|
 | `1..event_id` | Sequential tokens (event_id as u32) |
 | `0x0001..0x0FFF_FFFF` | domain_position_hash (28 бит) |
+| `0x1000_0001..0x1FFF_FFFF` | temporal_anchor_stable_id (TemporalPerceptor, бит 28) |
 | `0x2000_0001..0x3FFF_FFFF` | vision_anchor_stable_id (L0VisionPerceptor, бит 29) |
 | `0x4000_0001..0x7FFF_FFFF` | text_stable_id (TextPerceptor, бит 30) |
 | `0x8000_0001..0xFFFF_FFFF` | anchor_sutra_id (fnv1a_anchor_id, бит 31) |
