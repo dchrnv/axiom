@@ -34,10 +34,8 @@ axiom-arbiter    — Arbiter (dual-path), Experience, Reflector, SkillSet, GridH
 axiom-heartbeat  — HeartbeatGenerator V2.0
 axiom-upo        — UPO v2.2: DynamicTrace, Screen, UPO::compute
 axiom-runtime    — AxiomEngine, Guardian, Gateway, Channel, EventBus, TickSchedule,
-                   SubsystemGravityRule, apply_subsystem_gravity, build_rules_from_anchor_set
-                   (subsystem_gravity.rs, PRIM-TD-03); AxiomEngine.subsystem_gravity_rules;
-                   TickSchedule.subsystem_gravity_interval=500;
                    ProcessingResult, AdaptiveTickRate, Orchestrator, domain_name(),
+                   SubsystemGravityRule + apply_subsystem_gravity (PRIM-TD-03, subsystem_gravity.rs);
                    BroadcastSnapshot + types (feature "adapters"),
                    Over-Domain Layer: OverDomainComponent, Weaver traits,
                    FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7,
@@ -196,6 +194,7 @@ sensorium: Sensorium                   — каждый тик, последни
 dream_phase_state: DreamPhaseState
 dream_scheduler: DreamScheduler
 pending_cross_modal_bond_events: Vec<(u32, u32, f32)>  — CMB-TD-03, дрейнируется axiom-node
+subsystem_gravity_rules: Vec<SubsystemGravityRule>     — PRIM-TD-03, boot-time immutable
 ```
 
 ### Ключевые методы
@@ -221,6 +220,11 @@ fn drain_cross_modal_bond_events() -> Vec<(u32, u32, f32)>  // CMB-TD-03
 7. DreamScheduler
 8. t%19 → Waves
 9. Sensorium::collect() — последним (читает актуальное состояние всех OD)
+
+Cold path (TickSchedule):
+  t%200 → reconcile_all()
+  t%500 → apply_subsystem_gravity(MAYA, subsystem_gravity_rules)  — PRIM-TD-03
+  t%500 → snapshot+prune (snapshot_interval=5000)
 ```
 
 ---
@@ -485,7 +489,6 @@ ARB-TD-06: CognitiveProfile octant_weights roundtrip
 | EMERGENT-TD-01 | Калибровка порогов под неоднородный корпус | DEFERRED |
 | OBS-TD-03 | delta-energy per-text нерабочий, методы оставлены до embeddings | DEFERRED |
 | CMB-TD-01 | Stress-driven revocation cross-modal bonds | DEFERRED |
-| PRIM-TD-03 | ValueGravity/AbstractionGravity | ✅ DONE 2026-06-04 |
 
 ---
 
