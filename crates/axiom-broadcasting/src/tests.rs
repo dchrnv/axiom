@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
 use axiom_protocol::messages::{ClientKind, ClientMessage, EngineMessage, ShutdownReason};
@@ -307,5 +308,139 @@ async fn test_dropping_under_load() {
     assert!(
         found_sentinel,
         "server must survive message flood and still deliver messages"
+    );
+}
+
+// ── BRD-TD-06: pong timeout disconnects unresponsive client ──────────────────
+//
+// tungstenite auto-responds to Pings — нельзя протестировать через обычный WS клиент.
+// Решение: raw TCP + ручной WebSocket handshake. Получаем Ping, игнорируем,
+// ждём pong_timeout, проверяем что сервер закрыл соединение (Close frame или EOF).
+
+/// Сделать masked WebSocket фрейм (клиент → сервер).
+/// Маска из нулей: XOR с 0 = payload без изменений (валидно по спеке).
+fn ws_client_frame(opcode: u8, payload: &[u8]) -> Vec<u8> {
+    let mut f = Vec::new();
+    f.push(0x80 | opcode); // FIN=1
+    let len = payload.len();
+    if len < 126 {
+        f.push(0x80 | len as u8); // MASK=1
+    } else {
+        f.push(0xFE); // MASK=1 | 126
+        f.push((len >> 8) as u8);
+        f.push(len as u8);
+    }
+    f.extend_from_slice(&[0u8; 4]); // нулевая маска → payload не меняется
+    f.extend_from_slice(payload);
+    f
+}
+
+/// Прочитать один WS фрейм с сервера (немаскированный). Возвращает opcode + payload.
+async fn ws_read_frame(stream: &mut tokio::net::TcpStream) -> std::io::Result<(u8, Vec<u8>)> {
+    let mut hdr = [0u8; 2];
+    stream.read_exact(&mut hdr).await?;
+    let opcode = hdr[0] & 0x0F;
+    let len_byte = hdr[1] & 0x7F; // сервер не маскирует
+    let payload_len: usize = if len_byte < 126 {
+        len_byte as usize
+    } else if len_byte == 126 {
+        let mut l = [0u8; 2];
+        stream.read_exact(&mut l).await?;
+        u16::from_be_bytes(l) as usize
+    } else {
+        let mut l = [0u8; 8];
+        stream.read_exact(&mut l).await?;
+        u64::from_be_bytes(l) as usize
+    };
+    let mut payload = vec![0u8; payload_len];
+    if payload_len > 0 {
+        stream.read_exact(&mut payload).await?;
+    }
+    Ok((opcode, payload))
+}
+
+// Test 2.7.g — BRD-TD-06: server disconnects client that ignores pings.
+#[tokio::test]
+async fn test_pong_timeout_disconnects_silent_client() {
+    use axiom_protocol::messages::ClientKind;
+
+    let config = BroadcastingConfig {
+        heartbeat_interval: Duration::from_millis(50),
+        pong_timeout: Duration::from_millis(80),
+        ..BroadcastingConfig::default()
+    };
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    drop(listener);
+
+    let (server, _handle) = BroadcastServer::new(addr, config);
+    tokio::spawn(async move { server.run().await.ok() });
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    // 1. Подключаемся raw TCP
+    let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+
+    // 2. HTTP WebSocket upgrade (static key — сервер проверяет только формат)
+    let request = format!(
+        "GET / HTTP/1.1\r\nHost: {addr}\r\nUpgrade: websocket\r\n\
+         Connection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\
+         Sec-WebSocket-Version: 13\r\n\r\n"
+    );
+    stream.write_all(request.as_bytes()).await.unwrap();
+
+    // 3. Читаем HTTP 101 (до \r\n\r\n)
+    let mut http_buf = Vec::new();
+    let mut byte = [0u8; 1];
+    loop {
+        stream.read_exact(&mut byte).await.unwrap();
+        http_buf.push(byte[0]);
+        if http_buf.ends_with(b"\r\n\r\n") { break; }
+    }
+    assert!(
+        http_buf.starts_with(b"HTTP/1.1 101"),
+        "expected 101 Switching Protocols"
+    );
+
+    // 4. Отправляем ClientMessage::Hello как masked binary WS фрейм
+    let hello = ClientMessage::Hello {
+        version: PROTOCOL_VERSION,
+        client_kind: ClientKind::Workstation,
+    };
+    let payload = postcard::to_stdvec(&hello).unwrap();
+    stream.write_all(&ws_client_frame(2, &payload)).await.unwrap();
+
+    // 5. Читаем фреймы НЕ отвечая на Ping.
+    //    heartbeat=50ms → первый Ping через ~50ms.
+    //    pong_timeout=80ms → сервер закроет ~130ms после старта.
+    //    Ждём максимум 400ms.
+    let deadline = tokio::time::Instant::now() + Duration::from_millis(400);
+    let mut got_close = false;
+
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() { break; }
+
+        let result = tokio::time::timeout(remaining, ws_read_frame(&mut stream)).await;
+        match result {
+            Ok(Ok((opcode, _))) => {
+                if opcode == 8 { // Close frame
+                    got_close = true;
+                    break;
+                }
+                // opcode 9=Ping, 10=Pong, 2=Binary → игнорируем, не отвечаем
+            }
+            Ok(Err(_)) => {
+                // EOF или ошибка чтения — сервер закрыл соединение
+                got_close = true;
+                break;
+            }
+            Err(_) => break, // таймаут всего теста
+        }
+    }
+
+    assert!(
+        got_close,
+        "server must disconnect client that ignores pings within pong_timeout"
     );
 }
