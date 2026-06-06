@@ -6,7 +6,10 @@
 //   3. resonance_search (Experience) — линейный поиск по HashMap
 
 use axiom_arbiter::ExperienceModule;
-use axiom_core::Token;
+use axiom_config::DomainConfig;
+use axiom_core::{Token, STATE_ACTIVE};
+use axiom_domain::DomainState;
+use axiom_runtime::subsystem_gravity::{apply_subsystem_gravity, SubsystemGravityRule};
 use axiom_space::{apply_gravity_batch, apply_gravity_batch_avx2, GravityModel, SpatialHashGrid};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
@@ -135,6 +138,72 @@ fn bench_resonance_stress(c: &mut Criterion) {
     group.finish();
 }
 
+// ─── 4. apply_subsystem_gravity: 100 → 10K токенов (PRIM-TD-03) ─────────────
+
+fn make_subsystem_rules() -> Vec<SubsystemGravityRule> {
+    vec![
+        SubsystemGravityRule {
+            anchor_sutra_id: 1,
+            anchor_position: [8000, 12000, 13000], // val_beneficial
+            direction: 1.0,
+            strength_factor: 0.20,
+            radius: None,
+            target_domain: 110,
+        },
+        SubsystemGravityRule {
+            anchor_sutra_id: 2,
+            anchor_position: [3000, 1000, 11000], // val_harmful
+            direction: -1.0,
+            strength_factor: 0.20,
+            radius: None,
+            target_domain: 110,
+        },
+        SubsystemGravityRule {
+            anchor_sutra_id: 3,
+            anchor_position: [13000, 10000, 14000], // abstraction_theory
+            direction: 1.0,
+            strength_factor: 0.08,
+            radius: Some(8000),
+            target_domain: 110,
+        },
+        SubsystemGravityRule {
+            anchor_sutra_id: 4,
+            anchor_position: [14000, 12000, 15000], // abstraction_constructor
+            direction: 1.0,
+            strength_factor: 0.08,
+            radius: Some(8000),
+            target_domain: 110,
+        },
+    ]
+}
+
+fn bench_subsystem_gravity(c: &mut Criterion) {
+    let mut group = c.benchmark_group("stress/apply_subsystem_gravity");
+    group.measurement_time(Duration::from_secs(5));
+    group.sample_size(20);
+
+    let rules = make_subsystem_rules();
+    let config = DomainConfig::default();
+
+    for &n in &[100usize, 500, 1_000, 5_000, 10_000] {
+        let mut state = DomainState::new(&config);
+        for i in 0..n {
+            let x = ((i.wrapping_mul(37)) % 60000) as i32 - 30000;
+            let y = ((i.wrapping_mul(53)) % 60000) as i32 - 30000;
+            let z = ((i.wrapping_mul(71)) % 10000) as i32 - 5000;
+            let mut t = Token::new(i as u32 + 1, 110, [x as i16, y as i16, z as i16], 1);
+            t.state = STATE_ACTIVE;
+            t.mass = 100;
+            let _ = state.add_token(t);
+        }
+
+        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
+            b.iter(|| apply_subsystem_gravity(black_box(&mut state), black_box(&rules)))
+        });
+    }
+    group.finish();
+}
+
 // ─── criterion_main ───────────────────────────────────────────────────────────
 
 criterion_group!(
@@ -143,6 +212,7 @@ criterion_group!(
     bench_gravity_avx2_stress,
     bench_grid_stress,
     bench_resonance_stress,
+    bench_subsystem_gravity,
 );
 
 criterion_main!(stress);

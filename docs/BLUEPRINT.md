@@ -519,12 +519,13 @@ ARB-TD-06: CognitiveProfile octant_weights roundtrip
 
 | Операция | Время |
 |----------|-------|
-| Token::new | 17.2 ns |
-| TickForward (50 tok, 1M тиков) | **96.5 ns/тик** |
-| SpatialHashGrid::rebuild (1K) | 9.50 µs |
-| apply_gravity_batch (1K) | 23.4 µs |
-| apply_gravity_batch_avx2 (1M) | 6.74 ms |
-| resonance_search (1K трейсов) | 12.8 µs |
-| AxiomEngine::new | ~440 µs |
+| Token::new | 69 ns |
+| TickForward (50 tok, hot path) | **31.3 µs** |
+| TickForward (warm, 50 tok) | **71–83 µs** |
+| AxiomEngine::new | **1.60 ms** |
+| SpatialHashGrid::rebuild (1M) | 10.8 ms |
+| apply_gravity_batch AVX2 (1M) | 11.0 ms |
+| apply_subsystem_gravity (500 tok) | **35 µs** (NEW, раз в 500 тиков) |
+| resonance_search (до 50K трейсов) | **~20 µs** (O(1)) |
 
-Результаты v9: docs/bench/RESULTS.md.
+Результаты v13: docs/bench/RESULTS.md.
