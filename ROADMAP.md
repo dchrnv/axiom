@@ -105,23 +105,11 @@ impulse_sources.
 
 **Фазы реализации:**
 
-#### Фаза A — Расширить SensoriumState до уровня BroadcastSnapshot
-Файл: `crates/axiom-runtime/src/over_domain/sensorium/state.rs`
-
-Добавить поля (level 0 = Pulse, собираются каждый тик):
-```rust
-pub tick_count: u64,
-pub com_next_id: u64,
-pub trace_count: usize,
-pub tension_count: usize,
-pub domain_summaries: Vec<SensoriumDomainSummary>,  // упрощённый DomainSummary
-pub frame_weaver_stats: Option<SensoriumFrameStats>,
-pub dream_phase_snapshot: Option<SensoriumDreamSnapshot>,
-pub last_crystallization_tick: u64,
-pub guardian_vetoes_since_wake: u64,
-pub cross_modal_candidates: usize,
-```
-Заполнять в `collect_pulse()` из `SensoriumView` (туда добавить нужные ссылки).
+#### ~~Фаза A — Расширить SensoriumState до уровня BroadcastSnapshot~~ ✅ ГОТОВО (2026-06-05)
+`state.rs`: SensoriumDomainSummary, SensoriumDreamSummary; поля trace_count, tension_count,
+domain_summaries, last_crystallization_tick, guardian_vetoes_since_wake, cross_modal_candidates,
+last_dream_summary добавлены в SensoriumState. SensoriumView расширен. collect_pulse заполняет
+все поля. engine.rs: pre-compute + передача в view. 2 теста.
 
 #### Фаза B — Публиковать SensoriumState через BroadcastHandle
 Файл: `crates/axiom-broadcasting/src/lib.rs` + `crates/axiom-node/src/tick.rs`

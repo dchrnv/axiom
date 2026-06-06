@@ -3,6 +3,28 @@
 
 use axiom_experience::SubsystemId;
 
+/// Краткая сводка одного домена (11 доменов SUTRA–MAYA).
+/// Аналог broadcast::DomainSummary, но без Serialize — внутренний формат Sensorium.
+#[derive(Clone, Debug, Default)]
+pub struct SensoriumDomainSummary {
+    pub domain_id: u16,
+    pub token_count: usize,
+    pub connection_count: usize,
+    /// Средняя температура активных токенов (0 если домен пуст).
+    pub temperature_avg: u8,
+}
+
+/// Краткая сводка последнего завершённого dream-цикла.
+#[derive(Clone, Debug)]
+pub struct SensoriumDreamSummary {
+    pub cycle_id: u64,
+    pub started_at_tick: u64,
+    pub ended_at_tick: u64,
+    pub proposals_accepted: u32,
+    pub proposals_rejected: u32,
+    pub sutra_written: u32,
+}
+
 /// Активность подсистемы в текущем срезе.
 #[derive(Clone, Debug)]
 pub struct SubsystemActivity {
@@ -94,4 +116,20 @@ pub struct SensoriumState {
     pub active_impulse_count: usize,
     /// Источники активных импульсов (краткий тег: "Dilemma"/"Resonance"/"Unfinished").
     pub impulse_sources: Vec<&'static str>,
+
+    // — ДВИЖОК (добавлено в V2.0, Фаза A — поглощение BroadcastSnapshot) —
+    /// Общее число следов опыта (Experience.trace_count).
+    pub trace_count: usize,
+    /// Число активных tension traces.
+    pub tension_count: usize,
+    /// Краткая сводка по каждому из 11 доменов.
+    pub domain_summaries: Vec<SensoriumDomainSummary>,
+    /// Тик последней кристаллизации Frame (0 — ни одной).
+    pub last_crystallization_tick: u64,
+    /// Вето Guardian с момента последнего Wake.
+    pub guardian_vetoes_since_wake: u64,
+    /// Cross-modal кандидаты (не достигшие порога BondTokens).
+    pub cross_modal_candidates: usize,
+    /// Последний завершённый dream-цикл (None до первого сна).
+    pub last_dream_summary: Option<SensoriumDreamSummary>,
 }

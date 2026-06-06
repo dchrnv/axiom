@@ -1423,6 +1423,45 @@ impl AxiomEngine {
         }
 
         // Sensorium: собрать срез после всех OD-компонентов.
+        // Pre-data вычисляется до SensoriumView чтобы не конфликтовать по borrow.
+        let trace_count = self.ashti.experience().trace_count();
+        let tension_count = self.ashti.experience().tension_count();
+        let domain_summaries: Vec<crate::over_domain::SensoriumDomainSummary> = self
+            .ashti
+            .all_states()
+            .into_iter()
+            .map(|(domain_id, state)| {
+                let temp_avg = if state.tokens.is_empty() {
+                    0u8
+                } else {
+                    let sum: u64 = state.tokens.iter().map(|t| t.temperature as u64).sum();
+                    (sum / state.tokens.len() as u64) as u8
+                };
+                crate::over_domain::SensoriumDomainSummary {
+                    domain_id,
+                    token_count: state.token_count(),
+                    connection_count: state.connection_count(),
+                    temperature_avg: temp_avg,
+                }
+            })
+            .collect();
+        let last_crystallization_tick = self.last_crystallization_tick;
+        let guardian_vetoes_since_wake = self.guardian.stats().vetoes_since_wake;
+
+        #[cfg(feature = "adapters")]
+        let last_dream_summary = self.last_dream_summary.as_ref().map(|s| {
+            crate::over_domain::SensoriumDreamSummary {
+                cycle_id: s.cycle_id,
+                started_at_tick: s.started_at_tick,
+                ended_at_tick: s.ended_at_tick,
+                proposals_accepted: s.proposals_accepted,
+                proposals_rejected: s.proposals_rejected,
+                sutra_written: s.sutra_written,
+            }
+        });
+        #[cfg(not(feature = "adapters"))]
+        let last_dream_summary: Option<crate::over_domain::SensoriumDreamSummary> = None;
+
         // SensoriumView строится из отдельных полей → borrow checker доволен.
         let sensorium_view = SensoriumView {
             tick: t,
@@ -1435,6 +1474,12 @@ impl AxiomEngine {
             over_domain_arbiter: &self.over_domain_arbiter,
             neural_advisor: &self.neural_advisor,
             waves: &self.waves,
+            trace_count,
+            tension_count,
+            domain_summaries,
+            last_crystallization_tick,
+            guardian_vetoes_since_wake,
+            last_dream_summary,
         };
         self.sensorium.collect(&sensorium_view);
 

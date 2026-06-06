@@ -7,7 +7,14 @@
 
 ## Текущее состояние
 
-**1720 тестов, 0 failures**
+**1732 тестов, 0 failures**
+
+SEN-TD-01 Фаза A ✅ (2026-06-05): SensoriumState поглощает поля BroadcastSnapshot.
+  `state.rs`: SensoriumDomainSummary, SensoriumDreamSummary; новые поля SensoriumState:
+  trace_count, tension_count, domain_summaries, last_crystallization_tick,
+  guardian_vetoes_since_wake, cross_modal_candidates, last_dream_summary.
+  SensoriumView расширен; collect_pulse заполняет все поля каждый тик.
+  engine.rs: pre-compute domain_summaries + scalar fields до построения SensoriumView.
 
 Shell-TD-02 ✅ (2026-06-04): shell bonus в resonance_search.
   `crates/axiom-arbiter/src/experience.rs`: shell_registry: HashMap<u32,[u8;8]> в Experience;

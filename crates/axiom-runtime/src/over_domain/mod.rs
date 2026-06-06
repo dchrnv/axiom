@@ -64,7 +64,8 @@ pub use weavers::{
 };
 
 pub use sensorium::{
-    CollectionLevel, ConsumerEntry, ConsumerRegistry, Sensorium, SensoriumExpression,
+    ActiveDilemmaEntry, CollectionLevel, ConsumerEntry, ConsumerRegistry, EmergentEntry,
+    Sensorium, SensoriumDomainSummary, SensoriumDreamSummary, SensoriumExpression,
     SensoriumSchedule, SensoriumState, SensoriumView, SubsystemActivity,
 };
 

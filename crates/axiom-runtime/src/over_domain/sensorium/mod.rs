@@ -24,7 +24,10 @@ pub use expression::{express, SensoriumExpression};
 pub use levels::{CollectionLevel, FULL_INTERVAL, PULSE_INTERVAL, STATE_INTERVAL};
 pub use registry::{ConsumerEntry, ConsumerRegistry};
 pub use schedule::SensoriumSchedule;
-pub use state::{ActiveDilemmaEntry, EmergentEntry, SensoriumState, SubsystemActivity};
+pub use state::{
+    ActiveDilemmaEntry, EmergentEntry, SensoriumDomainSummary, SensoriumDreamSummary,
+    SensoriumState, SubsystemActivity,
+};
 
 use axiom_genome::types::{ModuleId, Permission, ResourceId};
 use axiom_genome::{Genome, GenomeIndex};
@@ -54,6 +57,19 @@ pub struct SensoriumView<'a> {
     pub neural_advisor: &'a NeuralAdvisor,
     /// Waves — для чтения impulse-полей (internal_dominance_factor, active_impulses).
     pub waves: &'a Waves,
+    // — Добавлено в V2.0 (Фаза A) — поля из BroadcastSnapshot —
+    /// Experience.trace_count() — вычислено в engine до построения view.
+    pub trace_count: usize,
+    /// Experience.tension_count() — вычислено в engine до построения view.
+    pub tension_count: usize,
+    /// Сводка по 11 доменам — вычислена в engine до построения view.
+    pub domain_summaries: Vec<SensoriumDomainSummary>,
+    /// AxiomEngine.last_crystallization_tick.
+    pub last_crystallization_tick: u64,
+    /// Guardian.stats().vetoes_since_wake.
+    pub guardian_vetoes_since_wake: u64,
+    /// Последний завершённый dream-цикл (None до первого сна).
+    pub last_dream_summary: Option<SensoriumDreamSummary>,
 }
 
 /// Sensorium — единая точка доступа к внутреннему срезу системы.
@@ -214,6 +230,15 @@ fn collect_pulse(view: &SensoriumView<'_>, state: &mut SensoriumState) {
             crate::over_domain::waves::ImpulseSource::Unfinished => "Unfinished",
         })
         .collect();
+
+    // — Движок (Фаза A: поля из BroadcastSnapshot) —
+    state.trace_count = view.trace_count;
+    state.tension_count = view.tension_count;
+    state.domain_summaries = view.domain_summaries.clone();
+    state.last_crystallization_tick = view.last_crystallization_tick;
+    state.guardian_vetoes_since_wake = view.guardian_vetoes_since_wake;
+    state.cross_modal_candidates = view.context_recognizer.cross_modal_candidate_count();
+    state.last_dream_summary = view.last_dream_summary.clone();
 }
 
 fn collect_state(view: &SensoriumView<'_>, state: &mut SensoriumState) {
@@ -344,5 +369,25 @@ mod tests {
         let s = Sensorium::new();
         let arc = Arc::new(genome);
         assert!(s.on_boot(&arc).is_ok());
+    }
+
+    #[test]
+    fn sensorium_domain_summary_default() {
+        let s = SensoriumDomainSummary::default();
+        assert_eq!(s.domain_id, 0);
+        assert_eq!(s.token_count, 0);
+        assert_eq!(s.temperature_avg, 0);
+    }
+
+    #[test]
+    fn sensorium_state_has_phase_a_fields() {
+        let state = SensoriumState::default();
+        assert_eq!(state.trace_count, 0);
+        assert_eq!(state.tension_count, 0);
+        assert!(state.domain_summaries.is_empty());
+        assert_eq!(state.last_crystallization_tick, 0);
+        assert_eq!(state.guardian_vetoes_since_wake, 0);
+        assert_eq!(state.cross_modal_candidates, 0);
+        assert!(state.last_dream_summary.is_none());
     }
 }
