@@ -1,13 +1,21 @@
 # AXIOM Status
 
-**Обновлено:** 2026-06-04
+**Обновлено:** 2026-06-05
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1714 тестов, 0 failures**
+**1720 тестов, 0 failures**
+
+Shell-TD-02 ✅ (2026-06-04): shell bonus в resonance_search.
+  `crates/axiom-arbiter/src/experience.rs`: shell_registry: HashMap<u32,[u8;8]> в Experience;
+  set_shell_registry() — заполняется из engine.inject_anchor_tokens при boot.
+  pattern_similarity() расширена: shell_cosine([u8;8],[u8;8]) → 15% бонус/штраф к score.
+  Идентичные профили → ×1.0 (max); ортогональные → ×0.85 (min); нет в registry → ×0.925 (нейтраль).
+  6 unit-тестов: cosine/neutral/bonus/penalty/neutral-registry/propagation.
+  Вызов: self.ashti.experience_mut().set_shell_registry() в inject_anchor_tokens.
 
 PRIM-TD-03 ✅ (2026-06-04): Subsystem Gravity — семантическое притяжение/отталкивание.
   `crates/axiom-runtime/src/subsystem_gravity.rs` (новый): SubsystemGravityRule, apply_subsystem_gravity,
@@ -317,7 +325,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml; link_types: 0x08 Syntactic, 0x09 Composition, 0x0A CrossModal, 0x0B SemanticAnchor=0x0B01 (AE-TD-08) |
-| axiom-arbiter | 139 | Arbiter V1.0, Experience, REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-arbiter | 145 | Arbiter V1.0, Experience (shell_registry + shell_cosine bonus в pattern_similarity, Shell-TD-02), REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
@@ -335,7 +343,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1714** | |
+| **Итого** | **1720** | |
 
 ---
 

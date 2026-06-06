@@ -27,7 +27,7 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 
 ---
 
-### Shell-TD-02 — resonance_search shell bonus
+### ~~Shell-TD-02 — resonance_search shell bonus~~ ✅ ГОТОВО (2026-06-05)
 
 **Суть:** `resonance_search` в `Experience` оценивает сходство токена по temperature/mass/valence/position
 но игнорирует shell-профиль `[u8;8]`. Shell несёт семантическую принадлежность к слоям L1–L8.

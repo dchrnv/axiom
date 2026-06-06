@@ -1978,13 +1978,16 @@ impl AxiomEngine {
             }
         }
 
-        // Sync shell data to ContextRecognizer and FrameWeaver
+        // Sync shell data to ContextRecognizer, FrameWeaver и Experience (Shell-TD-02)
         self.context_recognizer
             .set_subsystem_shell_templates(self.subsystem_shell_templates.clone());
         self.frame_weaver
             .set_shell_registry(self.shell_registry.clone());
         self.frame_weaver
             .set_anchor_shell_refs(anchor_shell_refs);
+        self.ashti
+            .experience_mut()
+            .set_shell_registry(self.shell_registry.clone());
 
         // Subsystem gravity rules (PRIM-TD-03): построить из AnchorSet при boot.
         let maya_id = self.ashti.level_id() * 100 + 10;

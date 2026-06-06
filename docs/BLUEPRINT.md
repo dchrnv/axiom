@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-06-04  
-**Тесты:** 1714, 0 failures
+**Обновлено:** 2026-06-05  
+**Тесты:** 1720, 0 failures
 
 ---
 
@@ -30,7 +30,8 @@ axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_she
                    link_types: 0x08 syntactic, 0x09 composition,
                    0x0A cross-modal (CROSS_MODAL_BOND=0x0A01), 0x0B semantic-anchor
 axiom-domain     — Domain, DomainState, AshtiCore (11 доменов), CausalHorizon, FractalChain
-axiom-arbiter    — Arbiter (dual-path), Experience, Reflector, SkillSet, GridHash, COM
+axiom-arbiter    — Arbiter (dual-path), Experience (shell_registry, shell_cosine bonus 15%
+                   в pattern_similarity, Shell-TD-02), Reflector, SkillSet, GridHash, COM
 axiom-heartbeat  — HeartbeatGenerator V2.0
 axiom-upo        — UPO v2.2: DynamicTrace, Screen, UPO::compute
 axiom-runtime    — AxiomEngine, Guardian, Gateway, Channel, EventBus, TickSchedule,
