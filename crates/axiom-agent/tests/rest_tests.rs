@@ -105,15 +105,16 @@ async fn test_rest_get_status_no_engine_lock() {
 async fn test_rest_get_domains_11_entries() {
     let base = spawn_server().await;
 
-    // Дожидаемся первого state-snapshot: посылаем :status и ждём CommandResult
-    // Альтернатива: напрямую дать snapshot обновиться через state_broadcast
-    // Здесь проще всего сделать один inject чтобы запустить тик
-    let _inject = http()
-        .post(format!("{base}/api/inject"))
-        .json(&serde_json::json!({"text":"init"}))
-        .send()
-        .await
-        .unwrap();
+    // domain_summaries собирается на State level (каждые 8 тиков).
+    // Посылаем 8 инъекций чтобы пройти tick 8 и получить State-срез с 11 доменами.
+    for _ in 0..8 {
+        let _ = http()
+            .post(format!("{base}/api/inject"))
+            .json(&serde_json::json!({"text":"init"}))
+            .send()
+            .await
+            .unwrap();
+    }
 
     let resp = http()
         .get(format!("{base}/api/domains"))

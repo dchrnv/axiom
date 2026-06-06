@@ -62,8 +62,9 @@ pub struct SensoriumView<'a> {
     pub trace_count: usize,
     /// Experience.tension_count() — вычислено в engine до построения view.
     pub tension_count: usize,
-    /// Сводка по 11 доменам — вычислена в engine до построения view.
-    pub domain_summaries: Vec<SensoriumDomainSummary>,
+    /// Сводка по 11 доменам — None на Pulse тиках, Some только при State/Full.
+    /// §4 спеки: domain info не нужна каждый тик, только каждые 8 тиков.
+    pub domain_summaries: Option<Vec<SensoriumDomainSummary>>,
     /// AxiomEngine.last_crystallization_tick.
     pub last_crystallization_tick: u64,
     /// Guardian.stats().vetoes_since_wake.
@@ -82,8 +83,8 @@ pub struct Sensorium {
     pub current_state: Option<SensoriumState>,
     /// Выражение из последнего среза.
     pub current_expression: Option<SensoriumExpression>,
-    /// Расписание сборки (большой цикл).
-    schedule: SensoriumSchedule,
+    /// Расписание сборки (большой цикл). pub для peek_level в engine.rs.
+    pub schedule: SensoriumSchedule,
     /// Реестр потребителей.
     registry: ConsumerRegistry,
     /// Число вызовов collect() за всё время.
@@ -145,9 +146,19 @@ impl Sensorium {
             level = max_needed;
         }
 
-        let state = Self::build_state(view, level);
-        let expression = express(&state);
+        let mut state = Self::build_state(view, level);
 
+        // Carry-over domain_summaries: на Pulse тиках перенести из предыдущего State среза.
+        // domain_summaries обновляется каждые 8 тиков (State) — для Pulse достаточно свежий.
+        if state.domain_summaries.is_empty() {
+            if let Some(prev) = &self.current_state {
+                if !prev.domain_summaries.is_empty() {
+                    state.domain_summaries = prev.domain_summaries.clone();
+                }
+            }
+        }
+
+        let expression = express(&state);
         self.current_state = Some(state);
         self.current_expression = Some(expression);
         self.collect_count += 1;
@@ -231,10 +242,10 @@ fn collect_pulse(view: &SensoriumView<'_>, state: &mut SensoriumState) {
         })
         .collect();
 
-    // — Движок (Фаза A: поля из BroadcastSnapshot) —
+    // — Движок (поля пульса: дешёвые скаляры, без итерации доменов) —
     state.trace_count = view.trace_count;
     state.tension_count = view.tension_count;
-    state.domain_summaries = view.domain_summaries.clone();
+    // domain_summaries — State level (каждые 8 тиков), не Pulse. §4 спеки.
     state.last_crystallization_tick = view.last_crystallization_tick;
     state.guardian_vetoes_since_wake = view.guardian_vetoes_since_wake;
     state.cross_modal_candidates = view.context_recognizer.cross_modal_candidate_count();
@@ -284,6 +295,12 @@ fn collect_state(view: &SensoriumView<'_>, state: &mut SensoriumState) {
 
     // Cross-modal bonds.
     state.cross_modal_bonds = view.context_recognizer.cross_modal_bond_count();
+
+    // Domain summaries — только здесь (State level = каждые 8 тиков).
+    // §4 спеки: domain info не нужна каждый тик, только для Workstation обновления.
+    if let Some(summaries) = &view.domain_summaries {
+        state.domain_summaries = summaries.clone();
+    }
 }
 
 fn collect_full(view: &SensoriumView<'_>, state: &mut SensoriumState) {

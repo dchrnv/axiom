@@ -49,7 +49,10 @@ fn test_trace_count_increases_after_inject() {
 fn test_sensorium_domain_summaries_has_11_after_tick() {
     let mut engine = new_engine();
     let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
-    engine.process_command(&tick);
+    // domain_summaries собирается на State level (каждые 8 тиков) — нужно пройти тик 8
+    for _ in 0..8 {
+        engine.process_command(&tick);
+    }
     let snap = engine.sensorium.current_state.as_ref().unwrap();
     assert_eq!(snap.domain_summaries.len(), 11);
 }
@@ -80,7 +83,9 @@ fn test_sensorium_trace_count_matches_engine() {
 fn test_sensorium_domain_ids_range_100_to_110() {
     let mut engine = new_engine();
     let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
-    engine.process_command(&tick);
+    for _ in 0..8 {
+        engine.process_command(&tick);
+    }
     let snap = engine.sensorium.current_state.as_ref().unwrap();
     let ids: Vec<u16> = snap.domain_summaries.iter().map(|d| d.domain_id).collect();
     for expected in 100u16..=110 {

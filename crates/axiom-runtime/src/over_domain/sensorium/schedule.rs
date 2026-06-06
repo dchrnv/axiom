@@ -38,6 +38,14 @@ impl SensoriumSchedule {
         CollectionLevel::for_tick(tick)
     }
 
+    /// Посмотреть уровень для тика без изменения состояния (для engine pre-compute).
+    pub fn peek_level(&self, tick: u64) -> CollectionLevel {
+        if self.collect_memory_next {
+            return CollectionLevel::Memory;
+        }
+        CollectionLevel::for_tick(tick)
+    }
+
     /// Пометить: при следующем collect собрать Memory-уровень (вызывается после DREAM Waking).
     pub fn schedule_memory_collection(&mut self) {
         self.collect_memory_next = true;

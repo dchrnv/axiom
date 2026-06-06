@@ -1349,27 +1349,36 @@ impl AxiomEngine {
 
         // Sensorium: собрать срез после всех OD-компонентов.
         // Pre-data вычисляется до SensoriumView чтобы не конфликтовать по borrow.
+        // domain_summaries — только при State/Full (каждые 8 тиков), не каждый тик. §4 спеки.
         let trace_count = self.ashti.experience().trace_count();
         let tension_count = self.ashti.experience().tension_count();
-        let domain_summaries: Vec<crate::over_domain::SensoriumDomainSummary> = self
-            .ashti
-            .all_states()
-            .into_iter()
-            .map(|(domain_id, state)| {
-                let temp_avg = if state.tokens.is_empty() {
-                    0u8
-                } else {
-                    let sum: u64 = state.tokens.iter().map(|t| t.temperature as u64).sum();
-                    (sum / state.tokens.len() as u64) as u8
-                };
-                crate::over_domain::SensoriumDomainSummary {
-                    domain_id,
-                    token_count: state.token_count(),
-                    connection_count: state.connection_count(),
-                    temperature_avg: temp_avg,
-                }
-            })
-            .collect();
+        let sensorium_level = self.sensorium.schedule.peek_level(t);
+        let domain_summaries: Option<Vec<crate::over_domain::SensoriumDomainSummary>> =
+            if sensorium_level >= crate::over_domain::CollectionLevel::State {
+                Some(
+                    self.ashti
+                        .all_states()
+                        .into_iter()
+                        .map(|(domain_id, state)| {
+                            let temp_avg = if state.tokens.is_empty() {
+                                0u8
+                            } else {
+                                let sum: u64 =
+                                    state.tokens.iter().map(|t| t.temperature as u64).sum();
+                                (sum / state.tokens.len() as u64) as u8
+                            };
+                            crate::over_domain::SensoriumDomainSummary {
+                                domain_id,
+                                token_count: state.token_count(),
+                                connection_count: state.connection_count(),
+                                temperature_avg: temp_avg,
+                            }
+                        })
+                        .collect(),
+                )
+            } else {
+                None
+            };
         let last_crystallization_tick = self.last_crystallization_tick;
         let guardian_vetoes_since_wake = self.guardian.stats().vetoes_since_wake;
 
