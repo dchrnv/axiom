@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SystemSnapshot } from '../ws/protocol';
+import { SystemSnapshot, SensoriumState } from '../ws/protocol';
 
 export interface FeedMessage {
   id: number;
@@ -23,18 +23,21 @@ export interface MetricPoint {
 
 interface EngineStore {
   snapshot: SystemSnapshot | null;
+  sensorium: SensoriumState | null;
   connected: boolean;
   feed: FeedMessage[];
   layerHistory: number[][];
   metricHistory: MetricPoint[];
 
   setSnapshot: (s: SystemSnapshot) => void;
+  setSensorium: (s: SensoriumState) => void;
   setConnected: (c: boolean) => void;
   addFeedMessage: (m: Omit<FeedMessage, 'id'>) => void;
 }
 
 export const useEngineStore = create<EngineStore>((set) => ({
   snapshot: null,
+  sensorium: null,
   connected: false,
   feed: [],
   layerHistory: [],
@@ -58,6 +61,8 @@ export const useEngineStore = create<EngineStore>((set) => ({
 
       return { snapshot, layerHistory, metricHistory };
     }),
+
+  setSensorium: (sensorium) => set({ sensorium }),
 
   setConnected: (connected) => set({ connected }),
 

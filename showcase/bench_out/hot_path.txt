@@ -1,0 +1,62 @@
+   Compiling smallvec v1.15.1
+   Compiling ahash v0.8.12
+   Compiling log v0.4.29
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling colorchoice v1.0.5
+   Compiling anstyle-parse v1.0.0
+   Compiling clap_lex v1.1.0
+   Compiling strsim v0.11.1
+   Compiling plotters-backend v0.3.7
+   Compiling icu_normalizer v2.1.1
+   Compiling parking_lot_core v0.9.12
+   Compiling mio v0.8.11
+   Compiling anstream v1.0.0
+   Compiling heck v0.5.0
+   Compiling parking_lot v0.12.5
+   Compiling ciborium-io v0.2.2
+   Compiling notify v6.1.1
+   Compiling ciborium-ll v0.2.2
+   Compiling idna_adapter v1.2.1
+   Compiling idna v1.1.0
+   Compiling referencing v0.46.0
+   Compiling clap_derive v4.6.1
+   Compiling clap_builder v4.6.0
+   Compiling plotters-svg v0.3.7
+   Compiling jsonschema v0.46.0
+   Compiling itertools v0.10.5
+   Compiling axiom-space v0.1.0 (/home/chrnv/Axiom/crates/axiom-space)
+   Compiling cast v0.3.0
+   Compiling plotters v0.3.7
+   Compiling ciborium v0.2.2
+   Compiling criterion-plot v0.5.0
+   Compiling clap v4.6.1
+   Compiling tinytemplate v1.2.1
+   Compiling is-terminal v0.4.17
+   Compiling oorandom v11.1.5
+   Compiling anes v0.1.6
+   Compiling criterion v0.5.1
+   Compiling axiom-config v0.1.0 (/home/chrnv/Axiom/crates/axiom-config)
+   Compiling axiom-arbiter v0.1.0 (/home/chrnv/Axiom/crates/axiom-arbiter)
+   Compiling axiom-shell v0.1.0 (/home/chrnv/Axiom/crates/axiom-shell)
+   Compiling axiom-domain v0.1.0 (/home/chrnv/Axiom/crates/axiom-domain)
+   Compiling axiom-runtime v0.1.0 (/home/chrnv/Axiom/crates/axiom-runtime)
+   Compiling axiom-bench v0.1.0 (/home/chrnv/Axiom/crates/axiom-bench)
+    Finished `bench` profile [optimized] target(s) in 1m 18s
+     Running benches/hot_path_regression.rs (target/release/deps/hot_path_regression-eb75c6d444906ca6)
+Gnuplot not found, using plotters backend
+Benchmarking HotPath regression/TickForward / tokens_in_logic / 50
+Benchmarking HotPath regression/TickForward / tokens_in_logic / 50: Warming up for 3.0000 s
+Benchmarking HotPath regression/TickForward / tokens_in_logic / 50: Collecting 500 samples in estimated 12.114 s (501k iterations)
+Benchmarking HotPath regression/TickForward / tokens_in_logic / 50: Analyzing
+HotPath regression/TickForward / tokens_in_logic / 50
+                        time:   [24.098 µs 24.249 µs 24.411 µs]
+                        change: [-15.135% -12.198% -8.9379%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 32 outliers among 500 measurements (6.40%)
+  4 (0.80%) low mild
+  18 (3.60%) high mild
+  10 (2.00%) high severe
+

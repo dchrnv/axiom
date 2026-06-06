@@ -50,6 +50,11 @@ function handleMessage(msg: EngineMessage): void {
     return;
   }
 
+  if ('Sensorium' in msg) {
+    store.setSensorium(msg.Sensorium);
+    return;
+  }
+
   if ('Event' in msg) {
     handleEvent(msg.Event);
   }

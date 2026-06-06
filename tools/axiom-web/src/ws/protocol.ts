@@ -177,6 +177,95 @@ export interface SystemSnapshot {
   skills_count: number;
 }
 
+// ── SensoriumState — mirrors axiom-runtime sensorium/state.rs ────────────────
+// SEN-TD-01: публикуется через WS как {"Sensorium":{...}}
+
+export type SubsystemId =
+  | 'Unknown'
+  | 'Writing'
+  | 'Mathematics'
+  | 'Music'
+  | 'Time'
+  | 'Logic'
+  | 'Values'
+  | 'Morality'
+  | 'Abstractions'
+  | 'Dilemmas';
+
+export interface SubsystemActivity {
+  id: SubsystemId;
+  energy: number;
+  fatigue_load: number;
+}
+
+export interface ActiveDilemmaEntry {
+  id: number;
+  dilemma_type: number;
+  intensity: number;
+  detected_at_tick: number;
+}
+
+export interface SensoriumEmergentEntry {
+  sutra_id: number;
+  depth_avg: number;
+  reactivations: number;
+}
+
+export interface SensoriumDomainSummary {
+  domain_id: number;
+  token_count: number;
+  connection_count: number;
+  temperature_avg: number;
+}
+
+export interface SensoriumDreamSummary {
+  cycle_id: number;
+  started_at_tick: number;
+  ended_at_tick: number;
+  proposals_accepted: number;
+  proposals_rejected: number;
+  sutra_written: number;
+}
+
+export interface SensoriumState {
+  collected_at_tick: number;
+  causal_time: number;
+  // — Восприятие —
+  active_subsystems: SubsystemActivity[];
+  dominant_subsystem: SubsystemId | null;
+  activity_signature: string;
+  // — Оценка —
+  dominant_octant: number | null;
+  corpus_callosum_active: boolean;
+  // — Напряжения —
+  active_dilemma_count: number;
+  active_dilemmas: ActiveDilemmaEntry[];
+  has_pending_crystallization: boolean;
+  // — FrameWeaver —
+  candidates_count: number;
+  avg_shell_similarity: number;
+  emergent_candidates: SensoriumEmergentEntry[];
+  // — Организм —
+  dream_phase_raw: number;
+  fatigued_subsystems: SubsystemId[];
+  composite_suspect_count: number;
+  // — Эмерджентное —
+  pending_advisories: number;
+  cross_modal_bonds: number;
+  // — Внутренний импульс —
+  internal_dominance_factor: number;
+  active_impulse_count: number;
+  impulse_sources: string[];
+  // — Движок (Фаза A) —
+  trace_count: number;
+  tension_count: number;
+  domain_summaries: SensoriumDomainSummary[];
+  last_crystallization_tick: number;
+  guardian_vetoes_since_wake: number;
+  cross_modal_candidates: number;
+  last_dream_summary: SensoriumDreamSummary | null;
+}
+
 // EngineEvent — variants from axiom-protocol/src/events.rs
 export type EngineEvent =
   | { Tick: { tick: number; event: number; hot_path_ns: number } }
@@ -188,9 +277,11 @@ export type EngineEvent =
   | { Alert: { level: string; message: string } };
 
 // EngineMessage — enum serialized as tagged object by serde
+// SEN-TD-01: добавлен Sensorium variant
 export type EngineMessage =
   | { Hello: { version: number; capabilities: number } }
   | { Snapshot: SystemSnapshot }
+  | { Sensorium: SensoriumState }
   | { Event: EngineEvent }
   | { CommandResult: { command_id: number; result: unknown } }
   | { Bye: { reason: string } };

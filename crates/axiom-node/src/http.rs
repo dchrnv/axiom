@@ -112,8 +112,9 @@ async fn handle_ws(mut socket: WebSocket, handle: Arc<BroadcastHandle>) {
     }
 
     // SEN-TD-01 Фаза B: отправляем последний SensoriumState при коннекте
+    // Формат: {"Sensorium":{...}} — консистентно с serde enum encoding
     if let Some(json) = handle.latest_sensorium_json() {
-        let envelope = format!("{{\"type\":\"Sensorium\",\"data\":{json}}}");
+        let envelope = format!("{{\"Sensorium\":{json}}}");
         let _ = socket.send(Message::Text(envelope.into())).await;
     }
 
