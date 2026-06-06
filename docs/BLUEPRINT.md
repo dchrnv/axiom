@@ -520,7 +520,7 @@ ARB-TD-06: CognitiveProfile octant_weights roundtrip
 | Операция | Время |
 |----------|-------|
 | Token::new | 69 ns |
-| TickForward (50 tok, hot path) | **31.3 µs** |
+| TickForward (50 tok, hot path) | **24.8 µs** |
 | TickForward (warm, 50 tok) | **71–83 µs** |
 | AxiomEngine::new | **1.60 ms** |
 | SpatialHashGrid::rebuild (1M) | 10.8 ms |

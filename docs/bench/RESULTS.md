@@ -8,10 +8,10 @@
 
 | Операция | Время | Δ vs v12 |
 |----------|-------|----------|
-| `TickForward` (50 tok, hot path) | **31.3 µs** | +5.6 µs (Sensorium V2.0) |
-| `TickForward` (warm, 50 tok) | **71–83 µs** | ~+5 µs |
-| `TickForward` (loaded, 50 tok) | **90–98 µs** | ~+5 µs |
-| Throughput 1000 тиков / 50 tok | **~31 µs/тик** | ~+6 µs |
+| `TickForward` (50 tok, hot path) | **24.8 µs** | ≈ v12 (−0.9 µs, фикс domain_summaries Pulse→State) |
+| `TickForward` (warm, 50 tok) | **68–80 µs** | ≈ v12 |
+| `TickForward` (loaded, 50 tok) | **83–103 µs** | ≈ v12 |
+| Throughput 1000 тиков / 50 tok | **~27 µs/тик** | ≈ v12 |
 | `AxiomEngine::new` | **1.60 ms** | +700 µs (Sensorium V2.0 + SubsystemGravity) |
 | `resonance_search` | **~20 µs** | ≈ (shell_registry path: нейтраль без данных) |
 | `apply_subsystem_gravity` 500 tok | **35 µs** | NEW (PRIM-TD-03) |
@@ -52,9 +52,10 @@
 
 | Сценарий | Время |
 |----------|-------|
-| `TickForward` / 50 токенов в LOGIC | **31.3 µs** |
+| `TickForward` / 50 токенов в LOGIC | **24.8 µs** |
 
-*+5.6 µs vs v12 (25.7 µs) — Sensorium V2.0 collect() на каждом тике.*
+*≈ v12 (25.7 µs). Фикс domain_summaries Pulse→State вернул hot path к норме.
+v13 interim (до фикса): 31.3 µs (+5.6 µs spec drift). После фикса: −0.9 µs vs v12.*
 
 ---
 
@@ -226,10 +227,10 @@ batch_pop на 29% быстрее normal_pop (v12: 35%).
 | v10 | 2026-05-17 | Phase C (AE/CR/NA) в Engine | 353 ns/тик |
 | v11 | 2026-05-17 | Phase I координатор + полный перезамер | 348 ns/тик |
 | v12 | 2026-05-29 | V7 полный: TransitionMatrix, FatigueStore, L0, rayon, STATE_SLEEPING | **25.7 µs/тик** |
-| **v13** | **2026-06-05** | **Shell-TD-02 (shell_cosine в resonance), PRIM-TD-03 (SubsystemGravity, NEW bench), SEN-TD-01 V2.0 (Sensorium collect каждый тик)** | **31.3 µs/тик** |
+| **v13** | **2026-06-05** | **Shell-TD-02 (shell_cosine в resonance), PRIM-TD-03 (SubsystemGravity, NEW bench), SEN-TD-01 V2.0 (Sensorium градиент частот §4: domain_summaries→State level)** | **24.8 µs/тик** |
 
 **Ключевые изменения v13 vs v12:**
-- `TickForward` (50 tok): 25.7 µs → **31.3 µs** (+5.6 µs) — Sensorium V2.0 collect() на каждом тике
+- `TickForward` (50 tok): 25.7 µs → **24.8 µs** (−0.9 µs) — Sensorium V2.0 с правильным градиентом §4: domain_summaries только на State level (×8), Pulse дёшев
 - `AxiomEngine::new`: 914 µs → **1.60 ms** — расширенный boot (SubsystemGravityRule + SensoriumView alloc)
 - `resonance_search`: аналогично v12 — shell_cosine добавляет нейтральный overhead без данных в registry
 - `apply_subsystem_gravity` **NEW**: 35 µs @ 500 tokens, раз в 500 тиков → < 0.2 µs/тик амортизировано
