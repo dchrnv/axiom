@@ -346,17 +346,17 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml; link_types: 0x08 Syntactic, 0x09 Composition, 0x0A CrossModal, 0x0B SemanticAnchor=0x0B01 (AE-TD-08) |
-| axiom-arbiter | 145 | Arbiter V1.0, Experience (shell_registry + shell_cosine bonus в pattern_similarity, Shell-TD-02), REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-arbiter | 151 | Arbiter V1.0, Experience (shell_registry: HashMap<u32,[u8;8]>; shell_cosine() → 15% бонус в pattern_similarity; set_shell_registry() из inject_anchor_tokens; Shell-TD-02), REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 50 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); ModalityStore + Modality (Text/Vision/Internal); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
-| axiom-runtime | 656 (676 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (OverDomainComponent, Weaver, FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0, **Sensorium V1.0**, **Waves V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, Adapters, TickSchedule (+subsystem_gravity_interval=500), ProcessingResult, AdaptiveTickRate, Orchestrator, inject_anchor_tokens, domain_name, apply_domain_config; BroadcastSnapshot (feature "adapters"); **SubsystemGravityRule** (PRIM-TD-03): apply_subsystem_gravity, build_rules_from_anchor_set; AxiomEngine.subsystem_gravity_rules (boot-time, immutable); FrameWeaverStats; restore_frame_from_anchor; AdvisoryHistory, CognitiveProfile; DilemmaStore V1.1; TransitionMatrix; CrossModalDetector V1.0; Sensorium: SensoriumState/View/Expression |
+| axiom-runtime | 656 (676 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0, **Sensorium V2.0**, **Waves V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, TickSchedule (+subsystem_gravity_interval=500), **SubsystemGravityRule** (PRIM-TD-03); **SEN-TD-01**: BroadcastSnapshot удалён, last_dream_summary pub, SensoriumState единственный runtime-пульс; broadcast.rs: LastDreamSummary+DomainDetailSnapshot+TokenSnapshot+ConnectionSnapshot; subsystem_gravity.rs; inject_anchor_tokens → set_shell_registry (Shell-TD-02) |
 | axiom-agent | 148 (171 telegram,opensearch) | TextPerceptor (2-path detect_subsystem + perceive_and_bond→SEMANTIC_ANCHOR_BOND=0x0B01; text_stable_id 0x4000_0001+; anchor_sutra_id mirror); AnchorMatchTable: domain+layer якоря в id_to_position (P4b); L0VisionPerceptor (V7-E2); MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands; tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
-| axiom-broadcasting | 6 | BroadcastServer, BroadcastHandle, subscription filter (domain_activity_threshold), heartbeat, snapshot resync при Lagged, build_system_snapshot; subscribe_events() → Receiver<EngineMessage>; latest_snapshot() → Option<SystemSnapshot>; snapshot_live: RwLock; WS-5: build_system_snapshot takes PerfSnapshot, populates all new fields |
+| axiom-broadcasting | 7 | BroadcastServer, BroadcastHandle (sensorium_live: RwLock<Option<String>>, update_sensorium(), latest_sensorium_json()), subscription filter, heartbeat (BRD-TD-06: pong timeout test через raw TCP), build_system_snapshot (прямые запросы к &AxiomEngine, без BroadcastSnapshot); BroadcastSnapshot удалён (SEN-TD-01 Фаза F) |
 | axiom-node | — | HTTP-сервер (axum): WS JSON bridge, advisory confirm/reject, /metrics, ServeDir; NodeCmd channel; tick_loop интеграция; WS-5: NodePerfTracker (window=100) → PerfSnapshot per snapshot |
 | tools/axiom-web | — | React 18 SPA: Overview/Conversation/Phase C/Patterns; AdvisoryQueue, Sparklines, Zustand store; WS-5: protocol.ts extended with PerfSnapshot/TraceSnapshot/TensionTraceSnapshot/ReflectorSnapshot/CognitiveDepthSnapshot/ImpulsesSnapshot |
 
@@ -364,7 +364,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1720** | |
+| **Итого** | **1721** | |
 
 ---
 
@@ -461,3 +461,6 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | SubsystemDependencies loader | axiom-config: SubsystemDependencies, SubsystemDep, NaturalTension; load_or_empty, is_natural_tension (симметрично), load_order() топо-сорт с детектированием цикла; 7 тестов | ✅ |
 | DilemmaStore V1.1 | axiom-runtime: DilemmaStore (max 8 active, ring-64 resolved), DilemmaType (I–V), DilemmaResolution (5 вариантов); crystallize_to_experience_commands() → UCL InjectToken+BondTokens для EXPERIENCE domain; lineage_hash FNV-1a; 13 тестов | ✅ |
 | SubsystemId extension | axiom-experience: SubsystemId += Morality(7), Abstractions(8), Dilemmas(9); subsystem_to_u8, subsystem_to_level, engine.rs string mapping | ✅ |
+| Shell-TD-02 | axiom-arbiter: Experience.shell_registry (sutra_id→[u8;8]); shell_cosine() → cosine similarity; pattern_similarity расширена: shell 15% модификатор (identitiчный→×1.0, ортогональный→×0.85, нет в registry→×0.925); 6 unit-тестов; inject_anchor_tokens → set_shell_registry() | ✅ |
+| SEN-TD-01 V2.0 | SensoriumState поглощает BroadcastSnapshot (Фаза A); Serialize + BroadcastHandle.sensorium_live + update_sensorium (Фаза B); axiom-web types+store+client (Фаза C); BroadcastSnapshot удалён из axiom-runtime/agent/broadcasting (Фаза F); axiom-observe/tray не затронуты (D/E no-op) | ✅ |
+| BRD-TD-06 | axiom-broadcasting: test_pong_timeout_disconnects_silent_client — raw TCP + ручной WS handshake, Ping игнорируется, сервер закрывает соединение в pong_timeout | ✅ |

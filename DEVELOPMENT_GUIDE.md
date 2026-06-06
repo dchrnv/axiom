@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.3  
-**Дата:** 2026-06-03
+**Версия:** 3.4  
+**Дата:** 2026-06-05
 
 ---
 
@@ -29,7 +29,7 @@ Axiom/
 │   ├── axiom-persist/     # Персистентность: bincode, AutoSaver, exchange
 │   ├── axiom-protocol/    # UCL protocol: адаптеры, bench-команды, низкоуровневые типы
 │   ├── axiom-experience/  # FatigueStore, SubsystemFatigue — семантические хранилища
-│   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, TickSnapshot
+│   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, BroadcastHandle
 
 │   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors (TextPerceptor, L0VisionPerceptor)
 │   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
@@ -118,7 +118,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1696 тестов
+cargo test --workspace          # 1721 тестов
 cargo build --release
 
 # Запуск одной командой

@@ -1,28 +1,23 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 80.0
-**Обновлён:** 2026-06-04
+**Версия:** 81.0
+**Обновлён:** 2026-06-05
 
 ---
 
 ## Sensorium
 
-### SEN-TD-01 — Полное поглощение TickSnapshot → Sensorium V2.0
+### ~~SEN-TD-01 — Полное поглощение TickSnapshot → Sensorium V2.0~~ ✅ ВЫПОЛНЕНО (2026-06-05)
 
-**Проблема:** Сейчас два независимых пути "пульса" наружу:
-1. `TickSnapshot` (старый) — в `engine.rs`, через `BroadcastHandle`. Используется Workstation, OBS, axiom-tray.
-2. `Sensorium.current_state` (новый) — собирается, хранится внутри, наружу не идёт.
+Все 6 фаз завершены:
+- A: SensoriumState поглотил все поля BroadcastSnapshot
+- B: BroadcastHandle.sensorium_live + update_sensorium() + latest_sensorium_json()
+- C: axiom-web SensoriumState types + store + client
+- D/E: no-op (observe/tray не использовали BroadcastSnapshot)
+- F: BroadcastSnapshot удалён из axiom-runtime/agent/broadcasting
 
-Спека §7: "уровень 0 = переоформленный TickSnapshot — не создавать заново." В финале `Sensorium level 0` заменяет TickSnapshot.
-
-**Решение (V2.0):**
-- Перенести поля из `BroadcastSnapshot` в `SensoriumState level 0`.
-- `SensoriumAdapter → Workstation` переводит `SensoriumState` → WS-формат.
-- OBS-runner и axiom-tray переключаются на новый адаптер. TickSnapshot удаляется.
-
-**Почему сейчас рано:** Workstation, OBS, tray плотно привязаны к `BroadcastSnapshot`. Переключение = согласованный обновление React SPA + axiom-node + axiom-observe + axiom-tray.
-
-**Когда:** при добавлении первого Sensorium-адаптера для Workstation.
+SensoriumState — единственный runtime-пульс. Следующий этап: SEN-TD-01 V3.0
+(поглощение TickSnapshot из axiom-observe/metrics.rs — после embeddings).
 
 ---
 

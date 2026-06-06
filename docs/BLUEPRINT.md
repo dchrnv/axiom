@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-05  
-**Тесты:** 1720, 0 failures
+**Тесты:** 1721, 0 failures
 
 ---
 
@@ -30,23 +30,27 @@ axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_she
                    link_types: 0x08 syntactic, 0x09 composition,
                    0x0A cross-modal (CROSS_MODAL_BOND=0x0A01), 0x0B semantic-anchor
 axiom-domain     — Domain, DomainState, AshtiCore (11 доменов), CausalHorizon, FractalChain
-axiom-arbiter    — Arbiter (dual-path), Experience (shell_registry, shell_cosine bonus 15%
-                   в pattern_similarity, Shell-TD-02), Reflector, SkillSet, GridHash, COM
+axiom-arbiter    — Arbiter (dual-path), Experience (shell_registry: HashMap<u32,[u8;8]>;
+                   shell_cosine() → 15% бонус в pattern_similarity; set_shell_registry();
+                   Shell-TD-02), Reflector, SkillSet, GridHash, COM
 axiom-heartbeat  — HeartbeatGenerator V2.0
 axiom-upo        — UPO v2.2: DynamicTrace, Screen, UPO::compute
 axiom-runtime    — AxiomEngine, Guardian, Gateway, Channel, EventBus, TickSchedule,
                    ProcessingResult, AdaptiveTickRate, Orchestrator, domain_name(),
-                   SubsystemGravityRule + apply_subsystem_gravity (PRIM-TD-03, subsystem_gravity.rs);
-                   BroadcastSnapshot + types (feature "adapters"),
+                   SubsystemGravityRule + apply_subsystem_gravity (PRIM-TD-03);
+                   broadcast.rs: LastDreamSummary, DomainDetailSnapshot, TokenSnapshot,
+                   ConnectionSnapshot (BroadcastSnapshot удалён SEN-TD-01);
                    Over-Domain Layer: OverDomainComponent, Weaver traits,
                    FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7,
                    NeuralAdvisor V3.0, OverDomainArbiter V3.0,
-                   Waves V1.0 (over_domain/waves/), Sensorium V1.0 (over_domain/sensorium/)
+                   Waves V1.0, Sensorium V2.0 (SensoriumState: Serialize, все поля runtime-пульса)
 axiom-protocol   — EngineCommand (15 variants), EngineEvent (+ CrossModalBondProposed),
                    EngineState, SystemSnapshot, DomainSnapshot, TokenFieldPoint,
                    FrameWeaverStats, GuardianStats, DreamPhaseStats, BenchSpec/BenchResults
-axiom-broadcasting — BroadcastHandle, WebSocket server (axum), broadcast loop,
-                   DomainActivity filter, SystemSnapshot publish, Lagged resync;
+axiom-broadcasting — BroadcastHandle (sensorium_live, update_sensorium(), latest_sensorium_json()),
+                   WebSocket server (axum), broadcast loop, DomainActivity filter,
+                   build_system_snapshot (прямые запросы к &AxiomEngine, без BroadcastSnapshot);
+                   BRD-TD-06: pong timeout тест через raw TCP (test_pong_timeout_disconnects_silent_client);
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>>
@@ -191,9 +195,10 @@ context_recognizer: ContextRecognizer — tick%7
 neural_advisor: NeuralAdvisor         — tick%11
 over_domain_arbiter: OverDomainArbiter — tick%13
 waves: Waves                           — tick%19, WAKE-only
-sensorium: Sensorium                   — каждый тик, последним
+sensorium: Sensorium                   — каждый тик, последним (V2.0: SensoriumState=единственный пульс)
 dream_phase_state: DreamPhaseState
 dream_scheduler: DreamScheduler
+last_dream_summary: Option<LastDreamSummary>           — всегда pub (убран cfg(adapters))
 pending_cross_modal_bond_events: Vec<(u32, u32, f32)>  — CMB-TD-03, дрейнируется axiom-node
 subsystem_gravity_rules: Vec<SubsystemGravityRule>     — PRIM-TD-03, boot-time immutable
 ```

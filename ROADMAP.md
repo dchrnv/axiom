@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 76.0
-**Дата:** 2026-06-04
+**Версия:** 77.0
+**Дата:** 2026-06-05
 
 ---
 
@@ -17,7 +17,8 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1714 тестов, 0 failures.**
+**1721 тестов, 0 failures.**
+Shell-TD-02, SEN-TD-01 (V2.0), BRD-TD-06 завершены (2026-06-05).
 PRIM-TD-03 Subsystem Gravity завершён (2026-06-04).
 Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-06-03).
 
@@ -25,159 +26,12 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 
 ## Активные задачи
 
----
-
-### ~~Shell-TD-02 — resonance_search shell bonus~~ ✅ ГОТОВО (2026-06-05)
-
-**Суть:** `resonance_search` в `Experience` оценивает сходство токена по temperature/mass/valence/position
-но игнорирует shell-профиль `[u8;8]`. Shell несёт семантическую принадлежность к слоям L1–L8.
-Токен с похожим shell-профилем должен получать бонус к score.
-
-**Контекст:**
-- `pattern_similarity()` — `crates/axiom-arbiter/src/experience.rs:505`. Нет shell.
-- `shell_registry: HashMap<u32, [u8;8]>` — живёт в `AxiomEngine` (engine.rs:236), передаётся в FrameWeaver и ContextRecognizer, но НЕ в Experience/Arbiter.
-- Shell-данные уже заполняются при `inject_anchor_tokens` (шаг 4).
-
-**Шаги:**
-
-1. **`shell_registry` в `Experience`** (`crates/axiom-arbiter/src/experience.rs`):
-   ```rust
-   shell_registry: HashMap<u32, [u8;8]>,  // sutra_id → shell profile
-   ```
-   Метод `set_shell_registry(&mut self, registry: HashMap<u32, [u8;8]>)`.
-
-2. **Пробросить через Arbiter → AshtiCore:**
-   - `Arbiter::set_shell_registry()` → делегирует в `self.experience.set_shell_registry()`
-   - `AshtiCore::set_shell_registry()` → делегирует в `self.arbiter.set_shell_registry()`
-
-3. **Вызвать в `inject_anchor_tokens`** (`engine.rs`, после шага 4):
-   ```rust
-   self.ashti.set_shell_registry(self.shell_registry.clone());
-   ```
-
-4. **Shell cosine similarity** (`crates/axiom-arbiter/src/experience.rs`):
-   ```rust
-   fn shell_cosine(a: &[u8;8], b: &[u8;8]) -> f32 {
-       // dot / (|a| * |b|), NaN → 0.5 (нейтраль если профиль нулевой)
-   }
-   ```
-
-5. **Бонус в `pattern_similarity`:**
-   Сигнатура: `fn pattern_similarity(a: &Token, b: &Token, registry: &HashMap<u32,[u8;8]>) -> f32`
-   ```
-   base_score = (temp_diff + mass_diff + val_diff + pos_diff) * 0.25
-   shell_sim  = shell_cosine(registry[a.sutra_id], registry[b.sutra_id])
-                // если оба sutra_id есть в registry, иначе 0.5 (нейтраль)
-   final      = base_score * (0.85 + 0.15 * shell_sim)
-   ```
-   Shell — 15% модификатор, не доминирует. Токены без shell в registry получают нейтральный вес.
-
-6. **Обновить все вызовы `pattern_similarity`** в experience.rs (4 места) — передать `&self.shell_registry`.
-
-7. **Тесты** (~5):
-   - `test_shell_bonus_improves_similar_profile` — одинаковые shell → score выше чем без shell
-   - `test_shell_penalty_for_different_profile` — разные shell → score ниже нейтрального
-   - `test_no_shell_in_registry_neutral` — sutra_id не в registry → score = base (нейтраль 0.5)
-   - `test_shell_cosine_zero_profile` — нулевой shell → 0.5 (не NaN)
-   - `test_set_shell_registry_propagates` — после set_shell_registry поиск использует профили
-
----
-
-### SEN-TD-01 — Sensorium V2.0: поглощение BroadcastSnapshot
-
-**Суть:** сейчас два независимых пульса наружу:
-1. `BroadcastSnapshot` → `BroadcastHandle` → WebSocket → Workstation/OBS/tray *(старый)*
-2. `Sensorium.current_state: SensoriumState` → нигде не публикуется *(новый)*
-
-Спека §7: "level 0 = переоформленный TickSnapshot — не создавать заново."
-V2.0 = Sensorium становится единственным источником. `BroadcastSnapshot` удаляется.
-
-**Текущий размер `BroadcastSnapshot`:** tick_count, com_next_id, trace_count, tension_count,
-domain_summaries, frame_weaver_stats, dream_phase, last_crystallization_tick,
-guardian_vetoes_since_wake, last_dream_summary, cross_modal_candidates, cross_modal_bonds.
-
-**Текущий размер `SensoriumState`:** collected_at_tick, causal_time, active_subsystems,
-dominant_subsystem, activity_signature, dominant_octant, corpus_callosum_active,
-active_dilemma_count, active_dilemmas, has_pending_crystallization, candidates_count,
-avg_shell_similarity, emergent_candidates, dream_phase_raw, fatigued_subsystems,
-composite_suspect_count, cross_modal_bonds, internal_dominance_factor, active_impulse_count,
-impulse_sources.
-
-**Фазы реализации:**
-
-#### ~~Фаза A — Расширить SensoriumState до уровня BroadcastSnapshot~~ ✅ ГОТОВО (2026-06-05)
-`state.rs`: SensoriumDomainSummary, SensoriumDreamSummary; поля trace_count, tension_count,
-domain_summaries, last_crystallization_tick, guardian_vetoes_since_wake, cross_modal_candidates,
-last_dream_summary добавлены в SensoriumState. SensoriumView расширен. collect_pulse заполняет
-все поля. engine.rs: pre-compute + передача в view. 2 теста.
-
-#### ~~Фаза B — Публиковать SensoriumState через BroadcastHandle~~ ✅ ГОТОВО (2026-06-05)
-- SensoriumState + все вложенные типы: добавлен `Serialize`
-- BroadcastHandle: `sensorium_live: RwLock<Option<String>>` (pre-serialized JSON);
-  `update_sensorium(&SensoriumState)` + `latest_sensorium_json() → Option<String>`
-- axiom-node tick.rs: после snapshot → `handle.update_sensorium(current_state)`
-- axiom-node http.rs WS bridge: при connect отправляет sensorium как
-  `{"type":"Sensorium","data":{...}}` вместе с SystemSnapshot
-
-#### ~~Фаза C — Migrate axiom-web~~ ✅ ГОТОВО (2026-06-05)
-- http.rs: envelope исправлен → `{"Sensorium":{...}}` (консистентно с serde)
-- protocol.ts: SubsystemId, SubsystemActivity, ActiveDilemmaEntry, SensoriumEmergentEntry,
-  SensoriumDomainSummary, SensoriumDreamSummary, SensoriumState; EngineMessage += Sensorium
-- store/engine.ts: sensorium: SensoriumState | null + setSensorium()
-- ws/client.ts: handleMessage обрабатывает 'Sensorium' → store.setSensorium()
-- npm build: ✓ 41 modules, 0 errors. Все 8 табов продолжают работать (additive).
-
-#### ~~Фаза D — Migrate axiom-observe~~ ✅ NO-OP (2026-06-05)
-axiom-observe НЕ использует BroadcastSnapshot — прямые запросы к AxiomEngine.
-Собственный `TickSnapshot` в `metrics.rs` с более детальной диагностикой.
-Нет зависимости на `axiom-broadcasting`. Готова к Фазе F.
-
-#### ~~Фаза E — Migrate axiom-tray~~ ✅ NO-OP (2026-06-05)
-axiom-tray читает только Prometheus `/metrics` HTTP (ureq), нет `axiom-broadcasting`.
-Готова к Фазе F.
-
-#### ~~Фаза F — Удалить BroadcastSnapshot~~ ✅ ГОТОВО (2026-06-05)
-
-**Что использует BroadcastSnapshot сейчас:**
-- `axiom-runtime`: `snapshot_for_broadcast()` → `BroadcastSnapshot`; `broadcast.rs` — типы
-- `axiom-broadcasting/snapshot.rs`: `build_system_snapshot()` читает `BroadcastSnapshot`
-- `axiom-agent/protocol.rs`: `ServerMessage::State { snapshot: BroadcastSnapshot }`
-- `axiom-agent/tick_loop.rs`: хранит `Arc<RwLock<BroadcastSnapshot>>`
-- `axiom-node/tick.rs`: вызывает `build_system_snapshot(&engine, ...)`
-
-**Шаги:**
-
-1. **Перевести `build_system_snapshot`** с `BroadcastSnapshot` на прямые запросы к `&AxiomEngine`
-   (большинство данных уже читается напрямую — `build_token_field`, `build_phase_c_snapshot` и т.д.)
-   Файл: `crates/axiom-broadcasting/src/snapshot.rs`
-
-2. **Удалить `snapshot_for_broadcast()`** из `engine.rs` + `BroadcastSnapshot` из pub API
-
-3. **Удалить `axiom-runtime/src/broadcast.rs`** → типы `DomainSummary`, `LastDreamSummary` и т.д.
-   перенести в `axiom-broadcasting/` или axiom-node (они нужны только там)
-
-4. **Обновить `axiom-agent`**: убрать `BroadcastSnapshot` из `ServerMessage` и tick_loop
-   (CLI-адаптер может читать из `engine.sensorium.current_state`)
-
-5. **Удалить feature "adapters"** из axiom-runtime — он существует только для BroadcastSnapshot
-
-6. **Убрать `last_dream_summary` cfg(adapters)** из engine.rs — сделать безусловным (SEN-TD-01)
-
-**Тесты:** `cargo test --workspace` должен проходить после каждого шага.
-
-**Тесты:**
-- `test_sensorium_level0_has_all_broadcast_fields` — все поля BroadcastSnapshot есть в SensoriumState
-- `test_publish_sensorium_reaches_subscriber` — после publish подписчик получает state
-- Регрессионные тесты OBS: прогон корпуса должен дать те же метрики
-
-**Порядок:** A → B → C → D → E → F. Каждая фаза компилируется и тестируется независимо.
-Фазы C–E можно делать параллельно после B.
+*(нет активных задач)*
 
 ---
 
 ## Не в активном плане
 
-- **BRD-TD-06** — Pong timeout test: требует raw TCP клиент без WS framing.
 - **OBS-MON-01/02** — Мониторинг трасс и activity dynamics. См. DEFERRED.md.
 - **COMP-01** — Vital Signs окно (Companion). См. DEFERRED.md.
 - **V7-D: SubsystemExport/Import** — обмен подсистемами между инстансами.
