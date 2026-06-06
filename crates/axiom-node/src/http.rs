@@ -103,12 +103,18 @@ async fn ws_handler(
 async fn handle_ws(mut socket: WebSocket, handle: Arc<BroadcastHandle>) {
     let mut rx = handle.subscribe_events();
 
-    // Send cached snapshot immediately so client doesn't wait for next publish
+    // Отправляем SystemSnapshot при коннекте
     if let Some(snap) = handle.latest_snapshot() {
         use axiom_protocol::messages::EngineMessage;
         if let Ok(json) = serde_json::to_string(&EngineMessage::Snapshot(snap)) {
             let _ = socket.send(Message::Text(json.into())).await;
         }
+    }
+
+    // SEN-TD-01 Фаза B: отправляем последний SensoriumState при коннекте
+    if let Some(json) = handle.latest_sensorium_json() {
+        let envelope = format!("{{\"type\":\"Sensorium\",\"data\":{json}}}");
+        let _ = socket.send(Message::Text(envelope.into())).await;
     }
 
     loop {

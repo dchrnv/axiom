@@ -206,6 +206,10 @@ pub async fn run(
             let snap = build_system_snapshot(&engine, last_tick_ns, node_perf.to_snapshot());
             handle.update_snapshot(snap.clone());
             handle.publish(EngineMessage::Snapshot(snap));
+            // SEN-TD-01 Фаза B: публикуем SensoriumState параллельно
+            if let Some(state) = &engine.sensorium.current_state {
+                handle.update_sensorium(state);
+            }
         }
 
         // 5. Автосохранение

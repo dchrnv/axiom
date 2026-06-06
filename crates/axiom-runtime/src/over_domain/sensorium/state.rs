@@ -2,10 +2,10 @@
 // Copyright (C) 2024-2026 Chernov Denys
 
 use axiom_experience::SubsystemId;
+use serde::Serialize;
 
 /// Краткая сводка одного домена (11 доменов SUTRA–MAYA).
-/// Аналог broadcast::DomainSummary, но без Serialize — внутренний формат Sensorium.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct SensoriumDomainSummary {
     pub domain_id: u16,
     pub token_count: usize,
@@ -15,7 +15,7 @@ pub struct SensoriumDomainSummary {
 }
 
 /// Краткая сводка последнего завершённого dream-цикла.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SensoriumDreamSummary {
     pub cycle_id: u64,
     pub started_at_tick: u64,
@@ -26,7 +26,7 @@ pub struct SensoriumDreamSummary {
 }
 
 /// Активность подсистемы в текущем срезе.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SubsystemActivity {
     pub id: SubsystemId,
     pub energy: u8,
@@ -35,7 +35,7 @@ pub struct SubsystemActivity {
 }
 
 /// Активная дилемма в уровне State+.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ActiveDilemmaEntry {
     pub id: u64,
     /// DilemmaType as u8 (0=DataConflict..4=Axiogenic).
@@ -45,20 +45,18 @@ pub struct ActiveDilemmaEntry {
 }
 
 /// Эмерджентный кандидат в уровне Full+.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct EmergentEntry {
     pub sutra_id: u32,
     pub depth_avg: u16,
     pub reactivations: u32,
 }
 
-/// Полный внутренний срез системы — Sensorium V1.0.
+/// Полный внутренний срез системы — Sensorium V2.0.
 ///
 /// Разбит на группы по §2 спеки Sensorium_V1_0.md.
-/// Родной формат: бинарный (Clone + Debug). Адаптеры переводят во внешние протоколы.
-///
-/// Поля под внутренний импульс зарезервированы, пусты до Волн (V2.0).
-#[derive(Clone, Debug, Default)]
+/// V2.0: поглощает поля BroadcastSnapshot (Фаза A), публикуется через BroadcastHandle (Фаза B).
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct SensoriumState {
     /// Тик сборки среза.
     pub collected_at_tick: u64,

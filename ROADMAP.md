@@ -111,12 +111,13 @@ domain_summaries, last_crystallization_tick, guardian_vetoes_since_wake, cross_m
 last_dream_summary добавлены в SensoriumState. SensoriumView расширен. collect_pulse заполняет
 все поля. engine.rs: pre-compute + передача в view. 2 теста.
 
-#### Фаза B — Публиковать SensoriumState через BroadcastHandle
-Файл: `crates/axiom-broadcasting/src/lib.rs` + `crates/axiom-node/src/tick.rs`
-
-- `BroadcastHandle` получает метод `publish_sensorium(state: SensoriumState)`
-- В `tick.rs`: после `engine.sensorium.collect()` → `broadcast.publish_sensorium(state)`
-- WebSocket-клиенты получают `SensoriumState` вместо `BroadcastSnapshot`
+#### ~~Фаза B — Публиковать SensoriumState через BroadcastHandle~~ ✅ ГОТОВО (2026-06-05)
+- SensoriumState + все вложенные типы: добавлен `Serialize`
+- BroadcastHandle: `sensorium_live: RwLock<Option<String>>` (pre-serialized JSON);
+  `update_sensorium(&SensoriumState)` + `latest_sensorium_json() → Option<String>`
+- axiom-node tick.rs: после snapshot → `handle.update_sensorium(current_state)`
+- axiom-node http.rs WS bridge: при connect отправляет sensorium как
+  `{"type":"Sensorium","data":{...}}` вместе с SystemSnapshot
 
 #### Фаза C — Migrage axiom-web
 Файл: `tools/axiom-web/src/store/` + `tools/axiom-web/src/ws/protocol.ts`

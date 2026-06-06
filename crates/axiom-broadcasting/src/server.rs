@@ -12,6 +12,7 @@ use axiom_protocol::commands::EngineCommand;
 use axiom_protocol::messages::{ClientMessage, EngineMessage, ShutdownReason};
 use axiom_protocol::snapshot::SystemSnapshot;
 use axiom_protocol::PROTOCOL_VERSION;
+use axiom_runtime::over_domain::SensoriumState;
 
 use crate::config::BroadcastingConfig;
 
@@ -28,6 +29,8 @@ pub struct BroadcastHandle {
     snapshot_cache: RwLock<Option<Vec<u8>>>,
     /// Live snapshot for /metrics and JSON consumers (avoids re-deserializing postcard bytes).
     snapshot_live: RwLock<Option<SystemSnapshot>>,
+    /// Live SensoriumState — pre-serialized JSON для WS bridge (Фаза B, SEN-TD-01).
+    sensorium_live: RwLock<Option<String>>,
 }
 
 impl BroadcastHandle {
@@ -64,6 +67,21 @@ impl BroadcastHandle {
     pub fn latest_snapshot(&self) -> Option<SystemSnapshot> {
         self.snapshot_live.read().ok()?.clone()
     }
+
+    /// Сохранить SensoriumState как pre-serialized JSON (Фаза B, SEN-TD-01).
+    /// Вызывается из tick.rs сразу после engine.sensorium.collect().
+    pub fn update_sensorium(&self, state: &SensoriumState) {
+        if let Ok(json) = serde_json::to_string(state) {
+            if let Ok(mut guard) = self.sensorium_live.write() {
+                *guard = Some(json);
+            }
+        }
+    }
+
+    /// Вернуть последний SensoriumState как JSON-строку (для WS bridge).
+    pub fn latest_sensorium_json(&self) -> Option<String> {
+        self.sensorium_live.read().ok()?.clone()
+    }
 }
 
 pub struct BroadcastServer {
@@ -85,6 +103,7 @@ impl BroadcastServer {
             command_rx: Mutex::new(command_rx),
             snapshot_cache: RwLock::new(None),
             snapshot_live: RwLock::new(None),
+            sensorium_live: RwLock::new(None),
         });
 
         let server = BroadcastServer {

@@ -9,6 +9,12 @@
 
 **1732 тестов, 0 failures**
 
+SEN-TD-01 Фаза B ✅ (2026-06-05): SensoriumState публикуется через BroadcastHandle.
+  SensoriumState + все типы: добавлен Serialize. axiom-broadcasting: serde_json dependency;
+  BroadcastHandle.sensorium_live (pre-serialized JSON) + update_sensorium() + latest_sensorium_json().
+  axiom-node tick.rs: update_sensorium() после каждого snapshot. http.rs WS bridge:
+  при connect отправляет {"type":"Sensorium","data":{...}} вместе с SystemSnapshot.
+
 SEN-TD-01 Фаза A ✅ (2026-06-05): SensoriumState поглощает поля BroadcastSnapshot.
   `state.rs`: SensoriumDomainSummary, SensoriumDreamSummary; новые поля SensoriumState:
   trace_count, tension_count, domain_summaries, last_crystallization_tick,
