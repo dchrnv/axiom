@@ -87,6 +87,7 @@ reference-map.md
 docs/BLUEPRINT.md
 PERF_NOTES.md
 .claude/settings.local.json
+.claude/worktrees/
 
 # Axiom runtime save data
 axiom-data/
