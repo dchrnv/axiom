@@ -4,7 +4,7 @@
 // Протокол обмена между tick_loop и адаптерами (CLI, WebSocket, REST, Telegram).
 // Полный WebSocket protocol (ClientMessage, serde tag и пр.) — Phase 1.
 
-use axiom_runtime::{BroadcastSnapshot, DomainDetailSnapshot};
+use axiom_runtime::{DomainDetailSnapshot, over_domain::SensoriumState};
 use serde::Serialize;
 
 /// Сообщение от tick_loop к любому адаптеру.
@@ -48,11 +48,11 @@ pub enum ServerMessage {
         last_matched: u32,
     },
 
-    /// Полный broadcast-снапшот состояния Engine.
+    /// Полный broadcast-снапшот состояния Engine (SEN-TD-01: SensoriumState вместо BroadcastSnapshot).
     #[serde(rename = "state")]
     State {
         tick_count: u64,
-        snapshot: BroadcastSnapshot,
+        snapshot: Option<SensoriumState>,
     },
 
     /// Ответ на MetaRead/MetaMutate команду — уже отформатированный текст.

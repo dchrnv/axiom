@@ -22,7 +22,7 @@ use axiom_protocol::{
     events::EngineEvent,
     messages::{CommandResultData, EngineMessage},
 };
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot, TickRateReason};
+use axiom_runtime::{AxiomEngine, TickRateReason};
 use axiom_ucl::{OpCode, UclCommand};
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::Duration;
@@ -69,7 +69,7 @@ pub async fn tick_loop(
     mut engine: AxiomEngine,
     mut command_rx: mpsc::Receiver<AdapterCommand>,
     broadcast_tx: broadcast::Sender<ServerMessage>,
-    snapshot: Arc<RwLock<BroadcastSnapshot>>,
+    snapshot: Arc<RwLock<Option<axiom_runtime::over_domain::SensoriumState>>>,
     mut auto_saver: AutoSaver,
     anchor_set: Option<Arc<AnchorSet>>,
     config: AdaptersConfig,
@@ -204,15 +204,14 @@ pub async fn tick_loop(
             }));
         }
 
-        // 4. State-snapshot broadcast
+        // 4. State-snapshot broadcast (SEN-TD-01: SensoriumState вместо BroadcastSnapshot)
         let state_interval = config.websocket.state_broadcast_interval as u64;
         if state_interval > 0 && t.is_multiple_of(state_interval) {
-            let snap = engine.snapshot_for_broadcast();
-            let for_bcast = snap.clone();
-            *snapshot.write().await = snap;
+            let sensorium_snap = engine.sensorium.current_state.clone();
+            *snapshot.write().await = sensorium_snap.clone();
             let _ = broadcast_tx.send(ServerMessage::State {
                 tick_count: t,
-                snapshot: for_bcast,
+                snapshot: sensorium_snap,
             });
             if let Some(ref h) = wstation_handle {
                 h.update_snapshot(build_system_snapshot(&engine, tick_ns, PerfSnapshot::default()));

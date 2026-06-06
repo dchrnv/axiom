@@ -9,7 +9,7 @@ use axiom_agent::channels::cli::CliConfig;
 use axiom_agent::protocol::ServerMessage;
 use axiom_agent::tick_loop::tick_loop;
 use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
+use axiom_runtime::{AxiomEngine, over_domain::SensoriumState};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -22,8 +22,8 @@ fn make_saver() -> AutoSaver {
 fn make_config() -> AdaptersConfig {
     AdaptersConfig::from_cli_config(&CliConfig::default())
 }
-fn make_snapshot() -> Arc<RwLock<BroadcastSnapshot>> {
-    Arc::new(RwLock::new(BroadcastSnapshot::default()))
+fn make_snapshot() -> Arc<RwLock<Option<SensoriumState>>> {
+    Arc::new(RwLock::new(Option::<SensoriumState>::None))
 }
 
 // ── AdapterCommand ────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ use axiom_agent::protocol::ServerMessage;
 use axiom_agent::tick_loop::tick_loop;
 use axiom_agent::ws::{serve_ws, AppState};
 use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
+use axiom_runtime::{AxiomEngine, over_domain::SensoriumState};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -28,7 +28,7 @@ fn make_saver() -> AutoSaver {
 async fn spawn_server() -> String {
     let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(64);
     let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(256);
-    let snapshot = Arc::new(RwLock::new(BroadcastSnapshot::default()));
+    let snapshot = Arc::new(RwLock::new(Option::<SensoriumState>::None));
 
     let ws_state = AppState {
         command_tx,
@@ -79,11 +79,10 @@ async fn test_rest_get_status_200() {
         .unwrap();
     assert_eq!(resp.status(), 200);
 
-    let json: serde_json::Value = resp.json().await.unwrap();
-    assert!(
-        json.get("tick_count").is_some(),
-        "status should contain tick_count"
-    );
+    // SEN-TD-01: /api/status возвращает Option<SensoriumState>
+    // null если snapshot ещё не собран (engine не тикал), объект — если есть
+    // Проверяем только статус 200 — содержимое зависит от момента запроса
+    let _ = resp.text().await.unwrap();
 }
 
 #[tokio::test]

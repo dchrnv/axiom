@@ -227,9 +227,8 @@ pub struct AxiomEngine {
     pub(crate) fw_base_at_dream_start: (u64, u64, u64),
     /// Тик начала текущего/последнего dream-цикла.
     pub(crate) dream_started_at: u64,
-    /// Последний завершённый dream-отчёт (сохраняется в BroadcastSnapshot).
-    #[cfg(feature = "adapters")]
-    pub(crate) last_dream_summary: Option<crate::broadcast::LastDreamSummary>,
+    /// Последний завершённый dream-отчёт.
+    pub last_dream_summary: Option<crate::broadcast::LastDreamSummary>,
     /// Shell-профили vocab-seed токенов (sutra_id → [L1..L8]).
     /// Заполняется в inject_anchor_tokens шаге 4. Используется FrameWeaver для
     /// shell-proximity и ContextRecognizer для shell-energy-bonus.
@@ -312,7 +311,6 @@ impl AxiomEngine {
             last_crystallization_tick: 0,
             fw_base_at_dream_start: (0, 0, 0),
             dream_started_at: 0,
-            #[cfg(feature = "adapters")]
             last_dream_summary: None,
             shell_registry: HashMap::new(),
             subsystem_shell_templates: HashMap::new(),
@@ -488,47 +486,6 @@ impl AxiomEngine {
         self.ashti.experience().last_traces_matched.get()
     }
 
-    /// Лёгкий snapshot для broadcast (только числа, без клонирования токенов).
-    #[cfg(feature = "adapters")]
-    pub fn snapshot_for_broadcast(&self) -> crate::broadcast::BroadcastSnapshot {
-        use crate::broadcast::{ActiveCycleSnapshot, DreamPhaseSnapshot};
-        use crate::over_domain::DreamPhaseState;
-
-        let cycle_snap = if self.dream_phase_state == DreamPhaseState::Dreaming {
-            self.dream_cycle
-                .current_stage()
-                .map(|stage| ActiveCycleSnapshot {
-                    stage,
-                    queue_size: self.dream_cycle.queue_len(),
-                })
-        } else {
-            None
-        };
-
-        let dream_snap = DreamPhaseSnapshot {
-            state: self.dream_phase_state,
-            current_fatigue: self.dream_scheduler.current_fatigue(),
-            idle_ticks: self.dream_scheduler.current_idle_ticks(),
-            stats: self.dream_phase_stats.clone(),
-            current_cycle: cycle_snap,
-        };
-
-        crate::broadcast::BroadcastSnapshot {
-            tick_count: self.tick_count,
-            com_next_id: self.com_next_id,
-            trace_count: self.trace_count(),
-            tension_count: self.tension_count(),
-            domain_summaries: self.domain_summaries(),
-            frame_weaver_stats: Some(self.frame_weaver.stats.clone()),
-            dream_phase: Some(dream_snap),
-            last_crystallization_tick: self.last_crystallization_tick,
-            guardian_vetoes_since_wake: self.guardian.stats().vetoes_since_wake,
-            last_dream_summary: self.last_dream_summary.clone(),
-            cross_modal_candidates: self.context_recognizer.cross_modal_candidate_count(),
-            cross_modal_bonds: self.context_recognizer.cross_modal_bond_count(),
-        }
-    }
-
     /// Детальный snapshot одного домена — по явному запросу (dashboard, REST GET /domain/:id).
     #[cfg(feature = "adapters")]
     pub fn domain_detail_snapshot(
@@ -562,38 +519,6 @@ impl AxiomEngine {
                 .map(crate::broadcast::ConnectionSnapshot::from)
                 .collect(),
         })
-    }
-
-    /// Краткая сводка по всем 11 доменам для BroadcastSnapshot.
-    #[cfg(feature = "adapters")]
-    fn domain_summaries(&self) -> Vec<crate::broadcast::DomainSummary> {
-        use crate::broadcast::DomainSummary;
-        (0u16..=10)
-            .map(|offset| {
-                let id = 100 + offset;
-                let (conn_count, temperature_avg) = self
-                    .ashti
-                    .index_of(id)
-                    .and_then(|i| self.ashti.state(i))
-                    .map(|s| {
-                        let temp_avg = if s.tokens.is_empty() {
-                            0u8
-                        } else {
-                            let sum: u64 = s.tokens.iter().map(|t| t.temperature as u64).sum();
-                            (sum / s.tokens.len() as u64) as u8
-                        };
-                        (s.connections.len(), temp_avg)
-                    })
-                    .unwrap_or((0, 0));
-                DomainSummary {
-                    domain_id: id,
-                    name: domain_name(id).to_string(),
-                    token_count: self.ashti.token_count(id),
-                    connection_count: conn_count,
-                    temperature_avg,
-                }
-            })
-            .collect()
     }
 
     /// Взять накопленные события (очищает буфер)
@@ -1448,7 +1373,6 @@ impl AxiomEngine {
         let last_crystallization_tick = self.last_crystallization_tick;
         let guardian_vetoes_since_wake = self.guardian.stats().vetoes_since_wake;
 
-        #[cfg(feature = "adapters")]
         let last_dream_summary = self.last_dream_summary.as_ref().map(|s| {
             crate::over_domain::SensoriumDreamSummary {
                 cycle_id: s.cycle_id,
@@ -1459,8 +1383,6 @@ impl AxiomEngine {
                 sutra_written: s.sutra_written,
             }
         });
-        #[cfg(not(feature = "adapters"))]
-        let last_dream_summary: Option<crate::over_domain::SensoriumDreamSummary> = None;
 
         // SensoriumView строится из отдельных полей → borrow checker доволен.
         let sensorium_view = SensoriumView {
@@ -1595,24 +1517,19 @@ impl AxiomEngine {
         self.dream_phase_stats.last_wake_tick = tick;
 
         let (base_approved, base_vetoed, base_sutra) = self.fw_base_at_dream_start;
-        #[cfg(feature = "adapters")]
-        {
-            self.last_dream_summary = Some(crate::broadcast::LastDreamSummary {
-                cycle_id: self.dream_phase_stats.total_sleeps,
-                started_at_tick: self.dream_started_at,
-                ended_at_tick: tick,
-                proposals_accepted: self.frame_weaver.stats.crystallizations_approved
-                    .saturating_sub(base_approved) as u32,
-                proposals_rejected: self.frame_weaver.stats.crystallizations_vetoed
-                    .saturating_sub(base_vetoed) as u32,
-                sutra_written: self.frame_weaver.stats.frames_in_sutra
-                    .saturating_sub(base_sutra) as u32,
-                fatigue_before: self.falling_asleep_fatigue,
-                fatigue_after: self.dream_scheduler.current_fatigue(),
-            });
-        }
-        #[cfg(not(feature = "adapters"))]
-        let _ = (base_approved, base_vetoed, base_sutra);
+        self.last_dream_summary = Some(crate::broadcast::LastDreamSummary {
+            cycle_id: self.dream_phase_stats.total_sleeps,
+            started_at_tick: self.dream_started_at,
+            ended_at_tick: tick,
+            proposals_accepted: self.frame_weaver.stats.crystallizations_approved
+                .saturating_sub(base_approved) as u32,
+            proposals_rejected: self.frame_weaver.stats.crystallizations_vetoed
+                .saturating_sub(base_vetoed) as u32,
+            sutra_written: self.frame_weaver.stats.frames_in_sutra
+                .saturating_sub(base_sutra) as u32,
+            fatigue_before: self.falling_asleep_fatigue,
+            fatigue_after: self.dream_scheduler.current_fatigue(),
+        });
 
         self.dream_phase_state = DreamPhaseState::Wake;
         self.frame_weaver.on_dream_wake();

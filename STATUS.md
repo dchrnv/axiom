@@ -7,7 +7,15 @@
 
 ## Текущее состояние
 
-**1732 тестов, 0 failures**
+**1721 тестов, 0 failures**
+
+SEN-TD-01 Фаза F ✅ (2026-06-05): BroadcastSnapshot удалён — SensoriumState единственный источник.
+  axiom-broadcasting/snapshot.rs: build_system_snapshot прямые запросы к &AxiomEngine (без bs).
+  engine.rs: snapshot_for_broadcast() и domain_summaries() удалены; last_dream_summary всегда pub.
+  broadcast.rs: BroadcastSnapshot, DomainSummary, DreamPhaseSnapshot, ActiveCycleSnapshot удалены;
+  остались LastDreamSummary, DomainDetailSnapshot, TokenSnapshot, ConnectionSnapshot.
+  axiom-agent: BroadcastSnapshot → Option<SensoriumState> в protocol/tick_loop/ws/rest.
+  Тесты: broadcast_tests.rs и dream_cli_tests.rs переписаны под SensoriumState.
 
 SEN-TD-01 Фаза B ✅ (2026-06-05): SensoriumState публикуется через BroadcastHandle.
   SensoriumState + все типы: добавлен Serialize. axiom-broadcasting: serde_json dependency;

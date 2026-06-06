@@ -15,9 +15,8 @@
 pub mod adapters;
 /// AdaptiveTickRate — Variable Tick Rate (Axiom Sentinel V1.0, Фаза 3)
 pub mod adaptive;
-/// Broadcast-типы для внешних адаптеров (WebSocket, REST, egui).
-/// Доступны только при feature "adapters".
-#[cfg(feature = "adapters")]
+/// Broadcast-типы для внешних адаптеров (детальные снапшоты, domain detail).
+/// LastDreamSummary всегда доступна; DomainDetailSnapshot и связанные — при feature "adapters".
 pub mod broadcast;
 /// Channel — in-process очередь команд и событий
 pub mod channel;
@@ -39,11 +38,9 @@ pub mod subsystem_gravity;
 
 pub use adapters::{DirectAdapter, Effector, EventBus, EventObserver, Perceptor, RuntimeAdapter};
 pub use adaptive::{AdaptiveTickRate, TickRateReason};
+pub use broadcast::LastDreamSummary;
 #[cfg(feature = "adapters")]
-pub use broadcast::{
-    BroadcastSnapshot, ConnectionSnapshot, DomainDetailSnapshot, DomainSummary,
-    LastDreamSummary, TokenSnapshot,
-};
+pub use broadcast::{ConnectionSnapshot, DomainDetailSnapshot, TokenSnapshot};
 pub use channel::{Channel, ChannelBatchResult};
 pub use engine::{domain_name, AxiomEngine, AxiomError, TickSchedule};
 pub use subsystem_gravity::SubsystemGravityRule;

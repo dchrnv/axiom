@@ -40,7 +40,9 @@ async fn get_status(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn get_domains(State(state): State<AppState>) -> impl IntoResponse {
     let snap = state.snapshot.read().await;
-    Json(snap.domain_summaries.clone())
+    // SEN-TD-01: SensoriumState.domain_summaries вместо BroadcastSnapshot.domain_summaries
+    let summaries = snap.as_ref().map(|s| s.domain_summaries.clone()).unwrap_or_default();
+    Json(summaries)
 }
 
 // ── GET /api/domain/:id ───────────────────────────────────────────────────────

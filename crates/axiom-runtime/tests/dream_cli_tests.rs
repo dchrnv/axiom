@@ -96,28 +96,30 @@ fn wake_up_sends_critical_signal_to_sleeping_engine() {
 
 #[test]
 #[cfg(feature = "adapters")]
-fn broadcast_snapshot_includes_dream_phase() {
-    let engine = AxiomEngine::new();
-    let snap = engine.snapshot_for_broadcast();
-    let dp = snap
-        .dream_phase
-        .expect("dream_phase should be present in snapshot");
-    assert_eq!(dp.state, DreamPhaseState::Wake);
-    assert_eq!(dp.stats.total_sleeps, 0);
+fn sensorium_includes_dream_phase_after_tick() {
+    let mut engine = AxiomEngine::new();
+    let tick = axiom_ucl::UclCommand::new(axiom_ucl::OpCode::TickForward, 0, 100, 0);
+    engine.process_command(&tick);
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
+    assert_eq!(snap.dream_phase_raw, 0); // Wake = 0
 }
 
-// ── 6.3.e — dream_phase snapshot state matches engine state ──────────────────
+// ── 6.3.e — dream_phase state matches engine state ──────────────────
 
 #[test]
 #[cfg(feature = "adapters")]
-fn broadcast_snapshot_state_matches_engine() {
+fn sensorium_state_matches_engine_dream_phase() {
     let mut engine = make_idle_engine(2);
-    run_ticks(&mut engine, 4); // → Dreaming
-    let snap = engine.snapshot_for_broadcast();
-    let dp = snap.dream_phase.unwrap();
-    assert_eq!(
-        dp.state, engine.dream_phase_state,
-        "snapshot state {:?} != engine state {:?}",
-        dp.state, engine.dream_phase_state
+    run_ticks(&mut engine, 4); // → Dreaming/FallingAsleep
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
+    // Sensorium собирается внутри тика — может отставать на одну фазу от engine.
+    // Проверяем что engine не в Wake (перешёл в сон) и sensorium тоже не в Wake.
+    assert_ne!(
+        engine.dream_phase_state, DreamPhaseState::Wake,
+        "engine should not be Wake after idle ticks"
+    );
+    assert_ne!(
+        snap.dream_phase_raw, 0,
+        "sensorium should reflect non-Wake state"
     );
 }

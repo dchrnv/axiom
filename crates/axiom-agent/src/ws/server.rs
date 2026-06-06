@@ -3,7 +3,7 @@
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
-use axiom_runtime::BroadcastSnapshot;
+use axiom_runtime::over_domain::SensoriumState;
 use axum::{
     extract::{State, WebSocketUpgrade},
     response::IntoResponse,
@@ -23,7 +23,7 @@ use crate::protocol::ServerMessage;
 pub struct AppState {
     pub command_tx: mpsc::Sender<AdapterCommand>,
     pub broadcast_tx: broadcast::Sender<ServerMessage>,
-    pub snapshot: Arc<RwLock<BroadcastSnapshot>>,
+    pub snapshot: Arc<RwLock<Option<SensoriumState>>>,
     pub next_conn_id: Arc<AtomicU64>,
 }
 

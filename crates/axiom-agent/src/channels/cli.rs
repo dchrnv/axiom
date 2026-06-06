@@ -804,7 +804,7 @@ impl CliChannel {
         let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(256);
         let (broadcast_tx, mut broadcast_rx) = broadcast::channel::<ServerMessage>(1024);
         let snapshot = Arc::new(tokio::sync::RwLock::new(
-            axiom_runtime::BroadcastSnapshot::default(),
+            Option::<axiom_runtime::over_domain::SensoriumState>::None,
         ));
         let adapters_config = AdaptersConfig::from_cli_config(&self.config);
 

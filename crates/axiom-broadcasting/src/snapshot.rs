@@ -1,4 +1,5 @@
-/// Convert axiom-runtime's BroadcastSnapshot → axiom-protocol's SystemSnapshot.
+/// Build axiom-protocol's SystemSnapshot directly from AxiomEngine — без BroadcastSnapshot.
+/// SEN-TD-01 Фаза F: BroadcastSnapshot удалён как посредник.
 use axiom_protocol::{
     events::EngineState,
     snapshot::{
@@ -10,7 +11,7 @@ use axiom_protocol::{
     },
 };
 use axiom_runtime::over_domain::AdvisoryAction;
-use axiom_runtime::{domain_name, AxiomEngine, BroadcastSnapshot};
+use axiom_runtime::{domain_name, AxiomEngine};
 
 fn build_token_field(engine: &AxiomEngine, domain_id: u16, max: usize) -> Vec<TokenFieldPoint> {
     let Some(detail) = engine.domain_detail_snapshot(domain_id) else {
@@ -142,54 +143,48 @@ fn build_phase_c_snapshot(engine: &AxiomEngine) -> Option<PhaseCSnapshot> {
     })
 }
 
-pub fn engine_state_from(s: &BroadcastSnapshot) -> EngineState {
-    use axiom_runtime::over_domain::DreamPhaseState;
-    if let Some(dp) = &s.dream_phase {
-        match dp.state {
-            DreamPhaseState::Wake => EngineState::Wake,
-            DreamPhaseState::FallingAsleep => EngineState::FallingAsleep,
-            DreamPhaseState::Dreaming => EngineState::Dreaming,
-            DreamPhaseState::Waking => EngineState::Waking,
-        }
-    } else {
-        EngineState::Wake
-    }
-}
-
 pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: PerfSnapshot) -> SystemSnapshot {
-    let bs = engine.snapshot_for_broadcast();
+    use axiom_runtime::over_domain::DreamPhaseState;
 
-    let engine_state = engine_state_from(&bs);
-
+    // — Домены —
     const TOKEN_FIELD_MAX: usize = 300;
+    let level_id = engine.ashti.level_id();
 
-    let domains: Vec<DomainSnapshot> = bs
-        .domain_summaries
-        .iter()
-        .map(|d| {
-            let token_field = build_token_field(engine, d.domain_id, TOKEN_FIELD_MAX);
-            let layer_activations = build_layer_activations(engine, d.domain_id);
+    let domains: Vec<DomainSnapshot> = (0u16..=10)
+        .map(|offset| {
+            let domain_id = level_id * 100 + offset;
+            let token_field = build_token_field(engine, domain_id, TOKEN_FIELD_MAX);
+            let layer_activations = build_layer_activations(engine, domain_id);
+            let (token_count, conn_count, temp_avg) = engine
+                .ashti
+                .index_of(domain_id)
+                .and_then(|i| engine.ashti.state(i))
+                .map(|s| {
+                    let ta = if s.tokens.is_empty() { 0u8 } else {
+                        let sum: u64 = s.tokens.iter().map(|t| t.temperature as u64).sum();
+                        (sum / s.tokens.len() as u64) as u8
+                    };
+                    (s.token_count(), s.connection_count(), ta)
+                })
+                .unwrap_or((0, 0, 0));
             let (capacity, temperature_decay) = engine
                 .ashti
-                .config_of(d.domain_id)
+                .config_of(domain_id)
                 .map(|c| (c.token_capacity, (c.threshold_temp >> 8) as u8))
                 .unwrap_or((0, 0));
             let recent_activity = engine
                 .ashti
-                .index_of(d.domain_id)
+                .index_of(domain_id)
                 .and_then(|i| engine.ashti.domain(i))
                 .map(|dom| dom.events_since_rebuild as u32)
                 .unwrap_or(0);
             DomainSnapshot {
-                id: d.domain_id,
-                name: d.name.clone(),
-                config_summary: DomainConfigSummary {
-                    capacity,
-                    temperature_decay,
-                },
-                token_count: d.token_count as u32,
-                connection_count: d.connection_count as u32,
-                temperature_avg: d.temperature_avg,
+                id: domain_id,
+                name: domain_name(domain_id).to_string(),
+                config_summary: DomainConfigSummary { capacity, temperature_decay },
+                token_count: token_count as u32,
+                connection_count: conn_count as u32,
+                temperature_avg: temp_avg,
                 recent_activity,
                 layer_activations,
                 token_field,
@@ -199,7 +194,6 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
 
     let total_tokens: u32 = domains.iter().map(|d| d.token_count).sum();
     let total_connections: u32 = domains.iter().map(|d| d.connection_count).sum();
-
     let mut global_layer_activations = [0u8; 8];
     for d in &domains {
         for i in 0..8 {
@@ -208,48 +202,46 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         }
     }
 
-    // token_rate: average experiences per tick (proxy для "activity rate")
-    let token_rate = bs.trace_count as f32 / bs.tick_count.max(1) as f32;
-
-    let fatigue = if let Some(dp) = &bs.dream_phase {
-        FatigueSnapshot {
-            current: dp.current_fatigue as f32 / 255.0,
-            threshold: 0.8,
-            ticks_since_dream: dp.idle_ticks as u64,
-            token_rate,
-            history: vec![],
-        }
-    } else {
-        FatigueSnapshot {
-            current: 0.0,
-            threshold: 0.8,
-            ticks_since_dream: 0,
-            token_rate,
-            history: vec![],
-        }
+    // — Engine state —
+    let engine_state = match engine.dream_phase_state {
+        DreamPhaseState::Wake        => EngineState::Wake,
+        DreamPhaseState::FallingAsleep => EngineState::FallingAsleep,
+        DreamPhaseState::Dreaming    => EngineState::Dreaming,
+        DreamPhaseState::Waking      => EngineState::Waking,
     };
 
-    let frame_weaver_stats = bs.frame_weaver_stats.as_ref().map(|fw| FrameWeaverStats {
+    // — Fatigue —
+    let trace_count   = engine.trace_count() as u32;
+    let tension_count_val = engine.tension_count() as u32;
+    let token_rate = trace_count as f32 / engine.tick_count.max(1) as f32;
+    let current_fatigue = engine.dream_scheduler.current_fatigue();
+    let idle_ticks = engine.dream_scheduler.current_idle_ticks();
+    let fatigue = FatigueSnapshot {
+        current: current_fatigue as f32 / 255.0,
+        threshold: 0.8,
+        ticks_since_dream: idle_ticks as u64,
+        token_rate,
+        history: vec![],
+    };
+
+    // — FrameWeaver —
+    let fw = &engine.frame_weaver.stats;
+    let frame_weaver_stats = Some(FrameWeaverStats {
         total_frames: fw.crystallizations_approved as u32,
         frames_in_sutra: fw.frames_in_sutra as u32,
         promotions_since_wake: fw.promotions_approved as u32,
-        last_crystallization_tick: bs.last_crystallization_tick,
+        last_crystallization_tick: engine.last_crystallization_tick,
         syntactic_layer_activations: fw.syntactic_layer_activations,
     });
 
-    let dream_phase_stats = if let Some(dp) = &bs.dream_phase {
-        DreamPhaseStats {
-            cycles_completed: dp.stats.total_sleeps,
-            last_transition_tick: dp.stats.last_wake_tick,
-        }
-    } else {
-        DreamPhaseStats {
-            cycles_completed: 0,
-            last_transition_tick: 0,
-        }
+    // — Dream stats —
+    let dream_phase_stats = DreamPhaseStats {
+        cycles_completed: engine.dream_phase_stats.total_sleeps,
+        last_transition_tick: engine.dream_phase_stats.last_wake_tick,
     };
 
-    let last_dream_report = bs.last_dream_summary.as_ref().map(|s| DreamReport {
+    // — Last dream report —
+    let last_dream_report = engine.last_dream_summary.as_ref().map(|s| DreamReport {
         cycle_id: s.cycle_id,
         started_at_tick: s.started_at_tick,
         ended_at_tick: s.ended_at_tick,
@@ -257,31 +249,26 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         proposals_rejected: s.proposals_rejected,
         sutra_written: s.sutra_written,
         fatigue_before: s.fatigue_before as f32 / 255.0,
-        fatigue_after: s.fatigue_after as f32 / 255.0,
+        fatigue_after:  s.fatigue_after  as f32 / 255.0,
     });
 
-    // Traces (top-20 by weight)
+    // — Traces —
     let exp = engine.ashti.experience();
     let tick = engine.tick_count;
-    let traces_count = exp.trace_count() as u32;
-    let tension_count_val = exp.tension_count() as u32;
-
     let mut sorted_traces: Vec<_> = exp.traces().iter().collect();
     sorted_traces.sort_by(|a, b| b.weight.total_cmp(&a.weight));
     let top_traces: Vec<TraceSnapshot> = sorted_traces.iter().take(20).map(|t| {
-        let age = tick.saturating_sub(t.created_at);
         TraceSnapshot {
             weight: t.weight,
             temperature: t.pattern.temperature,
             mass: t.pattern.mass,
             valence: t.pattern.valence,
             position: t.pattern.position,
-            age_ticks: age,
+            age_ticks: tick.saturating_sub(t.created_at),
             success_count: t.success_count,
             pattern_hash: (t.pattern_hash & 0xFFFFFFFF) as u32,
         }
     }).collect();
-
     let tension_traces: Vec<TensionTraceSnapshot> = exp.tension_traces().iter().map(|t| {
         TensionTraceSnapshot {
             temperature: t.temperature,
@@ -289,9 +276,8 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         }
     }).collect();
 
-    // Reflector
+    // — Reflector —
     let reflector_data = engine.ashti.reflector();
-    let level_id = engine.ashti.level_id();
     let per_domain: Vec<ReflectorDomainStats> = (1u8..=8).filter_map(|role| {
         let profile = reflector_data.domain_profile(role)?;
         let total = profile.total_calls();
@@ -313,7 +299,7 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         per_domain,
     };
 
-    // Cognitive depth
+    // — Cognitive depth —
     let (max_passes, min_coh) = engine.maya_multipass_params();
     let maya_id = level_id * 100 + 10;
     let internal_dominance = engine.ashti.config_of(maya_id)
@@ -325,7 +311,7 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         internal_dominance,
     };
 
-    // Impulses
+    // — Impulses —
     let goal_count = engine.ashti.generate_goal_impulses(
         tick, engine.tick_schedule.goal_check_interval as u64
     ).len() as u32;
@@ -336,13 +322,13 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         curiosity_count,
     };
 
-    // Skills
     let skills_count = engine.ashti.skills_count() as u32;
+    let guardian_vetoes_since_wake = engine.guardian.stats().vetoes_since_wake;
 
     SystemSnapshot {
         engine_state,
-        current_tick: bs.tick_count,
-        current_event: bs.com_next_id,
+        current_tick: engine.tick_count,
+        current_event: engine.com_next_id,
         hot_path_ns: last_tick_ns,
         domains,
         over_domain: OverDomainSnapshot {
@@ -354,19 +340,19 @@ pub fn build_system_snapshot(engine: &AxiomEngine, last_tick_ns: u64, perf: Perf
         fatigue,
         last_dream_report,
         frame_weaver_stats,
-        guardian_stats: {
-            let gs = engine.guardian.stats();
-            GuardianStats {
-                total_vetoes: gs.reflex_vetoed + gs.access_denied + gs.protocol_denied,
-                vetoes_since_wake: gs.vetoes_since_wake as u32,
-                last_veto_reason: None,
-            }
+        guardian_stats: GuardianStats {
+            total_vetoes: {
+                let gs = engine.guardian.stats();
+                gs.reflex_vetoed + gs.access_denied + gs.protocol_denied
+            },
+            vetoes_since_wake: guardian_vetoes_since_wake as u32,
+            last_veto_reason: None,
         },
         dream_phase_stats,
         adapter_progress: vec![],
         phase_c: build_phase_c_snapshot(engine),
         perf,
-        traces_count,
+        traces_count: trace_count,
         tension_count: tension_count_val,
         top_traces,
         tension_traces,

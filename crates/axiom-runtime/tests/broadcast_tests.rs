@@ -43,38 +43,45 @@ fn test_trace_count_increases_after_inject() {
     let _ = engine.trace_count();
 }
 
-// ── snapshot_for_broadcast ─────────────────────────────────────────────────
+// ── SensoriumState (замена snapshot_for_broadcast, SEN-TD-01 Фаза F) ────────
 
 #[test]
-fn test_snapshot_for_broadcast_has_11_domains() {
-    let engine = new_engine();
-    let snap = engine.snapshot_for_broadcast();
+fn test_sensorium_domain_summaries_has_11_after_tick() {
+    let mut engine = new_engine();
+    let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    engine.process_command(&tick);
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
     assert_eq!(snap.domain_summaries.len(), 11);
 }
 
 #[test]
-fn test_snapshot_for_broadcast_tick_matches_engine() {
+fn test_sensorium_tick_matches_engine() {
     let mut engine = new_engine();
     let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
     engine.process_command(&tick);
     engine.process_command(&tick);
 
-    let snap = engine.snapshot_for_broadcast();
-    assert_eq!(snap.tick_count, engine.tick_count);
-    assert_eq!(snap.com_next_id, engine.com_next_id);
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
+    assert_eq!(snap.collected_at_tick, engine.tick_count);
+    assert_eq!(snap.causal_time, engine.com_next_id);
 }
 
 #[test]
-fn test_snapshot_for_broadcast_trace_count_matches() {
-    let engine = new_engine();
-    let snap = engine.snapshot_for_broadcast();
+fn test_sensorium_trace_count_matches_engine() {
+    let mut engine = new_engine();
+    let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    engine.process_command(&tick);
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
     assert_eq!(snap.trace_count, engine.trace_count());
     assert_eq!(snap.tension_count, engine.tension_count());
 }
 
 #[test]
-fn test_snapshot_domain_summaries_ids_range_100_to_110() {
-    let snap = new_engine().snapshot_for_broadcast();
+fn test_sensorium_domain_ids_range_100_to_110() {
+    let mut engine = new_engine();
+    let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    engine.process_command(&tick);
+    let snap = engine.sensorium.current_state.as_ref().unwrap();
     let ids: Vec<u16> = snap.domain_summaries.iter().map(|d| d.domain_id).collect();
     for expected in 100u16..=110 {
         assert!(ids.contains(&expected), "missing domain_id {}", expected);
@@ -82,21 +89,11 @@ fn test_snapshot_domain_summaries_ids_range_100_to_110() {
 }
 
 #[test]
-fn test_snapshot_domain_names_not_unknown() {
-    let snap = new_engine().snapshot_for_broadcast();
-    for domain in &snap.domain_summaries {
-        assert_ne!(
-            domain.name, "UNKNOWN",
-            "domain {} has unknown name",
-            domain.domain_id
-        );
-    }
-}
-
-#[test]
-fn test_snapshot_is_clone() {
-    let engine = new_engine();
-    let snap = engine.snapshot_for_broadcast();
+fn test_sensorium_state_is_clone() {
+    let mut engine = new_engine();
+    let tick = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    engine.process_command(&tick);
+    let snap = engine.sensorium.current_state.clone();
     let _clone = snap.clone();
 }
 

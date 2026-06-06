@@ -12,7 +12,7 @@ use axiom_agent::protocol::ServerMessage;
 use axiom_agent::tick_loop::tick_loop;
 use axiom_agent::ws::{bind, serve_ws, AppState};
 use axiom_persist::{AutoSaver, PersistenceConfig};
-use axiom_runtime::{AxiomEngine, BroadcastSnapshot};
+use axiom_runtime::{AxiomEngine, over_domain::SensoriumState};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -31,7 +31,7 @@ fn make_saver() -> AutoSaver {
 async fn spawn_ws_only() -> (u16, AppState) {
     let (command_tx, _rx) = mpsc::channel::<AdapterCommand>(64);
     let (broadcast_tx, _bx) = broadcast::channel::<ServerMessage>(128);
-    let snapshot = Arc::new(RwLock::new(BroadcastSnapshot::default()));
+    let snapshot = Arc::new(RwLock::new(Option::<SensoriumState>::None));
 
     let state = AppState {
         command_tx,
@@ -51,7 +51,7 @@ async fn spawn_ws_only() -> (u16, AppState) {
 async fn spawn_full(tick_broadcast: u32, state_broadcast: u32) -> u16 {
     let (command_tx, command_rx) = mpsc::channel::<AdapterCommand>(64);
     let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(256);
-    let snapshot = Arc::new(RwLock::new(BroadcastSnapshot::default()));
+    let snapshot = Arc::new(RwLock::new(Option::<SensoriumState>::None));
 
     let ws_state = AppState {
         command_tx,
@@ -194,7 +194,7 @@ async fn test_ws_subscribe_ticks_only_filters_state() {
     // Отправляем только State — не должен дойти
     let _ = state.broadcast_tx.send(ServerMessage::State {
         tick_count: 1,
-        snapshot: axiom_runtime::BroadcastSnapshot::default(),
+        snapshot: Option::<SensoriumState>::None,
     });
     // Отправляем Tick — должен дойти
     let _ = state.broadcast_tx.send(ServerMessage::Tick {
