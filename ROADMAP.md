@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 74.0
+**Версия:** 75.0
 **Дата:** 2026-06-04
 
 ---
@@ -25,73 +25,7 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 
 ## Активные задачи
 
----
-
-### ~~PRIM-TD-04 — TemporalPerceptor~~ ✅ ГОТОВО (2026-06-03)
-
-**Файл:** `crates/axiom-agent/src/perceptors/temporal.rs` (новый, аналог `vision_l0.rs`)
-**Суть:** перцептор темпоральных маркеров. Определяет время в тексте → инжектирует токены `time_*`-якорей.
-
-**Шаги реализации:**
-
-1. **`temporal_anchor_stable_id(id: &str) → u32`** (в новом файле или рядом с `vision_anchor_stable_id`).Диапазон: `0x1000_0001..0x1FFF_FFFF` (бит 28 установлен, не пересекается с text/vision/anchor диапазонами).Тот же FNV-1a паттерн.
-2. **`TemporalPerceptor` struct** по образцу `L0VisionPerceptor`:
-
-   ```
-   TemporalPerceptor { anchors: Vec<Anchor>, pending: VecDeque<UclCommand> }
-   ```
-
-   Принимает `time_*`-якоря из `AnchorSet.perceptual_anchors()` (или subsystem anchors для time).
-3. **`perceive(text: &str)`** — детектор темпоральных маркеров:
-
-   - `time_before`: "до", "раньше", "прежде", "перед", "до того как", "before", "prior"
-   - `time_after`: "после", "затем", "позже", "следом", "потом", "after", "then"
-   - `time_simultaneous`: "одновременно", "в то время как", "пока", "meanwhile", "while"
-   - `time_periodic`: "каждый", "регулярно", "периодически", "снова", "always", "every"
-   - `time_duration`: "в течение", "на протяжении", "долго", "during", "for"
-   - `time_moment`: "сейчас", "немедленно", "вдруг", "мгновенно", "now", "suddenly"
-   - `time_horizon`: "когда-нибудь", "в будущем", "однажды", "eventually", "someday"
-
-   Каждый матч → `InjectToken` в SUTRA с `temporal_anchor_stable_id` в `reserved[0..4]`.
-4. **Экспорт** из `crates/axiom-agent/src/perceptors/mod.rs`.
-5. **`INVARIANTS.md`**: добавить диапазон `0x1000_0001..0x1FFF_FFFF` (temporal_anchor_id, бит 28).
-6. **Тесты** (~8-10):
-
-   - `test_no_tokens_on_neutral_text`
-   - `test_detects_time_before` / `test_detects_time_after` / ...
-   - `test_stable_id_deterministic`
-   - `test_stable_id_range` (бит 28)
-   - `test_multiple_markers_in_one_text`
-
----
-
-### ~~PRIM-TD-05 — L0 уровень для абстракций~~ ✅ ГОТОВО (2026-06-03)
-
-**Файл:** `config/anchors/abstractions/primitives.yaml`
-**Суть:** `abstraction_raw` (C0) семантически является L0 — сырой сенсорный сигнал. Сейчас отмечен только в `tags: ["layer:L0"]`, но поле `layer:` в YAML не выставлено → загружается как L1 по умолчанию.
-
-**Шаги:**
-
-1. Проверить как `AnchorLayer::L0` влияет на поведение при загрузке:
-
-   - L0 якоря **исключены** из `match_text()` (только для VisionPerceptor/TemporalPerceptor)
-   - L0 якоря попадают в `perceptual_anchors()`
-
-   Вопрос: нужно ли `abstraction_raw` быть доступным для text-матчинга или нет?
-2. Если L0 (исключить из text-матчинга — правильно, C0 это сырой сигнал, не языковой):
-
-   ```yaml
-   - id: "abstraction_raw"
-     layer: L0          # ← добавить эту строку
-     word: "сырое"
-     ...
-   ```
-3. Проверить что `load_perceptual()` корректно подхватывает abstraction_raw через subsystem yaml, а не только через `perceptual/` директорию. Если нет — добавить в `perceptual/` или изменить загрузчик.
-4. **Тест**: убедиться что `abstraction_raw` не матчится в `match_text()` после изменения.
-
-**Размер:** ~10-20 строк включая тест. Но требует понимания загрузчика перед изменением.
-
----
+*(нет активных задач)*
 
 ---
 
