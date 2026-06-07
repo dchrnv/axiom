@@ -368,7 +368,7 @@ impl Genome {
             emergent_subsystems: Some(EmergentSubsystemRules::default()),
             cross_modal: Some(CrossModalConfig::default()),
             membrane_profiles,
-            membrane_blend_factor: 0.5,
+            membrane_blend_factor: 0.7,
         }
     }
 
