@@ -578,7 +578,7 @@ impl AnchorSet {
     // ─── Subsystem detection ─────────────────────────────────────────────────
 
     const SUBSYSTEM_NAMES: &'static [&'static str] =
-        &["mathematics", "writing", "music", "time", "logic", "values", "morality"];
+        &["mathematics", "writing", "music", "time", "logic", "values", "morality", "abstractions"];
 
     /// Determine the dominant subsystem from anchor matches (by cumulative score).
     /// Returns None if no subsystem tag found in matches.
@@ -834,8 +834,8 @@ mod tests {
         if !config_dir.exists() { return }
 
         let s = AnchorSet::load_or_empty(&config_dir);
-        // writing/primitives.yaml → 8 anchors (7 graphical + prim_narrative semantic anchor)
-        assert_eq!(s.get_subsystem("writing").len(), 8, "writing primitives");
+        // writing/primitives.yaml → 9 anchors (7 graphical + prim_narrative + prim_style)
+        assert_eq!(s.get_subsystem("writing").len(), 9, "writing primitives");
         // mathematics/primitives.yaml → 7 anchors
         assert_eq!(s.get_subsystem("mathematics").len(), 7, "mathematics primitives");
         // octants.yaml → 8 anchors

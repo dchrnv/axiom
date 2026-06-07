@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-05  
-**Тесты:** 1721, 0 failures
+**Тесты:** 1729, 0 failures
 
 ---
 
@@ -406,8 +406,11 @@ fn dominant_subsystem_of(matches) -> Option<SubsystemId>
 **Подсистемы с YAML-якорями:**
 writing, mathematics, logic, time, music, values, morality, abstractions.
 
-**abstractions:** 7 мета-якорей C0–C5+; `abstraction_raw` имеет `layer: L0` →
+**abstractions:** 7 мета-якорей C0–C5+ + теги "abstractions"; `abstraction_raw` имеет `layer: L0` →
 исключён из match_text (C0 = сырой сигнал, не языковой концепт).
+`subsystem_from_anchor_id("abstraction_*")` → "abstractions" (decomposition_table, OBS-ACC-01).
+`writing/primitives.yaml`: +prim_style (word "краткость"). `morality/primitives.yaml`: +moral_utilitarian.
+`time_before.word` "до"→"прежде"; `logic_negation` alias "не" удалён; `val_beneficial.word` "благо"→"польза".
 
 ---
 

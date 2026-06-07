@@ -278,4 +278,44 @@ mod tests {
         // So it's purely word match: pos = [30000, 30000, 30000]
         assert_eq!(pos[0], 30000);
     }
+
+    #[test]
+    fn subsystem_from_anchor_id_handles_abstraction_prefix() {
+        use super::super::decomposition_table::subsystem_from_anchor_id;
+        assert_eq!(subsystem_from_anchor_id("abstraction_theory"), Some("abstractions"));
+        assert_eq!(subsystem_from_anchor_id("abstraction_entity"), Some("abstractions"));
+        assert_eq!(subsystem_from_anchor_id("abstraction_raw"), Some("abstractions"));
+        assert_eq!(subsystem_from_anchor_id("moral_harm"), Some("morality"));
+        assert_eq!(subsystem_from_anchor_id("prim_narrative"), Some("writing"));
+        assert_eq!(subsystem_from_anchor_id("ddream_метафора"), None);
+        assert_eq!(subsystem_from_anchor_id("L5_сравнение"), None);
+    }
+
+    #[test]
+    fn integration_detect_subsystem_problematic_texts() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let config_dir = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("config"));
+        let config_dir = match config_dir { Some(p) if p.exists() => p, _ => return };
+        let anchors = std::sync::Arc::new(AnchorSet::load_or_empty(&config_dir));
+        let table = AnchorMatchTable::build(&anchors);
+
+        let cases = [
+            ("writing_metaphor",     "writing",      "Метафора переносит значение с одного предмета на другой. Сравнение делает абстрактное конкретным. Символ сжимает сложную идею до образа."),
+            ("writing_style",        "writing",      "Краткость — сестра таланта. Каждое слово должно нести смысл. Ритм фразы создаёт настроение текста."),
+            ("morality_consequences","morality",     "Утилитаризм оценивает действие по его последствиям. Наибольшее благо для наибольшего числа людей. Счастье измеримо и максимизируемо."),
+            ("abstract_emergence",   "abstractions", "Эмерджентность — свойства целого не сводимые к свойствам частей. Сознание возникает из нейронов. Жизнь возникает из молекул. Целое превосходит сумму частей."),
+            ("abstract_infinity",    "abstractions", "Бесконечность не является числом, но имеет разные размеры. Множество натуральных и множество вещественных чисел — разные бесконечности. Теорема Кантора это доказывает."),
+        ];
+
+        for (id, expected, text) in &cases {
+            let matches = anchors.match_text(text);
+            let p1 = anchors.dominant_subsystem_of(&matches);
+            let p2 = table.dominant_subsystem(text);
+            let detected = p1.as_deref().or(p2.as_deref());
+            assert_eq!(
+                detected, Some(*expected),
+                "[{id}] expected={expected} got={detected:?} (p1={p1:?} p2={p2:?})"
+            );
+        }
+    }
 }

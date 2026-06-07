@@ -7,7 +7,21 @@
 
 ## Текущее состояние
 
-**1725 тестов, 0 failures**
+**1729 тестов, 0 failures**
+
+OBS-ACC-01 ✅ (2026-06-07): Точность обнаружения подсистем — abstractions/morality/writing.
+  anchor.rs: "abstractions" добавлен в SUBSYSTEM_NAMES (Path 1 теперь видит abstraction_ якоря).
+  decomposition_table.rs: subsystem_from_anchor_id обрабатывает "abstraction_" префикс (Path 2).
+  time/primitives.yaml: time_before word "до"→"прежде" (удалён ложный матч предлога).
+  logic/primitives.yaml: logic_negation alias "не" удалён (слишком частое слово, ложные позитивы).
+  mathematics/primitives.yaml: math_relation alias "теорема" удалён (не тип отношения).
+  values/primitives.yaml: val_beneficial word "благо"→"польза" (prevents tie с morality в утилитарных текстах).
+  abstractions/primitives.yaml: теги "meta"→"abstractions"; abstraction_theory += бесконечность/теорема;
+    abstraction_category += множество; abstraction_schema += теорема/лемма.
+  morality/primitives.yaml: новый якорь moral_utilitarian (word "утилитаризм").
+  writing/primitives.yaml: новый якорь prim_style (word "краткость").
+  anchor_match.rs: 2 новых теста (subsystem_from_anchor_id + 5 интеграционных кейсов).
+  OBS corpus_showcase: abstractions/morality/writing_metaphor/writing_style → ожидается ✓ 100%.
 
 DIL-TD-01 ✅ (2026-06-07): Dilemma Resolution Pipeline — дилеммы наконец разрешаются.
   context_recognizer/mod.rs: intensity decay (×0.997/CR-тик) + resolution conditions в on_tick():

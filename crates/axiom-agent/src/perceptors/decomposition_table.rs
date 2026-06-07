@@ -29,6 +29,8 @@ pub fn subsystem_from_anchor_id(id: &str) -> Option<&'static str> {
         Some("values")
     } else if id.starts_with("moral_") {
         Some("morality")
+    } else if id.starts_with("abstraction_") {
+        Some("abstractions")
     } else if id.starts_with("exec_") || id.starts_with("shadow_") || id.starts_with("codex_")
         || id.starts_with("dmap_") || id.starts_with("probe_") || id.starts_with("dlogic_")
         || id.starts_with("ddream_") || id.starts_with("void_") {
