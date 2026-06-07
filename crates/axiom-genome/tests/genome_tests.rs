@@ -273,6 +273,24 @@ fn test_from_yaml_matches_default() {
     assert_eq!(yaml_cm.require_chrnv_approval, default_cm.require_chrnv_approval);
     assert_eq!(yaml_cm.max_bonds_total, default_cm.max_bonds_total);
     assert_eq!(yaml_cm.allow_revocation, default_cm.allow_revocation);
+
+    // Мембранные профили совпадают (Domain_Membrane_Profiles_V1_0)
+    assert_eq!(
+        yaml_genome.membrane_profiles.len(),
+        default_genome.membrane_profiles.len(),
+        "membrane_profiles: кол-во профилей должно совпадать"
+    );
+    assert_eq!(yaml_genome.membrane_blend_factor, default_genome.membrane_blend_factor,
+        "membrane_blend_factor должен совпадать");
+    for id in [101u16, 102, 103, 104, 105, 106, 107, 108] {
+        let yp = yaml_genome.membrane_profiles.get(&id)
+            .unwrap_or_else(|| panic!("genome.yaml: нет профиля для domain_id={id}"));
+        let dp = default_genome.membrane_profiles.get(&id)
+            .unwrap_or_else(|| panic!("default_ashti_core: нет профиля для domain_id={id}"));
+        assert_eq!(yp.mass_in, dp.mass_in, "domain_id={id}: mass_in не совпадает");
+        assert_eq!(yp.valence_in, dp.valence_in, "domain_id={id}: valence_in не совпадает");
+        assert_eq!(yp.temp_in, dp.temp_in, "domain_id={id}: temp_in не совпадает");
+    }
 }
 
 #[test]

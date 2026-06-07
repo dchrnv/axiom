@@ -11,7 +11,7 @@
 //   - docs/spec/Arbiter_V1_0.md
 
 use crate::{CausalHorizon, Domain, DomainState};
-use axiom_arbiter::{Arbiter, RoutingResult, COM};
+use axiom_arbiter::{Arbiter, MembraneProfile, RoutingResult, COM};
 use axiom_config::DomainConfig;
 use axiom_core::{Event, Token};
 use axiom_space::SpatialHashGrid;
@@ -400,6 +400,17 @@ impl AshtiCore {
     /// Доступ к REFLECTOR — статистика рефлексов для адаптации порогов.
     pub fn reflector(&self) -> &axiom_arbiter::Reflector {
         &self.arbiter.reflector
+    }
+
+    /// Загрузить мембранные профили из GENOME (Domain_Membrane_Profiles_V1_0).
+    ///
+    /// Вызывается из `AxiomEngine::try_new` после создания AshtiCore.
+    pub fn apply_membrane_profiles(
+        &mut self,
+        profiles: std::collections::HashMap<u16, MembraneProfile>,
+        blend_factor: f32,
+    ) {
+        self.arbiter.configure_membranes(profiles, blend_factor);
     }
 
     /// Mutable доступ к HashMap конфигураций доменов в Arbiter.

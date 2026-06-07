@@ -7,7 +7,21 @@
 
 ## Текущее состояние
 
-**1736 тестов, 0 failures**
+**1514 тестов, 0 failures**
+
+Domain_Membrane_Profiles_V1_0 ✅ (2026-06-07): мембранная трансформация токенов по природе домена.
+  axiom-genome: MembraneProfile {mass_in,valence_in,temp_in,blend_factor?}; Genome += membrane_profiles
+  (8 доменов 101–108) + membrane_blend_factor=0.5. genome.yaml: секция membrane_profiles.
+  axiom-arbiter: axiom-genome как зависимость; Arbiter += membrane_profiles+blend_factor;
+  configure_membranes(); membrane_transform() — чистая функция: blend_u8/i8 + clamp (mass≥1, temp≥1).
+  route_to_ashti: перед process_token → membrane_transform (slow path only, fast path без изменений).
+  axiom-domain: AshtiCore::apply_membrane_profiles() → arbiter.configure_membranes().
+  axiom-runtime: AxiomEngine::try_new вызывает apply_membrane_profiles из genome.
+  config/presets/domains/: logic.yaml membrane_state 2→3 (MEMBRANE_ADAPTIVE, фикс); 
+  void.yaml quantum_noise→150; shadow.yaml resonance_freq→400; logic.yaml resonance_freq→200.
+  9 unit-тестов: transform_execution, transform_dream, symmetry, clamping×3, factor_zero, 
+  preserves_non_physical_fields, per_domain_factor_override.
+  test_from_yaml_matches_default расширен: проверяет 8 профилей + blend_factor.
 
 OBS-AX-01 ✅ (2026-06-07): AxialEvaluator Y-ось — Eros/Thanatos из позиции участников.
   axial_evaluator/mod.rs: при density=0 и valence=0 Y-ось вычисляется из mean_y позиции

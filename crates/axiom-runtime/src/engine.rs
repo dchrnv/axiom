@@ -280,9 +280,15 @@ impl AxiomEngine {
             let _ = w.on_boot(&genome);
             w
         };
+        let mut ashti = AshtiCore::new(1);
+        ashti.apply_membrane_profiles(
+            genome.membrane_profiles.clone(),
+            genome.membrane_blend_factor,
+        );
+
         Ok(Self {
             genome: Arc::clone(&genome),
-            ashti: AshtiCore::new(1),
+            ashti,
             guardian: Guardian::new(genome),
             pending_events: Vec::new(),
             com_next_id: 1,

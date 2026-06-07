@@ -120,6 +120,20 @@ neural_advisor:
   emergent:
     enabled: true
 
+# Domain_Membrane_Profiles_V1_0: физическая подпись домена (mass/valence/temp)
+# Природа домена = конституция (GENOME), не оперативный конфиг.
+membrane_profiles:
+  101: {mass_in: 200, valence_in:  40, temp_in: 220}  # EXECUTION (+,+,+)
+  102: {mass_in:  55, valence_in:  40, temp_in:  80}  # SHADOW    (-,+,-)
+  103: {mass_in:  55, valence_in: -40, temp_in: 220}  # CODEX     (-,-,+)
+  104: {mass_in: 200, valence_in: -40, temp_in: 220}  # MAP       (+,-,+)
+  105: {mass_in: 200, valence_in:  40, temp_in:  80}  # PROBE     (+,+,-)
+  106: {mass_in:  55, valence_in:  40, temp_in: 220}  # LOGIC     (-,+,+)
+  107: {mass_in:  55, valence_in: -40, temp_in:  80}  # DREAM     (-,-,-)
+  108: {mass_in: 200, valence_in: -40, temp_in:  80}  # VOID      (+,-,-)
+
+membrane_blend_factor: 0.5
+
 # V2: OverDomainArbiter — TrustConfig + CognitiveProfile из файла (ARB-TD-01, PROFILE-01)
 arbiter:
   profile: balanced

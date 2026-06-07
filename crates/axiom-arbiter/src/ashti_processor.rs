@@ -6,6 +6,7 @@
 use crate::experience::ExperienceTrace;
 use axiom_config::DomainConfig;
 use axiom_core::{Token, TOKEN_FLAG_GOAL};
+use axiom_genome::MembraneProfile;
 
 /// ASHTI Processor - обработка токенов через ASHTI 1-8 домены
 pub struct AshtiProcessor;
@@ -59,6 +60,27 @@ impl AshtiProcessor {
         out.domain_id = domain.domain_id;
         out
     }
+}
+
+/// Мембранная трансформация токена по профилю домена (Domain_Membrane_Profiles_V1_0 §5.2).
+///
+/// Применяется ТОЛЬКО в slow path (ASHTI 1–8), перед domain-специализацией.
+/// fast path (resonance_search) не трансформируется.
+pub fn membrane_transform(token: &Token, profile: &MembraneProfile, global_factor: f32) -> Token {
+    let factor = profile.blend_factor.unwrap_or(global_factor).clamp(0.0, 1.0);
+    let mut out = *token;
+    out.mass = blend_u8(token.mass, profile.mass_in, factor).max(1);
+    out.valence = blend_i8(token.valence, profile.valence_in, factor).clamp(-127, 127);
+    out.temperature = blend_u8(token.temperature, profile.temp_in, factor).max(1);
+    out
+}
+
+fn blend_u8(current: u8, target: u8, factor: f32) -> u8 {
+    (current as f32 * (1.0 - factor) + target as f32 * factor).round() as u8
+}
+
+fn blend_i8(current: i8, target: i8, factor: f32) -> i8 {
+    (current as f32 * (1.0 - factor) + target as f32 * factor).round() as i8
 }
 
 /// Вычислить коэффициент смешивания: trace.weight * (feedback_weight_delta / 255.0)
@@ -148,4 +170,122 @@ fn apply_meta(domain: &DomainConfig, token: &mut Token) {
     token.temperature = lerp_u8(token.temperature, domain_temp, 0.05);
     let scale = domain.permeability as f32 / 255.0;
     token.mass = lerp_u8(token.mass, (token.mass as f32 * scale) as u8, 0.05);
+}
+
+#[cfg(test)]
+mod membrane_tests {
+    use super::*;
+    use axiom_core::Token;
+    use axiom_genome::MembraneProfile;
+
+    fn mid_token() -> Token {
+        let mut t = Token::new(1, 101, [0, 0, 0], 1);
+        t.mass = 128;
+        t.valence = 0;
+        t.temperature = 128;
+        t
+    }
+
+    fn profile(m: u8, v: i8, t: u8) -> MembraneProfile {
+        MembraneProfile { mass_in: m, valence_in: v, temp_in: t, blend_factor: None }
+    }
+
+    #[test]
+    fn test_membrane_transform_execution() {
+        let tok = mid_token();
+        let p = profile(200, 40, 220);
+        let out = membrane_transform(&tok, &p, 0.5);
+        // factor=0.5: mass ≈ (128+200)/2=164, valence ≈ 20, temp ≈ 174
+        assert!(out.mass > 128, "EXECUTION должен увеличить mass: {}", out.mass);
+        assert!(out.valence > 0, "EXECUTION должен увеличить valence: {}", out.valence);
+        assert!(out.temperature > 128, "EXECUTION должен увеличить temp: {}", out.temperature);
+        assert_eq!(out.mass, 164);
+        assert_eq!(out.valence, 20);
+        assert_eq!(out.temperature, 174);
+    }
+
+    #[test]
+    fn test_membrane_transform_dream() {
+        let tok = mid_token();
+        let p = profile(55, -40, 80);
+        let out = membrane_transform(&tok, &p, 0.5);
+        assert!(out.mass < 128, "DREAM должен уменьшить mass: {}", out.mass);
+        assert!(out.valence < 0, "DREAM должен уменьшить valence: {}", out.valence);
+        assert!(out.temperature < 128, "DREAM должен уменьшить temp: {}", out.temperature);
+    }
+
+    #[test]
+    fn test_membrane_symmetry() {
+        let tok = mid_token();
+        let exec = membrane_transform(&tok, &profile(200, 40, 220), 0.5);
+        let dream = membrane_transform(&tok, &profile(55, -40, 80), 0.5);
+        // EXECUTION и DREAM симметричны относительно 128/0/128
+        let mass_delta_exec = exec.mass as i16 - 128;
+        let mass_delta_dream = dream.mass as i16 - 128;
+        assert!((mass_delta_exec + mass_delta_dream).abs() <= 1, "EXECUTION/DREAM mass не симметричны");
+        let val_exec = exec.valence as i16;
+        let val_dream = dream.valence as i16;
+        assert!((val_exec + val_dream).abs() <= 1, "EXECUTION/DREAM valence не симметричны");
+    }
+
+    #[test]
+    fn test_membrane_clamping_mass_zero() {
+        let mut tok = mid_token();
+        tok.mass = 0; // невалидное значение
+        let p = profile(55, -40, 80); // Dionysus (ещё ниже)
+        let out = membrane_transform(&tok, &p, 1.0); // полная замена
+        assert!(out.mass >= 1, "mass не должен быть 0 после трансформации: {}", out.mass);
+    }
+
+    #[test]
+    fn test_membrane_clamping_valence() {
+        let mut tok = mid_token();
+        tok.valence = -127;
+        let p = profile(55, -40, 80); // Thanatos (ещё ниже)
+        let out = membrane_transform(&tok, &p, 1.0);
+        assert!(out.valence >= -127, "valence вышел за -127: {}", out.valence);
+    }
+
+    #[test]
+    fn test_membrane_temperature_nonzero() {
+        let mut tok = mid_token();
+        tok.temperature = 0;
+        let p = profile(55, -40, 80); // Nothing (низкий target)
+        let out = membrane_transform(&tok, &p, 1.0);
+        assert!(out.temperature >= 1, "temperature не должна быть 0: {}", out.temperature);
+    }
+
+    #[test]
+    fn test_membrane_factor_zero_passthrough() {
+        let tok = mid_token();
+        let p = profile(200, 40, 220);
+        let out = membrane_transform(&tok, &p, 0.0);
+        assert_eq!(out.mass, tok.mass, "factor=0 → нет изменений mass");
+        assert_eq!(out.valence, tok.valence, "factor=0 → нет изменений valence");
+        assert_eq!(out.temperature, tok.temperature, "factor=0 → нет изменений temp");
+    }
+
+    #[test]
+    fn test_membrane_preserves_non_physical_fields() {
+        let mut tok = mid_token();
+        tok.sutra_id = 42;
+        tok.type_flags = 0x0001;
+        tok.lineage_hash = 0xDEADBEEF;
+        let p = profile(200, 40, 220);
+        let out = membrane_transform(&tok, &p, 0.5);
+        assert_eq!(out.sutra_id, tok.sutra_id);
+        assert_eq!(out.type_flags, tok.type_flags);
+        assert_eq!(out.lineage_hash, tok.lineage_hash);
+    }
+
+    #[test]
+    fn test_membrane_per_domain_factor_override() {
+        let tok = mid_token();
+        let p_global = MembraneProfile { mass_in: 200, valence_in: 40, temp_in: 220, blend_factor: None };
+        let p_override = MembraneProfile { mass_in: 200, valence_in: 40, temp_in: 220, blend_factor: Some(1.0) };
+        let out_global = membrane_transform(&tok, &p_global, 0.5);
+        let out_full = membrane_transform(&tok, &p_override, 0.5);
+        // При override=1.0 результат должен быть ближе к target
+        assert!(out_full.mass >= out_global.mass, "per-domain factor=1.0 должен давать больший сдвиг");
+    }
 }

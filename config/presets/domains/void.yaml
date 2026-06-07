@@ -21,7 +21,7 @@ rebuild_frequency: 0
 friction_coeff: 200
 viscosity: 100
 elasticity: 0
-quantum_noise: 0
+quantum_noise: 150
 
 axis_x_ref: 0
 axis_y_ref: 0

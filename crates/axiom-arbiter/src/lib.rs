@@ -21,7 +21,7 @@ mod maya_processor;
 mod reflector;
 mod skillset;
 
-use ashti_processor::AshtiProcessor;
+use ashti_processor::{membrane_transform, AshtiProcessor};
 use axiom_config::DomainConfig;
 use axiom_core::Token;
 use experience::{Experience, ResonanceLevel};
@@ -29,6 +29,7 @@ use maya_processor::MayaProcessor;
 use std::collections::HashMap;
 
 // Re-export for tests and axiom-persist
+pub use axiom_genome::MembraneProfile;
 pub use com::COM;
 pub use experience::{
     Experience as ExperienceModule, ExperienceTrace, ResonanceLevel as ResonanceLevelEnum,
@@ -185,6 +186,10 @@ pub struct Arbiter {
     pub reflector: Reflector,
     /// SKILLSET: кристаллизованные навыки
     pub skillset: SkillSet,
+    /// Мембранные профили доменов 101–108 (Domain_Membrane_Profiles_V1_0).
+    membrane_profiles: HashMap<u16, MembraneProfile>,
+    /// Глобальный blend factor для мембранной трансформации.
+    membrane_blend_factor: f32,
 }
 
 impl Arbiter {
@@ -198,7 +203,15 @@ impl Arbiter {
             com,
             reflector: Reflector::new(),
             skillset: SkillSet::new(),
+            membrane_profiles: HashMap::new(),
+            membrane_blend_factor: 0.0,
         }
+    }
+
+    /// Загрузить мембранные профили из GENOME (вызывается после boot).
+    pub fn configure_membranes(&mut self, profiles: HashMap<u16, MembraneProfile>, factor: f32) {
+        self.membrane_profiles = profiles;
+        self.membrane_blend_factor = factor.clamp(0.0, 1.0);
     }
 
     /// Зарегистрировать домен по structural_role
@@ -426,7 +439,12 @@ impl Arbiter {
         for role in 1..=(max_role.min(8) as usize) {
             if let Some(domain_id) = self.registry.ashti[role - 1] {
                 if let Some(domain) = self.domains.get(&domain_id) {
-                    let result = AshtiProcessor::process_token(&token, domain, hint);
+                    // Мембранная трансформация: окрашиваем токен по природе домена (slow path only).
+                    let token_in = match self.membrane_profiles.get(&domain_id) {
+                        Some(profile) => membrane_transform(&token, profile, self.membrane_blend_factor),
+                        None => token,
+                    };
+                    let result = AshtiProcessor::process_token(&token_in, domain, hint);
                     results.push(result);
                 }
             }

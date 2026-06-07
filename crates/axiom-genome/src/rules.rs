@@ -132,6 +132,23 @@ impl Default for EmergentSubsystemRules {
     }
 }
 
+/// Физическая подпись домена — окрашивает входящий токен по природе домена (X,Y,Z).
+///
+/// Хранится в GENOME (frozen после boot). Применяется в slow path (ASHTI 1–8).
+/// fast path (resonance_search) не трансформируется.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct MembraneProfile {
+    /// Apollo/Dionysus: 200=порядок, 55=хаос
+    pub mass_in: u8,
+    /// Eros/Thanatos: +40=притяжение, -40=отталкивание
+    pub valence_in: i8,
+    /// Will/Nothing: 220=активный, 80=пассивный
+    pub temp_in: u8,
+    /// Per-domain override blend factor (None = использовать глобальный)
+    #[serde(default)]
+    pub blend_factor: Option<f32>,
+}
+
 /// Глобальная конфигурация Ashti_Core уровня.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenomeConfig {

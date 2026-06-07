@@ -17,7 +17,7 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1721 тестов, 0 failures.**
+**1514 тестов, 0 failures.**
 Shell-TD-02, SEN-TD-01 (V2.0), BRD-TD-06 завершены (2026-06-05).
 PRIM-TD-03 Subsystem Gravity завершён (2026-06-04).
 Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-06-03).
@@ -41,6 +41,24 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 ---
 
 ## Завершено (текущая сессия)
+
+### Domain_Membrane_Profiles_V1_0 ✅ — мембранная трансформация входящих токенов
+
+**Цель:** entropy≈0 и Dionysus недостижим → физика работает с уже «окрашенным» токеном.
+
+Реализовано по спеке `docs/architecture/Domain_Membrane_Profiles_V1_0.md`:
+- `MembraneProfile` в axiom-genome + секция в genome.yaml (8 доменов 101–108).
+- `membrane_transform()` — чистая функция blend (mass/valence/temp) + clamp.
+- `Arbiter::configure_membranes()` + применение в `route_to_ashti` (slow path, не fast path).
+- `AshtiCore::apply_membrane_profiles()` → вызов из `AxiomEngine::try_new`.
+- Пресеты откалиброваны: logic membrane_state→ADAPTIVE, void quantum_noise→150,
+  shadow resonance_freq→400, logic resonance_freq→200.
+- 9 unit-тестов, `test_from_yaml_matches_default` расширен.
+
+**Ожидаемый эффект (§9 спеки):** entropy>0, октанты Dionysus/Thanatos/Nothing активируются,
+active_dilemmas>0 при конфликтных текстах. Проверить следующим OBS-прогоном с BLEND_FACTOR=0.5.
+
+---
 
 ### DIL-TD-01 ✅ — Dilemma Resolution Pipeline
 

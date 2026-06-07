@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 
-use crate::rules::{AccessRule, CrossModalConfig, EmergentSubsystemRules, GenomeConfig, GenomeInvariants, ProtocolRule};
+use crate::rules::{AccessRule, CrossModalConfig, EmergentSubsystemRules, GenomeConfig, GenomeInvariants, MembraneProfile, ProtocolRule};
 use crate::types::{DataType, ModuleId, Permission, ResourceId};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
+
+fn default_membrane_blend_factor() -> f32 {
+    0.5
+}
 
 /// Ошибки валидации GENOME.
 #[derive(Debug, PartialEq)]
@@ -50,6 +55,13 @@ pub struct Genome {
     /// Параметры cross-modal binding (CMB-TD-02).
     #[serde(default)]
     pub cross_modal: Option<CrossModalConfig>,
+    /// Мембранные профили ASHTI-доменов 101–108 (Domain_Membrane_Profiles_V1_0).
+    /// Ключ = domain_id (101..=108).
+    #[serde(default)]
+    pub membrane_profiles: HashMap<u16, MembraneProfile>,
+    /// Глобальный коэффициент смешивания мембраны (0.0..1.0).
+    #[serde(default = "default_membrane_blend_factor")]
+    pub membrane_blend_factor: f32,
 }
 
 impl Genome {
@@ -334,6 +346,19 @@ impl Genome {
             },
         ];
 
+        let mut membrane_profiles = HashMap::new();
+        // Профили по природе домена: (mass_in, valence_in, temp_in)
+        // Apollo=200/Dionysus=55, Eros=+40/Thanatos=-40, Will=220/Nothing=80
+        let p = |m, v, t| MembraneProfile { mass_in: m, valence_in: v, temp_in: t, blend_factor: None };
+        membrane_profiles.insert(101, p(200,  40, 220)); // EXECUTION (+,+,+)
+        membrane_profiles.insert(102, p( 55,  40,  80)); // SHADOW    (-,+,-)
+        membrane_profiles.insert(103, p( 55, -40, 220)); // CODEX     (-,-,+)
+        membrane_profiles.insert(104, p(200, -40, 220)); // MAP       (+,-,+)
+        membrane_profiles.insert(105, p(200,  40,  80)); // PROBE     (+,+,-)
+        membrane_profiles.insert(106, p( 55,  40, 220)); // LOGIC     (-,+,+)
+        membrane_profiles.insert(107, p( 55, -40,  80)); // DREAM     (-,-,-)
+        membrane_profiles.insert(108, p(200, -40,  80)); // VOID      (+,-,-)
+
         Self {
             version: 1,
             invariants: GenomeInvariants::ashti_core_v2(),
@@ -342,6 +367,8 @@ impl Genome {
             config: GenomeConfig::ashti_core_v2(),
             emergent_subsystems: Some(EmergentSubsystemRules::default()),
             cross_modal: Some(CrossModalConfig::default()),
+            membrane_profiles,
+            membrane_blend_factor: 0.5,
         }
     }
 

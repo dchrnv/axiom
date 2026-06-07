@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-05  
-**Тесты:** 1736, 0 failures
+**Тесты:** 1514, 0 failures
 
 ---
 
@@ -13,7 +13,10 @@ axiom-core       — Token, Connection, Event (64B каждый, repr(C, align(6
 axiom-ucl        — UclCommand, OpCode, UclResult
 axiom-genome     — Genome (конституция, frozen в Arc после boot);
                    ModuleId: Sensorium=21, Waves=22; MAX_MODULES=23;
-                   EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02)
+                   EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02);
+                   MembraneProfile {mass_in,valence_in,temp_in,blend_factor?};
+                   membrane_profiles: HashMap<u16,MembraneProfile> (8 доменов 101–108);
+                   membrane_blend_factor: f32 = 0.5 (глобальный)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    ModalityStore (sutra_id→Modality; Text/Vision/Internal);
                    FatigueStore + SubsystemFatigue (V7-B2);
@@ -29,8 +32,12 @@ axiom-space      — SpatialHashGrid, apply_gravity_batch (SIMD-ready, feature "
 axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_shell;
                    link_types: 0x08 syntactic, 0x09 composition,
                    0x0A cross-modal (CROSS_MODAL_BOND=0x0A01), 0x0B semantic-anchor
-axiom-domain     — Domain, DomainState, AshtiCore (11 доменов), CausalHorizon, FractalChain
-axiom-arbiter    — Arbiter (dual-path), Experience (shell_registry: HashMap<u32,[u8;8]>;
+axiom-domain     — Domain, DomainState, AshtiCore (11 доменов), CausalHorizon, FractalChain;
+                   AshtiCore::apply_membrane_profiles(profiles, factor) — вызывается из engine boot
+axiom-arbiter    — Arbiter (dual-path): membrane_profiles: HashMap<u16,MembraneProfile>,
+                   membrane_blend_factor: f32; configure_membranes(); route_to_ashti применяет
+                   membrane_transform() перед process_token (slow path только);
+                   Experience (shell_registry: HashMap<u32,[u8;8]>;
                    shell_cosine() → 15% бонус в pattern_similarity; set_shell_registry();
                    Shell-TD-02), Reflector, SkillSet, GridHash, COM
 axiom-heartbeat  — HeartbeatGenerator V2.0

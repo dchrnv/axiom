@@ -15,7 +15,7 @@ field_size: [2000.0, 2000.0, 2000.0]
 gravity_strength: 9.81
 temperature: 273.0
 time_dilation: 0
-resonance_freq: 0
+resonance_freq: 200
 pressure: 0
 rebuild_frequency: 0
 friction_coeff: 25
