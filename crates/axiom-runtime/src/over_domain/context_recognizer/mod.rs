@@ -130,6 +130,9 @@ pub struct ContextRecognizer {
     pub modality_store: ModalityStore,
     /// Детектор cross-modal ко-активации (Cross_Modal_Binding_V1_0 §3).
     cross_modal_detector: CrossModalDetector,
+    /// Разрешённые дилеммы ожидающие создания TensionTrace в Experience.
+    /// Дрейнится engine.rs после on_tick → add_tension_trace(temperature=255).
+    pending_resolution_tensions: Vec<u64>,
 }
 
 impl ContextRecognizer {
@@ -166,7 +169,20 @@ impl ContextRecognizer {
             dilemma_detector: DilemmaDetector::new(),
             modality_store: ModalityStore::new(),
             cross_modal_detector: CrossModalDetector::new(),
+            pending_resolution_tensions: Vec::new(),
         }
+    }
+
+    pub fn pending_resolution_tensions_len(&self) -> usize {
+        self.pending_resolution_tensions.len()
+    }
+
+    /// Дрейнить pending TensionTrace от разрешённых дилемм.
+    ///
+    /// Возвращает tick-метки разрешений. Engine создаёт TensionTrace с temperature=255
+    /// для каждого элемента и добавляет в Experience.
+    pub fn drain_resolution_tensions(&mut self) -> Vec<u64> {
+        std::mem::take(&mut self.pending_resolution_tensions)
     }
 
     /// Текущие метрики динамики активности (последний on_tick).
@@ -712,6 +728,9 @@ impl OverDomainComponent for ContextRecognizer {
                 let cmds =
                     crystallize_to_experience_commands(rec, [0i16; 3], exp_domain_id);
                 dilemma_cmds.extend(cmds);
+                // После кристаллизации регистрируем TensionTrace — след разрешённой дилеммы.
+                // temperature=255 → след живёт ~255 тиков (TENSION_DECAY=1), виден OBS-снапшотом.
+                self.pending_resolution_tensions.push(tick);
             }
         }
 
@@ -877,5 +896,42 @@ mod tests {
             cr.cross_modal_detector.update(&[frame_a, frame_b], &cr.modality_store, tick);
         }
         assert_eq!(cr.cross_modal_candidate_count(), 0, "same modality → no cross-modal candidate");
+    }
+
+    #[test]
+    fn resolution_tension_emitted_after_dilemma_resolve() {
+        // После разрешения дилеммы drain_resolution_tensions() возвращает tick кристаллизации.
+        use crate::over_domain::context_recognizer::dilemma_store::{DilemmaResolution, DilemmaType};
+        let mut cr = ContextRecognizer::default();
+        cr.dilemma_store.push_active(DilemmaType::ValueConflict, vec![1, 2], 0, 0.8);
+        let id = cr.dilemma_store.active[0].id;
+        cr.dilemma_store.resolve(id, DilemmaResolution::ContextualPriority { winner: 1 });
+
+        // Вручную дрейним pending_crystallizations как это делает on_tick, и заполняем буфер.
+        let pending = cr.dilemma_store.drain_pending_crystallizations();
+        for _ in &pending {
+            cr.pending_resolution_tensions.push(42);
+        }
+
+        let tensions = cr.drain_resolution_tensions();
+        assert_eq!(tensions.len(), 1, "одна дилемма → один tension tick");
+        assert_eq!(tensions[0], 42);
+    }
+
+    #[test]
+    fn drain_resolution_tensions_empty_initially() {
+        let mut cr = ContextRecognizer::default();
+        assert!(cr.drain_resolution_tensions().is_empty());
+    }
+
+    #[test]
+    fn drain_resolution_tensions_clears_buffer() {
+        let mut cr = ContextRecognizer::default();
+        cr.pending_resolution_tensions.push(100);
+        cr.pending_resolution_tensions.push(200);
+        let first = cr.drain_resolution_tensions();
+        assert_eq!(first.len(), 2);
+        let second = cr.drain_resolution_tensions();
+        assert!(second.is_empty(), "второй drain должен быть пустым");
     }
 }

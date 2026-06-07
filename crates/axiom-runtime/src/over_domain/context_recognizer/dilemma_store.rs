@@ -184,6 +184,10 @@ impl DilemmaStore {
         self.active.len()
     }
 
+    pub fn pending_crystallizations_len(&self) -> usize {
+        self.pending_crystallizations.len()
+    }
+
     pub fn get_active(&self, id: u64) -> Option<&DilemmaRecord> {
         self.active.iter().find(|r| r.id == id)
     }

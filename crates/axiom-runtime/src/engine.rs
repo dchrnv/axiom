@@ -1286,6 +1286,23 @@ impl AxiomEngine {
                     let _ = self.process_command(&cmd);
                 }
             }
+            // После on_tick: создать TensionTrace для каждой разрешённой дилеммы.
+            // temperature=255 → след живёт ~255 тиков при TENSION_DECAY=1.
+            for created_at in self.context_recognizer.drain_resolution_tensions() {
+                use axiom_core::TOKEN_FLAG_DILEMMA;
+                let exp_domain_id = self.ashti.level_id() * 100 + 9;
+                let mut tok = Token::new(
+                    (created_at as u32).wrapping_add(0xD000_0001).max(1),
+                    exp_domain_id,
+                    [0i16; 3],
+                    created_at,
+                );
+                tok.type_flags = TOKEN_FLAG_DILEMMA;
+                // temperature=127: ниже TENSION_DRAIN_THRESHOLD(128) → не дрейнится как hot impulse.
+                // Живёт ~1270 тиков (127 cool-циклов × tension_check_interval=10).
+                tok.temperature = 127;
+                self.ashti.experience_mut().add_tension_trace(tok, 127, created_at);
+            }
             self.neural_advisor
                 .sync_profile_store(self.context_recognizer.profile_store());
             self.neural_advisor

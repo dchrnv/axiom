@@ -115,3 +115,73 @@ fn test_process_and_observe_overhead_reasonable() {
         per_call
     );
 }
+
+#[test]
+fn test_resolution_tension_created_in_experience() {
+    // После разрешения дилеммы engine создаёт TensionTrace в Experience.
+    // Engine выполняет CR on_tick каждые 7 тиков — прогоняем 14+ тиков.
+    use axiom_runtime::over_domain::context_recognizer::dilemma_store::{
+        DilemmaResolution, DilemmaType,
+    };
+    use axiom_ucl::OpCode;
+
+    let mut engine = AxiomEngine::new();
+    let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+
+    // Создать дилемму напрямую в dilemma_store
+    engine.context_recognizer.dilemma_store.push_active(
+        DilemmaType::ValueConflict,
+        vec![1, 2],
+        0,
+        0.9,
+    );
+    let id = engine.context_recognizer.dilemma_store.active[0].id;
+    engine.context_recognizer.dilemma_store.resolve(id, DilemmaResolution::ContextualPriority { winner: 1 });
+
+    let tension_before = engine.tension_count();
+
+    // Прогнать 14 тиков — on_tick вызывается в t%7, drain_resolution_tensions в нём же.
+    for _ in 0..14 {
+        engine.process_command(&tick_cmd);
+    }
+
+    let tension_after = engine.tension_count();
+    assert!(
+        tension_after > tension_before,
+        "TensionTrace должен быть создан после разрешения дилеммы: before={tension_before} after={tension_after}"
+    );
+}
+
+#[test]
+fn test_tension_decay_lower_traces_persist_longer() {
+    // TensionTrace с temperature=255 и TENSION_DECAY=1 должен жить ~255 тиков.
+    // Проверяем что trace создан и ещё жив через 200 тиков.
+    use axiom_core::{Token, TOKEN_FLAG_DILEMMA};
+
+    let mut engine = AxiomEngine::new();
+    let exp_id = engine.ashti.level_id() * 100 + 9;
+    let tok = {
+        let mut t = Token::new(0xD000_0042, exp_id, [0i16; 3], 1);
+        t.type_flags = TOKEN_FLAG_DILEMMA;
+        t.temperature = 127;
+        t
+    };
+    engine.ashti.experience_mut().add_tension_trace(tok, 127, 1);
+
+    assert_eq!(engine.tension_count(), 1, "trace создан");
+
+    let tick_cmd = UclCommand::new(OpCode::TickForward, 0, 100, 0);
+    // Decay вызывается в arbiter on_tick (cool_tension_traces). Прогоняем 200 тиков.
+    // Нельзя напрямую вызвать cool — используем TickForward.
+    // Heartbeat вызывает on_tick arbiter, что декрементирует temperature на TENSION_DECAY=1 за тик.
+    for _ in 0..200 {
+        engine.process_command(&tick_cmd);
+    }
+
+    // temperature=127, TENSION_DECAY=1, tension_check_interval=10.
+    // После 200 тиков: 200/10=20 cool-циклов → temp=127-20=107 → trace ещё жив.
+    assert!(
+        engine.tension_count() > 0,
+        "trace должен быть жив через 200 тиков при TENSION_DECAY=1, temp=127"
+    );
+}

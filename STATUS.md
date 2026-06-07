@@ -7,7 +7,16 @@
 
 ## Текущее состояние
 
-**1729 тестов, 0 failures**
+**1734 тестов, 0 failures**
+
+TENS-TD-01 ✅ (2026-06-07): TensionTrace после разрешения дилеммы.
+  engine.rs t%7: drain_resolution_tensions() → add_tension_trace(temp=127, 1270 тиков).
+  context_recognizer/mod.rs: pending_resolution_tensions: Vec<u64> → drain_resolution_tensions().
+  После drain_pending_crystallizations() для каждой resolved дилеммы → push(tick).
+  arbiter/src/lib.rs: TENSION_DECAY 10→1 (нормальные трейсы ~630 тиков, resolution ~1270).
+  cognitive_depth_13b_tests.rs: test_pulse_cools_traces адаптирован под DECAY=1.
+  3 новых теста: resolution_tension_emitted, drain_empty_initially, drain_clears_buffer.
+  2 integration теста: resolution_tension_created_in_experience + tension_decay_persist_longer.
 
 OBS-ACC-01 ✅ (2026-06-07): Точность обнаружения подсистем — abstractions/morality/writing.
   anchor.rs: "abstractions" добавлен в SUBSYSTEM_NAMES (Path 1 теперь видит abstraction_ якоря).

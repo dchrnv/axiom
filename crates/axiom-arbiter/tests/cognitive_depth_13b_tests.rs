@@ -102,26 +102,24 @@ fn test_pulse_cold_trace_not_returned() {
 fn test_pulse_cools_traces() {
     let mut arbiter = make_full_arbiter();
     let token = make_token(1, 100);
-    // temperature=140: после одного пульса 140 - 10 = 130 (ещё горячий)
-    // после второго: 130 - 10 = 120 (ещё выше порога 128? нет, 120 < 128 → холодный)
+    // TENSION_DECAY=1: cool(temp-1), drain если >= 128.
+    // temperature=140: cool→139 >= 128 → hot → дрейнится
     arbiter.experience_mut().add_tension_trace(token, 140, 1);
 
-    // Первый пульс: drain (140 >= 128) → возвращает импульс
+    // Первый пульс: drain (140-1=139 >= 128) → возвращает импульс
     let impulses_1 = arbiter.on_heartbeat_pulse(1, true);
     assert!(!impulses_1.is_empty(), "Первый пульс: след горячий");
 
-    // После drain следа нет — добавим снова с температурой 138
-    arbiter.experience_mut().add_tension_trace(token, 138, 2);
+    // После drain следа нет — добавим снова с температурой 129
+    arbiter.experience_mut().add_tension_trace(token, 129, 2);
 
-    // Один пульс без drain (нет горячих после cool) → температура снижается
-    // Но drain происходит за один вызов: сначала cool (138-10=128), потом drain (128 >= 128)
-    // 128 >= 128 → горячий, возвращается
+    // cool(129-1=128), 128 >= 128 → горячий, возвращается
     let impulses_2 = arbiter.on_heartbeat_pulse(2, true);
     assert!(!impulses_2.is_empty());
 
-    // Снова добавим с температурой 130
-    arbiter.experience_mut().add_tension_trace(token, 130, 3);
-    // cool(130-10=120), 120 < 128 → не возвращается
+    // Снова добавим с температурой 128
+    arbiter.experience_mut().add_tension_trace(token, 128, 3);
+    // cool(128-1=127), 127 < 128 → не возвращается
     let impulses_3 = arbiter.on_heartbeat_pulse(3, true);
     assert!(
         impulses_3.is_empty(),

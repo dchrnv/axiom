@@ -35,8 +35,8 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 |---|---|---|---|
 | 1 | ShellSim = 0.000 | avg_crystallized_shell_similarity в FrameWeaverStats (EMA α=0.3) | ✅ |
 | 2 | 0% accuracy: abstractions, morality, writing | якоря не матчатся на текстах | ✅ |
-| 3 | Tension traces = 0 | TensionTrace не создаётся после resolution | **→ сейчас** |
-| 4 | Октанты O2/O4–O8 = 0 всегда | AxialEvaluator не заполняет октанты | pending |
+| 3 | Tension traces = 0 | TensionTrace не создаётся после resolution | ✅ |
+| 4 | Октанты O2/O4–O8 = 0 всегда | AxialEvaluator не заполняет октанты | **→ сейчас** |
 
 ---
 
