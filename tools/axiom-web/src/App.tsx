@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { connectWS } from './ws/client';
 import { useEngineStore } from './store/engine';
 import { AdvisoryQueue } from './components/AdvisoryQueue';
@@ -10,6 +10,7 @@ import { Traces } from './components/Traces';
 import { Internals } from './components/Internals';
 import { Lab } from './components/Lab';
 import { Charts } from './components/Charts';
+import type { SensoriumState, SubsystemActivity } from './ws/protocol';
 import './App.css';
 
 type Tab = 'overview' | 'domains' | 'traces' | 'internals' | 'conversation' | 'phase-c' | 'patterns' | 'charts' | 'lab';
@@ -27,7 +28,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function App() {
-  const { snapshot, connected } = useEngineStore();
+  const { snapshot, sensorium, connected } = useEngineStore();
   const [tab, setTab] = useState<Tab>('overview');
 
   useEffect(() => { connectWS(); }, []);
@@ -114,6 +115,8 @@ export default function App() {
                   </div>
                 </section>
               )}
+
+              {sensorium && <SensoriumCard s={sensorium} />}
             </>
           )}
 
@@ -143,7 +146,7 @@ function fmtUptime(secs: number): string {
   return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="metric">
       <span className="metric-label">{label}</span>
@@ -163,6 +166,83 @@ function FatigueBar({ current, threshold }: { current: number; threshold: number
         <div className="fatigue-bar-threshold" style={{ left: `${thresholdPct}%` }} title={`Threshold: ${thresholdPct}%`} />
       </div>
       <span className="fatigue-label">{pct}% / threshold {thresholdPct}%</span>
+    </div>
+  );
+}
+
+function SensoriumCard({ s }: { s: SensoriumState }) {
+  const domFactor = s.internal_dominance_factor;
+  const domColor = domFactor > 0.6 ? 'var(--accent)' : domFactor > 0.25 ? 'var(--yellow)' : 'var(--text-dim)';
+  return (
+    <section className="card">
+      <h2>Sensorium</h2>
+      <div className="metrics-row" style={{ marginBottom: 12 }}>
+        <Metric label="Dominant"    value={s.dominant_subsystem ?? '—'} />
+        <Metric label="Signature"   value={s.activity_signature || '—'} />
+        <Metric label="Dominance"   value={
+          <span style={{ color: domColor }}>{domFactor.toFixed(2)}</span>
+        } />
+        <Metric label="Dilemmas"    value={s.active_dilemma_count.toString()} />
+        <Metric label="Candidates"  value={s.candidates_count.toString()} />
+        <Metric label="CM bonds"    value={s.cross_modal_bonds.toString()} />
+      </div>
+
+      {s.impulse_sources.length > 0 && (
+        <div className="sen-impulses">
+          <span className="sen-impulses-label">Impulses</span>
+          {s.impulse_sources.map((src, i) => (
+            <span key={i} className="sen-impulse-tag">{src}</span>
+          ))}
+        </div>
+      )}
+
+      {s.active_subsystems.length > 0 && (
+        <div className="sen-subsys">
+          <div className="sen-subsys-header">
+            <span>Subsystem</span>
+            <span>Energy</span>
+            <span>Fatigue</span>
+          </div>
+          {s.active_subsystems.map((ss) => <SubsysRow key={ss.id} ss={ss} />)}
+        </div>
+      )}
+
+      {s.active_dilemmas.length > 0 && (
+        <div className="sen-dilemmas">
+          <h3>Active Dilemmas</h3>
+          {s.active_dilemmas.map((d) => {
+            const pct = Math.min(d.intensity * 100, 100);
+            return (
+              <div key={d.id} className="sen-dilemma-row">
+                <span className="sen-dilemma-type">Type {d.dilemma_type}</span>
+                <span className="sen-dilemma-intensity">{d.intensity.toFixed(2)}</span>
+                <div className="sen-dilemma-bar">
+                  <div className="sen-dilemma-fill" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SubsysRow({ ss }: { ss: SubsystemActivity }) {
+  const energyPct = Math.min((ss.energy / 255) * 100, 100);
+  const fatiguePct = Math.min(ss.fatigue_load * 100, 100);
+  const fatigueColor = ss.fatigue_load > 0.7 ? 'var(--red)' : ss.fatigue_load > 0.4 ? 'var(--yellow)' : 'var(--green)';
+  return (
+    <div className="sen-subsys-row">
+      <span className="sen-subsys-name">{ss.id}</span>
+      <div className="sen-bar-track" title={`energy: ${ss.energy}`}>
+        <div className="sen-bar-fill sen-energy-fill" style={{ width: `${energyPct}%` }} />
+      </div>
+      <span className="sen-subsys-val">{ss.energy}</span>
+      <div className="sen-bar-track" title={`fatigue: ${(ss.fatigue_load * 100).toFixed(0)}%`}>
+        <div className="sen-bar-fill" style={{ width: `${fatiguePct}%`, background: fatigueColor }} />
+      </div>
+      <span className="sen-subsys-val">{(ss.fatigue_load * 100).toFixed(0)}%</span>
     </div>
   );
 }

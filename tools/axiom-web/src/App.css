@@ -502,6 +502,68 @@
 .lab-hist-time { color: var(--text-dim); font-size: 11px; }
 .lab-hist-summary { color: var(--text-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ── Sensorium card ──────────────────────────────────────────────────────────── */
+.sen-impulses {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.sen-impulses-label {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim);
+  white-space: nowrap;
+}
+.sen-impulse-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 3px;
+  background: rgba(91,141,238,.12); color: var(--accent);
+}
+.sen-subsys { display: flex; flex-direction: column; gap: 5px; }
+.sen-subsys-header {
+  display: grid;
+  grid-template-columns: 110px 1fr 40px 1fr 40px;
+  gap: 6px;
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim);
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.sen-subsys-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 40px 1fr 40px;
+  align-items: center; gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+}
+.sen-subsys-row:last-child { border-bottom: none; }
+.sen-subsys-name { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.sen-bar-track { height: 5px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.sen-bar-fill { height: 100%; border-radius: 2px; }
+.sen-energy-fill { background: var(--accent); opacity: 0.65; }
+.sen-subsys-val {
+  font-size: 10px; color: var(--text-dim); text-align: right;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sen-dilemmas { margin-top: 12px; }
+.sen-dilemma-row {
+  display: grid; grid-template-columns: 55px 46px 1fr;
+  align-items: center; gap: 8px; padding: 4px 0; font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.sen-dilemma-row:last-child { border-bottom: none; }
+.sen-dilemma-type { color: var(--text-dim); }
+.sen-dilemma-intensity { font-weight: 600; color: var(--yellow); font-variant-numeric: tabular-nums; }
+.sen-dilemma-bar { height: 5px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.sen-dilemma-fill { height: 100%; background: var(--yellow); border-radius: 2px; opacity: 0.8; }
+.sen-fatigued {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
+}
+.sen-fatigued-label {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim);
+}
+.sen-fatigued-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 3px;
+  background: rgba(224,92,92,.12); color: var(--red);
+}
+
 /* ── Charts tab ──────────────────────────────────────────────────────────────── */
 .charts-grid {
   display: grid;

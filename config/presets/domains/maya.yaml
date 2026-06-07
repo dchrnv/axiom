@@ -37,7 +37,7 @@ reflex_cooldown: 0
 max_concurrent_hints: 0
 feedback_weight_delta: 0
 max_passes: 3
-min_coherence: 153
+min_coherence: 200
 gate_complexity: 0
 threshold_mass: 0
 threshold_temp: 0
@@ -47,7 +47,7 @@ membrane_state: 0
 created_at: 0
 last_update: 0
 token_capacity: 5000
-connection_capacity: 500
+connection_capacity: 2000
 error_count: 0
 processing_state: 0
 complexity_score: 0

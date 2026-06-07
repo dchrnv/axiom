@@ -26,7 +26,8 @@ interface HistoryEntry {
 }
 
 const JOBS = [
-  { id: 'obs',          label: 'OBS',           desc: 'Corpus run (axiom-observe)' },
+  { id: 'obs_quick',    label: 'OBS Quick',     desc: 'corpus_mixed · 60K тиков' },
+  { id: 'obs',          label: 'OBS Full',      desc: 'corpus_large · 1M тиков' },
   { id: 'bench_hot',    label: 'Hot Bench',      desc: 'hot_path_regression' },
   { id: 'bench_od',     label: 'Over-Domain',    desc: 'over_domain_bench' },
   { id: 'bench_stress', label: 'Stress Bench',   desc: 'stress_bench' },
@@ -51,7 +52,7 @@ function findLast(arr: string[], pred: (l: string) => boolean): string | undefin
 
 function extractSummary(job: string | null, logs: string[]): string {
   if (!job) return '';
-  if (job === 'obs' || job === 'showcase') {
+  if (job === 'obs' || job === 'obs_quick' || job === 'showcase') {
     const doneLine = findLast(logs, l => l.includes('[observe') && l.includes('ticks/sec'));
     if (doneLine) return doneLine.replace(/^\[observe[^\]]*\]\s*/, '');
     const reportLine = findLast(logs, l => l.includes('report written'));
@@ -96,7 +97,7 @@ function ResultsPanel({ job, logs, status }: { job: string | null; logs: string[
   const isFailed = status === 'failed';
 
   // OBS / showcase results
-  if (job === 'obs' || job === 'showcase') {
+  if (job === 'obs' || job === 'obs_quick' || job === 'showcase') {
     const doneLine = findLast(logs, l => l.includes('done in') && l.includes('ticks/sec')) ?? '';
     const reportLine = findLast(logs, l => l.includes('snapshots') && l.includes('events')) ?? '';
     return (

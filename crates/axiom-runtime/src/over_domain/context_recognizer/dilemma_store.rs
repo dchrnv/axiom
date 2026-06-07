@@ -473,4 +473,51 @@ mod tests {
         };
         assert_ne!(dilemma_lineage_hash(&rec_vc), dilemma_lineage_hash(&rec_oc));
     }
+
+    #[test]
+    fn test_value_conflict_resolves_on_intensity_decay() {
+        let mut store = DilemmaStore::new();
+        let id = store
+            .push_active(DilemmaType::ValueConflict, vec![10, 20], 0, 0.5)
+            .unwrap();
+
+        // Имитируем decay до INTENSITY_FORCE_RESOLVE (< 0.02)
+        let rec = store.get_active_mut(id).unwrap();
+        rec.intensity = 0.01;
+
+        assert!(store.resolve(id, DilemmaResolution::ContextualPriority { winner: 10 }));
+        assert_eq!(store.active_count(), 0);
+        assert_eq!(store.resolved.len(), 1);
+        assert!(store.has_pending_crystallizations());
+    }
+
+    #[test]
+    fn test_ontological_resolves_as_complementarity() {
+        let mut store = DilemmaStore::new();
+        let id = store
+            .push_active(DilemmaType::OntologicalConflict, vec![30, 40], 0, 0.8)
+            .unwrap();
+
+        assert!(store.resolve(id, DilemmaResolution::Complementarity));
+        assert_eq!(store.active_count(), 0);
+        let resolved = &store.resolved[0];
+        assert!(matches!(resolved.resolution, Some(DilemmaResolution::Complementarity)));
+    }
+
+    #[test]
+    fn test_crystallization_generates_ucl_commands() {
+        let mut store = DilemmaStore::new();
+        let id = store
+            .push_active(DilemmaType::ValueConflict, vec![1, 2], 0, 0.7)
+            .unwrap();
+        store.resolve(id, DilemmaResolution::ContextualPriority { winner: 1 });
+
+        let pending = store.drain_pending_crystallizations();
+        assert_eq!(pending.len(), 1);
+
+        let cmds = crystallize_to_experience_commands(&pending[0], [0i16; 3], 109);
+        // Должны быть: InjectFrameAnchor + 2 BondTokens (по одному на каждый anchor)
+        assert!(cmds.len() >= 2);
+        assert!(!store.has_pending_crystallizations());
+    }
 }

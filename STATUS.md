@@ -1,13 +1,23 @@
 # AXIOM Status
 
-**Обновлено:** 2026-06-05
+**Обновлено:** 2026-06-07
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1721 тестов, 0 failures**
+**1725 тестов, 0 failures**
+
+DIL-TD-01 ✅ (2026-06-07): Dilemma Resolution Pipeline — дилеммы наконец разрешаются.
+  context_recognizer/mod.rs: intensity decay (×0.997/CR-тик) + resolution conditions в on_tick():
+  Type III (ValueConflict): dominant_persistence > 0.75 AND intensity < 0.15 → ContextualPriority.
+  Type IV (OntologicalConflict): age ≥ 500 тиков AND entropy_gradient ≈ 0 → Complementarity.
+  Fallback: intensity < 0.02 → принудительное разрешение. Кристаллизация в EXPERIENCE через
+  drain_pending_crystallizations() → crystallize_to_experience_commands() в каждом on_tick().
+  OBS corpus_showcase: resolved=64 (MAX_RESOLVED), active=0. 3 новых теста в dilemma_store.rs.
+  Также: compute_confidence tolerance ±20→±8 (maya_processor.rs) + min_coherence 153→200
+  (maya.yaml): avg coherence 1.000→0.750, multi-pass events появились (было 0/∞ → 16/45K).
 
 SEN-TD-01 Фаза F ✅ (2026-06-05): BroadcastSnapshot удалён — SensoriumState единственный источник.
   axiom-broadcasting/snapshot.rs: build_system_snapshot прямые запросы к &AxiomEngine (без bs).

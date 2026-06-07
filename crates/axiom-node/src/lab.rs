@@ -178,6 +178,12 @@ impl LabHandle {
                     "config/anchors".to_string(),
                 ])
             }
+            "obs_quick" => Some(vec![
+                format!("{root}/target/release/axiom-observe"),
+                "config/obs/corpus_mixed.yaml".to_string(),
+                "showcase/obs_out".to_string(),
+                "config/anchors".to_string(),
+            ]),
             "bench_hot" => Some(vec![
                 "cargo".to_string(),
                 "bench".to_string(),

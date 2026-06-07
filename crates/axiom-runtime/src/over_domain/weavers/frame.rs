@@ -265,6 +265,10 @@ pub struct FrameWeaverStats {
     pub cycles_handled: u64,
     /// Activation counts per syntactic layer (S1=index 0 … S8=index 7) since last crystallization.
     pub syntactic_layer_activations: [u8; 8],
+    /// Накопленное среднее shell_similarity кристаллизованных фреймов (EMA α=0.3).
+    /// Отражает реальное значение — в отличие от avg_candidate_shell_similarity(),
+    /// которая равна 0 сразу после кристаллизации.
+    pub avg_crystallized_shell_similarity: f32,
 }
 
 // ============================================================================
@@ -661,7 +665,7 @@ impl FrameWeaver {
             let shell_similarity = Self::compute_shell_similarity(
                 &participants,
                 &self.shell_registry,
-                &maya_state.tokens,
+                anchor_position,
                 &self.anchor_shell_refs,
             );
 
@@ -867,27 +871,28 @@ impl FrameWeaver {
     fn compute_shell_similarity(
         participants: &[Participant],
         shell_registry: &HashMap<u32, [u8; 8]>,
-        tokens: &[axiom_core::Token],
+        frame_position: [i16; 3],
         anchor_shell_refs: &[([i16; 3], [u8; 8])],
     ) -> f32 {
         let shells: Vec<[u8; 8]> = participants
             .iter()
             .filter_map(|p| {
-                // Level 1: registry hit
+                // Level 1: точное совпадение по sutra_id (для anchor-участников)
                 if let Some(&shell) = shell_registry.get(&p.sutra_id) {
                     return Some(shell);
                 }
-                // Level 2: positional fallback via anchor proximity
+                // Level 2: позиционный fallback — ближайший якорь к центроиду фрейма.
+                // Используем frame_position вместо поиска токена по sutra_id:
+                // токены в MAYA хранятся с event_id, а не с text_stable_id участника.
                 if anchor_shell_refs.is_empty() {
                     return None;
                 }
-                let pos = tokens.iter().find(|t| t.sutra_id == p.sutra_id)?.position;
                 anchor_shell_refs
                     .iter()
                     .min_by_key(|(apos, _)| {
-                        let dx = pos[0] as i32 - apos[0] as i32;
-                        let dy = pos[1] as i32 - apos[1] as i32;
-                        let dz = pos[2] as i32 - apos[2] as i32;
+                        let dx = frame_position[0] as i32 - apos[0] as i32;
+                        let dy = frame_position[1] as i32 - apos[1] as i32;
+                        let dz = frame_position[2] as i32 - apos[2] as i32;
                         dx * dx + dy * dy + dz * dz
                     })
                     .map(|(_, shell)| *shell)
@@ -1160,6 +1165,8 @@ impl OverDomainComponent for FrameWeaver {
 
                 let cmds = self.build_crystallization_commands(&candidate, exp_domain_id);
                 self.stats.crystallizations_approved += 1;
+                self.stats.avg_crystallized_shell_similarity =
+                    0.3 * candidate.shell_similarity + 0.7 * self.stats.avg_crystallized_shell_similarity;
                 self.stats.candidates_proposed_to_dream += 1;
                 for p in &candidate.participants {
                     let idx = (p.layer as usize).min(7);
@@ -2478,6 +2485,82 @@ mod tests {
         let cmds = fw.drain_commands();
         assert!(!cmds.is_empty(),
             "Shell-TD-01: stability_threshold baseline must fire even when ShellProximity rule never matches");
+    }
+
+    #[test]
+    fn scan_finds_0x0b_bond_participants_and_computes_shell_similarity() {
+        // Интеграционный тест: scan_state должен находить 0x0B bond участников
+        // и вычислять ненулевой shell_similarity при заполненном shell_registry.
+        let source_id: u32 = 0x4000_0042;  // text_stable_id
+        let anchor_a: u32 = 0x8000_0101;
+        let anchor_b: u32 = 0x8000_0202;
+
+        // Syntactic connections (0x08) — минимум 2 разных слоя
+        let mut syn1 = Connection::new(source_id, 0x0001_0001, 110, 1);
+        syn1.link_type = 0x0810; syn1.flags = FLAG_ACTIVE;
+        let mut syn2 = Connection::new(source_id, 0x0001_0002, 110, 2);
+        syn2.link_type = 0x0820; syn2.flags = FLAG_ACTIVE;
+
+        // 0x0B bonds (SEMANTIC_ANCHOR_BOND)
+        let mut bond_a = Connection::new(source_id, anchor_a, 110, 3);
+        bond_a.link_type = 0x0B01; bond_a.flags = FLAG_ACTIVE;
+        let mut bond_b = Connection::new(source_id, anchor_b, 110, 4);
+        bond_b.link_type = 0x0B01; bond_b.flags = FLAG_ACTIVE;
+
+        let mut state = empty_state();
+        state.connections = vec![syn1, syn2, bond_a, bond_b];
+
+        let shell_a: [u8; 8] = [200, 100, 50, 20, 10, 0, 0, 0];
+        let shell_b: [u8; 8] = [0, 10, 50, 100, 200, 150, 80, 30];
+
+        let mut fw = FrameWeaver::with_default_config();
+        let mut registry = HashMap::new();
+        registry.insert(anchor_a, shell_a);
+        registry.insert(anchor_b, shell_b);
+        fw.set_shell_registry(registry);
+        fw.set_anchor_shell_refs(vec![
+            ([5000i16, 0, 8000], shell_a),
+            ([0i16, 5000, 2000], shell_b),
+        ]);
+
+        let candidates = fw.scan_state(&state, 110);
+        assert_eq!(candidates.len(), 1, "должен найти 1 кандидат");
+        assert!(
+            candidates[0].shell_similarity > 0.0,
+            "shell_similarity должен быть > 0 с 0x0B bond участниками, got {}",
+            candidates[0].shell_similarity
+        );
+    }
+
+    #[test]
+    fn shell_similarity_nonzero_with_anchor_participants() {
+        // Проверяет что compute_shell_similarity > 0 когда участники-якоря в shell_registry.
+        let anchor_sutra_id_a: u32 = 0x8000_0101;
+        let anchor_sutra_id_b: u32 = 0x8000_0202;
+        let shell_a: [u8; 8] = [200, 100, 50, 20, 10, 0, 0, 0];
+        let shell_b: [u8; 8] = [0, 10, 50, 100, 200, 150, 80, 30];
+
+        let mut registry = HashMap::new();
+        registry.insert(anchor_sutra_id_a, shell_a);
+        registry.insert(anchor_sutra_id_b, shell_b);
+
+        let participants = vec![
+            Participant { sutra_id: 0x4000_0001, origin_domain_id: 110, role_link_type: 0x0810, layer: 1 },
+            Participant { sutra_id: anchor_sutra_id_a, origin_domain_id: 110, role_link_type: 0x0B01, layer: 0 },
+            Participant { sutra_id: anchor_sutra_id_b, origin_domain_id: 110, role_link_type: 0x0B01, layer: 0 },
+        ];
+        let anchor_shell_refs = vec![
+            ([5000i16, 0, 8000], shell_a),
+            ([0i16, 5000, 2000], shell_b),
+        ];
+
+        let sim = FrameWeaver::compute_shell_similarity(
+            &participants,
+            &registry,
+            [0i16; 3],
+            &anchor_shell_refs,
+        );
+        assert!(sim > 0.0, "shell_similarity должен быть > 0 при якорных участниках, got {}", sim);
     }
 
     #[test]

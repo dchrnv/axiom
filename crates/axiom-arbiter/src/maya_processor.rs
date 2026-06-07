@@ -142,38 +142,39 @@ fn compute_confidence(tokens: &[Token]) -> f32 {
     let mut agreed = 0u32;
     let mut total = 0u32;
 
-    // Temperature
+    // Temperature — допуск ±8: thermal domain (lerp 10%) создаёт отклонение ~10-15 ед.
+    // что при старом ±20 всегда засчитывалось как согласие → confidence=1.0 вечно.
     let avg_t = tokens.iter().map(|t| t.temperature as f32).sum::<f32>() / n;
     if tokens
         .iter()
-        .all(|t| (t.temperature as f32 - avg_t).abs() < 20.0)
+        .all(|t| (t.temperature as f32 - avg_t).abs() < 8.0)
     {
         agreed += 1;
     }
     total += 1;
 
-    // Mass
+    // Mass — допуск ±5: meta domain (lerp 5%) и logical (GOAL +20) дают реальную дисперсию.
     let avg_m = tokens.iter().map(|t| t.mass as f32).sum::<f32>() / n;
-    if tokens.iter().all(|t| (t.mass as f32 - avg_m).abs() < 15.0) {
+    if tokens.iter().all(|t| (t.mass as f32 - avg_m).abs() < 5.0) {
         agreed += 1;
     }
     total += 1;
 
-    // Valence
+    // Valence — допуск ±3: semantic domain масштабирует через permeability/255.
     let avg_v = tokens.iter().map(|t| t.valence as f32).sum::<f32>() / n;
     if tokens
         .iter()
-        .all(|t| (t.valence as f32 - avg_v).abs() < 10.0)
+        .all(|t| (t.valence as f32 - avg_v).abs() < 3.0)
     {
         agreed += 1;
     }
     total += 1;
 
-    // Position X
+    // Position X — допуск ±2: spatial domain двигает на ±1 шаг.
     let avg_px = tokens.iter().map(|t| t.position[0] as f32).sum::<f32>() / n;
     if tokens
         .iter()
-        .all(|t| (t.position[0] as f32 - avg_px).abs() < 50.0)
+        .all(|t| (t.position[0] as f32 - avg_px).abs() < 2.0)
     {
         agreed += 1;
     }

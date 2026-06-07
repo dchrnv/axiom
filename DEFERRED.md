@@ -198,6 +198,22 @@ tension=0 на синтетическом корпусе — нормально.
 
 ---
 
+## Lab / Workstation
+
+### LAB-TD-01 — Pause/Resume для Lab-процессов
+
+**Где:** `crates/axiom-node/src/lab.rs` + `tools/axiom-web/src/components/Lab.tsx`
+
+SIGSTOP/SIGCONT позволяют поставить OBS (и любой другой Lab-процесс) на паузу без потери состояния.
+
+**Что нужно:**
+- `lab.rs`: хранить PID дочернего процесса; добавить `POST /api/lab/pause` и `POST /api/lab/resume` (отправляют SIGSTOP/SIGCONT)
+- `Lab.tsx`: кнопка Pause рядом со Stop; при активном процессе — меняется на Resume
+
+**Когда:** удобно, ~30 мин работы.
+
+---
+
 ## Cross-Modal Binding
 
 ### CMB-TD-01 — Stress-driven revocation

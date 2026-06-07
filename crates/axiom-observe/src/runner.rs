@@ -271,13 +271,10 @@ impl ObsRunner {
                 .collect(),
             fatigue_count: cr.fatigue_store().len(),
             avg_shell_similarity: {
-                // OBS-TD-02: EMA rolling avg — кандидаты живут ~60 тиков, снапшот каждые 500.
-                // Если текущее значение > 0 (есть активные кандидаты) — обновляем EMA.
-                let current = self.engine.frame_weaver.avg_candidate_shell_similarity();
-                if current > 0.0 {
-                    self.shell_similarity_ema = 0.3 * current + 0.7 * self.shell_similarity_ema;
-                }
-                self.shell_similarity_ema
+                // OBS-TD-02: читаем накопленное EMA от кристаллизованных фреймов.
+                // avg_crystallized_shell_similarity обновляется при каждой кристаллизации,
+                // поэтому не зависит от snapshot interval (кандидаты живут ~60 тиков).
+                self.engine.frame_weaver.stats.avg_crystallized_shell_similarity
             },
             dilemma_active: cr.dilemma_store().active_count(),
             dilemma_resolved: cr.dilemma_store().resolved.len(),

@@ -1,4 +1,5 @@
 import { useEngineStore } from '../store/engine';
+import type { SubsystemActivity } from '../ws/protocol';
 
 function fmtNs(ns: number): string {
   if (ns === 0) return '—';
@@ -14,7 +15,7 @@ function fmtUptime(secs: number): string {
 }
 
 export function Internals() {
-  const { snapshot } = useEngineStore();
+  const { snapshot, sensorium } = useEngineStore();
   if (!snapshot) return <div className="waiting">Waiting for snapshot…</div>;
 
   const { perf, reflector, cognitive_depth } = snapshot;
@@ -23,6 +24,31 @@ export function Internals() {
 
   return (
     <div className="internals-view">
+      {/* Subsystem Health */}
+      {sensorium && sensorium.active_subsystems.length > 0 && (
+        <section className="card">
+          <h2>Subsystem Health</h2>
+          <div className="sen-subsys">
+            <div className="sen-subsys-header">
+              <span>Subsystem</span>
+              <span>Energy</span>
+              <span>Fatigue</span>
+            </div>
+            {sensorium.active_subsystems.map((ss) => (
+              <SubsysHealthRow key={ss.id} ss={ss} fatigued={sensorium.fatigued_subsystems.includes(ss.id)} />
+            ))}
+          </div>
+          {sensorium.fatigued_subsystems.length > 0 && (
+            <div className="sen-fatigued">
+              <span className="sen-fatigued-label">Fatigued:</span>
+              {sensorium.fatigued_subsystems.map((id) => (
+                <span key={id} className="sen-fatigued-tag">{id}</span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Performance */}
       <section className="card">
         <h2>Performance</h2>
@@ -103,6 +129,25 @@ function InternalRow({ label, value }: { label: string; value: string }) {
     <div className="internal-row">
       <span className="internal-label">{label}</span>
       <span className="internal-value">{value}</span>
+    </div>
+  );
+}
+
+function SubsysHealthRow({ ss, fatigued }: { ss: SubsystemActivity; fatigued: boolean }) {
+  const energyPct = Math.min((ss.energy / 255) * 100, 100);
+  const fatiguePct = Math.min(ss.fatigue_load * 100, 100);
+  const fatigueColor = ss.fatigue_load > 0.7 ? 'var(--red)' : ss.fatigue_load > 0.4 ? 'var(--yellow)' : 'var(--green)';
+  return (
+    <div className="sen-subsys-row">
+      <span className="sen-subsys-name" style={{ color: fatigued ? 'var(--red)' : undefined }}>{ss.id}</span>
+      <div className="sen-bar-track" title={`energy: ${ss.energy}`}>
+        <div className="sen-bar-fill sen-energy-fill" style={{ width: `${energyPct}%` }} />
+      </div>
+      <span className="sen-subsys-val">{ss.energy}</span>
+      <div className="sen-bar-track" title={`fatigue: ${(ss.fatigue_load * 100).toFixed(0)}%`}>
+        <div className="sen-bar-fill" style={{ width: `${fatiguePct}%`, background: fatigueColor }} />
+      </div>
+      <span className="sen-subsys-val">{(ss.fatigue_load * 100).toFixed(0)}%</span>
     </div>
   );
 }

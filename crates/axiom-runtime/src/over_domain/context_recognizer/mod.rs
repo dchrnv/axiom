@@ -646,6 +646,75 @@ impl OverDomainComponent for ContextRecognizer {
         );
         dilemma_cmds.extend(cc_cmds);
 
+        // — DIL-TD-01 Шаг 1: Разрешение дилемм ———————————————————————————————
+        // Type III (ValueConflict): intensity decay + resolve при dominant_persistence > 0.75
+        // Type IV (OntologicalConflict): resolve после 500 тиков в стабильном состоянии
+        // Type V (Axiogenic): только DREAM Phase — пропускается здесь
+        {
+            const INTENSITY_DECAY: f32 = 0.997;
+            const TYPE_III_PERSISTENCE_THRESHOLD: f32 = 0.75;
+            const TYPE_III_INTENSITY_RESOLVE: f32 = 0.15;
+            const TYPE_IV_AGE_TICKS: u64 = 500;
+            const INTENSITY_FORCE_RESOLVE: f32 = 0.02;
+
+            for rec in &mut self.dilemma_store.active {
+                rec.intensity = (rec.intensity * INTENSITY_DECAY).max(0.0);
+            }
+
+            let dyn_persistence = self.activity_dynamics.dominant_persistence;
+            let dyn_entropy = self.activity_dynamics.entropy_gradient;
+
+            let to_resolve: Vec<(u64, DilemmaResolution)> = self
+                .dilemma_store
+                .active
+                .iter()
+                .filter_map(|rec| {
+                    let resolution = match rec.dilemma_type {
+                        DilemmaType::ValueConflict => {
+                            if dominant != SubsystemId::Unknown
+                                && dyn_persistence > TYPE_III_PERSISTENCE_THRESHOLD
+                                && rec.intensity < TYPE_III_INTENSITY_RESOLVE
+                            {
+                                let winner =
+                                    rec.anchors_in_conflict.first().copied().unwrap_or(0);
+                                Some(DilemmaResolution::ContextualPriority { winner })
+                            } else if rec.intensity < INTENSITY_FORCE_RESOLVE {
+                                let winner =
+                                    rec.anchors_in_conflict.first().copied().unwrap_or(0);
+                                Some(DilemmaResolution::ContextualPriority { winner })
+                            } else {
+                                None
+                            }
+                        }
+                        DilemmaType::OntologicalConflict => {
+                            let age = tick.saturating_sub(rec.detected_at_tick);
+                            if age >= TYPE_IV_AGE_TICKS && dyn_entropy.abs() < 0.05 {
+                                Some(DilemmaResolution::Complementarity)
+                            } else if rec.intensity < INTENSITY_FORCE_RESOLVE {
+                                Some(DilemmaResolution::Complementarity)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
+                    resolution.map(|r| (rec.id, r))
+                })
+                .collect();
+
+            for (id, resolution) in to_resolve {
+                self.dilemma_store.resolve(id, resolution);
+            }
+
+            // — DIL-TD-01 Шаг 2: Кристаллизация разрешённых дилемм в EXPERIENCE ——
+            let pending = self.dilemma_store.drain_pending_crystallizations();
+            for rec in &pending {
+                let cmds =
+                    crystallize_to_experience_commands(rec, [0i16; 3], exp_domain_id);
+                dilemma_cmds.extend(cmds);
+            }
+        }
+
         // Попытка детектировать эмерджентные примитивы (V1: no-op, всегда false)
         for &frame_id in &frame_ids {
             emergent::try_detect_emergent(

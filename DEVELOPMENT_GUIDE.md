@@ -61,6 +61,10 @@ Axiom/
 ├── ROADMAP.md             # Активные задачи (удалять завершённое)
 ├── DEFERRED.md            # Технический долг и отложенные задачи
 ├── DEVELOPMENT_GUIDE.md   # Этот файл
+├── showcase/
+│   ├── SHOWCASE.md        # Сводный отчёт: OBS-прогон + бенчмарки (актуальный срез)
+│   ├── obs_out/           # OBS-результаты из Lab (report.md)
+│   └── bench_out/         # Сырые логи Criterion
 └── docs/
     └── BLUEPRINT.md       # Плотный технический контекст для AI-ассистента
 ```
@@ -228,6 +232,8 @@ cargo bench -p axiom-bench
 ```
 
 Результаты фиксируются в `docs/bench/RESULTS.md`.
+
+Сводный отчёт (OBS + бенчмарки вместе): [showcase/SHOWCASE.md](showcase/SHOWCASE.md)
 
 ---
 

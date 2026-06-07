@@ -26,7 +26,69 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 
 ## Активные задачи
 
-*(нет активных задач)*
+### Очередь диагностики (по OBS-сигналам)
+
+Каждый шаг: исправить → OBS Quick → проверить метрику.
+При сложной сопутствующей работе (п.2 Октанты/модули) → DEFERRED.
+
+| # | Метрика OBS | Что сломано | Статус |
+|---|---|---|---|
+| 1 | ShellSim = 0.000 | shell_registry не заполняется / shell cosine не вычисляется | **→ сейчас** |
+| 2 | 0% accuracy: abstractions, morality, writing (часть) | якоря не матчатся на текстах | pending |
+| 3 | Tension traces = 0 | TensionTrace не создаётся после resolution | pending |
+| 4 | Октанты O2/O4–O8 = 0 всегда | AxialEvaluator не заполняет октанты | pending |
+
+---
+
+## Завершено (текущая сессия)
+
+### DIL-TD-01 ✅ — Dilemma Resolution Pipeline
+
+**Цель:** дилеммы наконец разрешаются и попадают в EXPERIENCE.
+
+**Диагноз:** инфраструктура полностью готова (`resolve()`, `drain_pending_crystallizations()`,
+`crystallize_to_experience_commands()`), но в `ContextRecognizer.on_tick()` нет ни одного
+вызова `resolve()` в production-коде. 8 дилемм накапливаются до лимита и застывают навсегда.
+
+**Шаги:**
+
+#### Шаг 1 — Resolution conditions в `ContextRecognizer.on_tick()` (Type III/IV)
+`crates/axiom-runtime/src/over_domain/context_recognizer/mod.rs`
+
+Добавить в конец on_tick() после detection, scan active dilemmas:
+
+- **Type III (ValueConflict):** если `dominant_persistence > 0.8` И один из конфликтующих якорей
+  относится к доминирующей подсистеме → `resolve(id, ContextualPriority { winner })`.
+  Fallback: intensity decay (0.995/тик), при intensity < 0.1 → `ContextualPriority` по энергии.
+
+- **Type IV (OntologicalConflict):** если дилемма активна > 500 тиков И entropy < 0.1 (стабильное
+  состояние) → `resolve(id, Complementarity)`. Обе модели сосуществуют.
+
+#### Шаг 2 — Crystallization drain в on_tick()
+Вызывать после resolution scan:
+```rust
+let crystallization_cmds = self.dilemma_store
+    .drain_pending_crystallizations()
+    .into_iter()
+    .flat_map(|r| crystallize_to_experience_commands(&r, position, exp_domain_id))
+    .collect::<Vec<_>>();
+cmds.extend(crystallization_cmds);
+```
+
+#### Шаг 3 — Type V (Axiogenic) в DreamCycle
+`crates/axiom-runtime/src/engine.rs` — в `apply_dream_depth_update()`, рядом с
+`drain_cross_modal_bond_commands()`:
+- drain Type V диlemmas из store → кристаллизовать как Frame anchors в EXPERIENCE
+
+#### Шаг 4 — Тесты
+- `test_value_conflict_resolves_on_dominant_persistence`
+- `test_ontological_resolves_on_complementarity`
+- `test_crystallization_generates_ucl_commands`
+- integration test: OBS-Quick показывает resolved > 0
+
+**Результат:** OBS corpus_showcase: `Dilemmas resolved: 64` (MAX_RESOLVED), `active: 0`. ✅
+Type V (Axiogenic) перенесён в DEFERRED (только DREAM Phase).
+Калибровка compute_confidence: avg coherence 1.000→0.750, multi-pass events появились.
 
 ---
 
