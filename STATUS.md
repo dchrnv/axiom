@@ -7,7 +7,15 @@
 
 ## Текущее состояние
 
-**1734 тестов, 0 failures**
+**1736 тестов, 0 failures**
+
+OBS-AX-01 ✅ (2026-06-07): AxialEvaluator Y-ось — Eros/Thanatos из позиции участников.
+  axial_evaluator/mod.rs: при density=0 и valence=0 Y-ось вычисляется из mean_y позиции
+  участников (по спеке Domain V1.3: Y+ = Eros, Y- = Thanatos).
+  Исправляет: thanatos = 255 - density = 255 - 0 = 255 → Y всегда Thanatos (O2/O5/O6 = 0).
+  Теперь: Y > 3860 → Eros → активируются O1/O5 аналитически для high-Y контента.
+  2 новых теста: y_axis_eros_for_high_y / y_axis_thanatos_for_low_y.
+  Dionysus (X-) требует высокой entropy (diverse позиций) — отложено.
 
 TENS-TD-01 ✅ (2026-06-07): TensionTrace после разрешения дилеммы.
   engine.rs t%7: drain_resolution_tensions() → add_tension_trace(temp=127, 1270 тиков).

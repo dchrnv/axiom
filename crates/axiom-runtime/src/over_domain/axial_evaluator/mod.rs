@@ -142,8 +142,21 @@ impl AxialEvaluator {
 
             let density = metrics::graph_density(&participant_ids, all_connections);
             let (pos_val, neg_val) = metrics::valence_score(participants);
-            let eros = density.saturating_add(pos_val).min(255);
-            let thanatos = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
+
+            // Y axis: при density=0 и valence=0 (частый случай) используем среднюю Y-позицию
+            // участников как Eros/Thanatos сигнал (по спеке Domain V1.3: Y+ = Eros, Y- = Thanatos).
+            // Исправляет проблему OBS-AX-01: thanatos=255-density=255 всегда → Y всегда Thanatos.
+            let (eros, thanatos) = if density > 0 || pos_val > 0 || neg_val > 0 {
+                let e = density.saturating_add(pos_val).min(255);
+                let t = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
+                (e, t)
+            } else {
+                let mean_y = positions.iter().map(|p| p[1] as f32).sum::<f32>()
+                    / positions.len() as f32;
+                let pos_eros    = (mean_y.max(0.0) * 255.0 / 32767.0) as u8;
+                let pos_thanatos = ((-mean_y).max(0.0) * 255.0 / 30000.0) as u8;
+                (pos_eros, pos_thanatos)
+            };
 
             let will = metrics::will_score(participants);
             let nothing = 255u8.saturating_sub(will);
@@ -413,5 +426,68 @@ mod tests {
         let evals = evaluator.storage.store().get_all(10);
         assert_eq!(evals.len(), 1);
         assert_eq!(evals[0].level, EvaluationLevel::Conceptual);
+    }
+
+    #[test]
+    fn test_y_axis_eros_for_high_y_participants() {
+        // OBS-AX-01: Y-ось должна быть Eros для участников с высокой Y-позицией.
+        // Ранее thanatos=255-density=255 всегда → Y всегда Thanatos.
+        // Теперь при density=0 и valence=0 используется mean_y позиции.
+        use axiom_experience::Octant;
+        let mut evaluator = AxialEvaluator::new();
+        // Участники с высоким Y (≥ 5000) → pos_eros > 30 → LeaningPositive → Eros (Y+)
+        let anchor = make_anchor(100, [20000, 15000, 20000]);
+        let participants = vec![
+            make_participant(101, [20000, 14000, 20000]),
+            make_participant(102, [20000, 16000, 20000]),
+        ];
+        evaluator.evaluate_frame(&anchor, &participants, &[], 1);
+        let evals = evaluator.storage.store().get_all(100);
+        assert!(!evals.is_empty());
+        // Все вычисленные октанты должны иметь Eros (Y+)
+        for eval in evals {
+            let is_eros_octant = matches!(
+                eval.octant,
+                Octant::CreativeAffirmation    // (+,+,+)
+                | Octant::IdealizedConsoling   // (+,+,-)
+                | Octant::EcstaticAffirmation  // (-,+,+)
+                | Octant::PassiveSentimental   // (-,+,-)
+            );
+            assert!(
+                is_eros_octant,
+                "Y=14000-16000 должен давать Eros-октант, got {:?}",
+                eval.octant
+            );
+        }
+    }
+
+    #[test]
+    fn test_y_axis_thanatos_for_low_y_participants() {
+        // Участники с Y ≈ 0 → pos_eros=0, pos_thanatos=0 → Balanced → NOT Eros → Thanatos.
+        use axiom_experience::Octant;
+        let mut evaluator = AxialEvaluator::new();
+        let anchor = make_anchor(200, [20000, 500, 20000]);
+        let participants = vec![
+            make_participant(201, [20000, 300, 20000]),
+            make_participant(202, [20000, 700, 20000]),
+        ];
+        evaluator.evaluate_frame(&anchor, &participants, &[], 2);
+        let evals = evaluator.storage.store().get_all(200);
+        assert!(!evals.is_empty());
+        // Y ≈ 500 → pos_eros ≈ 3 → diff=3 → Balanced → NOT positive → Thanatos-октанты
+        for eval in evals {
+            let is_thanatos_octant = matches!(
+                eval.octant,
+                Octant::HeroicFatal            // (+,-,+)
+                | Octant::FormalDenying        // (+,-,-)
+                | Octant::DestructiveActivating // (-,-,+)
+                | Octant::SelfDestructiveApathic // (-,-,-)
+            );
+            assert!(
+                is_thanatos_octant,
+                "Y=300-700 должен давать Thanatos-октант, got {:?}",
+                eval.octant
+            );
+        }
     }
 }
