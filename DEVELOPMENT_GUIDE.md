@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.4  
-**Дата:** 2026-06-05
+**Версия:** 3.5  
+**Дата:** 2026-06-11
 
 ---
 
@@ -122,7 +122,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1721 тестов
+cargo test --workspace          # 1514 тестов (all features: --features telegram,opensearch,serde,adapters)
 cargo build --release
 
 # Запуск одной командой
