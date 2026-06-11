@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type JobStatus = 'idle' | 'running' | 'done' | 'failed';
+type JobStatus = 'idle' | 'running' | 'paused' | 'done' | 'failed';
 
 interface LabStatus {
   status: JobStatus;
@@ -267,7 +267,16 @@ export function Lab() {
     await fetch('/api/lab/stop', { method: 'POST' });
   }, []);
 
+  const pauseJob = useCallback(async () => {
+    await fetch('/api/lab/pause', { method: 'POST' });
+  }, []);
+
+  const resumeJob = useCallback(async () => {
+    await fetch('/api/lab/resume', { method: 'POST' });
+  }, []);
+
   const isRunning = status.status === 'running';
+  const isPaused = status.status === 'paused';
 
   return (
     <div className="lab">
@@ -293,7 +302,9 @@ export function Lab() {
       {/* ── Status + progress ──────────────────────────────────────────── */}
       <section className="card lab-status-row">
         <StatusBadge status={status.status} job={status.job} />
-        {isRunning && <button className="lab-stop-btn" onClick={stopJob}>■ Stop</button>}
+        {isRunning && <button className="lab-pause-btn" onClick={pauseJob}>⏸ Pause</button>}
+        {isPaused && <button className="lab-resume-btn" onClick={resumeJob}>▶ Resume</button>}
+        {(isRunning || isPaused) && <button className="lab-stop-btn" onClick={stopJob}>■ Stop</button>}
         {progress && (
           <div className="lab-progress-wrap">
             <div className="lab-progress-bar-track">
@@ -345,7 +356,7 @@ export function Lab() {
 }
 
 function StatusBadge({ status, job }: { status: JobStatus; job: string | null }) {
-  const labels: Record<JobStatus, string> = { idle: '○ Idle', running: '● Running', done: '✓ Done', failed: '✗ Failed' };
+  const labels: Record<JobStatus, string> = { idle: '○ Idle', running: '● Running', paused: '⏸ Paused', done: '✓ Done', failed: '✗ Failed' };
   return <span className={`lab-status lab-status-${status}`}>{labels[status]}{job ? ` — ${job}` : ''}</span>;
 }
 

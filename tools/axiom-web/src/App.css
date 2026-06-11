@@ -417,6 +417,7 @@
 .lab-status { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .lab-status-idle    { color: var(--text-dim); }
 .lab-status-running { color: var(--accent); }
+.lab-status-paused  { color: #c8a03c; }
 .lab-status-done    { color: var(--green); }
 .lab-status-failed  { color: var(--red); }
 
@@ -430,6 +431,28 @@
   cursor: pointer;
 }
 .lab-stop-btn:hover { background: rgba(224,92,92,.25); }
+
+.lab-pause-btn {
+  background: rgba(200,160,60,.15);
+  border: 1px solid #c8a03c;
+  border-radius: 4px;
+  color: #c8a03c;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.lab-pause-btn:hover { background: rgba(200,160,60,.25); }
+
+.lab-resume-btn {
+  background: rgba(80,180,100,.15);
+  border: 1px solid #50b464;
+  border-radius: 4px;
+  color: #50b464;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.lab-resume-btn:hover { background: rgba(80,180,100,.25); }
 
 .lab-progress-wrap { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px; }
 .lab-progress-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }

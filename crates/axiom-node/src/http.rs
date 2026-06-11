@@ -13,7 +13,9 @@
 //   GET  /metrics                  — Prometheus text format
 //   POST /api/lab/run              — запустить lab job (obs/bench/test/showcase)
 //   POST /api/lab/stop             — остановить текущий job
-//   GET  /api/lab/status           — статус текущего job
+//   POST /api/lab/pause            — SIGSTOP текущего job
+//   POST /api/lab/resume           — SIGCONT текущего job
+//   GET  /api/lab/status           — статус текущего job (Running/Paused/Done/Failed)
 //   GET  /api/lab/ws/log           — WebSocket stream лога текущего job
 //   GET  /*                        — статика React SPA из web_dist/
 
@@ -68,6 +70,8 @@ pub async fn run(
     let lab_router = Router::new()
         .route("/run", post(crate::lab::route_run))
         .route("/stop", post(crate::lab::route_stop))
+        .route("/pause", post(crate::lab::route_pause))
+        .route("/resume", post(crate::lab::route_resume))
         .route("/status", get(crate::lab::route_status))
         .route("/ws/log", get(crate::lab::route_log_ws))
         .with_state(lab);

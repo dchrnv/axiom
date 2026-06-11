@@ -24,6 +24,7 @@ const LOG_CAPACITY: usize = 512;
 pub enum JobStatus {
     Idle,
     Running,
+    Paused,
     Done,
     Failed,
 }
@@ -39,6 +40,7 @@ pub struct LabHandle {
     state: Arc<Mutex<JobState>>,
     log_tx: broadcast::Sender<String>,
     kill_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+    child_pid: Arc<Mutex<Option<u32>>>,
     repo_root: PathBuf,
 }
 
@@ -53,6 +55,7 @@ impl LabHandle {
             })),
             log_tx,
             kill_tx: Arc::new(Mutex::new(None)),
+            child_pid: Arc::new(Mutex::new(None)),
             repo_root,
         })
     }
@@ -70,6 +73,41 @@ impl LabHandle {
         if let Some(tx) = kill.take() {
             let _ = tx.send(());
         }
+        *self.child_pid.lock().await = None;
+    }
+
+    pub async fn pause(&self) -> bool {
+        let pid = *self.child_pid.lock().await;
+        let Some(pid) = pid else { return false };
+        let st = self.state.lock().await.status.clone();
+        if st != JobStatus::Running { return false; }
+        let ok = std::process::Command::new("kill")
+            .args(["-STOP", &pid.to_string()])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if ok {
+            self.state.lock().await.status = JobStatus::Paused;
+            let _ = self.log_tx.send("[lab] paused".to_string());
+        }
+        ok
+    }
+
+    pub async fn resume(&self) -> bool {
+        let pid = *self.child_pid.lock().await;
+        let Some(pid) = pid else { return false };
+        let st = self.state.lock().await.status.clone();
+        if st != JobStatus::Paused { return false; }
+        let ok = std::process::Command::new("kill")
+            .args(["-CONT", &pid.to_string()])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if ok {
+            self.state.lock().await.status = JobStatus::Running;
+            let _ = self.log_tx.send("[lab] resumed".to_string());
+        }
+        ok
     }
 
     pub async fn run(&self, job: &str, corpus: Option<String>) -> Result<(), &'static str> {
@@ -94,6 +132,7 @@ impl LabHandle {
 
         let state_clone = self.state.clone();
         let log_tx_clone = self.log_tx.clone();
+        let child_pid_clone = self.child_pid.clone();
 
         tokio::spawn(async move {
             let prog = &cmd_parts[0];
@@ -116,7 +155,8 @@ impl LabHandle {
                 }
             };
 
-            info!("lab: started job={job_name}");
+            *child_pid_clone.lock().await = child.id();
+            info!("lab: started job={job_name} pid={:?}", child.id());
 
             // Stream stdout
             let stdout = child.stdout.take().unwrap();
@@ -155,6 +195,7 @@ impl LabHandle {
                 if success { "success" } else { "failed" }
             ));
 
+            *child_pid_clone.lock().await = None;
             let mut s = state_clone.lock().await;
             *s = JobState {
                 status: if success { JobStatus::Done } else { JobStatus::Failed },
@@ -244,6 +285,14 @@ pub async fn route_run(
 pub async fn route_stop(State(lab): State<Arc<LabHandle>>) -> StatusCode {
     lab.stop().await;
     StatusCode::OK
+}
+
+pub async fn route_pause(State(lab): State<Arc<LabHandle>>) -> StatusCode {
+    if lab.pause().await { StatusCode::OK } else { StatusCode::CONFLICT }
+}
+
+pub async fn route_resume(State(lab): State<Arc<LabHandle>>) -> StatusCode {
+    if lab.resume().await { StatusCode::OK } else { StatusCode::CONFLICT }
 }
 
 pub async fn route_status(State(lab): State<Arc<LabHandle>>) -> Json<JobState> {
