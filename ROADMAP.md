@@ -110,13 +110,103 @@ Type V (Axiogenic) перенесён в DEFERRED (только DREAM Phase).
 
 ---
 
+## Активный план: Neural Integration — Этап 1
+
+**Директива:** `docs/architecture/Neural_Integration_Stage1_Directive.md`  
+**Спека:** `docs/architecture/Neural_Integration_V1_0.md`  
+**Охранная цифра:** TickForward hot path 24.8 µs — не должен вырасти.
+
+### Фаза 0 — axiom-neural: каркас инференса
+
+```
+Новый крейт: crates/axiom-neural/
+Зависимости: rustfft (pure Rust), ndarray + matrixmultiply (pure Rust, NO BLAS)
+Нет C-биндингов. Нет OpenBLAS. Нет fftw.
+
+Что реализовать:
+  - Model trait: load_from_bin(path) + infer(&[f32]) → Vec<f32>
+  - Layer1DConv { weights, bias, kernel_size, stride }
+  - GlobalAvgPool
+  - Linear { weights, bias }
+  - Static memory: все буферы предвыделены при load_from_bin()
+  - FFT-frontend: fft_features(slice: &[f32], out: &mut [f32]) — rustfft
+  - Z-score нормализация входа
+
+Критерий: крейт компилируется, Model::new_zeros().infer() работает.
+```
+
+### Фаза 1 — ReactivationDepth пилот (архитектура)
+
+```
+Вход (t%11, Sensorium уровень 2):
+  ActivityTrace rings: short[16] + mid[64] + long[256] по каждой из N подсистем
+  → FFT над каждым кольцом → частотные признаки
+  → конкатенация → нормализация (Z-score)
+
+Модель (10–50K параметров):
+  Conv1D(in=N_subsystems, out=16, kernel=3) → ReLU
+  Conv1D(in=16, out=32, kernel=3)           → ReLU
+  GlobalAvgPool → [32]
+  Linear(32, 8)                              → AdvisorOutput.value[8]
+  Linear(32, 1)                              → AdvisorOutput.confidence
+
+Критерий: модель с нулевыми весами проходит через pipeline без паники/alloc.
+```
+
+### Фаза 2 — Дистилляция (teacher → student)
+
+```
+Источник данных: OBS-прогон с corpus_showcase → snapshot Sensorium каждые N тиков
+  → сохраняем пары (sensorium_slice, teacher_output) в training_data.bin
+
+Teacher = текущий ReactivationDepthAdvisor (rule-based, в коде)
+Student = модель из фазы 1
+
+Тренировка ОФФЛАЙН (Python + torch → ONNX → конвертация в .bin):
+  or чистый Rust train loop в отдельном бинарнике axiom-neural-train
+
+Критерий: student воспроизводит teacher ≥ 95% на holdout.
+```
+
+### Фаза 3 — Интеграция в NeuralAdvisor
+
+```
+NeuralAdvisorConfig (genome.yaml):
+  reactivation_depth:
+    mode: rule   # → rule | neural | distill
+    trust: ignore
+
+Интеграция:
+  - t%11: если mode=neural → model.infer(sensorium_slice), timeout 1ms, иначе fallback
+  - AdvisorOutput.confidence → CalibrationTable → calibrated_confidence
+  - TrustConfig использует только calibrated_confidence
+
+Критерий: bench TickForward не вырос.
+         DivergenceLog пишет пары (advice, actual) при mode=neural.
+```
+
+### Фаза 4 — Workstation + промоция
+
+```
+Новый блок в Workstation (Internals или отдельный таб):
+  - advisor: reactivation_depth | mode | accuracy | divergence_rate
+  - кнопка Switch mode (rule/neural) — через genome update
+  - калиброванный confidence vs raw
+
+Промоция: Ignore → RequireConfirmation → AutoApply через genome (chrnv решает).
+Критерий: chrnv видит accuracy, решает промотировать ли.
+```
+
+---
+
 ## Не в активном плане
 
 - **OBS-MON-01/02** — Мониторинг трасс и activity dynamics. См. DEFERRED.md.
 - **COMP-01** — Vital Signs окно (Companion). См. DEFERRED.md.
 - **V7-D: SubsystemExport/Import** — обмен подсистемами между инстансами.
 - **V8** — Axiogenesis through Dilemmas. После 6+ месяцев реальной работы.
-- **V9** — Active NeuralAdvisor (нейронные модели). После накопленной истории.
+- **Neural Integration Этап 2** — AudioPerceptor, Speech Commands, Vision. После успеха этапа 1.
+- **Neural Integration Этап 3** — ультразвук, расширенный STT. После этапа 2.
 
 ---
 
