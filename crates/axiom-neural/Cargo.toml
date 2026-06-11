@@ -1,0 +1,15 @@
+[package]
+name = "axiom-neural"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Tiny neural models for AXIOM NeuralAdvisor — pure Rust inference, no C bindings"
+
+[dependencies]
+rustfft  = "6"
+ndarray  = { version = "0.16", default-features = false, features = ["std", "serde"] }
+bincode  = { workspace = true }
+serde    = { workspace = true }
+
+# Явно НЕТ: fftw, blas, openblas-src, ndarray-linalg, candle, burn, tract, onnx
