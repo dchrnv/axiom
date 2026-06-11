@@ -145,6 +145,13 @@ pub async fn run(
                     for cmd in &cmds { engine.process_command(&cmd); }
                     had_commands = true;
                 }
+                NodeCmd::ImportObs(path) => {
+                    match axiom_persist::import_traces(&mut engine, &path) {
+                        Ok(r) => info!("import-obs: imported={} guardian_rejected={} from {}",
+                            r.imported, r.guardian_rejected, path.display()),
+                        Err(e) => tracing::warn!("import-obs failed: {e}"),
+                    }
+                }
             }
         }
 

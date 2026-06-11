@@ -82,6 +82,17 @@ impl ObsRunner {
         self.run_inner(corpus, None, None)
     }
 
+    /// Экспортировать Experience traces в бинарный файл (для импорта в живой движок).
+    ///
+    /// Записывает `out_dir/traces.bin`. Только трейсы с weight ≥ 0.1.
+    /// Возвращает количество экспортированных трейсов.
+    pub fn export_traces(&self, out_dir: &Path) -> Result<u32, String> {
+        let path = out_dir.join("traces.bin");
+        axiom_persist::export_traces(&self.engine, &path, 0.1)
+            .map(|r| r.exported)
+            .map_err(|e| e.to_string())
+    }
+
     /// Run with JSONL streaming — write snapshots/events to files in `out_dir` as they arrive.
     /// Returns empty Vecs (data is in the files, not in RAM).
     pub fn run_streaming(

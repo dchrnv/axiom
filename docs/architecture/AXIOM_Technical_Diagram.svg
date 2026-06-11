@@ -1,0 +1,371 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1820 1280" font-family="'SF Mono','JetBrains Mono','Consolas',monospace">
+<!-- =========================================================
+     AXIOM — ТЕХНИЧЕСКАЯ СХЕМА (data-flow + компоненты + stores)
+     Обновлено по BLUEPRINT 2026-05-28 (тесты 1631).
+     Легенда стрелок:
+        сплошная серая  → поток данных / tick pipeline
+        синяя           → READ (чтение состояния)
+        красная         → WRITE через UCL (единственный путь мутации)
+        золотая         → выход наружу (broadcast / срез)
+     Статус: ● реализовано  ◐ частично  ◇ спека (кода нет)
+     Секции помечены комментариями-разделителями.
+========================================================= -->
+<defs>
+  <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.5" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/></filter>
+  <marker id="g" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8A8A90"/></marker>
+  <marker id="b" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#5E8AA8"/></marker>
+  <marker id="r" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#C0594C"/></marker>
+  <marker id="y" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#C9A961"/></marker>
+</defs>
+<rect width="1820" height="1280" fill="#F7F6F2"/>
+
+<!-- ===== TITLE + LEGEND ===== -->
+<text x="40" y="44" font-size="26" font-weight="700" fill="#2C2C30" font-family="-apple-system,system-ui,sans-serif">AXIOM — техническая схема</text>
+<text x="40" y="64" font-size="12" fill="#9A9488" font-family="-apple-system,system-ui,sans-serif">data-flow · компоненты · хранилища · пути мутации · тики · BLUEPRINT 2026-06-06 · тесты 1721</text>
+<g font-size="11.5" fill="#4A4A50" font-family="-apple-system,system-ui,sans-serif">
+  <line x1="1180" y1="34" x2="1212" y2="34" stroke="#8A8A90" stroke-width="2" marker-end="url(#g)"/><text x="1218" y="38">поток/tick</text>
+  <line x1="1300" y1="34" x2="1332" y2="34" stroke="#5E8AA8" stroke-width="2" marker-end="url(#b)"/><text x="1338" y="38">read</text>
+  <line x1="1392" y1="34" x2="1424" y2="34" stroke="#C0594C" stroke-width="2" marker-end="url(#r)"/><text x="1430" y="38">write·UCL</text>
+  <line x1="1512" y1="34" x2="1544" y2="34" stroke="#C9A961" stroke-width="2" marker-end="url(#y)"/><text x="1550" y="38">broadcast</text>
+  <text x="1640" y="38">● ◐ ◇ статус</text>
+</g>
+
+<!-- ============================================================
+     LAYER 1 — PERCEPTORS  (axiom-agent)
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif">
+  <text x="40" y="108" font-size="13" font-weight="700" fill="#7FA3B5">① ВОСПРИЯТИЕ · axiom-agent</text>
+</g>
+<g filter="url(#s)" font-size="12">
+  <rect x="40" y="120" width="200" height="58" rx="9" fill="#E1ECF1" stroke="#7FA3B5" stroke-width="1.8"/>
+  <text x="56" y="142" fill="#2C2C30" font-weight="600">TextPerceptor ●</text>
+  <text x="56" y="160" fill="#6E6E74" font-size="10.5">2-path · anchor-match</text>
+  <text x="56" y="172" fill="#9A9488" font-size="10">detect_subsystem</text>
+
+  <rect x="252" y="120" width="180" height="58" rx="9" fill="#EEF3F5" stroke="#A9C2CE" stroke-width="1.6"/>
+  <text x="268" y="142" fill="#2C2C30" font-weight="600">L0VisionPerceptor ◐</text>
+  <text x="268" y="160" fill="#6E6E74" font-size="10.5">Sobel → strokes</text>
+  <text x="268" y="172" fill="#9A9488" font-size="10">V7-E2 · L0 inject</text>
+
+  <rect x="444" y="120" width="150" height="58" rx="9" fill="#F4F3EF" stroke="#CDC9BD" stroke-width="1.3" stroke-dasharray="4 3"/>
+  <text x="460" y="142" fill="#7E7E84" font-weight="600">Audio ◇</text>
+  <text x="460" y="160" fill="#9A9488" font-size="10.5">Spatial · Body ◇</text>
+  <text x="460" y="172" fill="#B0ABA0" font-size="10">заглушки</text>
+
+  <rect x="606" y="120" width="170" height="58" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="622" y="142" fill="#2C2C30" font-weight="600">MessageEffector ●</text>
+  <text x="622" y="160" fill="#6E6E74" font-size="10.5">CliChannel · tick_loop</text>
+  <text x="622" y="172" fill="#9A9488" font-size="10">External Adapters 0A–5</text>
+
+  <rect x="790" y="120" width="170" height="58" rx="9" fill="#EFEEE8" stroke="#A2823A" stroke-width="1.6"/>
+  <text x="806" y="142" fill="#2C2C30" font-weight="600">TemporalPerceptor ●</text>
+  <text x="806" y="160" fill="#6E6E74" font-size="10.5">7 паттернов времени</text>
+  <text x="806" y="172" fill="#9A9488" font-size="10">PRIM-TD-04 · SUTRA inject</text>
+</g>
+
+<!-- ============================================================
+     LAYER 2 — UCL BOUNDARY + FRONTIER
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="40" y="222" font-size="13" font-weight="700" fill="#C0594C">② ГРАНИЦА ЯДРА · единственный вход</text></g>
+<g filter="url(#s)" font-size="12">
+  <rect x="40" y="234" width="300" height="56" rx="9" fill="#F6E9E6" stroke="#C0594C" stroke-width="1.8"/>
+  <text x="56" y="256" fill="#2C2C30" font-weight="600">UCL · UclCommand (64B)</text>
+  <text x="56" y="274" fill="#6E6E74" font-size="10.5">axiom-ucl · OpCode · единственный путь мутации</text>
+
+  <rect x="360" y="234" width="280" height="56" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.5"/>
+  <text x="376" y="256" fill="#2C2C30" font-weight="600">CausalFrontier V2.0 ●</text>
+  <text x="376" y="274" fill="#6E6E74" font-size="10.5">axiom-frontier · event queue · Storm Control</text>
+</g>
+<!-- perceptor → UCL -->
+<path d="M140,180 L140,232" stroke="#8A8A90" stroke-width="1.6" marker-end="url(#g)"/>
+<path d="M690,180 C690,205 320,210 240,232" stroke="#8A8A90" stroke-width="1.4" marker-end="url(#g)"/>
+
+<!-- ============================================================
+     LAYER 3 — KERNEL  (AshtiCore + core structs + space + shell)
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="40" y="332" font-size="13" font-weight="700" fill="#A2823A">③ ЯДРО · AshtiCore (детерминированное, single-thread, zero-alloc hot path)</text></g>
+<rect x="40" y="346" width="900" height="300" rx="12" fill="#FBF9F3" stroke="#D9D3C4" stroke-width="1.5"/>
+
+<!-- core structs strip -->
+<g filter="url(#s)" font-size="11">
+  <rect x="58" y="362" width="150" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="133" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">Token 64B</text>
+  <text x="133" y="397" text-anchor="middle" fill="#9A9488" font-size="9.5">axiom-core</text>
+  <rect x="216" y="362" width="150" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="291" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">Connection 64B</text>
+  <text x="291" y="397" text-anchor="middle" fill="#9A9488" font-size="9.5">strength·stress·elast</text>
+  <rect x="374" y="362" width="140" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="444" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">Event 64B</text>
+  <text x="444" y="397" text-anchor="middle" fill="#9A9488" font-size="9.5">event_id · COM</text>
+  <rect x="522" y="362" width="170" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="607" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">DomainConfig 128B</text>
+  <text x="607" y="397" text-anchor="middle" fill="#9A9488" font-size="9.5">axiom-config·AnchorSet</text>
+  <rect x="700" y="362" width="110" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="755" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">Shell [u8;8]</text>
+  <text x="755" y="397" text-anchor="middle" fill="#9A9488" font-size="9.5">axiom-shell</text>
+  <rect x="818" y="362" width="106" height="46" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="871" y="382" text-anchor="middle" fill="#2C2C30" font-weight="600">SPACE</text>
+  <text x="871" y="397" text-anchor="middle" fill="#9A9488" font-size="9">gravity·SIMD</text>
+</g>
+
+<!-- 11 domains grid -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="58" y="432" font-size="11.5" font-weight="700" fill="#6E6E74">11 доменов · axiom-domain</text></g>
+<g filter="url(#s)" font-size="11">
+  <!-- row meta -->
+  <rect x="58" y="442" width="120" height="44" rx="7" fill="#EFE0BE" stroke="#A2823A" stroke-width="2"/>
+  <text x="118" y="461" text-anchor="middle" fill="#2C2C30" font-weight="700">SUTRA 100</text>
+  <text x="118" y="476" text-anchor="middle" fill="#8A7330" font-size="9.5">исток·примитивы·якоря</text>
+
+  <rect x="186" y="442" width="120" height="44" rx="7" fill="#E1ECF1" stroke="#7FA3B5" stroke-width="2"/>
+  <text x="246" y="461" text-anchor="middle" fill="#2C2C30" font-weight="700">MAYA 110</text>
+  <text x="246" y="476" text-anchor="middle" fill="#5E8AA8" font-size="9.5">выходная проекция · FW сканирует</text>
+
+  <rect x="314" y="442" width="120" height="44" rx="7" fill="#E4EEE2" stroke="#7D9D7D" stroke-width="2"/>
+  <text x="374" y="461" text-anchor="middle" fill="#2C2C30" font-weight="700">EXPERIENCE 109</text>
+  <text x="374" y="476" text-anchor="middle" fill="#5E8055" font-size="9.5">память·Frame-анкеры</text>
+
+  <rect x="442" y="442" width="120" height="44" rx="7" fill="#ECE6F0" stroke="#9080A8" stroke-width="2"/>
+  <text x="502" y="461" text-anchor="middle" fill="#2C2C30" font-weight="700">DREAM 107</text>
+  <text x="502" y="476" text-anchor="middle" fill="#7A6B92" font-size="9.5">сон·консолидация</text>
+
+  <rect x="570" y="442" width="120" height="44" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="630" y="461" text-anchor="middle" fill="#2C2C30">CODEX 103</text>
+  <text x="630" y="476" text-anchor="middle" fill="#9A9488" font-size="9.5">права·путь в SUTRA</text>
+
+  <rect x="698" y="442" width="100" height="44" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="748" y="461" text-anchor="middle" fill="#2C2C30">LOGIC 106</text>
+  <rect x="806" y="442" width="118" height="44" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/>
+  <text x="865" y="461" text-anchor="middle" fill="#2C2C30">ETHICS/VOID 108</text>
+
+  <!-- row rest -->
+  <rect x="58"  y="494" width="100" height="40" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/><text x="108" y="518" text-anchor="middle" fill="#2C2C30">EXEC 101</text>
+  <rect x="166" y="494" width="110" height="40" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/><text x="221" y="518" text-anchor="middle" fill="#2C2C30">SHADOW 102</text>
+  <rect x="284" y="494" width="100" height="40" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/><text x="334" y="518" text-anchor="middle" fill="#2C2C30">MAP 104</text>
+  <rect x="392" y="494" width="118" height="40" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/><text x="451" y="518" text-anchor="middle" fill="#2C2C30">PROBE/INTNT 105</text>
+</g>
+
+<!-- arbiter + heartbeat inside kernel -->
+<g filter="url(#s)" font-size="11">
+  <rect x="58" y="548" width="240" height="80" rx="8" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="74" y="568" fill="#2C2C30" font-weight="600" font-size="11.5">Arbiter · dual-path</text>
+  <text x="74" y="584" fill="#6E6E74" font-size="10">Fast: resonance_search (reflex)</text>
+  <text x="74" y="598" fill="#6E6E74" font-size="10">Slow: ASHTI 1→8→MAYA pipeline</text>
+  <text x="74" y="612" fill="#9A9488" font-size="9.5">axiom-arbiter · COM · Experience</text>
+
+  <rect x="312" y="548" width="180" height="80" rx="8" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="328" y="568" fill="#2C2C30" font-weight="600" font-size="11.5">Heartbeat V2.0 ●</text>
+  <text x="328" y="584" fill="#6E6E74" font-size="10">tick() → Vec&lt;Event&gt;</text>
+  <text x="328" y="598" fill="#6E6E74" font-size="10">CausalHorizon · FractalChain</text>
+  <text x="328" y="612" fill="#9A9488" font-size="9.5">axiom-heartbeat</text>
+
+  <rect x="506" y="548" width="200" height="80" rx="8" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="522" y="568" fill="#2C2C30" font-weight="600" font-size="11.5">DreamPhase ●</text>
+  <text x="522" y="584" fill="#6E6E74" font-size="10">Wake→Falling→Dreaming→Waking</text>
+  <text x="522" y="598" fill="#6E6E74" font-size="10">dream_propose → SUTRA (CODEX)</text>
+  <text x="522" y="612" fill="#9A9488" font-size="9.5">ModuleId·dream_interval=100</text>
+
+  <rect x="720" y="548" width="200" height="80" rx="8" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="736" y="568" fill="#2C2C30" font-weight="600" font-size="11.5">UPO v2.2 ●</text>
+  <text x="736" y="584" fill="#6E6E74" font-size="10">DynamicTrace · Screen</text>
+  <text x="736" y="598" fill="#6E6E74" font-size="10">UPO::compute</text>
+  <text x="736" y="612" fill="#9A9488" font-size="9.5">axiom-upo</text>
+</g>
+
+<!-- frontier → kernel -->
+<path d="M490,290 L490,344" stroke="#8A8A90" stroke-width="1.6" marker-end="url(#g)"/>
+
+<!-- ============================================================
+     GENOME + GUARDIAN  (правая колонка ядра)
+============================================================ -->
+<g filter="url(#s)" font-size="11.5" font-family="-apple-system,system-ui,sans-serif">
+  <rect x="956" y="346" width="190" height="92" rx="10" fill="#F6E9E6" stroke="#C0594C" stroke-width="2"/>
+  <text x="1051" y="372" text-anchor="middle" fill="#2C2C30" font-weight="700">GUARDIAN ●</text>
+  <text x="1051" y="392" text-anchor="middle" fill="#6E6E74" font-size="10.5">валидирует ВСЕ UCL</text>
+  <text x="1051" y="408" text-anchor="middle" fill="#6E6E74" font-size="10.5">инварианты · veto</text>
+  <text x="1051" y="424" text-anchor="middle" fill="#9A9488" font-size="10">axiom-runtime</text>
+
+  <rect x="956" y="450" width="190" height="92" rx="10" fill="#FBF6EA" stroke="#C9A961" stroke-width="2"/>
+  <text x="1051" y="476" text-anchor="middle" fill="#2C2C30" font-weight="700">GENOME ●</text>
+  <text x="1051" y="496" text-anchor="middle" fill="#6E6E74" font-size="10.5">конституция (frozen)</text>
+  <text x="1051" y="512" text-anchor="middle" fill="#6E6E74" font-size="10.5">Arc после boot · вечна</text>
+  <text x="1051" y="528" text-anchor="middle" fill="#9A9488" font-size="10">авторизация ModuleId</text>
+
+  <rect x="956" y="554" width="190" height="86" rx="10" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.5"/>
+  <text x="1051" y="576" text-anchor="middle" fill="#2C2C30" font-weight="600">TickSchedule ●</text>
+  <text x="1051" y="593" text-anchor="middle" fill="#6E6E74" font-size="10">adapt=50 · gc=500</text>
+  <text x="1051" y="607" text-anchor="middle" fill="#6E6E74" font-size="10">snap=5000 · dream=100</text>
+  <text x="1051" y="621" text-anchor="middle" fill="#6E6E74" font-size="10">gravity=500 · waves=19</text>
+</g>
+
+<!-- ============================================================
+     LAYER 4 — OVER-DOMAIN  (читают AshtiCore, пишут UCL)
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="40" y="688" font-size="13" font-weight="700" fill="#9080A8">④ НАД-ДОМЕННЫЕ МОДУЛИ · axiom-runtime/over_domain · read AshtiCore → write UCL</text></g>
+<g filter="url(#s)" font-size="11">
+  <rect x="40" y="700" width="206" height="92" rx="9" fill="#FAFAF8" stroke="#7D9D7D" stroke-width="1.8"/>
+  <text x="56" y="722" fill="#2C2C30" font-weight="600" font-size="12">FrameWeaver V1.3 ●</text>
+  <text x="56" y="740" fill="#6E6E74" font-size="10">scan MAYA → кристаллизация</text>
+  <text x="56" y="754" fill="#6E6E74" font-size="10">composed_of · COMPOSITION_BOND</text>
+  <text x="56" y="770" fill="#9A9488" font-size="9.5">→ Frame-анкер в EXPERIENCE</text>
+  <text x="56" y="784" fill="#9A9488" font-size="9.5">ModuleId·scan_interval</text>
+
+  <rect x="258" y="700" width="206" height="92" rx="9" fill="#FAFAF8" stroke="#D0A24E" stroke-width="1.8"/>
+  <text x="274" y="722" fill="#2C2C30" font-weight="600" font-size="12">AxialEvaluator V3 ●</text>
+  <text x="274" y="740" fill="#6E6E74" font-size="10">оценка X/Y/Z · 8 октантов</text>
+  <text x="274" y="754" fill="#6E6E74" font-size="10">Corpus Callosum конфликт</text>
+  <text x="274" y="770" fill="#9A9488" font-size="9.5">→ AxialStore · 8 уровней</text>
+  <text x="274" y="784" fill="#9A9488" font-size="9.5">tick=5 · ModuleId=17</text>
+
+  <rect x="476" y="700" width="232" height="92" rx="9" fill="#FAFAF8" stroke="#7FA3B5" stroke-width="2"/>
+  <text x="492" y="722" fill="#2C2C30" font-weight="600" font-size="12">ContextRecognizer V6/7 ●</text>
+  <text x="492" y="740" fill="#6E6E74" font-size="10">SubsystemEnergy → InterpProfile</text>
+  <text x="492" y="754" fill="#6E6E74" font-size="10">+ DilemmaDetector V2.0 ●</text>
+  <text x="492" y="768" fill="#6E6E74" font-size="10">+ CrossModal ● · SutraDepth · Meta</text>
+  <text x="492" y="784" fill="#9A9488" font-size="9.5">tick=7 · ModuleId=18</text>
+
+  <rect x="720" y="700" width="206" height="92" rx="9" fill="#FAFAF8" stroke="#9A9AA2" stroke-width="1.8"/>
+  <text x="736" y="722" fill="#2C2C30" font-weight="600" font-size="12">NeuralAdvisor V3 ●</text>
+  <text x="736" y="740" fill="#6E6E74" font-size="10">advisory-only · 5 трейтов</text>
+  <text x="736" y="754" fill="#6E6E74" font-size="10">EmergentDetector · Resolver</text>
+  <text x="736" y="770" fill="#9A9488" font-size="9.5">→ NotifyEmergentCandidate</text>
+  <text x="736" y="784" fill="#9A9488" font-size="9.5">tick=11 · ModuleId=19</text>
+
+  <rect x="40" y="804" width="280" height="80" rx="9" fill="#FAFAF8" stroke="#9080A8" stroke-width="1.8"/>
+  <text x="56" y="826" fill="#2C2C30" font-weight="600" font-size="12">OverDomainArbiter V3 ●</text>
+  <text x="56" y="844" fill="#6E6E74" font-size="10">координатор advisory-источников</text>
+  <text x="56" y="858" fill="#6E6E74" font-size="10">AdvisorySource · TrustConfig · PendingQueue</text>
+  <text x="56" y="874" fill="#9A9488" font-size="9.5">tick=13 · ModuleId=20 · решает CR-TD-01</text>
+
+  <rect x="332" y="804" width="180" height="80" rx="9" fill="#EAF3F1" stroke="#4FA396" stroke-width="2"/>
+  <text x="348" y="826" fill="#2C2C30" font-weight="600" font-size="12">Waves V1.0 ●</text>
+  <text x="348" y="844" fill="#6E6E74" font-size="10">внутр. ветер · WAKE-only</text>
+  <text x="348" y="858" fill="#6E6E74" font-size="10">dominance_factor · MAX_IMPULSES=4</text>
+  <text x="348" y="874" fill="#9A9488" font-size="9.5">tick=19 · A:дилеммы B:глубина C:связь</text>
+
+  <rect x="524" y="804" width="184" height="80" rx="9" fill="#FBF6EA" stroke="#C9A961" stroke-width="2"/>
+  <text x="540" y="826" fill="#2C2C30" font-weight="600" font-size="12">Sensorium V2.0 ●</text>
+  <text x="540" y="844" fill="#6E6E74" font-size="10">полный срез (каждый тик, последним)</text>
+  <text x="540" y="858" fill="#6E6E74" font-size="10">read &amp;self инвариант навсегда</text>
+  <text x="540" y="874" fill="#9A9488" font-size="9.5">ModuleId=21 · Pulse/State/Full/Memory</text>
+</g>
+
+<!-- read arrows kernel→over-domain (синие) -->
+<path d="M300,646 C300,670 150,676 150,698" stroke="#5E8AA8" stroke-width="1.5" marker-end="url(#b)" fill="none"/>
+<path d="M520,646 C520,672 590,676 590,698" stroke="#5E8AA8" stroke-width="1.5" marker-end="url(#b)" fill="none"/>
+<text x="312" y="668" font-size="10" fill="#5E8AA8" font-family="-apple-system,system-ui,sans-serif">read state</text>
+
+<!-- write arrows over-domain→UCL (красные, идут вверх к границе/GUARDIAN) -->
+<path d="M150,792 C150,250 30,250 38,262" stroke="#C0594C" stroke-width="1.4" marker-end="url(#r)" fill="none" opacity="0.65"/>
+<text x="60" y="246" font-size="10" fill="#C0594C" font-family="-apple-system,system-ui,sans-serif">write UCL → GUARDIAN → mutation</text>
+
+<!-- ============================================================
+     LAYER 5 — STORES  (axiom-experience, тяжёлые данные вне Token)
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="1180" y="688" font-size="13" font-weight="700" fill="#5E8055">⑤ ХРАНИЛИЩА · axiom-experience (данные вне Token 64B)</text></g>
+<g filter="url(#s)" font-size="10.5">
+  <rect x="1180" y="700" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1196" y="725" fill="#2C2C30">AxialStore ●</text>
+  <rect x="1372" y="700" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1388" y="725" fill="#2C2C30">SutraDepthStore ●</text>
+  <rect x="1564" y="700" width="216" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1580" y="725" fill="#2C2C30">InterpretationProfileStore ●</text>
+
+  <rect x="1180" y="748" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1196" y="773" fill="#2C2C30">EmergentPrimStore ●</text>
+  <rect x="1372" y="748" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1388" y="773" fill="#2C2C30">FrameCompositionStore ●</text>
+  <rect x="1564" y="748" width="216" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1580" y="773" fill="#2C2C30">MetaStore (0x1001–07) ●</text>
+
+  <rect x="1180" y="796" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1196" y="821" fill="#2C2C30">DilemmaStore ●</text>
+  <rect x="1372" y="796" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1388" y="821" fill="#2C2C30">FatigueStore ●</text>
+  <rect x="1564" y="796" width="216" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1580" y="821" fill="#2C2C30">SubsystemCandidateStore ●</text>
+
+  <rect x="1180" y="844" width="180" height="40" rx="7" fill="#E9F0E7" stroke="#7D9D7D" stroke-width="1.4"/><text x="1196" y="869" fill="#2C2C30">ModalityStore ●</text>
+  <rect x="1372" y="844" width="180" height="40" rx="7" fill="#EFF3EE" stroke="#A6BFA0" stroke-width="1.3" stroke-dasharray="4 3"/><text x="1388" y="869" fill="#5E5E64">wisdom_store ◇</text>
+  <rect x="1564" y="844" width="216" height="40" rx="7" fill="#EFEEE8" stroke="#B8B4A8" stroke-width="1.3"/><text x="1580" y="869" fill="#2C2C30">Octant·SubsystemId·Level ●</text>
+</g>
+<!-- over-domain ↔ stores (read/write) -->
+<path d="M926,746 C1050,746 1090,720 1178,720" stroke="#5E8AA8" stroke-width="1.5" marker-end="url(#b)" fill="none"/>
+<path d="M926,766 C1050,766 1090,800 1178,812" stroke="#C0594C" stroke-width="1.4" marker-end="url(#r)" fill="none" opacity="0.7"/>
+<text x="1000" y="740" font-size="10" fill="#5E8AA8" font-family="-apple-system,system-ui,sans-serif">read/write stores</text>
+
+<!-- ============================================================
+     LAYER 6 — OUTPUT  (Aperture → broadcasting → consumers)
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif"><text x="40" y="934" font-size="13" font-weight="700" fill="#C9A961">⑥ ВЫХОД · Aperture → axiom-broadcasting → потребители</text></g>
+<g filter="url(#s)" font-size="11">
+  <rect x="40" y="948" width="250" height="70" rx="9" fill="#FBF6EA" stroke="#C9A961" stroke-width="1.8"/>
+  <text x="56" y="970" fill="#2C2C30" font-weight="600" font-size="12">SensoriumState V2.0 ●</text>
+  <text x="56" y="988" fill="#6E6E74" font-size="10">единственный runtime-пульс (SEN-TD-01)</text>
+  <text x="56" y="1003" fill="#9A9488" font-size="10">Pulse/State/Full/Memory · 4 уровня</text>
+
+  <rect x="304" y="948" width="240" height="70" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.5"/>
+  <text x="320" y="970" fill="#2C2C30" font-weight="600" font-size="12">BroadcastHandle ●</text>
+  <text x="320" y="988" fill="#6E6E74" font-size="10">axiom-broadcasting · sensorium_live</text>
+  <text x="320" y="1003" fill="#9A9488" font-size="10">SystemSnapshot + {Sensorium:{...}}</text>
+
+  <rect x="558" y="948" width="240" height="70" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.5"/>
+  <text x="574" y="970" fill="#2C2C30" font-weight="600" font-size="12">axiom-node ●</text>
+  <text x="574" y="988" fill="#6E6E74" font-size="10">tick loop · :8080 · HTTP/WS/REST</text>
+  <text x="574" y="1003" fill="#9A9488" font-size="10">/metrics · /api/lab · ServeDir SPA</text>
+</g>
+<!-- aperture → broadcast → node -->
+<path d="M290,983 L302,983" stroke="#C9A961" stroke-width="1.8" marker-end="url(#y)"/>
+<path d="M544,983 L556,983" stroke="#C9A961" stroke-width="1.8" marker-end="url(#y)"/>
+<!-- aperture reads engine (широкое чтение) -->
+<path d="M616,886 C616,910 380,915 200,946" stroke="#5E8AA8" stroke-width="1.4" marker-end="url(#b)" fill="none" opacity="0.8"/>
+<text x="430" y="918" font-size="10" fill="#5E8AA8" font-family="-apple-system,system-ui,sans-serif">Sensorium read &amp;AxiomEngine (поперёк всего)</text>
+
+<!-- consumers -->
+<g filter="url(#s)" font-size="11" font-family="-apple-system,system-ui,sans-serif">
+  <rect x="40" y="1042" width="180" height="56" rx="9" fill="#FBF6EA" stroke="#C9A961" stroke-width="1.5"/>
+  <text x="56" y="1064" fill="#2C2C30" font-weight="600">Workstation ●</text>
+  <text x="56" y="1082" fill="#6E6E74" font-size="10">React SPA · 9 табов · Sensorium</text>
+
+  <rect x="232" y="1042" width="180" height="56" rx="9" fill="#FBF6EA" stroke="#C9A961" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="248" y="1064" fill="#2C2C30" font-weight="600">Companion ◇</text>
+  <text x="248" y="1082" fill="#6E6E74" font-size="10">лампа-баннер · голос</text>
+
+  <rect x="424" y="1042" width="180" height="56" rx="9" fill="#FAFAF8" stroke="#9A9AA2" stroke-width="1.5"/>
+  <text x="440" y="1064" fill="#2C2C30" font-weight="600">Neural (внутр.) ◇</text>
+  <text x="440" y="1082" fill="#6E6E74" font-size="10">читает срез как вход</text>
+
+  <rect x="616" y="1042" width="180" height="56" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
+  <text x="632" y="1064" fill="#2C2C30" font-weight="600">tray · grafana · cli</text>
+  <text x="632" y="1082" fill="#6E6E74" font-size="10">/metrics · dashboards</text>
+</g>
+<path d="M130,1018 L130,1040" stroke="#C9A961" stroke-width="1.6" marker-end="url(#y)"/>
+<path d="M650,1018 C650,1030 320,1030 322,1040" stroke="#C9A961" stroke-width="1.4" marker-end="url(#y)" fill="none"/>
+
+<!-- ============================================================
+     SUBSYSTEMS (в SUTRA) + PRIMITIVE NATURE + TIME — нижняя справка
+============================================================ -->
+<g font-family="-apple-system,system-ui,sans-serif">
+  <text x="40" y="1140" font-size="12.5" font-weight="700" fill="#2C2C30">ПОДСИСТЕМЫ ПОЗНАНИЯ (якоря в SUTRA)</text>
+  <text x="40" y="1158" font-size="10.5" fill="#9A9488">детектирует ContextRecognizer · primitives_*.yaml</text>
+</g>
+<g font-size="10.5" font-family="-apple-system,system-ui,sans-serif" fill="#2C2C30">
+  <rect x="40" y="1168" width="92" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="86" y="1185" text-anchor="middle">writing ●</text>
+  <rect x="138" y="1168" width="78" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="177" y="1185" text-anchor="middle">math ●</text>
+  <rect x="222" y="1168" width="78" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="261" y="1185" text-anchor="middle">time ●</text>
+  <rect x="306" y="1168" width="86" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="349" y="1185" text-anchor="middle">values ●</text>
+  <rect x="398" y="1168" width="78" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="437" y="1185" text-anchor="middle">logic ●</text>
+  <rect x="482" y="1168" width="80" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="522" y="1185" text-anchor="middle">music ●</text>
+  <rect x="568" y="1168" width="98" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="617" y="1185" text-anchor="middle">morality ●</text>
+  <rect x="672" y="1168" width="110" height="26" rx="6" fill="#F1EFE9" stroke="#C2BCAF" stroke-dasharray="4 3"/><text x="727" y="1185" text-anchor="middle">abstractions ◐</text>
+  <rect x="788" y="1168" width="98" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="837" y="1185" text-anchor="middle">dilemmas ●</text>
+</g>
+
+<g font-family="-apple-system,system-ui,sans-serif">
+  <text x="920" y="1140" font-size="12.5" font-weight="700" fill="#2C2C30">ПРИРОДА ПРИМИТИВОВ</text>
+  <text x="920" y="1158" font-size="10.5" fill="#9A9488">вещь→Token · отношение→Connection · операция→Frame+роли · формула→композиция</text>
+</g>
+<g font-size="10.5" font-family="-apple-system,system-ui,sans-serif" fill="#2C2C30">
+  <rect x="920" y="1168" width="110" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="975" y="1185" text-anchor="middle">L0 perceptual ◐</text>
+  <rect x="1036" y="1168" width="110" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="1091" y="1185" text-anchor="middle">L1 semantic ●</text>
+  <rect x="1152" y="1168" width="140" height="26" rx="6" fill="#EFEEE8" stroke="#B8B4A8"/><text x="1222" y="1185" text-anchor="middle">Spatial 0x09 · CrossModal 0x0A</text>
+</g>
+
+<g font-family="-apple-system,system-ui,sans-serif">
+  <text x="1340" y="1140" font-size="12.5" font-weight="700" fill="#2C2C30">ВРЕМЯ · COM</text>
+  <text x="1340" y="1158" font-size="10.5" fill="#9A9488">event_id · причинное · монотонное</text>
+  <text x="1340" y="1178" font-size="10.5" fill="#6E6E74">нет wall-clock в ядре</text>
+  <text x="1340" y="1192" font-size="10.5" fill="#6E6E74">persist: bincode · IMPORT_WEIGHT 0.7</text>
+</g>
+
+</svg>

@@ -15,6 +15,7 @@
 //   POST /api/lab/stop             — остановить текущий job
 //   POST /api/lab/pause            — SIGSTOP текущего job
 //   POST /api/lab/resume           — SIGCONT текущего job
+//   POST /api/lab/import-obs       — импортировать OBS traces в живой движок
 //   GET  /api/lab/status           — статус текущего job (Running/Paused/Done/Failed)
 //   GET  /api/lab/ws/log           — WebSocket stream лога текущего job
 //   GET  /*                        — статика React SPA из web_dist/
@@ -44,6 +45,7 @@ pub enum NodeCmd {
     AdvisoryConfirm(u64),
     AdvisoryReject(u64),
     SubmitText(String),
+    ImportObs(std::path::PathBuf),
 }
 
 struct AppState {
@@ -82,6 +84,7 @@ pub async fn run(
         .route("/api/advisory/reject/{id}", post(api_reject))
         .route("/api/text/submit", post(api_text_submit))
         .route("/api/corpus/generate", get(api_corpus_generate))
+        .route("/api/lab/import-obs", post(api_import_obs))
         .route("/metrics", get(metrics_handler))
         .nest("/api/lab", lab_router)
         .fallback_service(ServeDir::new(&web_dist).append_index_html_on_directories(true))
@@ -169,6 +172,36 @@ async fn api_text_submit(
     }
     let _ = s.cmd_tx.send(NodeCmd::SubmitText(body.text));
     StatusCode::OK
+}
+
+// ── OBS import ───────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ImportObsBody {
+    #[serde(default)]
+    path: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct ImportObsResponse {
+    imported: u32,
+    guardian_rejected: u32,
+    path: String,
+}
+
+async fn api_import_obs(
+    State(s): State<Arc<AppState>>,
+    Json(body): Json<ImportObsBody>,
+) -> Result<Json<ImportObsResponse>, StatusCode> {
+    let path = body.path.unwrap_or_else(|| "obs_out/traces.bin".to_string());
+    let pb = std::path::PathBuf::from(&path);
+    if !pb.exists() {
+        warn!("import-obs: file not found: {path}");
+        return Err(StatusCode::NOT_FOUND);
+    }
+    let _ = s.cmd_tx.send(NodeCmd::ImportObs(pb.clone()));
+    info!("import-obs: queued import from {path}");
+    Ok(Json(ImportObsResponse { imported: 0, guardian_rejected: 0, path }))
 }
 
 // ── Corpus generator ─────────────────────────────────────────────────────────

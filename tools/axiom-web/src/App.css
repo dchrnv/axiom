@@ -454,6 +454,17 @@
 }
 .lab-resume-btn:hover { background: rgba(80,180,100,.25); }
 
+.lab-import-btn {
+  background: rgba(100,140,220,.15);
+  border: 1px solid #648cdc;
+  border-radius: 4px;
+  color: #648cdc;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.lab-import-btn:hover { background: rgba(100,140,220,.25); }
+
 .lab-progress-wrap { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px; }
 .lab-progress-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .lab-progress-bar-fill  { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s; }

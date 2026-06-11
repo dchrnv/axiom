@@ -17,6 +17,7 @@ axiom-runtime = { path = "../axiom-runtime" }
 axiom-agent = { path = "../axiom-agent" }
 axiom-ucl = { path = "../axiom-ucl" }
 axiom-experience = { path = "../axiom-experience" }
+axiom-persist    = { path = "../axiom-persist" }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 serde_json = { workspace = true }

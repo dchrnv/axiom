@@ -62,7 +62,13 @@ fn main() {
             }
         };
         eprintln!("[observe] running… (streaming to {}/)", out_dir.display());
-        runner.run_streaming(&corpus, &out_dir)
+        let result = runner.run_streaming(&corpus, &out_dir);
+        // Экспортируем трейсы для последующего импорта в живой движок (OBS-FEED-01)
+        match runner.export_traces(&out_dir) {
+            Ok(n) => eprintln!("[observe] exported {n} traces → {}/traces.bin", out_dir.display()),
+            Err(e) => eprintln!("[observe] trace export skipped: {e}"),
+        }
+        result
     };
     eprintln!("[observe] done. {} snapshots in RAM, {} events in RAM", snapshots.len(), events.len());
 

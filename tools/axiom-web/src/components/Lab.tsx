@@ -277,6 +277,15 @@ export function Lab() {
 
   const isRunning = status.status === 'running';
   const isPaused = status.status === 'paused';
+  const isDone = status.status === 'done';
+
+  const importObs = useCallback(async () => {
+    await fetch('/api/lab/import-obs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+  }, []);
 
   return (
     <div className="lab">
@@ -305,6 +314,11 @@ export function Lab() {
         {isRunning && <button className="lab-pause-btn" onClick={pauseJob}>⏸ Pause</button>}
         {isPaused && <button className="lab-resume-btn" onClick={resumeJob}>▶ Resume</button>}
         {(isRunning || isPaused) && <button className="lab-stop-btn" onClick={stopJob}>■ Stop</button>}
+        {isDone && status.job?.startsWith('obs') && (
+          <button className="lab-import-btn" onClick={importObs} title="Импортировать трейсы из obs_out/traces.bin в живой движок">
+            ↑ Import to Engine
+          </button>
+        )}
         {progress && (
           <div className="lab-progress-wrap">
             <div className="lab-progress-bar-track">

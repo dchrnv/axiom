@@ -78,15 +78,13 @@ abstraction_constructor [14000, 12000, 15000] — C5+/A6
 
 ---
 
-## OBS → Engine feedback loop
+## ~~OBS → Engine feedback loop~~
 
-### OBS-FEED-01 — Импорт паттернов из OBS в живой движок
+### ~~OBS-FEED-01 — Импорт паттернов из OBS в живой движок~~ ✅ ВЫПОЛНЕНО (2026-06-11)
 
-**Идея:** замкнуть цикл — трейсы из OBS-прогона импортировать в `axiom-node`.
-
-**Что нужно:** сериализовать Experience traces после OBS → endpoint `:import-obs <path>` → GUARDIAN-валидация (weight×0.7) → Lab-панель: кнопка "Import to Engine".
-
-**Когда:** после стабильной accuracy >70% на showcase-корпусе и накопления реального (не синтетического) корпуса.
+axiom-observe: export_traces() → obs_out/traces.bin после одиночного прогона (weight≥0.1).
+axiom-node: NodeCmd::ImportObs, POST /api/lab/import-obs → import_traces() в tick loop.
+axiom-web Lab: кнопка "↑ Import to Engine" (синяя) появляется после завершения OBS-job.
 
 ---
 
@@ -200,7 +198,7 @@ tension=0 на синтетическом корпусе — нормально.
 
 ## Lab / Workstation
 
-### LAB-TD-01 — Pause/Resume для Lab-процессов
+### ~~LAB-TD-01 — Pause/Resume для Lab-процессов~~ ✅ ВЫПОЛНЕНО (2026-06-11)
 
 **Где:** `crates/axiom-node/src/lab.rs` + `tools/axiom-web/src/components/Lab.tsx`
 

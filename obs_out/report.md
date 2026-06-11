@@ -2,617 +2,303 @@
 
 ## Parameters
 
-- Ticks: 30000
-- Snapshot every: 500
-- Corpus entries: 8
+- Ticks: 200000
+- Snapshot every: 2000
+- Corpus entries: 19
 
 ## Final State
 
 | Metric | Value |
 |---|---|
-| Frames | 312 |
-| Total evaluations | 326 |
+| Frames | 7 |
+| Total evaluations | 21 |
 | Total conflicts | 0 |
-| Profile count | 312 |
-| Dominant subsystem | 3 |
-| Dominant octant | 6 |
-| Depth store entries | 312 |
-| Emergent pending | 312 |
+| Profile count | 7 |
+| Dominant subsystem | 4 |
+| Dominant octant | 2 |
+| Depth store entries | 7 |
+| Emergent pending | 7 |
 | Emergent approved | 0 |
-| Experience traces | 15 |
+| Experience traces | 8 |
 | Tension traces | 0 |
 | Activity fill | 16 |
 | Dominant persistence | 1.000 |
 | Entropy gradient | 0.000 |
 | Oscillation score | 0.000 |
 | Cascade score | 0.000 |
-| Fatigue entries | 1 |
-| Avg shell similarity | 0.000 |
-| Meta dominant | meta_perception |
+| Fatigue entries | 3 |
+| Avg shell similarity | 0.734 |
+| Dilemmas active | 0 |
+| Dilemmas resolved | 8 |
+| Meta dominant | meta_synthesis |
 
 ## Experience Trace Growth
 
 | Tick | Exp traces | Tension | Frames | Profiles | ShellSim |
 |---|---|---|---|---|---|
-| 0 | 2 | 0 | 0 | 0 | 0.000 |
-| 500 | 11 | 0 | 10 | 10 | 0.000 |
-| 1000 | 14 | 0 | 20 | 20 | 0.000 |
-| 1500 | 15 | 0 | 29 | 29 | 0.000 |
-| 2000 | 15 | 0 | 39 | 39 | 0.000 |
-| 2500 | 15 | 0 | 49 | 48 | 0.000 |
-| 3000 | 15 | 0 | 56 | 56 | 0.000 |
-| 3500 | 15 | 0 | 66 | 66 | 0.000 |
-| 4000 | 15 | 0 | 76 | 76 | 0.000 |
-| 4500 | 15 | 0 | 86 | 86 | 0.000 |
-| 5000 | 15 | 0 | 94 | 94 | 0.000 |
-| 5500 | 15 | 0 | 105 | 103 | 0.000 |
-| 6000 | 15 | 0 | 114 | 114 | 0.000 |
-| 6500 | 15 | 0 | 122 | 122 | 0.000 |
-| 7000 | 15 | 0 | 133 | 133 | 0.000 |
-| 7500 | 15 | 0 | 142 | 142 | 0.000 |
-| 8000 | 15 | 0 | 152 | 152 | 0.000 |
-| 8500 | 15 | 0 | 161 | 160 | 0.000 |
-| 9000 | 15 | 0 | 169 | 169 | 0.000 |
-| 9500 | 15 | 0 | 179 | 179 | 0.000 |
-| 10000 | 15 | 0 | 189 | 189 | 0.000 |
-| 10500 | 15 | 0 | 198 | 198 | 0.000 |
-| 11000 | 15 | 0 | 208 | 208 | 0.000 |
-| 11500 | 15 | 0 | 219 | 219 | 0.000 |
-| 12000 | 15 | 0 | 225 | 225 | 0.000 |
-| 12500 | 15 | 0 | 236 | 235 | 0.000 |
-| 13000 | 15 | 0 | 246 | 246 | 0.000 |
-| 13500 | 15 | 0 | 254 | 254 | 0.000 |
-| 14000 | 15 | 0 | 264 | 264 | 0.000 |
-| 14500 | 15 | 0 | 274 | 273 | 0.000 |
-| 15000 | 15 | 0 | 283 | 283 | 0.000 |
-| 15500 | 15 | 0 | 290 | 290 | 0.000 |
-| 16000 | 15 | 0 | 297 | 297 | 0.000 |
-| 16500 | 15 | 0 | 301 | 301 | 0.000 |
-| 17000 | 15 | 0 | 306 | 306 | 0.000 |
-| 17500 | 15 | 0 | 310 | 310 | 0.000 |
-| 18000 | 15 | 0 | 312 | 312 | 0.000 |
-| 18500 | 15 | 0 | 312 | 312 | 0.000 |
-| 19000 | 15 | 0 | 312 | 312 | 0.000 |
-| 19500 | 15 | 0 | 312 | 312 | 0.000 |
-| 20000 | 15 | 0 | 312 | 312 | 0.000 |
-| 20500 | 15 | 0 | 312 | 312 | 0.000 |
-| 21000 | 15 | 0 | 312 | 312 | 0.000 |
-| 21500 | 15 | 0 | 312 | 312 | 0.000 |
-| 22000 | 15 | 0 | 312 | 312 | 0.000 |
-| 22500 | 15 | 0 | 312 | 312 | 0.000 |
-| 23000 | 15 | 0 | 312 | 312 | 0.000 |
-| 23500 | 15 | 0 | 312 | 312 | 0.000 |
-| 24000 | 15 | 0 | 312 | 312 | 0.000 |
-| 24500 | 15 | 0 | 312 | 312 | 0.000 |
-| 25000 | 15 | 0 | 312 | 312 | 0.000 |
-| 25500 | 15 | 0 | 312 | 312 | 0.000 |
-| 26000 | 15 | 0 | 312 | 312 | 0.000 |
-| 26500 | 15 | 0 | 312 | 312 | 0.000 |
-| 27000 | 15 | 0 | 312 | 312 | 0.000 |
-| 27500 | 15 | 0 | 312 | 312 | 0.000 |
-| 28000 | 15 | 0 | 312 | 312 | 0.000 |
-| 28500 | 15 | 0 | 312 | 312 | 0.000 |
-| 29000 | 15 | 0 | 312 | 312 | 0.000 |
-| 29500 | 15 | 0 | 312 | 312 | 0.000 |
+| 0 | 1 | 1 | 0 | 0 | 0.000 |
+| 2000 | 5 | 0 | 3 | 3 | 0.445 |
+| 4000 | 8 | 1 | 5 | 5 | 0.699 |
+| 6000 | 8 | 3 | 6 | 6 | 0.734 |
+| 8000 | 8 | 1 | 6 | 6 | 0.734 |
+| 10000 | 8 | 9 | 7 | 7 | 0.734 |
+| 12000 | 8 | 3 | 7 | 7 | 0.734 |
+| 14000 | 8 | 1 | 7 | 7 | 0.734 |
+| 16000 | 8 | 1 | 7 | 7 | 0.734 |
+| 18000 | 8 | 3 | 7 | 7 | 0.734 |
+| 20000 | 8 | 1 | 7 | 7 | 0.734 |
+| 22000 | 8 | 1 | 7 | 7 | 0.734 |
+| 24000 | 8 | 3 | 7 | 7 | 0.734 |
+| 26000 | 8 | 1 | 7 | 7 | 0.734 |
+| 28000 | 8 | 1 | 7 | 7 | 0.734 |
+| 30000 | 8 | 3 | 7 | 7 | 0.734 |
+| 32000 | 8 | 1 | 7 | 7 | 0.734 |
+| 34000 | 8 | 1 | 7 | 7 | 0.734 |
+| 36000 | 8 | 3 | 7 | 7 | 0.734 |
+| 38000 | 8 | 1 | 7 | 7 | 0.734 |
+| 40000 | 8 | 1 | 7 | 7 | 0.734 |
+| 42000 | 8 | 3 | 7 | 7 | 0.734 |
+| 44000 | 8 | 1 | 7 | 7 | 0.734 |
+| 46000 | 8 | 1 | 7 | 7 | 0.734 |
+| 48000 | 8 | 3 | 7 | 7 | 0.734 |
+| 50000 | 8 | 1 | 7 | 7 | 0.734 |
+| 52000 | 8 | 1 | 7 | 7 | 0.734 |
+| 54000 | 8 | 3 | 7 | 7 | 0.734 |
+| 56000 | 8 | 1 | 7 | 7 | 0.734 |
+| 58000 | 8 | 1 | 7 | 7 | 0.734 |
+| 60000 | 8 | 3 | 7 | 7 | 0.734 |
+| 62000 | 8 | 1 | 7 | 7 | 0.734 |
+| 64000 | 8 | 1 | 7 | 7 | 0.734 |
+| 66000 | 8 | 3 | 7 | 7 | 0.734 |
+| 68000 | 8 | 1 | 7 | 7 | 0.734 |
+| 70000 | 8 | 1 | 7 | 7 | 0.734 |
+| 72000 | 8 | 3 | 7 | 7 | 0.734 |
+| 74000 | 8 | 1 | 7 | 7 | 0.734 |
+| 76000 | 8 | 1 | 7 | 7 | 0.734 |
+| 78000 | 8 | 3 | 7 | 7 | 0.734 |
+| 80000 | 8 | 1 | 7 | 7 | 0.734 |
+| 82000 | 8 | 1 | 7 | 7 | 0.734 |
+| 84000 | 8 | 3 | 7 | 7 | 0.734 |
+| 86000 | 8 | 1 | 7 | 7 | 0.734 |
+| 88000 | 8 | 1 | 7 | 7 | 0.734 |
+| 90000 | 8 | 3 | 7 | 7 | 0.734 |
+| 92000 | 8 | 1 | 7 | 7 | 0.734 |
+| 94000 | 8 | 1 | 7 | 7 | 0.734 |
+| 96000 | 8 | 3 | 7 | 7 | 0.734 |
+| 98000 | 8 | 1 | 7 | 7 | 0.734 |
+| 100000 | 8 | 1 | 7 | 7 | 0.734 |
+| 102000 | 8 | 3 | 7 | 7 | 0.734 |
+| 104000 | 8 | 1 | 7 | 7 | 0.734 |
+| 106000 | 8 | 1 | 7 | 7 | 0.734 |
+| 108000 | 8 | 3 | 7 | 7 | 0.734 |
+| 110000 | 8 | 1 | 7 | 7 | 0.734 |
+| 112000 | 8 | 1 | 7 | 7 | 0.734 |
+| 114000 | 8 | 3 | 7 | 7 | 0.734 |
+| 116000 | 8 | 1 | 7 | 7 | 0.734 |
+| 118000 | 8 | 1 | 7 | 7 | 0.734 |
+| 120000 | 8 | 2 | 7 | 7 | 0.734 |
+| 122000 | 8 | 1 | 7 | 7 | 0.734 |
+| 124000 | 8 | 0 | 7 | 7 | 0.734 |
+| 126000 | 8 | 0 | 7 | 7 | 0.734 |
+| 128000 | 8 | 0 | 7 | 7 | 0.734 |
+| 130000 | 8 | 0 | 7 | 7 | 0.734 |
+| 132000 | 8 | 0 | 7 | 7 | 0.734 |
+| 134000 | 8 | 0 | 7 | 7 | 0.734 |
+| 136000 | 8 | 0 | 7 | 7 | 0.734 |
+| 138000 | 8 | 0 | 7 | 7 | 0.734 |
+| 140000 | 8 | 0 | 7 | 7 | 0.734 |
+| 142000 | 8 | 0 | 7 | 7 | 0.734 |
+| 144000 | 8 | 0 | 7 | 7 | 0.734 |
+| 146000 | 8 | 0 | 7 | 7 | 0.734 |
+| 148000 | 8 | 0 | 7 | 7 | 0.734 |
+| 150000 | 8 | 0 | 7 | 7 | 0.734 |
+| 152000 | 8 | 0 | 7 | 7 | 0.734 |
+| 154000 | 8 | 0 | 7 | 7 | 0.734 |
+| 156000 | 8 | 0 | 7 | 7 | 0.734 |
+| 158000 | 8 | 0 | 7 | 7 | 0.734 |
+| 160000 | 8 | 0 | 7 | 7 | 0.734 |
+| 162000 | 8 | 0 | 7 | 7 | 0.734 |
+| 164000 | 8 | 0 | 7 | 7 | 0.734 |
+| 166000 | 8 | 0 | 7 | 7 | 0.734 |
+| 168000 | 8 | 0 | 7 | 7 | 0.734 |
+| 170000 | 8 | 0 | 7 | 7 | 0.734 |
+| 172000 | 8 | 0 | 7 | 7 | 0.734 |
+| 174000 | 8 | 0 | 7 | 7 | 0.734 |
+| 176000 | 8 | 0 | 7 | 7 | 0.734 |
+| 178000 | 8 | 0 | 7 | 7 | 0.734 |
+| 180000 | 8 | 0 | 7 | 7 | 0.734 |
+| 182000 | 8 | 0 | 7 | 7 | 0.734 |
+| 184000 | 8 | 0 | 7 | 7 | 0.734 |
+| 186000 | 8 | 0 | 7 | 7 | 0.734 |
+| 188000 | 8 | 0 | 7 | 7 | 0.734 |
+| 190000 | 8 | 0 | 7 | 7 | 0.734 |
+| 192000 | 8 | 0 | 7 | 7 | 0.734 |
+| 194000 | 8 | 0 | 7 | 7 | 0.734 |
+| 196000 | 8 | 0 | 7 | 7 | 0.734 |
+| 198000 | 8 | 0 | 7 | 7 | 0.734 |
 
 ## Avg Depth per Octant (final)
 
 | Octant | Avg depth |
 |---|---|
-| O1 | 0 |
+| O1 | 16113 ★ |
 | O2 | 0 |
-| O3 | 0 |
+| O3 | 12896 ★ |
 | O4 | 0 |
 | O5 | 0 |
 | O6 | 0 |
-| O7 | 1198 |
-| O8 | 0 |
+| O7 | 4306 ★ |
+| O8 | 4310 ★ |
 
-★ = depth ≥ 8000 (potential emergent threshold)
+★ = depth ≥ 3000 (emergent candidate threshold)
 
-## Injection Events
+## Detection Accuracy
 
-| Tick | Entry | Expected | Per-text | Detected | Coherence | Reflex | Passes | Exp traces |
-|---|---|---|---|---|---|---|---|---|
-| 0 | math_basic | mathematics | ✓ mathematics | — | 1.00 | — | 1 | 1 |
-| 0 | logic_reasoning | logic | ✓ logic | — | 0.75 | — | 1 | 2 |
-| 50 | math_advanced | mathematics | ✓ mathematics | — | 0.75 | — | 1 | 3 |
-| 80 | time_history | time | ✓ time | 0 | 0.75 | — | 1 | 4 |
-| 100 | writing_narrative | writing | ✓ writing | 3 | 0.75 | — | 1 | 5 |
-| 120 | values_ethics | values | ✓ values | 3 | 0.75 | — | 1 | 6 |
-| 150 | writing_poetry | writing | ✓ writing | 3 | 0.75 | — | 1 | 7 |
-| 200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 7 |
-| 200 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 8 |
-| 300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 9 |
-| 350 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 10 |
-| 350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 11 |
-| 400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 11 |
-| 530 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 12 |
-| 550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 13 |
-| 550 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 13 |
-| 600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 13 |
-| 600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 13 |
-| 600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 13 |
-| 620 | values_ethics | values | ✓ values | 3 | 1.00 | — | 1 | 14 |
-| 650 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 14 |
-| 800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 14 |
-| 850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 14 |
-| 900 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 14 |
-| 900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 14 |
-| 950 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 14 |
-| 950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 14 |
-| 980 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 14 |
-| 1000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 14 |
-| 1100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 14 |
-| 1120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 1200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 1250 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1250 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 1350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 1350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 1400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1430 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 1500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 1550 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 1600 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 1620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 1750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 1800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 1850 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 1850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 1880 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 1950 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 2000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 2120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 2150 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2300 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 2330 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 2350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 2450 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 2650 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 2700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 2750 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2780 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 2800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 2850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 2950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3000 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 3000 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 3050 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 3200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3230 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 3300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 3350 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3350 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 3400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 3620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 3650 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3680 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 3700 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 3750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 3850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 3900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 3950 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4050 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 4100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 4130 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 4150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 4250 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4400 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 4500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 4550 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4580 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 4600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 4750 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 4800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 4850 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 4850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 4950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5030 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 5100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5100 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 5100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 5120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 5150 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 5450 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5450 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 5480 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 5600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 5700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 5750 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 5800 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 5850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 5930 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 6000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6000 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 6050 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 6150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6150 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 6200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 6350 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6380 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 6400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6500 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 6550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 6620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 6650 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6830 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 6850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 6850 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 6900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 6950 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 6950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 7200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7200 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 7200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 7250 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7280 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 7350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 7550 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7550 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 7600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 7730 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 7750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 7850 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 7850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 7900 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 8000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 8120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 8150 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8180 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 8200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8250 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 8350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 8450 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8600 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 8620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 8630 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 8700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 8750 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 8850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 8950 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 9000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9000 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 9050 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9080 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 9100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 9200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9300 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 9300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 9350 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9530 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 9600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 9620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 9650 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9650 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 9750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 9900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 9950 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 9980 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 10000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10000 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 10100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 10150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 10250 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10350 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 10400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10430 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 10500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 10550 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 10700 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 10800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 10850 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 10850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 10880 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 10950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11050 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 11100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 11120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 11150 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11330 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 11350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11400 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 11400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 11450 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 11700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 11750 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 11750 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 11780 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 11800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 11850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12000 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 12050 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12100 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 12120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 12150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12230 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 12300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 12350 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12450 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 12550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 12620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 12650 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12680 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 12800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12800 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 12850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 12900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 12950 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 12950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 13130 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 13150 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 13200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 13250 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13500 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 13500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 13550 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13580 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 13600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 13750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 13850 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 13850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 13850 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 14000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14030 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 14100 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 14120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 14150 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14150 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14200 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 14350 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 14450 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14480 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 14550 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14550 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 14600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14600 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 14700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 14750 | math_advanced | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 14850 | writing_narrative | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 14900 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 14930 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 14950 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 15000 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 15000 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 15120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 15200 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 15250 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 15300 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 15350 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 15380 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 15400 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 15600 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 15600 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 15600 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 15620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 15750 | writing_poetry | writing | ✓ writing | 3 | 1.00 | ✓ | 1 | 15 |
-| 15800 | math_basic | mathematics | ✓ mathematics | 3 | 1.00 | ✓ | 1 | 15 |
-| 15830 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 15900 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 15950 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 16120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 16200 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 16280 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 16300 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 16500 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 16620 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 16650 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 16730 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 16800 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 17000 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 17100 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 17120 | values_ethics | values | ✓ values | 3 | 1.00 | ✓ | 1 | 15 |
-| 17180 | time_history | time | ✓ time | 3 | 1.00 | ✓ | 1 | 15 |
-| 17350 | music_theory | music | ✓ music | 3 | 1.00 | ✓ | 1 | 15 |
-| 17400 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
-| 17630 | time_history | time | ✓ time | 0 | 1.00 | ✓ | 1 | 15 |
-| 17700 | logic_reasoning | logic | ✓ logic | 3 | 1.00 | ✓ | 1 | 15 |
+| Entry | Expected | Correct | Total | Accuracy |
+|---|---|---|---|---|
+| abstract_emergence | abstractions | 400 | 400 | ✓ 100% |
+| abstract_infinity | abstractions | 400 | 400 | ✓ 100% |
+| logic_deductive | logic | 400 | 400 | ✓ 100% |
+| logic_fallacies | logic | 400 | 400 | ✓ 100% |
+| logic_inductive | logic | 400 | 400 | ✓ 100% |
+| math_arithmetic | mathematics | 400 | 400 | ✓ 100% |
+| math_calculus | mathematics | 400 | 400 | ✓ 100% |
+| math_geometry | mathematics | 400 | 400 | ✓ 100% |
+| morality_consequences | morality | 400 | 400 | ✓ 100% |
+| morality_duty | morality | 400 | 400 | ✓ 100% |
+| music_harmony | music | 400 | 400 | ✓ 100% |
+| music_rhythm | music | 400 | 400 | ✓ 100% |
+| time_arrow | time | 400 | 400 | ✓ 100% |
+| time_perception | time | 400 | 400 | ✓ 100% |
+| values_honesty | values | 400 | 400 | ✓ 100% |
+| values_justice | values | 400 | 400 | ✓ 100% |
+| writing_metaphor | writing | 400 | 400 | ✓ 100% |
+| writing_narrative | writing | 400 | 400 | ✓ 100% |
+| writing_style | writing | 400 | 400 | ✓ 100% |
 
 ## Coherence Analysis
 
-- Average coherence: 0.996
-- Min coherence: 0.750
-- Max coherence: 1.000
-- Reflex hits: 407 / 415
-- Multi-pass events: 0 / 415
-- Per-text accuracy: 415 / 415 (100.0%)
+- Average coherence: 0.250
+- Min coherence: 0.250
+- Max coherence: 0.250
+- Reflex hits: 7578 / 7600
+- Multi-pass events: 7600 / 7600
+- Per-text accuracy: 7600 / 7600 (100.0%)
 
-✓ High coherence — system has built good resonance patterns.
+⚠ Low average coherence — system is still in cold-start mode. More injections or longer run needed.
 
 ## Threshold Assessment
 
-No octants reached depth ≥ 8000. Consider more injections or longer run.
+Octants above depth threshold (≥3000): O1, O3, O7, O8
 
-⚠ 312 emergent candidate(s) pending — not yet above approval threshold.
+⚠ 7 emergent candidate(s) pending — not yet above approval threshold.
 
-Conflict rate: 0.0% (0 / 326 evaluations)
+Conflict rate: 0.0% (0 / 21 evaluations)
 
 ## V6 Activity Dynamics
 
 | Tick | Fill | Persistence | Entropy | Oscillation | Cascade | Fatigue | Meta | Signatures |
 |---|---|---|---|---|---|---|---|---|
-| 0 | 0 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | — | Uncertain |
-| 500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 1000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 1500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 2000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 2500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 3000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 3500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 4000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 4500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 5000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 5500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 6000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 6500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 7000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 7500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 8000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 8500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 9000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 9500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 10000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 10500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 11000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 11500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 12000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 12500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 13000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 13500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 14000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 14500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 15000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 15500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 16000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 16500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 17000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 17500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 18000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 18500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 19000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 19500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 20000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 20500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 21000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 21500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 22000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 22500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 23000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 23500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 24000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 24500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 25000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 25500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 26000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 26500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 27000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 27500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 28000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 28500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 29000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
-| 29500 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 1 | meta_perception | Steady |
+| 0 | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 1 | — | Uncertain |
+| 2000 | 16 | 0.98 | 0.00 | 0.00 | 0.00 | 2 | meta_synthesis | Steady |
+| 4000 | 16 | 0.70 | 0.23 | 0.07 | 0.00 | 3 | meta_synthesis | Steady, Diverging |
+| 6000 | 16 | 0.48 | -0.01 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 8000 | 16 | 0.47 | 0.09 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 10000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 12000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 14000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 16000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 18000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 20000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 22000 | 16 | 0.48 | 0.05 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 24000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 26000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 28000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 30000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 32000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 34000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 36000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 38000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 40000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 42000 | 16 | 0.48 | -0.01 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 44000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 46000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 48000 | 16 | 0.48 | -0.01 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 50000 | 16 | 0.47 | 0.09 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 52000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 54000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 56000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 58000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 60000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 62000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 64000 | 16 | 0.48 | 0.05 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 66000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 68000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 70000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 72000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 74000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 76000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 78000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 80000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 82000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 84000 | 16 | 0.48 | -0.01 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 86000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 88000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 90000 | 16 | 0.48 | -0.01 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 92000 | 16 | 0.47 | 0.09 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 94000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 96000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 98000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 100000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 102000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 104000 | 16 | 0.48 | 0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 106000 | 16 | 0.48 | 0.05 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 108000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 110000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 112000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 114000 | 16 | 0.47 | 0.03 | 0.20 | 0.00 | 3 | meta_synthesis | Steady |
+| 116000 | 16 | 0.47 | 0.06 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 118000 | 16 | 0.50 | -0.00 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 120000 | 16 | 0.48 | 0.05 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 122000 | 16 | 0.47 | -0.03 | 0.07 | 0.00 | 3 | meta_synthesis | Steady |
+| 124000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 126000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 128000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 130000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 132000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 134000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 136000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 138000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 140000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 142000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 144000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 146000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 148000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 150000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 152000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 154000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 156000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 158000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 160000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 162000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 164000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 166000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 168000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 170000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 172000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 174000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 176000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 178000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 180000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 182000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 184000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 186000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 188000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 190000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 192000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 194000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 196000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
+| 198000 | 16 | 1.00 | 0.00 | 0.00 | 0.00 | 3 | meta_synthesis | Steady |
 
 ## Composite Co-activation Suspects (final)
 
@@ -620,5 +306,114 @@ None detected.
 
 ## Meta-subsystem Activations (final)
 
-Active: 1  |  Dominant: meta_perception
+Active: 3  |  Dominant: meta_synthesis
+
+## Dilemmas (DilemmaDetector V2.0)
+
+- Active: 0
+- Resolved: 8
+
+## Dilemma Timeline
+
+| Tick | Active | Resolved |
+|---|---|---|
+| 2000 | 8 | 0 |
+| 4000 | 8 | 0 |
+| 6000 | 8 | 0 |
+| 8000 | 8 | 0 |
+| 10000 | 0 | 8 |
+| 12000 | 0 | 8 |
+| 14000 | 0 | 8 |
+| 16000 | 0 | 8 |
+| 18000 | 0 | 8 |
+| 20000 | 0 | 8 |
+| 22000 | 0 | 8 |
+| 24000 | 0 | 8 |
+| 26000 | 0 | 8 |
+| 28000 | 0 | 8 |
+| 30000 | 0 | 8 |
+| 32000 | 0 | 8 |
+| 34000 | 0 | 8 |
+| 36000 | 0 | 8 |
+| 38000 | 0 | 8 |
+| 40000 | 0 | 8 |
+| 42000 | 0 | 8 |
+| 44000 | 0 | 8 |
+| 46000 | 0 | 8 |
+| 48000 | 0 | 8 |
+| 50000 | 0 | 8 |
+| 52000 | 0 | 8 |
+| 54000 | 0 | 8 |
+| 56000 | 0 | 8 |
+| 58000 | 0 | 8 |
+| 60000 | 0 | 8 |
+| 62000 | 0 | 8 |
+| 64000 | 0 | 8 |
+| 66000 | 0 | 8 |
+| 68000 | 0 | 8 |
+| 70000 | 0 | 8 |
+| 72000 | 0 | 8 |
+| 74000 | 0 | 8 |
+| 76000 | 0 | 8 |
+| 78000 | 0 | 8 |
+| 80000 | 0 | 8 |
+| 82000 | 0 | 8 |
+| 84000 | 0 | 8 |
+| 86000 | 0 | 8 |
+| 88000 | 0 | 8 |
+| 90000 | 0 | 8 |
+| 92000 | 0 | 8 |
+| 94000 | 0 | 8 |
+| 96000 | 0 | 8 |
+| 98000 | 0 | 8 |
+| 100000 | 0 | 8 |
+| 102000 | 0 | 8 |
+| 104000 | 0 | 8 |
+| 106000 | 0 | 8 |
+| 108000 | 0 | 8 |
+| 110000 | 0 | 8 |
+| 112000 | 0 | 8 |
+| 114000 | 0 | 8 |
+| 116000 | 0 | 8 |
+| 118000 | 0 | 8 |
+| 120000 | 0 | 8 |
+| 122000 | 0 | 8 |
+| 124000 | 0 | 8 |
+| 126000 | 0 | 8 |
+| 128000 | 0 | 8 |
+| 130000 | 0 | 8 |
+| 132000 | 0 | 8 |
+| 134000 | 0 | 8 |
+| 136000 | 0 | 8 |
+| 138000 | 0 | 8 |
+| 140000 | 0 | 8 |
+| 142000 | 0 | 8 |
+| 144000 | 0 | 8 |
+| 146000 | 0 | 8 |
+| 148000 | 0 | 8 |
+| 150000 | 0 | 8 |
+| 152000 | 0 | 8 |
+| 154000 | 0 | 8 |
+| 156000 | 0 | 8 |
+| 158000 | 0 | 8 |
+| 160000 | 0 | 8 |
+| 162000 | 0 | 8 |
+| 164000 | 0 | 8 |
+| 166000 | 0 | 8 |
+| 168000 | 0 | 8 |
+| 170000 | 0 | 8 |
+| 172000 | 0 | 8 |
+| 174000 | 0 | 8 |
+| 176000 | 0 | 8 |
+| 178000 | 0 | 8 |
+| 180000 | 0 | 8 |
+| 182000 | 0 | 8 |
+| 184000 | 0 | 8 |
+| 186000 | 0 | 8 |
+| 188000 | 0 | 8 |
+| 190000 | 0 | 8 |
+| 192000 | 0 | 8 |
+| 194000 | 0 | 8 |
+| 196000 | 0 | 8 |
+| 198000 | 0 | 8 |
 
