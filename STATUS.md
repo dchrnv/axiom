@@ -1,15 +1,28 @@
 # AXIOM Status
 
-**Обновлено:** 2026-06-07
+**Обновлено:** 2026-06-11
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1514 тестов, 0 failures**
+**1514 тестов (all features), 0 failures**
 
-Domain_Membrane_Profiles_V1_0 ✅ (2026-06-07): мембранная трансформация токенов по природе домена.
+OBS-ACC-02 ✅ (2026-06-11): регрессия anchor-детекции logic_deductive/morality_duty → 100%.
+  Причина: OBS-ACC-01 переименовал теги meta→abstractions, создав ничьи через общие алиасы.
+  abstractions/primitives.yaml: удалены aliases "форма" (abstraction_pattern), "теорема/следствие/
+  доказательство" (abstraction_schema), "закон/принцип" (abstraction_theory).
+  logic/primitives.yaml: удалён alias "закон" из logic_rule (слишком амбивалентен).
+  anchor_match.rs: +2 регрессионных теста (logic_deductive/morality_duty).
+  membrane_blend_factor: 0.5→0.7 (per спека §9: entropy есть но мал).
+  genome.rs + genome.yaml синхронизированы. OBS: 19/19 × 100% accuracy, per-text=100%.
+
+refactor(axial-evaluator) ✅ (2026-06-11): убрать mean_y workaround — мембраны дают честный valence.
+  axial_evaluator/mod.rs: OBS-AX-01 workaround (mean_y при density=0) удалён.
+  Domain_Membrane_Profiles_V1_0 теперь даёт реальную валентность токенам (±40), pos_val/neg_val работают честно.
+
+Domain_Membrane_Profiles_V1_0 ✅ (2026-06-11): мембранная трансформация токенов по природе домена.
   axiom-genome: MembraneProfile {mass_in,valence_in,temp_in,blend_factor?}; Genome += membrane_profiles
   (8 доменов 101–108) + membrane_blend_factor=0.5. genome.yaml: секция membrane_profiles.
   axiom-arbiter: axiom-genome как зависимость; Arbiter += membrane_profiles+blend_factor;
@@ -396,19 +409,19 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | Crate | Тесты | Описание |
 |-------|-------|----------|
 | axiom-core | 34 | Token, Connection, Event |
-| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=22 (Waves), MAX_MODULES=23; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02) |
+| axiom-genome | 26 | Genome V1.0: конституция, GenomeIndex, from_yaml; ModuleId=22 (Waves), MAX_MODULES=23; EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02); MembraneProfile (Domain_Membrane_Profiles_V1_0) |
 | axiom-frontier | 32 | CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection, budget |
 | axiom-config | 115 | DomainConfig, ConfigLoader, YAML presets, ConfigWatcher, HeartbeatConfig, DreamConfig, JsonSchema, AnchorSet; SubsystemDependencies; AnchorLayer L0/L1; perceptual_anchors() |
 | axiom-space | 118 | SpatialHashGrid, физика, apply_gravity_batch, apply_gravity_batch_avx2 (AVX2, feature "simd", S4b) |
 | axiom-shell | 48 | Shell V3.0, семантические профили, from_yaml; link_types: 0x08 Syntactic, 0x09 Composition, 0x0A CrossModal, 0x0B SemanticAnchor=0x0B01 (AE-TD-08) |
-| axiom-arbiter | 151 | Arbiter V1.0, Experience (shell_registry: HashMap<u32,[u8;8]>; shell_cosine() → 15% бонус в pattern_similarity; set_shell_registry() из inject_anchor_tokens; Shell-TD-02), REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
+| axiom-arbiter | 154 | Arbiter V1.0 + membrane_profiles/blend_factor + configure_membranes(); membrane_transform() (blend_u8/i8+clamp); route_to_ashti: membrane перед process_token (slow path only); Experience (shell_registry: HashMap<u32,[u8;8]>; shell_cosine() → 15% бонус; Shell-TD-02), REFLECTOR, SKILLSET, GridHash, AshtiProcessor, COM |
 | axiom-heartbeat | 15 | Heartbeat V2.0 |
 | axiom-upo | 13 | UPO v2.2: DynamicTrace, Screen, UPO::compute |
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 50 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); ModalityStore + Modality (Text/Vision/Internal); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
 | axiom-runtime | 656 (676 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0, **Sensorium V2.0**, **Waves V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, TickSchedule (+subsystem_gravity_interval=500), **SubsystemGravityRule** (PRIM-TD-03); **SEN-TD-01**: BroadcastSnapshot удалён, last_dream_summary pub, SensoriumState единственный runtime-пульс; broadcast.rs: LastDreamSummary+DomainDetailSnapshot+TokenSnapshot+ConnectionSnapshot; subsystem_gravity.rs; inject_anchor_tokens → set_shell_registry (Shell-TD-02) |
-| axiom-agent | 148 (171 telegram,opensearch) | TextPerceptor (2-path detect_subsystem + perceive_and_bond→SEMANTIC_ANCHOR_BOND=0x0B01; text_stable_id 0x4000_0001+; anchor_sutra_id mirror); AnchorMatchTable: domain+layer якоря в id_to_position (P4b); L0VisionPerceptor (V7-E2); MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands; tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
+| axiom-agent | 164 (187 telegram,opensearch) | TextPerceptor (2-path detect_subsystem + perceive_and_bond→SEMANTIC_ANCHOR_BOND=0x0B01; text_stable_id 0x4000_0001+; anchor_sutra_id mirror); AnchorMatchTable: domain+layer якоря в id_to_position (P4b); L0VisionPerceptor (V7-E2); MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands; tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
 | axiom-broadcasting | 7 | BroadcastServer, BroadcastHandle (sensorium_live: RwLock<Option<String>>, update_sensorium(), latest_sensorium_json()), subscription filter, heartbeat (BRD-TD-06: pong timeout test через raw TCP), build_system_snapshot (прямые запросы к &AxiomEngine, без BroadcastSnapshot); BroadcastSnapshot удалён (SEN-TD-01 Фаза F) |
@@ -419,7 +432,7 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1721** | |
+| **Итого** | **1514** (all features) | |
 
 ---
 

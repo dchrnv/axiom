@@ -1,7 +1,7 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-06-05  
+**Обновлено:** 2026-06-11  
 **Тесты:** 1514, 0 failures
 
 ---
@@ -16,7 +16,7 @@ axiom-genome     — Genome (конституция, frozen в Arc после bo
                    EmergentSubsystemRules (V7-D4); CrossModalConfig (CMB-TD-02);
                    MembraneProfile {mass_in,valence_in,temp_in,blend_factor?};
                    membrane_profiles: HashMap<u16,MembraneProfile> (8 доменов 101–108);
-                   membrane_blend_factor: f32 = 0.5 (глобальный)
+                   membrane_blend_factor: f32 = 0.7 (глобальный)
 axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore;
                    ModalityStore (sutra_id→Modality; Text/Vision/Internal);
                    FatigueStore + SubsystemFatigue (V7-B2);

@@ -17,7 +17,7 @@ axiom-corpus                                        ↑
                                                axiom-broadcasting
 ```
 
-**1514 тестов, 0 failures.**
+**1514 тестов (all features), 0 failures.**
 Shell-TD-02, SEN-TD-01 (V2.0), BRD-TD-06 завершены (2026-06-05).
 PRIM-TD-03 Subsystem Gravity завершён (2026-06-04).
 Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-06-03).
@@ -36,7 +36,7 @@ Sensorium V1.0, Waves V1.0, Cross-Modal Binding pipeline замкнуты (2026-
 | 1 | ShellSim = 0.000 | avg_crystallized_shell_similarity в FrameWeaverStats (EMA α=0.3) | ✅ |
 | 2 | 0% accuracy: abstractions, morality, writing | якоря не матчатся на текстах | ✅ |
 | 3 | Tension traces = 0 | TensionTrace не создаётся после resolution | ✅ |
-| 4 | Октанты O2/O4–O8 = 0 всегда | AxialEvaluator не заполняет октанты | ✅ (частично: O5 активирован, Dionysus deferred) |
+| 4 | Октанты O2/O4–O8 = 0 всегда | AxialEvaluator не заполняет октанты | ✅ (O3=Dionysus/Thanatos/Will 12896★, O7=4306★, O8=4310★ через мембраны) |
 
 ---
 
