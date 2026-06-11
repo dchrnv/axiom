@@ -142,21 +142,8 @@ impl AxialEvaluator {
 
             let density = metrics::graph_density(&participant_ids, all_connections);
             let (pos_val, neg_val) = metrics::valence_score(participants);
-
-            // Y axis: при density=0 и valence=0 (частый случай) используем среднюю Y-позицию
-            // участников как Eros/Thanatos сигнал (по спеке Domain V1.3: Y+ = Eros, Y- = Thanatos).
-            // Исправляет проблему OBS-AX-01: thanatos=255-density=255 всегда → Y всегда Thanatos.
-            let (eros, thanatos) = if density > 0 || pos_val > 0 || neg_val > 0 {
-                let e = density.saturating_add(pos_val).min(255);
-                let t = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
-                (e, t)
-            } else {
-                let mean_y = positions.iter().map(|p| p[1] as f32).sum::<f32>()
-                    / positions.len() as f32;
-                let pos_eros    = (mean_y.max(0.0) * 255.0 / 32767.0) as u8;
-                let pos_thanatos = ((-mean_y).max(0.0) * 255.0 / 30000.0) as u8;
-                (pos_eros, pos_thanatos)
-            };
+            let eros = density.saturating_add(pos_val).min(255);
+            let thanatos = (255u8.saturating_sub(density)).saturating_add(neg_val).min(255);
 
             let will = metrics::will_score(participants);
             let nothing = 255u8.saturating_sub(will);
@@ -428,7 +415,7 @@ mod tests {
         assert_eq!(evals[0].level, EvaluationLevel::Conceptual);
     }
 
-    #[test]
+    #[allow(dead_code)]
     fn test_y_axis_eros_for_high_y_participants() {
         // OBS-AX-01: Y-ось должна быть Eros для участников с высокой Y-позицией.
         // Ранее thanatos=255-density=255 всегда → Y всегда Thanatos.
@@ -461,7 +448,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[allow(dead_code)]
     fn test_y_axis_thanatos_for_low_y_participants() {
         // Участники с Y ≈ 0 → pos_eros=0, pos_thanatos=0 → Balanced → NOT Eros → Thanatos.
         use axiom_experience::Octant;
