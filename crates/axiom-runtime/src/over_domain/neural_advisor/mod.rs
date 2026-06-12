@@ -26,11 +26,13 @@ pub mod config;
 pub mod divergence;
 pub mod history;
 pub mod implementations;
+pub mod neural_depth;
 pub mod registry;
 pub mod results;
 pub mod traits;
 
 pub use config::NeuralAdvisorConfig;
+pub use neural_depth::NeuralReactivationDepthAdvisor;
 pub use divergence::{octant_hamming_distance, DivergenceEntry, DivergenceLog};
 pub use history::{AdvisoryHistory, AdvisoryHistoryEntry, AdvisoryHistoryOutcome, AdvisoryRingBuffer};
 pub use implementations::{
@@ -70,6 +72,11 @@ pub struct NeuralAdvisor {
     advisory_history: AdvisoryHistory,
     /// G1: расхождения advisory_octant ↔ analytic_octant (Hamming distance ≥ 2).
     divergence_log: DivergenceLog,
+    /// Neural Integration Этап 1: нейронный depth-советник (None если mode=rule).
+    /// Если Some — обновляется на t%11 перед обходом фреймов.
+    pub neural_depth_slot: Option<std::sync::Arc<NeuralReactivationDepthAdvisor>>,
+    /// Снапшот ActivityTrace из ContextRecognizer (для neural inference).
+    activity_trace_snapshot: crate::over_domain::context_recognizer::ActivityTrace,
 }
 
 impl NeuralAdvisor {
@@ -83,6 +90,8 @@ impl NeuralAdvisor {
             depth_store_snapshot: SutraDepthStore::new(),
             advisory_history: AdvisoryHistory::new(),
             divergence_log: DivergenceLog::new(),
+            neural_depth_slot: None,
+            activity_trace_snapshot: crate::over_domain::context_recognizer::ActivityTrace::new(),
         }
     }
 
@@ -119,6 +128,12 @@ impl NeuralAdvisor {
 
     pub fn sync_depth_store(&mut self, store: &SutraDepthStore) {
         self.depth_store_snapshot = store.clone();
+    }
+
+    /// Синхронизировать ActivityTrace для neural depth inference.
+    /// Вызывается из engine перед on_tick NeuralAdvisor.
+    pub fn sync_activity_trace(&mut self, trace: &crate::over_domain::context_recognizer::ActivityTrace) {
+        self.activity_trace_snapshot = trace.clone();
     }
 
     // ─── Публичный доступ к результатам ──────────────────────────────────────
@@ -316,6 +331,12 @@ impl OverDomainComponent for NeuralAdvisor {
     }
 
     fn on_tick(&mut self, tick: u64, ashti: &AshtiCore) -> Result<Vec<UclCommand>, OverDomainError> {
+        // Neural Integration Этап 1: обновляем нейронный depth-советник перед обходом фреймов.
+        if let Some(neural) = &self.neural_depth_slot {
+            let avg_depths = self.depth_store_snapshot.avg_depths();
+            neural.update_from_trace(&self.activity_trace_snapshot, &avg_depths, tick);
+        }
+
         let level = ashti.level_id();
         let exp_domain_id = level * 100 + EXPERIENCE_ROLE;
 

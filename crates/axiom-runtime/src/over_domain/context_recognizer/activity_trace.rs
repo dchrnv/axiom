@@ -75,7 +75,7 @@ pub struct ActivityDynamics {
 ///
 /// `push(subsystem, event_id)` одновременно пишет во все три буфера.
 /// `compute_dynamics()` возвращает метрики по текущему состоянию.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ActivityTrace {
     short: RingBuf,
     mid: RingBuf,
@@ -263,7 +263,7 @@ pub fn classify(dynamics: &ActivityDynamics) -> Vec<ActivitySignature> {
 
 // ── Кольцевой буфер ─────────────────────────────────────────────────────────
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct RingBuf {
     data: VecDeque<(SubsystemId, u64)>,
     cap: usize,

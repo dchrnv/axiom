@@ -18,6 +18,7 @@ axiom-upo = { path = "../axiom-upo" }
 axiom-ucl = { path = "../axiom-ucl" }
 axiom-genome = { path = "../axiom-genome" }
 axiom-experience = { path = "../axiom-experience", features = ["serde"] }
+axiom-neural    = { path = "../axiom-neural" }
 
 rayon = { workspace = true }
 serde = { version = "1", features = ["derive"] }
