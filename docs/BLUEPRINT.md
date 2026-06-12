@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-12  
-**Тесты:** 1536, TEST-TD-01 (DEFERRED)
+**Тесты:** 1538, TEST-TD-01 (DEFERRED)
 
 ---
 
@@ -70,7 +70,7 @@ axiom-neural     — Neural Integration Этап 1 (26 тестов);
                    ~13K params; from_arch(cfg) из genome.yaml; load/save_to_bin (bincode);
                    нет alloc в infer(); AdvisorMode {Rule, Neural};
                    ConfidenceCalibrator (реализован, не подключён — NEURAL-TD-03);
-                   NEURAL-TD-02: мисматч training(3024) vs INPUT_SIZE(1539) блокирует Neural mode
+                   extract_features_from_onehot(short_oh,mid_oh,long_oh) — консистентный вход
 axiom-agent      — TextPerceptor (2-path detect_subsystem + perceive_and_bond),
                    text_stable_id (0x4000_0001+, бит 30);
                    L0VisionPerceptor (V7-E2): vision_anchor_stable_id (0x2000_0001+, бит 29);
@@ -91,8 +91,8 @@ axiom-node       — самостоятельный бинарный узел: t
                    CMB-TD-03: после apply_dream_depth_update публикует CrossModalBondProposed
 axiom-observe    — автоматизация OBS-01: Corpus, ObsRunner, TickSnapshot V6, report.md;
                    training_data.jsonl: каждые TRAINING_SAMPLE_EVERY=200 тиков →
-                   TrainingExample {tick, short[144], mid[576], long[2304],
-                   reactivation_weights[8], teacher_confidence, meta}
+                   TrainingExample {tick, features[1539], reactivation_weights[8],
+                   teacher_confidence, meta} — FFT-признаки, консистентны с моделью
 tools/axiom-web  — React 18 SPA (Vite + Zustand): 8 табов (Overview/Domains/Traces/
                    Internals/Conversation/Phase C/Patterns/Lab);
                    AdvisoryQueue confirm/reject, SVG sparklines, domain grid

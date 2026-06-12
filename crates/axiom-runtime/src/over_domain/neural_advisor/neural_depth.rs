@@ -12,8 +12,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use axiom_neural::{
-    AdvisorInput, AdvisorMode, Model, ReactivationDepthConfig, ReactivationDepthModel,
-    zscore_inplace,
+    AdvisorMode, Model, ReactivationDepthConfig, ReactivationDepthModel,
 };
 
 use crate::over_domain::context_recognizer::ActivityTrace;
@@ -83,15 +82,10 @@ impl NeuralReactivationDepthAdvisor {
             return;
         }
 
-        // mode=neural: one-hot encoding + FFT-признаки + Z-score
+        // mode=neural: FFT над one-hot кольцами → INPUT_SIZE=1539 (консистентно с training_data.jsonl)
         let (short_oh, mid_oh, long_oh) = activity_trace.extract_onehot_rings();
-        let mut features = Vec::with_capacity(short_oh.len() + mid_oh.len() + long_oh.len());
-        features.extend_from_slice(&short_oh);
-        features.extend_from_slice(&mid_oh);
-        features.extend_from_slice(&long_oh);
-        zscore_inplace(&mut features);
-
-        let input = AdvisorInput::new(features, tick);
+        inner.model.extract_features_from_onehot(&short_oh, &mid_oh, &long_oh);
+        let input = inner.model.build_input(tick);
 
         let t0 = Instant::now();
         let result = inner.model.infer(&input);

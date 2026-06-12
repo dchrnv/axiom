@@ -6,7 +6,11 @@
 // Формат: JSONL, каждая строка = TrainingExample.
 // Используется для дистилляции: teacher (rule-based) → student (нейронка).
 //
-// Семантика входных каналов (ФИКСИРОВАНА, нельзя менять без перетренировки):
+// Вход модели (консистентен с ReactivationDepthModel::extract_features_from_onehot):
+//   features[9 × 171 = 1539] — FFT-признаки по 9 подсистемам (short9+mid33+long129).
+//   Вычисляются из one-hot колец ActivityTrace через ActivityFft + Z-score.
+//
+// Семантика каналов (ФИКСИРОВАНА, нельзя менять без перетренировки):
 //   канал 0 = Writing     (SubsystemId=1)
 //   канал 1 = Mathematics (SubsystemId=2)
 //   канал 2 = Logic       (SubsystemId=3)
@@ -19,20 +23,24 @@
 
 use serde::{Deserialize, Serialize};
 use axiom_runtime::AxiomEngine;
+use axiom_neural::{
+    ActivityFft,
+    reactivation_depth::{N_SUBSYSTEMS, FFT_FEATURES_PER_SUB, INPUT_SIZE},
+    zscore_inplace,
+};
 
 /// Один тренировочный пример.
 ///
-/// `rings`: one-hot матрицы [9 подсистем × T] — dominant subsystem в каждый тик.
+/// `features`: FFT-признаки [INPUT_SIZE=1539] — консистентны с ReactivationDepthModel.
 /// `teacher`: что rule-based советник считает правильным (нормализовано в [0, 1]).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrainingExample {
     pub tick: u64,
 
-    /// One-hot кольца. Порядок: [9, 16] short, [9, 64] mid, [9, 256] long.
-    /// Плоские векторы: `short[ch * 16 + t]` = 1.0 если в момент t доминировал канал ch.
-    pub short: Vec<f32>,   // len = 9 * 16  = 144
-    pub mid: Vec<f32>,     // len = 9 * 64  = 576
-    pub long: Vec<f32>,    // len = 9 * 256 = 2304
+    /// FFT-признаки: [N_SUBSYSTEMS × FFT_FEATURES_PER_SUB = 1539].
+    /// Вычислены из one-hot колец ActivityTrace → ActivityFft → Z-score.
+    /// Консистентны с ReactivationDepthModel::extract_features_from_onehot().
+    pub features: Vec<f32>,
 
     /// Teacher output: веса реактивации по 8 октантам (0..1).
     /// Вычислены из avg_depths: weight[i] = max(0, 1 - depth[i] / MAX_DEPTH).
@@ -72,8 +80,19 @@ impl TrainingExample {
         let cr = &engine.context_recognizer;
         let at = cr.activity_trace_snapshot();
 
-        // One-hot кольца из ActivityTrace
-        let (short, mid, long) = at.extract_onehot_rings();
+        // One-hot кольца → FFT-признаки (консистентно с ReactivationDepthModel)
+        let (short_oh, mid_oh, long_oh) = at.extract_onehot_rings();
+        let mut afft = ActivityFft::new();
+        let mut features = vec![0.0f32; INPUT_SIZE];
+        let stride = FFT_FEATURES_PER_SUB;
+        for ch in 0..N_SUBSYSTEMS {
+            let s = &short_oh[ch * 16..(ch + 1) * 16];
+            let m = &mid_oh[ch * 64..(ch + 1) * 64];
+            let l = &long_oh[ch * 256..(ch + 1) * 256];
+            let out = &mut features[ch * stride..(ch + 1) * stride];
+            afft.compute_rings(s, m, l, out);
+        }
+        zscore_inplace(&mut features);
 
         // Avg depths по октантам из AxialEvaluator depth store
         let avg_depths = cr.depth_store().avg_depths();
@@ -107,9 +126,7 @@ impl TrainingExample {
 
         TrainingExample {
             tick,
-            short,
-            mid,
-            long,
+            features,
             reactivation_weights,
             teacher_confidence,
             meta,

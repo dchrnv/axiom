@@ -158,7 +158,27 @@ impl ReactivationDepthModel {
         zscore_inplace(&mut self.fft_buf);
     }
 
-    /// Построить AdvisorInput из self.fft_buf (после extract_features).
+    /// Извлечь FFT-признаки из flat one-hot колец (output of extract_onehot_rings()).
+    ///
+    /// Формат: short_oh[ch*16..(ch+1)*16], mid_oh[ch*64..(ch+1)*64],
+    ///         long_oh[ch*256..(ch+1)*256] — ch = 0..N_SUBSYSTEMS.
+    /// Результат в self.fft_buf (размер INPUT_SIZE). Ноль alloc.
+    pub fn extract_features_from_onehot(&mut self, short_oh: &[f32], mid_oh: &[f32], long_oh: &[f32]) {
+        debug_assert_eq!(short_oh.len(), N_SUBSYSTEMS * 16);
+        debug_assert_eq!(mid_oh.len(), N_SUBSYSTEMS * 64);
+        debug_assert_eq!(long_oh.len(), N_SUBSYSTEMS * 256);
+        let stride = FFT_FEATURES_PER_SUB;
+        for ch in 0..N_SUBSYSTEMS {
+            let s = &short_oh[ch * 16..(ch + 1) * 16];
+            let m = &mid_oh[ch * 64..(ch + 1) * 64];
+            let l = &long_oh[ch * 256..(ch + 1) * 256];
+            let out = &mut self.fft_buf[ch * stride..(ch + 1) * stride];
+            self.activity_fft.compute_rings(s, m, l, out);
+        }
+        zscore_inplace(&mut self.fft_buf);
+    }
+
+    /// Построить AdvisorInput из self.fft_buf (после extract_features или extract_features_from_onehot).
     pub fn build_input(&self, tick: u64) -> AdvisorInput {
         AdvisorInput::new(self.fft_buf.clone(), tick)
     }
@@ -315,5 +335,28 @@ mod tests {
         let _ = model.infer(&input).unwrap(); // прогрев
         let out = model.infer(&input).unwrap();
         assert!(out.computation_ns < 1_000_000, "inference too slow: {}ns", out.computation_ns);
+    }
+
+    #[test]
+    fn test_extract_features_from_onehot_correct_size() {
+        let mut model = ReactivationDepthModel::new_zeros();
+        let short_oh = vec![0.0f32; N_SUBSYSTEMS * 16];
+        let mid_oh   = vec![0.0f32; N_SUBSYSTEMS * 64];
+        let long_oh  = vec![0.0f32; N_SUBSYSTEMS * 256];
+        model.extract_features_from_onehot(&short_oh, &mid_oh, &long_oh);
+        assert_eq!(model.fft_buf.len(), INPUT_SIZE);
+    }
+
+    #[test]
+    fn test_extract_onehot_then_infer_no_shape_mismatch() {
+        let mut model = ReactivationDepthModel::new_zeros();
+        let short_oh = vec![0.0f32; N_SUBSYSTEMS * 16];
+        let mid_oh   = vec![0.0f32; N_SUBSYSTEMS * 64];
+        let long_oh  = vec![0.0f32; N_SUBSYSTEMS * 256];
+        model.extract_features_from_onehot(&short_oh, &mid_oh, &long_oh);
+        let input = model.build_input(42);
+        assert_eq!(input.features.len(), INPUT_SIZE);
+        let result = model.infer(&input);
+        assert!(result.is_ok(), "ShapeMismatch must not occur: {:?}", result.err());
     }
 }
