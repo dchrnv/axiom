@@ -1,7 +1,19 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 81.0
-**Обновлён:** 2026-06-05
+**Версия:** 82.0
+**Обновлён:** 2026-06-12
+
+---
+
+## axiom-runtime
+
+### TEST-TD-01 — test_process_and_observe_slow_path_initially сломан
+
+**Где:** `crates/axiom-runtime/tests/process_and_observe_tests.rs`
+
+Тест падал до любых изменений текущей сессии — pre-existing регрессия.
+
+**Когда:** при ближайшем свободном окне.
 
 ---
 
