@@ -1313,6 +1313,8 @@ impl AxiomEngine {
                 .sync_profile_store(self.context_recognizer.profile_store());
             self.neural_advisor
                 .sync_depth_store(self.context_recognizer.depth_store());
+            self.neural_advisor
+                .sync_activity_trace(self.context_recognizer.activity_trace_snapshot());
         }
         if t % 11 == 0 {
             if let Ok(cmds) = self.neural_advisor.on_tick(t, &self.ashti) {
