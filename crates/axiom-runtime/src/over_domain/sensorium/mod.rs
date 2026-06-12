@@ -25,8 +25,8 @@ pub use levels::{CollectionLevel, FULL_INTERVAL, PULSE_INTERVAL, STATE_INTERVAL}
 pub use registry::{ConsumerEntry, ConsumerRegistry};
 pub use schedule::SensoriumSchedule;
 pub use state::{
-    ActiveDilemmaEntry, EmergentEntry, SensoriumDomainSummary, SensoriumDreamSummary,
-    SensoriumState, SubsystemActivity,
+    ActiveDilemmaEntry, EmergentEntry, NeuralDepthStatus, SensoriumDomainSummary,
+    SensoriumDreamSummary, SensoriumState, SubsystemActivity,
 };
 
 use axiom_genome::types::{ModuleId, Permission, ResourceId};
@@ -250,6 +250,26 @@ fn collect_pulse(view: &SensoriumView<'_>, state: &mut SensoriumState) {
     state.guardian_vetoes_since_wake = view.guardian_vetoes_since_wake;
     state.cross_modal_candidates = view.context_recognizer.cross_modal_candidate_count();
     state.last_dream_summary = view.last_dream_summary.clone();
+
+    // — Neural Integration Этап 1: статус depth-советника —
+    if let Some(neural) = &view.neural_advisor.neural_depth_slot {
+        use axiom_neural::AdvisorMode;
+        state.neural_depth = NeuralDepthStatus {
+            mode: match neural.mode() {
+                AdvisorMode::Rule => "rule".to_string(),
+                AdvisorMode::Neural => "neural".to_string(),
+            },
+            last_infer_ns: neural.last_infer_ns(),
+            last_infer_tick: neural.last_infer_tick(),
+            cached_weights: neural.cached_weights(),
+            weights_loaded: neural.mode() == AdvisorMode::Neural,
+        };
+    } else {
+        state.neural_depth = NeuralDepthStatus {
+            mode: "rule".to_string(),
+            ..Default::default()
+        };
+    }
 }
 
 fn collect_state(view: &SensoriumView<'_>, state: &mut SensoriumState) {

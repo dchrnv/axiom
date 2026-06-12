@@ -114,6 +114,14 @@ impl NeuralReactivationDepthAdvisor {
         self.inner.try_lock().map(|g| g.last_infer_ns).unwrap_or(0)
     }
 
+    pub fn last_infer_tick(&self) -> u64 {
+        self.inner.try_lock().map(|g| g.last_infer_tick).unwrap_or(0)
+    }
+
+    pub fn cached_weights(&self) -> [f32; 8] {
+        self.inner.try_lock().map(|g| g.cached_weights).unwrap_or([0.0; 8])
+    }
+
     pub fn mode(&self) -> AdvisorMode { self.mode }
 }
 

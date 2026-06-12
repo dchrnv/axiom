@@ -227,6 +227,14 @@ export interface SensoriumDreamSummary {
   sutra_written: number;
 }
 
+export interface NeuralDepthStatus {
+  mode: 'rule' | 'neural';
+  last_infer_ns: number;
+  last_infer_tick: number;
+  cached_weights: number[];  // [8] octants
+  weights_loaded: boolean;
+}
+
 export interface SensoriumState {
   collected_at_tick: number;
   causal_time: number;
@@ -256,6 +264,8 @@ export interface SensoriumState {
   internal_dominance_factor: number;
   active_impulse_count: number;
   impulse_sources: string[];
+  // — Neural Integration Этап 1 —
+  neural_depth: NeuralDepthStatus;
   // — Движок (Фаза A) —
   trace_count: number;
   tension_count: number;

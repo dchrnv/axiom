@@ -52,6 +52,22 @@ pub struct EmergentEntry {
     pub reactivations: u32,
 }
 
+/// Статус нейронного depth-советника (Neural Integration Этап 1).
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct NeuralDepthStatus {
+    /// Режим: "rule" | "neural".
+    pub mode: String,
+    /// Время последнего inference (наносекунды). 0 = ни одного.
+    pub last_infer_ns: u64,
+    /// Тик последнего inference.
+    pub last_infer_tick: u64,
+    /// Кешированные веса реактивации [8 октантов] (0.0..1.0).
+    /// Высокое значение = октант нуждается в реактивации.
+    pub cached_weights: [f32; 8],
+    /// Загружен ли .bin файл весов (false = нулевые веса).
+    pub weights_loaded: bool,
+}
+
 /// Полный внутренний срез системы — Sensorium V2.0.
 ///
 /// Разбит на группы по §2 спеки Sensorium_V1_0.md.
@@ -114,6 +130,10 @@ pub struct SensoriumState {
     pub active_impulse_count: usize,
     /// Источники активных импульсов (краткий тег: "Dilemma"/"Resonance"/"Unfinished").
     pub impulse_sources: Vec<&'static str>,
+
+    // — NEURAL INTEGRATION (Этап 1) —
+    /// Статус нейронного depth-советника.
+    pub neural_depth: NeuralDepthStatus,
 
     // — ДВИЖОК (добавлено в V2.0, Фаза A — поглощение BroadcastSnapshot) —
     /// Общее число следов опыта (Experience.trace_count).

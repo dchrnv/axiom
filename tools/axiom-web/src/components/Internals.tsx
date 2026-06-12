@@ -1,5 +1,5 @@
 import { useEngineStore } from '../store/engine';
-import type { SubsystemActivity } from '../ws/protocol';
+import type { NeuralDepthStatus, SubsystemActivity } from '../ws/protocol';
 
 function fmtNs(ns: number): string {
   if (ns === 0) return '—';
@@ -47,6 +47,11 @@ export function Internals() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Neural Depth Advisor */}
+      {sensorium?.neural_depth && (
+        <NeuralDepthPanel status={sensorium.neural_depth} />
       )}
 
       {/* Performance */}
@@ -130,6 +135,44 @@ function InternalRow({ label, value }: { label: string; value: string }) {
       <span className="internal-label">{label}</span>
       <span className="internal-value">{value}</span>
     </div>
+  );
+}
+
+const OCTANT_NAMES = ['O1 Apollo/Eros/Will', 'O2 Dio/Eros/Will', 'O3 Dio/Than/Will', 'O4 Apollo/Than/Will',
+                      'O5 Apollo/Eros/Nth', 'O6 Dio/Eros/Nth', 'O7 Dio/Than/Nth', 'O8 Apollo/Than/Nth'];
+
+function NeuralDepthPanel({ status }: { status: NeuralDepthStatus }) {
+  const modeColor = status.mode === 'neural' ? 'var(--accent)' : 'var(--text-muted)';
+  const maxW = Math.max(...status.cached_weights, 0.001);
+
+  return (
+    <section className="card">
+      <h2>Neural Depth Advisor</h2>
+      <div className="internals-grid" style={{ marginBottom: 12 }}>
+        <InternalRow label="Mode" value={status.mode.toUpperCase()} />
+        <InternalRow label="Last inference" value={fmtNs(status.last_infer_ns)} />
+        <InternalRow label="Last infer tick" value={status.last_infer_tick.toLocaleString()} />
+        <InternalRow label="Weights loaded" value={status.weights_loaded ? '✓ yes' : '— zeros'} />
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
+        Reactivation weights (higher = needs reactivation):
+      </div>
+      {status.cached_weights.slice(0, 8).map((w, i) => (
+        <div key={i} className="neural-weight-row">
+          <span className="neural-weight-label">{OCTANT_NAMES[i] || `O${i+1}`}</span>
+          <div className="sen-bar-track" style={{ flex: 1 }}>
+            <div className="sen-bar-fill"
+              style={{ width: `${(w / maxW) * 100}%`, background: w > 0.5 ? 'var(--accent)' : 'var(--green)' }} />
+          </div>
+          <span className="neural-weight-val">{(w * 100).toFixed(0)}%</span>
+        </div>
+      ))}
+      <div style={{ fontSize: 11, color: modeColor, marginTop: 8 }}>
+        {status.mode === 'neural'
+          ? '● Neural model active — inference every 11 ticks'
+          : '○ Rule-based mode — set mode: neural in genome.yaml to activate'}
+      </div>
+    </section>
   );
 }
 
