@@ -137,9 +137,59 @@ impl ActivityTrace {
         }
     }
 
+    /// Итератор по short-буферу (для Neural Integration — сбор тренировочных данных).
+    pub fn short_iter(&self) -> impl Iterator<Item = &(SubsystemId, u64)> {
+        self.short.iter()
+    }
+
+    /// Итератор по mid-буферу (для Neural Integration — сбор тренировочных данных).
+    pub fn mid_iter(&self) -> impl Iterator<Item = &(SubsystemId, u64)> {
+        self.mid.iter()
+    }
+
     /// Итератор по long-буферу (для SubsystemFatigue в Фазе B).
     pub fn long_iter(&self) -> impl Iterator<Item = &(SubsystemId, u64)> {
         self.long.iter()
+    }
+
+    /// Извлечь кольца как one-hot матрицы [9 подсистем × T] для тренировки модели.
+    ///
+    /// Порядок каналов фиксирован: Writing=0, Mathematics=1, Logic=2, Time=3,
+    /// Music=4, Values=5, Morality=6, Abstractions=7, Dilemmas=8.
+    /// Если подсистема не входит в 9 основных — игнорируется (канал остаётся 0).
+    ///
+    /// Возвращает (short[9×16], mid[9×64], long[9×256]).
+    pub fn extract_onehot_rings(&self) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+        fn subsystem_channel(s: SubsystemId) -> Option<usize> {
+            match s as u8 {
+                1 => Some(0),  // Writing
+                2 => Some(1),  // Mathematics
+                3 => Some(2),  // Logic
+                4 => Some(3),  // Time
+                5 => Some(4),  // Music
+                6 => Some(5),  // Values
+                7 => Some(6),  // Morality
+                8 => Some(7),  // Abstractions
+                9 => Some(8),  // Dilemmas
+                _ => None,
+            }
+        }
+
+        fn fill_ring(iter: impl Iterator<Item = SubsystemId>, t: usize) -> Vec<f32> {
+            let mut out = vec![0.0f32; 9 * t];
+            for (pos, sub) in iter.enumerate().take(t) {
+                if let Some(ch) = subsystem_channel(sub) {
+                    out[ch * t + pos] = 1.0;
+                }
+            }
+            out
+        }
+
+        let short = fill_ring(self.short.iter().map(|(s, _)| *s), SHORT_CAP);
+        let mid   = fill_ring(self.mid.iter().map(|(s, _)| *s),   MID_CAP);
+        let long  = fill_ring(self.long.iter().map(|(s, _)| *s),  LONG_CAP);
+
+        (short, mid, long)
     }
 
     /// Уникальные подсистемы из mid-буфера (для детекции composite co-activation).

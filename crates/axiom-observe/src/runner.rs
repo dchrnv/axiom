@@ -13,6 +13,10 @@ use axiom_ucl::{OpCode, UclCommand};
 
 use crate::corpus::{Corpus, CorpusEntry};
 use crate::metrics::{InjectionEvent, TickSnapshot};
+use crate::training::TrainingExample;
+
+/// Каждые N тиков собираем тренировочный пример (не на каждом — дорого).
+const TRAINING_SAMPLE_EVERY: u64 = 200;
 
 pub struct ObsRunner {
     engine: AxiomEngine,
@@ -143,6 +147,16 @@ impl ObsRunner {
             let path = dir.join(format!("{shard_prefix}events.jsonl"));
             std::fs::File::create(&path).ok().map(BufWriter::new)
         });
+        // Neural Integration Этап 1: собираем тренировочные данные (только single-shard)
+        let mut training_writer: Option<BufWriter<std::fs::File>> = if shard_id.is_none() {
+            stream_to.and_then(|dir| {
+                let path = dir.join("training_data.jsonl");
+                std::fs::File::create(&path).ok().map(BufWriter::new)
+            })
+        } else {
+            None
+        };
+        let mut training_count: u64 = 0;
 
         let mut snapshots: Vec<TickSnapshot> = Vec::new();
         let mut events: Vec<InjectionEvent> = Vec::new();
@@ -203,6 +217,17 @@ impl ObsRunner {
                 );
             }
 
+            // Сбор тренировочных данных каждые TRAINING_SAMPLE_EVERY тиков
+            if tick > 0 && tick % TRAINING_SAMPLE_EVERY == 0 {
+                if let Some(w) = &mut training_writer {
+                    let example = TrainingExample::capture(&self.engine, tick);
+                    if let Ok(line) = serde_json::to_string(&example) {
+                        let _ = writeln!(w, "{line}");
+                        training_count += 1;
+                    }
+                }
+            }
+
             if tick % corpus.snapshot_every == 0 {
                 let snap = self.capture_snapshot(tick);
                 if let Some(w) = &mut snap_writer {
@@ -230,6 +255,10 @@ impl ObsRunner {
         // Flush stream writers
         if let Some(w) = snap_writer.as_mut() { let _ = w.flush(); }
         if let Some(w) = event_writer.as_mut() { let _ = w.flush(); }
+        if let Some(w) = training_writer.as_mut() {
+            let _ = w.flush();
+            eprintln!("{prefix} training_data.jsonl: {training_count} examples");
+        }
 
         let elapsed = started.elapsed().as_secs_f64();
         let tps = if elapsed > 0.0 { total as f64 / elapsed } else { 0.0 };

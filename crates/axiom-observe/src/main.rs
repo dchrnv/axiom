@@ -3,6 +3,7 @@ mod metrics;
 mod report;
 mod runner;
 mod shard;
+mod training;
 
 use std::path::PathBuf;
 
