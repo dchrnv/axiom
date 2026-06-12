@@ -107,10 +107,21 @@ cross_modal:
   max_bonds_total: ~
   allow_revocation: true
 
-# G3: NeuralAdvisor — per-advisor enable/disable
+# G3: NeuralAdvisor — per-advisor enable/disable + Neural Integration Этап 1
 neural_advisor:
   depth:
     enabled: true
+    # Neural Integration Этап 1: режим советника и архитектура модели.
+    # mode: rule = старые правила (дефолт), neural = нейронная модель
+    # Смена mode без переобучения бессмысленна — нужен совместимый .bin.
+    # При смене arch — старый .bin несовместим, нужна перетренировка.
+    mode: rule
+    weights_path: models/reactivation_depth.bin
+    arch:
+      conv1_channels: 32    # каналы первого Conv1D
+      conv2_channels: 64    # каналы второго Conv1D
+      conv2_kernel: 5       # ядро второго Conv1D (первый всегда 3)
+      fc1_size: 32          # размер скрытого FC-слоя
   octant:
     enabled: true
   conflict:

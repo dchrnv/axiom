@@ -19,6 +19,7 @@ use std::path::Path;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
+use crate::config::ReactivationDepthArch;
 use crate::fft::ActivityFft;
 use crate::layers::{Conv1D, Linear, relu2_inplace, relu_inplace, sigmoid, global_avg_pool};
 use crate::model::{AdvisorInput, AdvisorOutput, Model, ModelMeta, NeuralError};
@@ -68,7 +69,47 @@ pub struct ReactivationDepthModel {
 }
 
 impl ReactivationDepthModel {
-    /// Создать модель с нулевыми весами (для тестирования pipeline).
+    /// Создать модель по конфигу из genome.yaml (нулевые веса).
+    /// Для загрузки обученных весов: вызвать `load_from_bin` с arch из конфига.
+    pub fn from_arch(arch: &ReactivationDepthArch) -> Self {
+        let ch1 = arch.conv1_channels;
+        let ch2 = arch.conv2_channels;
+        let k2 = arch.conv2_kernel;
+        let fc1 = arch.fc1_size;
+
+        let conv1 = Conv1D::new(N_SUBSYSTEMS, ch1, 3, 1);
+        let conv2 = Conv1D::new(ch1, ch2, k2, 1);
+        let fc1_layer = Linear::new(ch2, fc1);
+        let fc_value = Linear::new(fc1, 8);
+        let fc_conf = Linear::new(fc1, 1);
+
+        let conv1_len = conv1.out_len(FFT_FEATURES_PER_SUB);
+        let conv2_len = conv2.out_len(conv1_len);
+        let param_count = conv1.param_count() + conv2.param_count()
+            + fc1_layer.param_count() + fc_value.param_count() + fc_conf.param_count();
+
+        let meta = ModelMeta {
+            name: "reactivation_depth".to_string(),
+            version: 1,
+            input_size: INPUT_SIZE,
+            output_size: 8,
+            param_count,
+        };
+
+        Self {
+            activity_fft: ActivityFft::new(),
+            fft_buf: vec![0.0; INPUT_SIZE],
+            conv1_out: Array2::zeros((ch1, conv1_len)),
+            conv2_out: Array2::zeros((ch2, conv2_len)),
+            gap_out: Array1::zeros(ch2),
+            fc1_out: Array1::zeros(fc1),
+            value_out: Array1::zeros(8),
+            conf_out: Array1::zeros(1),
+            weights: Weights { meta, conv1, conv2, fc1: fc1_layer, fc_value, fc_conf },
+        }
+    }
+
+    /// Создать модель с нулевыми весами и дефолтной архитектурой (для тестов).
     pub fn new_zeros() -> Self {
         let conv1 = Conv1D::new(N_SUBSYSTEMS, CH1, 3, 1);
         let conv2 = Conv1D::new(CH1, CH2, 5, 1);

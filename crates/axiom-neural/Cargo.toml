@@ -9,7 +9,8 @@ description = "Tiny neural models for AXIOM NeuralAdvisor — pure Rust inferenc
 [dependencies]
 rustfft  = "6"
 ndarray  = { version = "0.16", default-features = false, features = ["std", "serde"] }
-bincode  = { workspace = true }
-serde    = { workspace = true }
+bincode    = { workspace = true }
+serde      = { workspace = true }
+serde_yaml = { workspace = true }
 
 # Явно НЕТ: fftw, blas, openblas-src, ndarray-linalg, candle, burn, tract, onnx
