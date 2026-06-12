@@ -69,9 +69,12 @@ impl std::fmt::Display for NeuralError {
 }
 
 /// Трейт для любой нейронной модели советника.
-pub trait Model: Send + Sync {
-    /// Инференс. НЕТ alloc — все буферы предвыделены при load_from_bin().
-    fn infer(&self, input: &AdvisorInput) -> Result<AdvisorOutput, NeuralError>;
+///
+/// `infer` принимает `&mut self` — использует предвыделённые scratch-буферы.
+/// Caller (NeuralAdvisor) владеет моделью эксклюзивно на t%11.
+pub trait Model: Send {
+    /// Инференс. НЕТ alloc — все scratch-буферы предвыделены при load_from_bin().
+    fn infer(&mut self, input: &AdvisorInput) -> Result<AdvisorOutput, NeuralError>;
 
     /// Загрузить модель из бинарного файла весов.
     fn load_from_bin(path: &Path) -> Result<Self, NeuralError> where Self: Sized;

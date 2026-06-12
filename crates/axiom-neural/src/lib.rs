@@ -12,8 +12,11 @@ pub mod fft;
 pub mod layers;
 pub mod model;
 pub mod normalize;
+pub mod reactivation_depth;
 pub mod weights;
 
 pub use calibration::ConfidenceCalibrator;
-pub use fft::FftFrontend;
-pub use model::{AdvisorInput, AdvisorOutput, Model, NeuralError};
+pub use fft::{ActivityFft, FftFrontend};
+pub use model::{AdvisorInput, AdvisorOutput, Model, ModelMeta, NeuralError};
+pub use normalize::{minmax_inplace, zscore_inplace};
+pub use reactivation_depth::ReactivationDepthModel;
