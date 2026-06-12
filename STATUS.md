@@ -1,13 +1,18 @@
 # AXIOM Status
 
-**Обновлено:** 2026-06-11
+**Обновлено:** 2026-06-12
 **Правила разработки:** [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
 
 ---
 
 ## Текущее состояние
 
-**1514 тестов (all features), 0 failures**
+**1536 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
+
+Neural Integration Этап 1 ✅ (2026-06-12): axiom-neural крейт + ReactivationDepthModel (1D-CNN, 13K params,
+  pure Rust: rustfft+ndarray) + training_data.jsonl в OBS (каждые 200 тиков) + NeuralReactivationDepthAdvisor
+  (mode=Rule/Neural, 1ms timeout, fallback) + Neural Depth Advisor панель в Workstation.
+  Режим по умолчанию: Rule. Neural mode ждёт обучения (NEURAL-TD-01/02 в DEFERRED).
 
 OBS-ACC-02 ✅ (2026-06-11): регрессия anchor-детекции logic_deductive/morality_duty → 100%.
   Причина: OBS-ACC-01 переименовал теги meta→abstractions, создав ничьи через общие алиасы.
@@ -420,7 +425,8 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-ucl | 9 | UCL commands |
 | axiom-domain | 126 | Domain, DomainState, AshtiCore, CausalHorizon, FractalChain, Speculative Layer (S6) |
 | axiom-experience | 50 | AxialStore, SutraDepthStore, InterpretationProfileStore, EmergentPrimitiveStore, MetaStore; FatigueStore + SubsystemFatigue (V7-B2); ModalityStore + Modality (Text/Vision/Internal); Octant (8), SubsystemId (+Morality/Abstractions/Dilemmas), EvaluationLevel |
-| axiom-runtime | 656 (676 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, NeuralAdvisor V3.0, OverDomainArbiter V3.0, **Sensorium V2.0**, **Waves V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, TickSchedule (+subsystem_gravity_interval=500), **SubsystemGravityRule** (PRIM-TD-03); **SEN-TD-01**: BroadcastSnapshot удалён, last_dream_summary pub, SensoriumState единственный runtime-пульс; broadcast.rs: LastDreamSummary+DomainDetailSnapshot+TokenSnapshot+ConnectionSnapshot; subsystem_gravity.rs; inject_anchor_tokens → set_shell_registry (Shell-TD-02) |
+| axiom-neural | 26 | Neural Integration Этап 1: ReactivationDepthModel (1D-CNN Conv1D(9→32,k=3)→Conv1D(32→64,k=5)→GAP→Linear(64→32)→Linear(32→8/1), INPUT_SIZE=1539, ~13K params); FftFrontend (rustfft, static scratch); ConfidenceCalibrator; AdvisorMode {Rule, Neural}; ReactivationDepthConfig from_arch(); load/save .bin (bincode); нет alloc в infer() |
+| axiom-runtime | 665 (684 features adapters) | AxiomEngine, Guardian, Over-Domain Layer (FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7, **NeuralAdvisor V3.0** + NeuralReactivationDepthAdvisor (mode=Rule/Neural, 1ms timeout, fallback), OverDomainArbiter V3.0, **Sensorium V2.0**, **Waves V1.0**), DREAM Phase V1.1, Gateway, Channel, EventBus, TickSchedule (+subsystem_gravity_interval=500), **SubsystemGravityRule** (PRIM-TD-03); **SEN-TD-01**: BroadcastSnapshot удалён, last_dream_summary pub, SensoriumState единственный runtime-пульс; broadcast.rs: LastDreamSummary+DomainDetailSnapshot+TokenSnapshot+ConnectionSnapshot; subsystem_gravity.rs; inject_anchor_tokens → set_shell_registry (Shell-TD-02) |
 | axiom-agent | 164 (187 telegram,opensearch) | TextPerceptor (2-path detect_subsystem + perceive_and_bond→SEMANTIC_ANCHOR_BOND=0x0B01; text_stable_id 0x4000_0001+; anchor_sutra_id mirror); AnchorMatchTable: domain+layer якоря в id_to_position (P4b); L0VisionPerceptor (V7-E2); MessageEffector, CliChannel + CLI Extended V1.0 + Anchor commands; tick_loop (CliState, adaptive sleep, ConfigWatcher, domain hot-reload, RunBench), AdapterCommand, ServerMessage; External Adapters Phase 0–5; Telegram (feature), OpenSearch (feature) |
 | axiom-persist | 37 | MemoryWriter, MemoryLoader, MemoryManifest, AutoSaver, exchange (bincode); ARB-TD-05 TrustConfig calibration roundtrip; ARB-TD-06 CognitiveProfile octant_weights roundtrip |
 | axiom-protocol | 41 | EngineCommand(15)/Event/Message, SystemSnapshot+TokenFieldPoint, ConfigSchema, BenchSpec, AdapterInfo, FrameWeaverStats(syntactic_layer_activations); postcard round-trip; WS-5: +PerfSnapshot, TraceSnapshot, TensionTraceSnapshot, ReflectorSnapshot, CognitiveDepthSnapshot, ImpulsesSnapshot; SystemSnapshot: +perf/traces/tension/reflector/cognitive_depth/impulses/skills_count |
@@ -432,7 +438,8 @@ Performance & Tooling Sprint ✅ (2026-05-29):
 | axiom-corpus | 4 | Corpus loader: 8 текстовых корпусов для OBS-прогонов |
 | tools/axiom-dashboard | 6 | egui/eframe Desktop GUI — Status, Space View, Domain List, Input panels |
 | tools/axiom-tray | 6 | Системный трей (ksni): StatusNotifierItem, poll /metrics каждые 2s, Start/Stop axiom-node, Open Workstation |
-| **Итого** | **1514** (all features) | |
+| axiom-observe | — | ObsRunner, OBS-01: автоматизация прогонов, MetricsCollector, report.md; **training_data.jsonl** (каждые 200 тиков: one-hot кольца × 9 подсистем + teacher reactivation_weights[8]) |
+| **Итого** | **1536** (all features) + TEST-TD-01 (DEFERRED) | |
 
 ---
 

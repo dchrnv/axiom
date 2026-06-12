@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.5  
-**Дата:** 2026-06-11
+**Версия:** 3.6  
+**Дата:** 2026-06-12
 
 ---
 
@@ -30,6 +30,7 @@ Axiom/
 │   ├── axiom-protocol/    # UCL protocol: адаптеры, bench-команды, низкоуровневые типы
 │   ├── axiom-experience/  # FatigueStore, SubsystemFatigue — семантические хранилища
 │   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, BroadcastHandle
+│   ├── axiom-neural/      # Neural Integration Этап 1: ReactivationDepthModel, FftFrontend, ConfidenceCalibrator
 
 │   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors (TextPerceptor, L0VisionPerceptor)
 │   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
@@ -122,7 +123,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1514 тестов (all features: --features telegram,opensearch,serde,adapters)
+cargo test --workspace          # 1536 тестов (all features: --features telegram,opensearch,serde,adapters)
 cargo build --release
 
 # Запуск одной командой
@@ -168,6 +169,7 @@ just run-grafana
 - **README.md — только по явному запросу** пользователя, даже если данные устарели
 - **[INVARIANTS.md](INVARIANTS.md) — абсолютный закон.** Все размеры структур, типы полей, константы флагов, адреса доменов и архитектурные запреты зафиксированы там. Нарушение любого HARD-значения из этого файла недопустимо. При изменении базовых структур — сначала обновить INVARIANTS.md, потом код.
 - **ВСЕГДА обновлять docs/BLUEPRINT.md** при добавлении crates, изменении публичного API, новых полях структур, изменении числа тестов
+- **ВСЕГДА обновлять [docs/architecture/AXIOM_Technical_Diagram.svg](docs/architecture/AXIOM_Technical_Diagram.svg)** при добавлении/удалении компонентов Over-Domain Layer, новых перцепторов, новых хранилищ в axiom-experience, смене статуса компонента (◇→◐→●), добавлении крейтов
 - **ВСЕГДА проверять синхронность** `Genome::default_ashti_core()` ↔ `config/genome.yaml`
 - **Нет wall-clock в ядре** — проверять при любом изменении core/domain/runtime
 - **Нет unsafe** — `#![deny(unsafe_code)]` во всех crates ядра
@@ -181,6 +183,7 @@ just run-grafana
 - [ ] DEFERRED.md пополнен (если остались заглушки)
 - [ ] [INVARIANTS.md](INVARIANTS.md) обновлён (если изменились размеры структур, типы, константы)
 - [ ] docs/BLUEPRINT.md обновлён (если изменились crates, API, структуры, тесты)
+- [ ] [docs/architecture/AXIOM_Technical_Diagram.svg](docs/architecture/AXIOM_Technical_Diagram.svg) обновлён (если добавились компоненты, сменился статус ◇/◐/●)
 - [ ] Коммит создан и запушен
 
 ---
@@ -210,6 +213,17 @@ just run-grafana
 - Плотный технический контекст для AI-ассистента — не документация для людей
 - Обновлять при: добавлении/удалении crates, изменении публичного API, новых полях Token/Connection, изменении числа тестов, новых модулях Engine
 - Формат: карта crates + ключевые структуры + API + константы — максимально плотно
+
+### docs/architecture/AXIOM_Technical_Diagram.svg
+- Визуальная схема: data-flow, компоненты, хранилища, пути мутации
+- Статусы: `●` реализовано · `◐` частично · `◇` только спека
+- Обновлять при:
+  - добавлении/удалении компонентов Over-Domain Layer (Weaver, советник)
+  - новых перцепторах (TextPerceptor, AudioPerceptor, ...)
+  - новых хранилищах в axiom-experience
+  - смене статуса компонента (◇→◐→●)
+  - добавлении новых крейтов в архитектуру
+- Формат SVG: viewBox="0 0 1820 1280", легенда стрелок в `<defs>`, секции с комментариями-разделителями
 
 ---
 

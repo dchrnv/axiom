@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-06-11  
-**Тесты:** 1514, 0 failures
+**Обновлено:** 2026-06-12  
+**Тесты:** 1536, TEST-TD-01 (DEFERRED)
 
 ---
 
@@ -49,7 +49,9 @@ axiom-runtime    — AxiomEngine, Guardian, Gateway, Channel, EventBus, TickSche
                    ConnectionSnapshot (BroadcastSnapshot удалён SEN-TD-01);
                    Over-Domain Layer: OverDomainComponent, Weaver traits,
                    FrameWeaver V1.3, AxialEvaluator V3.0, ContextRecognizer V6.0+V7,
-                   NeuralAdvisor V3.0, OverDomainArbiter V3.0,
+                   NeuralAdvisor V3.0 + NeuralReactivationDepthAdvisor (mode=Rule/Neural,
+                     update_from_trace() t%11, INFER_TIMEOUT_NS=1ms, fallback на cached_weights[8]),
+                   OverDomainArbiter V3.0,
                    Waves V1.0, Sensorium V2.0 (SensoriumState: Serialize, все поля runtime-пульса)
 axiom-protocol   — EngineCommand (15 variants), EngineEvent (+ CrossModalBondProposed),
                    EngineState, SystemSnapshot, DomainSnapshot, TokenFieldPoint,
@@ -61,6 +63,14 @@ axiom-broadcasting — BroadcastHandle (sensorium_live, update_sensorium(), late
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>>
+axiom-neural     — Neural Integration Этап 1 (26 тестов);
+                   ReactivationDepthModel: Conv1D(9→32,k=3)→Conv1D(32→64,k=5)→GAP→
+                   Linear(64→32)→Linear(32→8)+Linear(32→1)+Sigmoid;
+                   INPUT_SIZE=9×171=1539 (FFT: short9+mid33+long129=171/sub);
+                   ~13K params; from_arch(cfg) из genome.yaml; load/save_to_bin (bincode);
+                   нет alloc в infer(); AdvisorMode {Rule, Neural};
+                   ConfidenceCalibrator (реализован, не подключён — NEURAL-TD-03);
+                   NEURAL-TD-02: мисматч training(3024) vs INPUT_SIZE(1539) блокирует Neural mode
 axiom-agent      — TextPerceptor (2-path detect_subsystem + perceive_and_bond),
                    text_stable_id (0x4000_0001+, бит 30);
                    L0VisionPerceptor (V7-E2): vision_anchor_stable_id (0x2000_0001+, бит 29);
@@ -79,7 +89,10 @@ axiom-node       — самостоятельный бинарный узел: t
                    ServeDir(web_dist) для Workstation V2 SPA;
                    NodeCmd channel: unbounded mpsc, HTTP handlers → tick loop;
                    CMB-TD-03: после apply_dream_depth_update публикует CrossModalBondProposed
-axiom-observe    — автоматизация OBS-01: Corpus, ObsRunner, TickSnapshot V6, report.md
+axiom-observe    — автоматизация OBS-01: Corpus, ObsRunner, TickSnapshot V6, report.md;
+                   training_data.jsonl: каждые TRAINING_SAMPLE_EVERY=200 тиков →
+                   TrainingExample {tick, short[144], mid[576], long[2304],
+                   reactivation_weights[8], teacher_confidence, meta}
 tools/axiom-web  — React 18 SPA (Vite + Zustand): 8 табов (Overview/Domains/Traces/
                    Internals/Conversation/Phase C/Patterns/Lab);
                    AdvisoryQueue confirm/reject, SVG sparklines, domain grid

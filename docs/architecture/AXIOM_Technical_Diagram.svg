@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1820 1280" font-family="'SF Mono','JetBrains Mono','Consolas',monospace">
 <!-- =========================================================
      AXIOM — ТЕХНИЧЕСКАЯ СХЕМА (data-flow + компоненты + stores)
-     Обновлено по BLUEPRINT 2026-05-28 (тесты 1631).
+     Обновлено по BLUEPRINT 2026-06-12 (тесты 1536).
      Легенда стрелок:
         сплошная серая  → поток данных / tick pipeline
         синяя           → READ (чтение состояния)
@@ -21,7 +21,7 @@
 
 <!-- ===== TITLE + LEGEND ===== -->
 <text x="40" y="44" font-size="26" font-weight="700" fill="#2C2C30" font-family="-apple-system,system-ui,sans-serif">AXIOM — техническая схема</text>
-<text x="40" y="64" font-size="12" fill="#9A9488" font-family="-apple-system,system-ui,sans-serif">data-flow · компоненты · хранилища · пути мутации · тики · BLUEPRINT 2026-06-06 · тесты 1721</text>
+<text x="40" y="64" font-size="12" fill="#9A9488" font-family="-apple-system,system-ui,sans-serif">data-flow · компоненты · хранилища · пути мутации · тики · BLUEPRINT 2026-06-12 · тесты 1536</text>
 <g font-size="11.5" fill="#4A4A50" font-family="-apple-system,system-ui,sans-serif">
   <line x1="1180" y1="34" x2="1212" y2="34" stroke="#8A8A90" stroke-width="2" marker-end="url(#g)"/><text x="1218" y="38">поток/tick</text>
   <line x1="1300" y1="34" x2="1332" y2="34" stroke="#5E8AA8" stroke-width="2" marker-end="url(#b)"/><text x="1338" y="38">read</text>
@@ -225,10 +225,11 @@
 
   <rect x="720" y="700" width="206" height="92" rx="9" fill="#FAFAF8" stroke="#9A9AA2" stroke-width="1.8"/>
   <text x="736" y="722" fill="#2C2C30" font-weight="600" font-size="12">NeuralAdvisor V3 ●</text>
-  <text x="736" y="740" fill="#6E6E74" font-size="10">advisory-only · 5 трейтов</text>
-  <text x="736" y="754" fill="#6E6E74" font-size="10">EmergentDetector · Resolver</text>
-  <text x="736" y="770" fill="#9A9488" font-size="9.5">→ NotifyEmergentCandidate</text>
-  <text x="736" y="784" fill="#9A9488" font-size="9.5">tick=11 · ModuleId=19</text>
+  <text x="736" y="737" fill="#6E6E74" font-size="10">advisory-only · 5 трейтов</text>
+  <text x="736" y="750" fill="#6E6E74" font-size="10">NeuralReactivationDepth ◐</text>
+  <text x="736" y="763" fill="#6E6E74" font-size="10">mode=Rule/Neural · 1ms timeout</text>
+  <text x="736" y="776" fill="#9A9488" font-size="9.5">axiom-neural · tick=11 · ModuleId=19</text>
+  <text x="736" y="788" fill="#9A9488" font-size="9.5">◐ Neural mode ждёт обучения</text>
 
   <rect x="40" y="804" width="280" height="80" rx="9" fill="#FAFAF8" stroke="#9080A8" stroke-width="1.8"/>
   <text x="56" y="826" fill="#2C2C30" font-weight="600" font-size="12">OverDomainArbiter V3 ●</text>
@@ -321,9 +322,10 @@
   <text x="248" y="1064" fill="#2C2C30" font-weight="600">Companion ◇</text>
   <text x="248" y="1082" fill="#6E6E74" font-size="10">лампа-баннер · голос</text>
 
-  <rect x="424" y="1042" width="180" height="56" rx="9" fill="#FAFAF8" stroke="#9A9AA2" stroke-width="1.5"/>
-  <text x="440" y="1064" fill="#2C2C30" font-weight="600">Neural (внутр.) ◇</text>
-  <text x="440" y="1082" fill="#6E6E74" font-size="10">читает срез как вход</text>
+  <rect x="424" y="1042" width="180" height="56" rx="9" fill="#F4F3EF" stroke="#9A9AA2" stroke-width="1.5"/>
+  <text x="440" y="1058" fill="#2C2C30" font-weight="600">axiom-neural ◐</text>
+  <text x="440" y="1073" fill="#6E6E74" font-size="10">ReactivationDepthModel</text>
+  <text x="440" y="1086" fill="#9A9488" font-size="9.5">◐ ждёт обучения (NEURAL-TD-01)</text>
 
   <rect x="616" y="1042" width="180" height="56" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
   <text x="632" y="1064" fill="#2C2C30" font-weight="600">tray · grafana · cli</text>
