@@ -85,7 +85,7 @@ axiom-bench      — Criterion benchmarks
 axiom-node       — самостоятельный бинарный узел: tick loop, BroadcastServer :9876,
                    SIGINT/SIGTERM shutdown, axiom.yaml + persistence;
                    HTTP-сервер (axum): GET /api/ws (WS JSON bridge), POST /api/text/submit,
-                   POST /api/advisory/confirm|reject/{id}, GET /metrics (Prometheus text);
+                   GET /api/status, POST /api/advisory/confirm|reject/{id}, 
                    ServeDir(web_dist) для Workstation V2 SPA;
                    NodeCmd channel: unbounded mpsc, HTTP handlers → tick loop;
                    CMB-TD-03: после apply_dream_depth_update публикует CrossModalBondProposed
@@ -96,9 +96,9 @@ axiom-observe    — автоматизация OBS-01: Corpus, ObsRunner, TickS
 tools/axiom-web  — React 18 SPA (Vite + Zustand): 8 табов (Overview/Domains/Traces/
                    Internals/Conversation/Phase C/Patterns/Lab);
                    AdvisoryQueue confirm/reject, SVG sparklines, domain grid
-tools/grafana    — docker-compose: Grafana :3000 + Prometheus :9090; 3 дашборда
+
 tools/axiom-dashboard — egui/eframe desktop GUI (legacy)
-tools/axiom-tray — системный трей (ksni): StatusNotifierItem, poll /metrics, Start/Stop
+tools/axiom-tray — системный трей (ksni): StatusNotifierItem, poll /api/status, Start/Stop
 ```
 
 ---

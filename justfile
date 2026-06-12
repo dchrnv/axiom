@@ -13,10 +13,6 @@ dev:
 run-build:
     ./run.sh --build
 
-# Запуск с Grafana + Prometheus
-run-grafana:
-    ./run.sh --grafana
-
 # Полная проверка workspace
 check:
     cargo test --workspace

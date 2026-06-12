@@ -36,16 +36,13 @@ Axiom/
 │   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
 │   ├── axiom-observe/     # ObsRunner, OBS-01: автоматизация прогонов, MetricsCollector, report.md
 │   ├── axiom-bench/       # Criterion бенчмарки
-│   └── axiom-node/        # HTTP-сервер: WS JSON bridge, advisory REST, /metrics, ServeDir
+│   └── axiom-node/        # HTTP-сервер: WS JSON bridge, advisory REST, /api/status, ServeDir
 ├── tools/
 │   ├── axiom-dashboard/   # egui/eframe GUI (legacy)
-│   ├── axiom-tray/        # Системный трей (ksni): poll /metrics, Start/Stop axiom-node
+│   ├── axiom-tray/        # Системный трей (ksni): poll /api/status, Start/Stop axiom-node
 │   ├── axiom-web/         # Workstation V2: React 18 SPA (Vite + Zustand)
 │   │   ├── src/           # App, components, store, ws/
 │   │   └── vite.config.ts # proxy /api → axiom-node (dev), outDir=dist
-│   └── grafana/           # Мониторинг: Grafana + Prometheus
-│       ├── docker-compose.yml
-│       └── provisioning/  # дашборды + datasource
 ├── config/
 │   ├── genome.yaml        # Конституция системы (должна совпадать с Genome::default_ashti_core())
 │   ├── axiom.yaml         # Основная конфигурация
@@ -123,7 +120,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1536 тестов (all features: --features telegram,opensearch,serde,adapters)
+cargo test --workspace          # 1538 тестов (all features: --features telegram,opensearch,serde,adapters)
 cargo build --release
 
 # Запуск одной командой
@@ -139,10 +136,6 @@ cargo run -p axiom-node --release
 cd tools/axiom-web && npm install && npm run dev
 # → http://localhost:5173  (proxy /api → :8080)
 
-# Grafana мониторинг (опционально)
-just run-grafana
-# или: cd tools/grafana && docker compose up -d
-# → http://localhost:3000
 ```
 
 Полный гайд: [QUICKSTART.md](../QUICKSTART.md)

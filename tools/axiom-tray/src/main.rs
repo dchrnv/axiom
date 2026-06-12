@@ -183,41 +183,38 @@ impl Tray for AxiomTray {
     }
 }
 
-// ── Metrics polling ───────────────────────────────────────────────────────────
+// ── Status polling ────────────────────────────────────────────────────────────
 
 fn poll(port: u16) -> Option<(u64, DreamState)> {
-    let url = format!("http://127.0.0.1:{port}/metrics");
+    let url = format!("http://127.0.0.1:{port}/api/status");
     let body = ureq::get(&url)
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
         .call()
         .ok()?
         .into_string()
         .ok()?;
-    parse_metrics(&body)
+    parse_status(&body)
 }
 
-fn parse_metrics(body: &str) -> Option<(u64, DreamState)> {
-    let mut tick = 0u64;
-    let mut dream = DreamState::Wake;
-    let mut found = false;
-    for line in body.lines() {
-        if let Some(val) = line.strip_prefix("engine_tick_total ") {
-            tick = val.trim().parse().unwrap_or(0);
-            found = true;
-        }
-        if line.starts_with("engine_state{") {
-            dream = if line.contains("state=\"dreaming\"") {
-                DreamState::Dreaming
-            } else if line.contains("state=\"falling_asleep\"") {
-                DreamState::FallingAsleep
-            } else if line.contains("state=\"waking\"") {
-                DreamState::Waking
-            } else {
-                DreamState::Wake
-            };
-        }
-    }
-    found.then_some((tick, dream))
+fn parse_status(body: &str) -> Option<(u64, DreamState)> {
+    // {"tick":1234,"dream_phase":"wake"}
+    let tick = body
+        .split("\"tick\":")
+        .nth(1)?
+        .split([',', '}']).next()?
+        .trim()
+        .parse::<u64>()
+        .ok()?;
+    let dream = if body.contains("\"dreaming\"") {
+        DreamState::Dreaming
+    } else if body.contains("\"falling_asleep\"") {
+        DreamState::FallingAsleep
+    } else if body.contains("\"waking\"") {
+        DreamState::Waking
+    } else {
+        DreamState::Wake
+    };
+    Some((tick, dream))
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
@@ -260,47 +257,44 @@ fn main() {
 mod tests {
     use super::*;
 
-    fn metrics_sample(tick: u64, state: &str) -> String {
-        format!(
-            "# Engine\nengine_tick_total {tick}\nengine_state{{state=\"{state}\"}} 1\n"
-        )
+    fn status_json(tick: u64, phase: &str) -> String {
+        format!("{{\"tick\":{tick},\"dream_phase\":\"{phase}\"}}")
     }
 
     #[test]
     fn test_parse_wake() {
-        let (tick, dream) = parse_metrics(&metrics_sample(42, "wake")).unwrap();
+        let (tick, dream) = parse_status(&status_json(42, "wake")).unwrap();
         assert_eq!(tick, 42);
         assert_eq!(dream, DreamState::Wake);
     }
 
     #[test]
     fn test_parse_dreaming() {
-        let (tick, dream) = parse_metrics(&metrics_sample(1000, "dreaming")).unwrap();
+        let (tick, dream) = parse_status(&status_json(1000, "dreaming")).unwrap();
         assert_eq!(tick, 1000);
         assert_eq!(dream, DreamState::Dreaming);
     }
 
     #[test]
     fn test_parse_falling_asleep() {
-        let (_, dream) = parse_metrics(&metrics_sample(0, "falling_asleep")).unwrap();
+        let (_, dream) = parse_status(&status_json(0, "falling_asleep")).unwrap();
         assert_eq!(dream, DreamState::FallingAsleep);
     }
 
     #[test]
     fn test_parse_waking() {
-        let (_, dream) = parse_metrics(&metrics_sample(0, "waking")).unwrap();
+        let (_, dream) = parse_status(&status_json(0, "waking")).unwrap();
         assert_eq!(dream, DreamState::Waking);
     }
 
     #[test]
     fn test_parse_empty_returns_none() {
-        assert!(parse_metrics("# no data").is_none());
+        assert!(parse_status("{}").is_none());
     }
 
     #[test]
-    fn test_parse_missing_state_defaults_wake() {
-        let body = "engine_tick_total 99\n";
-        let (tick, dream) = parse_metrics(body).unwrap();
+    fn test_parse_tick_zero_wake() {
+        let (tick, dream) = parse_status(&status_json(99, "wake")).unwrap();
         assert_eq!(tick, 99);
         assert_eq!(dream, DreamState::Wake);
     }

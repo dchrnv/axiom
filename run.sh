@@ -4,7 +4,6 @@
 #   ./run.sh           production: axiom-node раздаёт dist/ на :8080
 #   ./run.sh --dev     dev:        axiom-node :8080 + npm run dev :5173
 #   ./run.sh --build   принудительная пересборка перед запуском
-#   ./run.sh --grafana запустить Grafana + Prometheus (docker compose)
 
 set -euo pipefail
 
@@ -14,13 +13,11 @@ export NVM_DIR="${NVM_DIR:-$HOME/.var/app/com.vscodium.codium/config/nvm}"
 
 DEV=0
 BUILD=0
-GRAFANA=0
 
 for arg in "$@"; do
     case $arg in
         --dev)     DEV=1 ;;
         --build)   BUILD=1 ;;
-        --grafana) GRAFANA=1 ;;
     esac
 done
 
@@ -47,20 +44,6 @@ fi
 if [[ $BUILD -eq 1 || ! -f "$BIN_NODE" ]]; then
     echo "[axiom] building axiom-node..."
     cargo build -p axiom-node --release
-fi
-
-# ── Grafana (опционально) ───────────────────────────────────────────────────
-if [[ $GRAFANA -eq 1 ]]; then
-    if ! command -v docker &>/dev/null; then
-        echo "[axiom] error: docker not found — install Docker to use --grafana"
-        echo "[axiom]   sudo pacman -S docker"
-        echo "[axiom]   sudo systemctl enable --now docker"
-        echo "[axiom]   sudo usermod -aG docker \$USER  # затем перелогиниться"
-        exit 1
-    fi
-    echo "[axiom] starting Grafana + Prometheus..."
-    (cd tools/grafana && docker compose up -d)
-    echo "[axiom] → Grafana: http://localhost:3000"
 fi
 
 # ── dev режим ───────────────────────────────────────────────────────────────
