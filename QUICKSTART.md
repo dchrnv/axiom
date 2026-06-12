@@ -438,6 +438,49 @@ engine.process_and_observe(&cmd);
 
 ---
 
+## axiom-neural (Neural Integration)
+
+Малые нейронные сети которые заменяют rule-based советников NeuralAdvisor.
+Пилот: `ReactivationDepthModel` — смотрит на ритмы активности подсистем, предсказывает какие октанты нуждаются в реактивации.
+
+**Важно:** нейронка смотрит не на токены, а на **временны́е ряды активности подсистем** (ActivityTrace rings short=16/mid=64/long=256). Это паттерны второго порядка. Отдельный токен ей ничего не скажет.
+
+### Режим работы (genome.yaml)
+
+```yaml
+neural_advisor:
+  depth:
+    mode: rule          # rule = старые правила (безопасный дефолт)
+    weights_path: models/reactivation_depth.bin
+    arch:
+      conv1_channels: 32
+      conv2_channels: 64
+      conv2_kernel: 5
+      fc1_size: 32
+```
+
+Сменить на `mode: neural` — подключить нейронку. Без обученного `.bin` нет смысла.
+
+### Обучение модели
+
+Полный гайд: [docs/guides/Neural_Training_Guide.md](docs/guides/Neural_Training_Guide.md)
+
+Кратко:
+1. Запустить OBS — он автоматически сохраняет Sensorium-срезы + ответы rule-based советника в `obs_out/training_data.jsonl`
+2. Обучить Python/PyTorch модель (зеркальная архитектура)
+3. Экспортировать веса в `models/reactivation_depth.bin` через `axiom-neural-convert`
+4. Переключить `mode: neural` в genome.yaml
+
+### Охранная цифра
+
+Inference модели работает раз в 11 тиков и занимает << 1ms. Hot path (TickForward = 24.8 µs) не должен вырасти после подключения. Проверка:
+
+```bash
+cargo bench -p axiom-bench --bench engine_bench
+```
+
+---
+
 ## axiom-observe (OBS)
 
 Автоматический прогон корпуса текстов через движок — измеряет точность распознавания подсистем, собирает снапшоты состояния, генерирует отчёт.
