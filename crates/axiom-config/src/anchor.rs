@@ -411,14 +411,11 @@ impl AnchorSet {
         Ok((result, versions))
     }
 
-    fn load_axes(anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
-        let path = anchors_dir.join("axes.yaml");
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let content = std::fs::read_to_string(&path).map_err(ConfigError::IoError)?;
-        let file: AxesFile = serde_yaml::from_str(&content).map_err(ConfigError::ParseError)?;
-        Ok(file.axes)
+    fn load_axes(_anchors_dir: &Path) -> Result<Vec<Anchor>, ConfigError> {
+        // R3 (REPAIR-01): axes.yaml переформатирован в словарь параметрических шкал.
+        // Осевые токены больше не инжектируются в SUTRA.
+        // Природа токена (Аполлон/Дионис и т.д.) вычисляется только из подписи (N2).
+        Ok(Vec::new())
     }
 
     fn parse_layer(path: &Path) -> Result<Vec<Anchor>, ConfigError> {
@@ -842,8 +839,8 @@ mod tests {
         assert_eq!(s.octants.len(), 8, "octants");
         // semantic_centers.yaml → 10 anchors
         assert_eq!(s.semantic_centers.len(), 10, "semantic centers");
-        // all axes loaded
-        assert_eq!(s.axes.len(), 6, "axes");
+        // R3: axes.yaml переформатирован в словарь шкал, якоря не загружаются
+        assert_eq!(s.axes.len(), 0, "axes (R3: empty, no longer injected)");
         // perceptual/: visual(8); spatial(8) и causal(6) перенесены в schema/link_types/
         assert_eq!(s.perceptual.len(), 8, "perceptual L0 anchors");
         // perceptual NOT in subsystems

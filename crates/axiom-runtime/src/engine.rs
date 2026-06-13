@@ -1863,11 +1863,10 @@ impl AxiomEngine {
     pub fn inject_anchor_tokens(&mut self, anchor_set: &axiom_config::AnchorSet) -> usize {
         let mut injected = 0usize;
 
-        // 1. Оси + слоевые якоря → SUTRA(100)
+        // 1. Слоевые якоря → SUTRA(100). Осевые якоря не инжектируются (R3/N2).
         let sutra_id: u16 = self.ashti.level_id() * 100;
-        let axis_iter = anchor_set.axes.iter();
         let layer_iter = anchor_set.layers.iter().flatten();
-        for anchor in axis_iter.chain(layer_iter) {
+        for anchor in layer_iter {
             let event_id = self.next_event_id();
             let mut token = Token::new(event_id as u32, sutra_id, anchor.position, event_id);
             token.mass = 255;

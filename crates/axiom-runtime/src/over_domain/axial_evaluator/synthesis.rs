@@ -1,62 +1,79 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2026 Chernov Denys
 //
-// Синтетическое распознавание октанта — целостное, не аналитическое.
-// Источник: AxialEvaluator_V1_0.md §6 (Corpus Callosum)
+// Синтетическое распознавание октанта — через физическую подпись токена.
 //
-// В V1: синтетический октант аппроксимируется через центр масс позиций участников.
-// Позиция центра масс → какой угол пространства занимает Frame.
-// Отличается от аналитического октанта (через entropy/density/will метрики).
+// R2 (REPAIR-01 N2): октант ТОЛЬКО из mass/valence/temperature.
+// Позиция координат НИКОГДА не несёт природу токена (N1/N2).
+//
+// Аналитический путь (metrics.rs): entropy/density/will из активности.
+// Синтетический путь (этот файл): подпись (mass/valence/temp) участников Frame.
+// Corpus Callosum (mod.rs:184): сравнивает обе оценки — оба пути на подписи.
 
 use axiom_core::Token;
 use axiom_experience::{AxialScore, Octant};
 
-/// Синтезировать октант через целостное распознавание позиционного центра Frame.
+/// Синтезировать октант Frame через агрегат физических подписей участников.
 ///
-/// Аппроксимация: средняя позиция участников определяет "квадрант пространства".
-/// X > 0 → Apollo, X <= 0 → Dionysus (content anchors: X∈[0..32767] → near 0 = Dionysian)
-/// Y > threshold → Eros, Y <= threshold → Thanatos
-/// Z > threshold → Will, Z <= threshold → Nothing
+/// N2: природа — только из mass/valence/temperature.
 pub fn synthesize_octant(participants: &[Token], anchor: &Token) -> Octant {
     if participants.is_empty() {
-        // Only anchor — use anchor position directly
-        return octant_from_position(anchor.position);
+        return octant_from_signature(anchor);
     }
 
-    let n = participants.len() as f32;
-    let mean_x = participants.iter().map(|t| t.position[0] as f32).sum::<f32>() / n;
-    let mean_y = participants.iter().map(|t| t.position[1] as f32).sum::<f32>() / n;
-    let mean_z = participants.iter().map(|t| t.position[2] as f32).sum::<f32>() / n;
+    let all_count = participants.len() + 1;
+    let n = all_count as f32;
 
-    // Blend anchor position (weight 0.5) with participant centroid (weight 0.5)
-    let blended_x = (anchor.position[0] as f32 * 0.5 + mean_x * 0.5) as i16;
-    let blended_y = (anchor.position[1] as f32 * 0.5 + mean_y * 0.5) as i16;
-    let blended_z = (anchor.position[2] as f32 * 0.5 + mean_z * 0.5) as i16;
+    let mass_sum: f32 = std::iter::once(anchor)
+        .chain(participants.iter())
+        .map(|t| t.mass as f32)
+        .sum();
+    let valence_sum: f32 = std::iter::once(anchor)
+        .chain(participants.iter())
+        .map(|t| t.valence as f32)
+        .sum();
+    let temp_sum: f32 = std::iter::once(anchor)
+        .chain(participants.iter())
+        .map(|t| t.temperature as f32)
+        .sum();
 
-    octant_from_position([blended_x, blended_y, blended_z])
-}
-
-/// Производный октант из абсолютной позиции в семантическом пространстве.
-///
-/// Content anchors [0..32767]³: полюс оси — высокое значение.
-/// Axes (±30000) — исключение. Нейтральная точка ≈ 16383/2 = 8191.
-fn octant_from_position(pos: [i16; 3]) -> Octant {
-    let (x, y, z) = axis_scores_from_position(pos);
+    let (x, y, z) = axis_scores_from_components(mass_sum / n, valence_sum / n, temp_sum / n);
     Octant::from_scores(&x, &y, &z)
 }
 
-/// Вычислить axis scores из позиции токена в семантическом пространстве.
+fn octant_from_signature(token: &Token) -> Octant {
+    let (x, y, z) = axis_scores_from_signature(token);
+    Octant::from_scores(&x, &y, &z)
+}
+
+/// Вычислить axis scores из физической подписи токена.
 ///
-/// Используется как fallback когда нет участников Frame — позволяет избежать
-/// вырожденной маршрутизации (entropy=density=will=0 → всегда FormalDenying).
-/// Позиция вычислена TextPerceptor из якорных матчей, поэтому несёт семантику.
-pub fn axis_scores_from_position(pos: [i16; 3]) -> (AxialScore, AxialScore, AxialScore) {
-    let apollo   = (pos[0].max(0) as u32 * 255 / 32767) as u8;
-    let dionysus = ((-pos[0]).max(0) as u32 * 255 / 30000) as u8;
-    let eros     = (pos[1].max(0) as u32 * 255 / 32767) as u8;
-    let thanatos = ((-pos[1]).max(0) as u32 * 255 / 30000) as u8;
-    let will     = (pos[2].max(0) as u32 * 255 / 32767) as u8;
-    let nothing  = ((-pos[2]).max(0) as u32 * 255 / 30000) as u8;
+/// N2 mapping:
+///   mass (u8 0..255)     → Apollo (high) / Dionysus (low)
+///   valence (i8 -128..127) → Eros (positive) / Thanatos (negative)
+///   temperature (u8 0..255) → Will (high) / Nothing (low)
+pub fn axis_scores_from_signature(token: &Token) -> (AxialScore, AxialScore, AxialScore) {
+    axis_scores_from_components(
+        token.mass as f32,
+        token.valence as f32,
+        token.temperature as f32,
+    )
+}
+
+fn axis_scores_from_components(mass: f32, valence: f32, temp: f32) -> (AxialScore, AxialScore, AxialScore) {
+    let apollo   = mass.clamp(0.0, 255.0) as u8;
+    let dionysus = (255.0 - mass).clamp(0.0, 255.0) as u8;
+
+    let eros = if valence > 0.0 {
+        (valence * 2.0).clamp(0.0, 255.0) as u8
+    } else { 0 };
+    let thanatos = if valence < 0.0 {
+        ((-valence) * 2.0).clamp(0.0, 255.0) as u8
+    } else { 0 };
+
+    let will    = temp.clamp(0.0, 255.0) as u8;
+    let nothing = (255.0 - temp).clamp(0.0, 255.0) as u8;
+
     (
         AxialScore::new(apollo, dionysus),
         AxialScore::new(eros, thanatos),
@@ -68,29 +85,63 @@ pub fn axis_scores_from_position(pos: [i16; 3]) -> (AxialScore, AxialScore, Axia
 mod tests {
     use super::*;
 
-    fn tok(pos: [i16; 3]) -> Token {
-        Token::new(1, 100, pos, 0)
+    fn tok(mass: u8, valence: i8, temperature: u8) -> Token {
+        let mut t = Token::new(1, 100, [16000, 16000, 16000], 0);
+        t.mass = mass;
+        t.valence = valence;
+        t.temperature = temperature;
+        t
     }
 
     #[test]
-    fn test_high_x_y_z_is_creative_affirmation() {
-        let anchor = tok([30000, 30000, 30000]);
-        let octant = synthesize_octant(&[], &anchor);
-        assert_eq!(octant, Octant::CreativeAffirmation);
+    fn test_high_signature_is_creative_affirmation() {
+        let anchor = tok(220, 100, 220);
+        assert_eq!(synthesize_octant(&[], &anchor), Octant::CreativeAffirmation);
     }
 
     #[test]
-    fn test_low_xyz_is_self_destructive_apathic() {
-        let anchor = tok([100, 100, 100]);
-        let octant = synthesize_octant(&[], &anchor);
-        assert_eq!(octant, Octant::SelfDestructiveApathic);
+    fn test_low_signature_is_self_destructive_apathic() {
+        let anchor = tok(30, -80, 30);
+        assert_eq!(synthesize_octant(&[], &anchor), Octant::SelfDestructiveApathic);
     }
 
     #[test]
-    fn test_participants_blend_with_anchor() {
-        let anchor = tok([20000, 20000, 20000]);
-        let participants = vec![tok([20000, 20000, 20000])];
-        let octant = synthesize_octant(&participants, &anchor);
-        assert_eq!(octant, Octant::CreativeAffirmation);
+    fn test_participants_aggregate_signatures() {
+        let anchor = tok(200, 80, 200);
+        let p = tok(200, 80, 200);
+        assert_eq!(synthesize_octant(&[p], &anchor), Octant::CreativeAffirmation);
+    }
+
+    #[test]
+    fn test_mass_drives_apollo_dionysus() {
+        let high = tok(255, 0, 128);
+        let (x, _, _) = axis_scores_from_signature(&high);
+        assert!(x.dominant.is_positive(), "high mass → Apollo");
+
+        let low = tok(0, 0, 128);
+        let (x, _, _) = axis_scores_from_signature(&low);
+        assert!(!x.dominant.is_positive(), "low mass → Dionysus");
+    }
+
+    #[test]
+    fn test_valence_drives_eros_thanatos() {
+        let pos = tok(128, 100, 128);
+        let (_, y, _) = axis_scores_from_signature(&pos);
+        assert!(y.dominant.is_positive(), "positive valence → Eros");
+
+        let neg = tok(128, -100, 128);
+        let (_, y, _) = axis_scores_from_signature(&neg);
+        assert!(!y.dominant.is_positive(), "negative valence → Thanatos");
+    }
+
+    #[test]
+    fn test_temperature_drives_will_nothing() {
+        let hot = tok(128, 0, 255);
+        let (_, _, z) = axis_scores_from_signature(&hot);
+        assert!(z.dominant.is_positive(), "high temp → Will");
+
+        let cold = tok(128, 0, 0);
+        let (_, _, z) = axis_scores_from_signature(&cold);
+        assert!(!z.dominant.is_positive(), "low temp → Nothing");
     }
 }

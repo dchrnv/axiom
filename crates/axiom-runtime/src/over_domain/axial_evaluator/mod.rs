@@ -153,10 +153,11 @@ impl AxialEvaluator {
                 AxialScore::new(will, nothing),
             )
         } else {
-            synthesis::axis_scores_from_position(anchor.position)
+            // N2: fallback — подпись якоря (mass/valence/temp), не позиция
+            synthesis::axis_scores_from_signature(anchor)
         };
 
-        // Синтетический октант через центр масс позиций
+        // Синтетический октант через агрегат подписей участников (N2)
         let synthetic_octant = synthesis::synthesize_octant(participants, anchor);
 
         // V3: advisory override заменяет вычисленный analytic_octant для advisory-логики.
