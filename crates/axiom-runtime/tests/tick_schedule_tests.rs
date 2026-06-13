@@ -47,7 +47,7 @@ fn test_tick_schedule_defaults() {
     assert_eq!(s.adaptation_interval, 50);
     assert_eq!(s.horizon_gc_interval, 500);
     assert_eq!(s.snapshot_interval, 5000);
-    assert_eq!(s.dream_interval, 100);
+    assert_eq!(s.dream_interval, 0); // R5 (REPAIR-01): dream_interval=0 в production, DREAM по состоянию idle
     assert_eq!(s.tension_check_interval, 10);
     assert_eq!(s.goal_check_interval, 10);
     assert_eq!(s.reconcile_interval, 200);

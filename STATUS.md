@@ -7,7 +7,7 @@
 
 ## Текущее состояние
 
-**1545 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
+**1779 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
 
 Foundation Фаза 1 — Кристалл ✅ (2026-06-13): axiom-seed крейт (C1–C5).
   C3: FrameComposition::C5Plus → C5/C6Meta/C7Reserve (8 слоёв жёстко, GUARDIAN).

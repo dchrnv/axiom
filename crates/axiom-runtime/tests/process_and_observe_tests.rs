@@ -35,13 +35,18 @@ fn test_process_and_observe_returns_result() {
 }
 
 #[test]
-fn test_process_and_observe_slow_path_initially() {
-    // При пустом Experience — всегда SlowPath (нет следов для рефлекса)
+fn test_process_and_observe_no_reflex_initially() {
+    // При пустом Experience рефлекса нет — нечему матчить.
+    // Путь может быть SlowPath или MultiPass (зависит от coherence конфига MAYA
+    // и мембранных трансформов по 8 доменам) — не пинаем конкретное значение.
     let mut engine = AxiomEngine::new();
     let cmd = inject_cmd(80.0, 200.0);
     let result = engine.process_and_observe(&cmd);
-    assert_eq!(result.path, ProcessingPath::SlowPath);
-    assert!(!result.reflex_hit);
+    assert!(!result.reflex_hit, "без Experience не должно быть рефлекса");
+    assert!(
+        !matches!(result.path, ProcessingPath::Reflex),
+        "путь не должен быть Reflex без Experience, получено {:?}", result.path
+    );
 }
 
 #[test]

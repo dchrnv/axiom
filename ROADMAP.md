@@ -17,7 +17,7 @@ axiom-corpus       axiom-neural   axiom-seed        ↑
                                                axiom-broadcasting
 ```
 
-**1545 тестов (all features), TEST-TD-01 (DEFERRED).**
+**1779 тестов (all features), TEST-TD-01 (DEFERRED).**
 
 ## Следующие задачи
 
