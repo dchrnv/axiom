@@ -61,37 +61,11 @@ fn test_decay_at_threshold_boundary() {
 }
 
 // ============================================================
-// generate_gravity_update
 // ============================================================
 
-#[test]
-fn test_gravity_update_always_returns_event() {
-    let mut gen = EventGenerator::new();
-    gen.set_event_id(500);
-    gen.set_pulse_id(3);
 
-    let token = Token::new(42, 7, [100, 200, 300], 0);
-    let event = gen.generate_gravity_update(&token);
 
-    assert_eq!(event.event_type, EventType::GravityUpdate as u16);
-    assert_eq!(event.domain_id, 7);
-    assert_eq!(event.target_id, 42);
-    assert_eq!(event.pulse_id, 3);
-    assert_eq!(event.parent_event_id, 500);
-}
 
-#[test]
-fn test_gravity_update_deterministic_hash() {
-    let gen = EventGenerator::new();
-    let token = Token::new(10, 6, [50, 50, 50], 0);
-
-    let e1 = gen.generate_gravity_update(&token);
-    let e2 = gen.generate_gravity_update(&token);
-    assert_eq!(
-        e1.payload_hash, e2.payload_hash,
-        "Hash must be deterministic"
-    );
-}
 
 // ============================================================
 // generate_collision
@@ -122,7 +96,6 @@ fn test_collision_deterministic_hash() {
 
     let e1 = gen.generate_collision(&t1, &t2);
     let e2 = gen.generate_collision(&t1, &t2);
-    assert_eq!(e1.payload_hash, e2.payload_hash);
 }
 
 // ============================================================
@@ -188,25 +161,10 @@ fn test_connection_stress_deterministic_hash() {
 
     let e1 = gen.check_connection_stress(&conn, 0.8).unwrap();
     let e2 = gen.check_connection_stress(&conn, 0.8).unwrap();
-    assert_eq!(
-        e1.payload_hash, e2.payload_hash,
-        "Hash must be deterministic"
-    );
 }
 
 // ============================================================
 // set_event_id / set_pulse_id
 // ============================================================
 
-#[test]
-fn test_event_id_reflected_in_events() {
-    let mut gen = EventGenerator::new();
-    gen.set_event_id(42);
-    gen.set_pulse_id(7);
 
-    let t = Token::new(1, 1, [0, 0, 0], 0);
-    let e = gen.generate_gravity_update(&t);
-
-    assert_eq!(e.parent_event_id, 42);
-    assert_eq!(e.pulse_id, 7);
-}

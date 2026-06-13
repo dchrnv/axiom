@@ -70,22 +70,6 @@ impl EventGenerator {
         }
     }
 
-    /// Генерировать событие гравитационного обновления для токена.
-    ///
-    /// Вызывается когда gravity_strength > 0 и токен нужно притянуть к Anchor (0,0,0).
-    pub fn generate_gravity_update(&self, token: &Token) -> Event {
-        Event::with_pulse(
-            0,
-            token.domain_id,
-            EventType::GravityUpdate,
-            EventPriority::Low,
-            self.compute_gravity_hash(token),
-            token.sutra_id,
-            0,
-            self.current_event_id,
-            self.current_pulse_id,
-        )
-    }
 
     /// Генерировать событие столкновения между двумя токенами.
     ///
@@ -154,13 +138,6 @@ impl EventGenerator {
         hash
     }
 
-    fn compute_gravity_hash(&self, token: &Token) -> u64 {
-        let mut hash = token.sutra_id as u64;
-        hash = hash.wrapping_mul(31).wrapping_add(token.position[0] as u64);
-        hash = hash.wrapping_mul(31).wrapping_add(token.position[1] as u64);
-        hash = hash.wrapping_mul(31).wrapping_add(token.position[2] as u64);
-        hash
-    }
 
     fn compute_collision_hash(&self, token1: &Token, token2: &Token, dist2: i64) -> u64 {
         let mut hash = token1.sutra_id as u64;

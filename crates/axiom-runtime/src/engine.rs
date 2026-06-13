@@ -96,7 +96,8 @@ pub struct TickSchedule {
     pub horizon_gc_interval: u32,
     /// Snapshot + pruning (default: 5000)
     pub snapshot_interval: u32,
-    /// DREAM-предложения CODEX (default: 100)
+    /// DREAM-предложения CODEX — только для OBS/тестов, в production = 0.
+    /// N6: DREAM наступает по состоянию (idle), не по интервалу тиков.
     pub dream_interval: u32,
     /// Проверка TensionTrace (Cognitive Depth) (default: 10)
     pub tension_check_interval: u32,
@@ -136,7 +137,8 @@ impl Default for TickSchedule {
             adaptation_interval: 50,
             horizon_gc_interval: 500,
             snapshot_interval: 5000,
-            dream_interval: 100,
+            dream_interval: 0, // N6: DREAM по состоянию (idle), не по тику. Только OBS/тесты.
+
             tension_check_interval: 10,
             goal_check_interval: 10,
             reconcile_interval: 200,
@@ -1185,7 +1187,7 @@ impl AxiomEngine {
             }
         }
 
-        // Warm path: legacy DREAM proposals (CODEX)
+        // OBS/тест: принудительный DREAM по интервалу (N6 — только тесты, в production dream_interval=0)
         if s.dream_interval > 0 && t.is_multiple_of(s.dream_interval as u64) {
             let _ = self.dream_propose();
         }

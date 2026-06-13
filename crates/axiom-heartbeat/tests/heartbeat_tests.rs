@@ -7,12 +7,10 @@ fn test_heartbeat_config_presets() {
     let weak = HeartbeatConfig::weak();
     assert_eq!(weak.interval, 10000);
     assert_eq!(weak.batch_size, 1);
-    assert!(!weak.enable_gravity);
 
     let medium = HeartbeatConfig::medium();
     assert_eq!(medium.interval, 1024);
     assert_eq!(medium.batch_size, 10);
-    assert!(medium.enable_gravity);
 
     let powerful = HeartbeatConfig::powerful();
     assert_eq!(powerful.interval, 256);

@@ -20,12 +20,9 @@ fn bench_check_decay(c: &mut Criterion) {
     });
 }
 
-fn bench_generate_gravity_update(c: &mut Criterion) {
     let gen = EventGenerator::new();
     let token = Token::new(42, 7, [100, 200, 300], 1);
 
-    c.bench_function("EventGenerator::generate_gravity_update", |b| {
-        b.iter(|| black_box(gen.generate_gravity_update(black_box(&token))))
     });
 }
 
@@ -141,7 +138,6 @@ fn bench_arbiter_route(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_check_decay,
-    bench_generate_gravity_update,
     bench_generate_collision,
     bench_resonance_search,
     bench_arbiter_route,

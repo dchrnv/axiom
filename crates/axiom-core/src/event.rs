@@ -87,7 +87,6 @@ pub enum EventType {
     /// Периодический пульс системы
     Heartbeat = 0x3001,
     /// Обновление гравитации
-    GravityUpdate = 0x3002,
     /// Обнаружено столкновение
     CollisionDetected = 0x3003,
     /// Триггер резонанса
@@ -143,7 +142,6 @@ impl From<u16> for EventType {
             0x2002 => EventType::DomainConfig,
             0x2003 => EventType::DomainReset,
             0x3001 => EventType::Heartbeat,
-            0x3002 => EventType::GravityUpdate,
             0x3003 => EventType::CollisionDetected,
             0x3004 => EventType::ResonanceTriggered,
             0x3005 => EventType::ThermodynamicsUpdate,

@@ -12,7 +12,6 @@ generation: 0
 flags: 0
 
 field_size: [2000.0, 2000.0, 2000.0]
-gravity_strength: 0.0
 temperature: 500.0
 time_dilation: 50
 resonance_freq: 0

@@ -22,9 +22,6 @@ pub struct HeartbeatConfig {
     /// Активировать затухание токенов
     pub enable_decay: bool,
 
-    /// Активировать гравитационные обновления
-    pub enable_gravity: bool,
-
     /// Активировать пространственные проверки столкновений (SPACE V6.0)
     pub enable_spatial_collision: bool,
 
@@ -58,7 +55,6 @@ impl HeartbeatConfig {
             batch_size: 1,
             connection_batch_size: 1,
             enable_decay: true,
-            enable_gravity: false,
             enable_spatial_collision: false,
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
@@ -76,7 +72,6 @@ impl HeartbeatConfig {
             batch_size: 10,
             connection_batch_size: 5,
             enable_decay: true,
-            enable_gravity: true,
             enable_spatial_collision: true,
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
@@ -94,7 +89,6 @@ impl HeartbeatConfig {
             batch_size: 50,
             connection_batch_size: 25,
             enable_decay: true,
-            enable_gravity: true,
             enable_spatial_collision: true,
             enable_connection_maintenance: true,
             enable_thermodynamics: true,
@@ -111,7 +105,6 @@ impl HeartbeatConfig {
             connection_batch_size: 0,
             enable_spatial_collision: false,
             enable_decay: false,
-            enable_gravity: false,
             enable_connection_maintenance: false,
             enable_thermodynamics: false,
             attach_pulse_id: false,

@@ -30,7 +30,6 @@ fn test_domain_config_void() {
     assert_eq!(config.domain_id, 0);
     assert_eq!(config.structural_role, StructuralRole::Void as u8);
     assert_eq!(config.token_capacity, 0);
-    assert_eq!(config.gravity_strength, 0.0);
 }
 
 #[test]
@@ -46,7 +45,6 @@ fn test_domain_config_sutra() {
     let config = DomainConfig::factory_sutra(1);
     assert_eq!(config.domain_id, 1);
     assert_eq!(config.structural_role, StructuralRole::Sutra as u8);
-    assert_eq!(config.gravity_strength, f32::MAX);
     assert_eq!(config.temperature, 0.0);
     assert_eq!(config.permeability, 0);
     assert_eq!(config.membrane_state, 2); // CLOSED
@@ -187,7 +185,6 @@ fn test_factory_dream() {
     let config = DomainConfig::factory_dream(7, 1);
     assert_eq!(config.structural_role, StructuralRole::Dream as u8);
     assert_eq!(config.membrane_state, MEMBRANE_OPEN);
-    assert_eq!(config.gravity_strength, 0.0);
     assert_eq!(config.quantum_noise, 200);
     assert!(config.validate().is_ok());
 }
@@ -262,7 +259,6 @@ fn test_from_yaml_sutra() {
     assert_eq!(config.membrane_state, MEMBRANE_CLOSED);
     assert_eq!(config.temperature, 0.0);
     assert_eq!(config.permeability, 0);
-    assert!(config.gravity_strength > 3.0e38);
     assert_eq!(config.token_capacity, 100);
     assert_eq!(config.connection_capacity, 1000);
     assert!(config.validate().is_ok());
@@ -301,7 +297,6 @@ fn test_from_yaml_codex() {
     assert_eq!(config.structural_role, factory.structural_role);
     assert_eq!(config.membrane_state, factory.membrane_state);
     assert_eq!(config.temperature, factory.temperature);
-    assert_eq!(config.gravity_strength, factory.gravity_strength);
     assert_eq!(config.arbiter_flags, factory.arbiter_flags);
     assert_eq!(config.token_capacity, factory.token_capacity);
     assert!(config.validate().is_ok());
@@ -352,7 +347,6 @@ fn test_from_yaml_dream() {
     assert_eq!(config.structural_role, factory.structural_role);
     assert_eq!(config.membrane_state, factory.membrane_state);
     assert_eq!(config.temperature, factory.temperature);
-    assert_eq!(config.gravity_strength, factory.gravity_strength);
     assert_eq!(config.quantum_noise, factory.quantum_noise);
     assert_eq!(config.time_dilation, factory.time_dilation);
     assert_eq!(config.token_capacity, factory.token_capacity);
@@ -366,7 +360,6 @@ fn test_from_yaml_void() {
     assert_eq!(config.structural_role, factory.structural_role);
     assert_eq!(config.membrane_state, factory.membrane_state);
     assert_eq!(config.temperature, factory.temperature);
-    assert_eq!(config.gravity_strength, factory.gravity_strength);
     assert_eq!(config.token_capacity, factory.token_capacity);
     assert!(config.validate().is_ok());
 }

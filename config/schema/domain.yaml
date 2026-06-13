@@ -47,7 +47,6 @@ domain_template:
         maximum: 1000.0
       minItems: 3
       maxItems: 3
-    gravity_strength:
       type: number
       minimum: 0.0
       maximum: 10.0
@@ -61,7 +60,6 @@ domain_template:
 # Validation rules
 validation_rules:
   field_size_volume:
-    description: "Field volume must be within limits"
     rule: "field_size[0] * field_size[1] * field_size[2] <= 1000000"
   
   temperature_range:

@@ -122,7 +122,6 @@ interval: 512\n\
 batch_size: 5\n\
 connection_batch_size: 3\n\
 enable_decay: true\n\
-enable_gravity: true\n\
 enable_spatial_collision: false\n\
 enable_connection_maintenance: true\n\
 enable_thermodynamics: false\n\
@@ -147,7 +146,6 @@ enable_shell_reconciliation: false\n";
     let hb = loaded.heartbeat.unwrap();
     assert_eq!(hb.interval, 512);
     assert_eq!(hb.batch_size, 5);
-    assert!(hb.enable_gravity);
 
     std::fs::remove_dir_all(&dir).ok();
 }

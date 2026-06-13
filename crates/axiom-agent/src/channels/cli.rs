@@ -252,6 +252,7 @@ pub struct TickScheduleConfig {
     pub horizon_gc_interval: Option<u32>,
     #[serde(default)]
     pub snapshot_interval: Option<u32>,
+    /// OBS/тест: принудительный DREAM по тику. В production оставлять None (= 0).
     #[serde(default)]
     pub dream_interval: Option<u32>,
     #[serde(default)]

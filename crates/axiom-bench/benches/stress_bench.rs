@@ -1,35 +1,20 @@
 // Стресс-бенчмарки AXIOM: 10K → 100K → 1M → 10M
 //
-// Три горячих пути:
-//   1. apply_gravity_batch  — чистые вычисления, должно быть линейно
-//   2. SpatialHashGrid::rebuild — хеш-таблица, ожидаем O(n) с cache pressure
-//   3. resonance_search (Experience) — линейный поиск по HashMap
+// Горячие пути:
+//   1. SpatialHashGrid::rebuild — хеш-таблица, ожидаем O(n) с cache pressure
+//   2. resonance_search (Experience) — линейный поиск по HashMap
+//   3. apply_subsystem_gravity (PRIM-TD-03) — семантическая гравитация
 
 use axiom_arbiter::ExperienceModule;
 use axiom_config::DomainConfig;
 use axiom_core::{Token, STATE_ACTIVE};
 use axiom_domain::DomainState;
 use axiom_runtime::subsystem_gravity::{apply_subsystem_gravity, SubsystemGravityRule};
-use axiom_space::{apply_gravity_batch, apply_gravity_batch_avx2, GravityModel, SpatialHashGrid};
+use axiom_space::SpatialHashGrid;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-fn make_positions(n: usize) -> Vec<[i16; 3]> {
-    (0..n)
-        .map(|i| {
-            let x = ((i.wrapping_mul(37)) % 60000) as i32 - 30000;
-            let y = ((i.wrapping_mul(53)) % 60000) as i32 - 30000;
-            let z = ((i.wrapping_mul(71)) % 10000) as i32 - 5000;
-            [x as i16, y as i16, z as i16]
-        })
-        .collect()
-}
-
-fn make_masses(n: usize) -> Vec<u16> {
-    (0..n).map(|i| (50 + (i % 950)) as u16).collect()
-}
 
 fn make_pos_tuples(n: usize) -> Vec<(i16, i16, i16)> {
     (0..n)
@@ -208,8 +193,6 @@ fn bench_subsystem_gravity(c: &mut Criterion) {
 
 criterion_group!(
     stress,
-    bench_gravity_stress,
-    bench_gravity_avx2_stress,
     bench_grid_stress,
     bench_resonance_stress,
     bench_subsystem_gravity,

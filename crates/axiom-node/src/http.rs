@@ -27,7 +27,7 @@ use std::sync::Arc;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
@@ -37,7 +37,6 @@ use tracing::{info, warn};
 
 use axiom_broadcasting::BroadcastHandle;
 use axiom_corpus::{GenerateMode, generate};
-use axiom_protocol::snapshot::SystemSnapshot;
 
 
 /// Команды из HTTP → tick loop.

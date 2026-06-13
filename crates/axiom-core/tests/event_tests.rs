@@ -33,7 +33,7 @@ fn test_event_creation_with_pulse() {
     let event = Event::with_pulse(
         5,
         1,
-        EventType::GravityUpdate,
+        EventType::TokenCreate,
         EventPriority::Low,
         0xABCDEF1234567890,
         150,
@@ -44,7 +44,6 @@ fn test_event_creation_with_pulse() {
 
     assert_eq!(event.event_id, 5);
     assert_eq!(event.pulse_id, 42);
-    assert_eq!(event.event_type, EventType::GravityUpdate as u16);
     assert!(event.validate().is_ok());
 }
 
@@ -113,7 +112,6 @@ fn test_event_type_conversion() {
     assert_eq!(EventType::from(0x0001), EventType::TokenCreate);
     assert_eq!(EventType::from(0x0006), EventType::TokenDecayed);
     assert_eq!(EventType::from(0x1005), EventType::ConnectionWeakened);
-    assert_eq!(EventType::from(0x3002), EventType::GravityUpdate);
 }
 
 #[test]
@@ -153,6 +151,5 @@ fn test_semantic_event_types() {
     assert_eq!(EventType::TokenMerged as u16, 0x0007);
     assert_eq!(EventType::ConnectionWeakened as u16, 0x1005);
     assert_eq!(EventType::ConnectionBroken as u16, 0x1007);
-    assert_eq!(EventType::GravityUpdate as u16, 0x3002);
     assert_eq!(EventType::CollisionDetected as u16, 0x3003);
 }

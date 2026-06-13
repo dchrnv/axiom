@@ -4,11 +4,6 @@
 // SPACE V6.0: docs/spec/SPACE_V6_0.md
 // Целочисленная пространственная модель с детерминистичной физикой
 
-pub mod simd;
-pub use simd::{
-    apply_accelerations_to_velocities, apply_gravity_batch, apply_gravity_batch_avx2,
-    apply_gravity_batch_chunked, GravityBatchResult, L2_CHUNK_TOKENS,
-};
 
 use serde::{Deserialize, Serialize};
 
@@ -25,10 +20,6 @@ pub const BUCKET_COUNT_LOG2: u32 = 16;
 pub const BUCKET_COUNT: usize = 1 << BUCKET_COUNT_LOG2; // 65536
 pub const BUCKET_MASK: u32 = (BUCKET_COUNT - 1) as u32;
 
-/// Якорь - центр гравитации (0, 0, 0)
-pub const ANCHOR_X: i16 = 0;
-pub const ANCHOR_Y: i16 = 0;
-pub const ANCHOR_Z: i16 = 0;
 
 /// Вычислить квадрат расстояния между двумя точками
 ///
@@ -55,130 +46,9 @@ pub fn distance2(x1: i16, y1: i16, z1: i16, x2: i16, y2: i16, z2: i16) -> i64 {
     dx * dx + dy * dy + dz * dz
 }
 
-/// Вычислить квадрат расстояния до якоря (0, 0, 0)
-///
-/// Оптимизированная версия distance2 для расстояния до начала координат
-#[inline]
-pub fn distance2_to_anchor(x: i16, y: i16, z: i16) -> i64 {
-    let x64 = x as i64;
-    let y64 = y as i64;
-    let z64 = z as i64;
-
-    x64 * x64 + y64 * y64 + z64 * z64
-}
-
-/// Модель гравитации для вычисления силы притяжения
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum GravityModel {
-    /// Линейная модель: F = k * distance
-    /// Сила прямо пропорциональна расстоянию
-    Linear,
-
-    /// Обратная квадратичная модель: F = k * mass / distance²
-    /// Сила обратно пропорциональна квадрату расстояния (как в физике)
-    InverseSquare,
-}
 
 /// Вычислить силу гравитации к якорю (0, 0, 0)
 ///
-/// Аргументы:
-/// - x, y, z: координаты токена
-/// - mass: масса токена (из Token.energy)
-/// - gravity_scale_shift: битовый сдвиг для масштабирования (обычно 24)
-/// - model: модель гравитации (Linear или InverseSquare)
-///
-/// Возвращает:
-/// - (ax, ay, az): компоненты ускорения в направлении якоря
-///
-/// ЛИНЕЙНАЯ модель:
-/// - F = k * distance
-/// - Чем дальше от якоря, тем сильнее притяжение
-/// - Простая модель для начальной реализации
-///
-/// INVERSE_SQUARE модель:
-/// - F = k * mass / distance²
-/// - Чем ближе к якорю, тем сильнее притяжение (реалистичная физика)
-/// - Требует обработку distance = 0 (токен точно в якоре)
-///
-/// Масштабирование:
-/// - gravity_scale_shift определяет силу гравитации
-/// - Большие значения (24-28) → слабая гравитация
-/// - Малые значения (16-20) → сильная гравитация
-///
-/// Пример:
-/// ```
-/// use axiom_space::*;
-/// let (ax, ay, az) = compute_gravity(100, 200, 300, 1000, 24, GravityModel::Linear);
-/// // Вернёт ускорение в направлении (0, 0, 0)
-/// ```
-pub fn compute_gravity(
-    x: i16,
-    y: i16,
-    z: i16,
-    mass: u16,
-    gravity_scale_shift: u32,
-    model: GravityModel,
-) -> (i16, i16, i16) {
-    // Токен точно в якоре - нет силы
-    if x == ANCHOR_X && y == ANCHOR_Y && z == ANCHOR_Z {
-        return (0, 0, 0);
-    }
-
-    let dx = (ANCHOR_X as i64) - (x as i64); // Направление к якорю
-    let dy = (ANCHOR_Y as i64) - (y as i64);
-    let dz = (ANCHOR_Z as i64) - (z as i64);
-
-    let dist2 = distance2_to_anchor(x, y, z);
-
-    // Вычисление силы в зависимости от модели
-    let force_magnitude = match model {
-        GravityModel::Linear => {
-            // F = k * distance
-            // Используем целочисленный квадратный корень для distance
-            let dist = integer_sqrt(dist2);
-
-            // Масштабируем силу: dist делим на 2^scale_shift
-            if gravity_scale_shift >= 32 {
-                0
-            } else {
-                dist >> gravity_scale_shift
-            }
-        }
-        GravityModel::InverseSquare => {
-            // F = k * mass / distance²
-            if dist2 == 0 {
-                return (0, 0, 0); // Предотвращение деления на ноль
-            }
-
-            let mass64 = mass as i64;
-            // Масштабированная сила: (mass << scale) / dist²
-            // Для предотвращения переполнения используем saturating операции
-            if gravity_scale_shift >= 40 {
-                0 // Слишком слабая гравитация
-            } else {
-                let scale_limited = gravity_scale_shift.min(30);
-                let numerator = mass64.saturating_mul(1i64 << scale_limited);
-                numerator / dist2
-            }
-        }
-    };
-
-    // Применяем силу к каждой компоненте пропорционально расстоянию
-    // Нормализация: force * (direction / distance)
-    if force_magnitude == 0 {
-        return (0, 0, 0);
-    }
-
-    // Вычисление компонент ускорения
-    // a_x = force * dx / distance
-    let dist = integer_sqrt(dist2).max(1); // Предотвращение деления на ноль
-
-    let ax = ((force_magnitude * dx) / dist).clamp(i16::MIN as i64, i16::MAX as i64) as i16;
-    let ay = ((force_magnitude * dy) / dist).clamp(i16::MIN as i64, i16::MAX as i64) as i16;
-    let az = ((force_magnitude * dz) / dist).clamp(i16::MIN as i64, i16::MAX as i64) as i16;
-
-    (ax, ay, az)
-}
 
 /// Применить скорость к позиции (обновление координат)
 ///

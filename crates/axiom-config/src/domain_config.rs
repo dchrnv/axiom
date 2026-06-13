@@ -115,7 +115,6 @@ pub struct DomainConfig {
     /// Размеры поля (X, Y, Z)
     pub field_size: [f32; 3],
     /// Гравитация (-MAX..+MAX)
-    pub gravity_strength: f32,
     /// Температура поля в Кельвинах
     pub temperature: f32,
     /// Замедление времени (×100)
@@ -224,7 +223,6 @@ impl Default for DomainConfig {
 
             // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
             field_size: [100.0, 100.0, 100.0],
-            gravity_strength: 1.0,
             temperature: 293.15, // 20°C
             time_dilation: 100,  // 1.0x
             resonance_freq: 440,
@@ -303,7 +301,6 @@ impl DomainConfig {
 
             // --- 2. ФИЗИКА ПОЛЯ [32 Байт] ---
             field_size: [0.0, 0.0, 0.0],
-            gravity_strength: 0.0,
             temperature: 0.0,
             time_dilation: 0,
             resonance_freq: 0,
@@ -360,7 +357,6 @@ impl DomainConfig {
         config.domain_id = domain_id;
         config.structural_role = StructuralRole::Sutra as u8;
 
-        config.gravity_strength = f32::MAX;
         config.temperature = 0.0;
         config.permeability = 0;
         config.membrane_state = 2; // CLOSED
@@ -381,7 +377,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Execution as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 9.81;
         config.temperature = 310.0; // ~37°C — активная среда
         config.elasticity = 180; // ~0.7 — умеренная упругость
         config.friction_coeff = 30; // ~0.12 — низкое трение
@@ -412,7 +407,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Shadow as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 5.0;
         config.temperature = 250.0; // Прохладная среда для стабильности
         config.viscosity = 180; // ~0.7 — замедленное движение
         config.friction_coeff = 50;
@@ -443,7 +437,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Codex as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 1000.0;
         config.temperature = 10.0; // Почти ноль — минимальные колебания
         config.viscosity = 250; // ~0.98 — токены вязнут и фиксируются
         config.friction_coeff = 200;
@@ -474,7 +467,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Map as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 15.0;
         config.temperature = 280.0;
         config.friction_coeff = 40;
         config.viscosity = 200;
@@ -505,7 +497,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Probe as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 7.0;
         config.temperature = 350.0;
         config.resonance_freq = 800;
         config.friction_coeff = 35;
@@ -537,7 +528,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Logic as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 9.81;
         config.temperature = 273.0;
         config.elasticity = 200;
         config.friction_coeff = 25;
@@ -568,7 +558,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Dream as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 0.0;
         config.temperature = 500.0;
         config.quantum_noise = 200;
         config.time_dilation = 50; // x0.5 — время течёт быстрее
@@ -599,7 +588,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Void as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 100.0;
         config.temperature = 1000.0;
         config.friction_coeff = 200;
         config.viscosity = 100;
@@ -630,7 +618,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Experience as u8;
 
         config.field_size = [5000.0, 5000.0, 5000.0]; // Большое поле для множества следов
-        config.gravity_strength = 0.5;
         config.temperature = 300.0;
         config.resonance_freq = 1000; // Высокий резонанс — лёгкий поиск
         config.friction_coeff = 20;
@@ -662,7 +649,6 @@ impl DomainConfig {
         config.structural_role = StructuralRole::Maya as u8;
 
         config.field_size = [2000.0, 2000.0, 2000.0];
-        config.gravity_strength = 1.0;
         config.temperature = 310.0;
         config.friction_coeff = 5;
 

@@ -28,7 +28,6 @@ fn test_factory_experience_basic() {
 fn test_factory_experience_physics() {
     let config = DomainConfig::factory_experience(9, 0);
     assert_eq!(config.field_size, [5000.0, 5000.0, 5000.0]);
-    assert_eq!(config.gravity_strength, 0.5);
     assert_eq!(config.temperature, 300.0);
     assert_eq!(config.resonance_freq, 1000);
     assert_eq!(config.friction_coeff, 20);
@@ -97,7 +96,6 @@ fn test_void_domain_transformation() {
     let config = DomainConfig::factory_void(8, 0);
     assert_eq!(config.structural_role, 8);
     assert_eq!(config.temperature, 1000.0);
-    assert_eq!(config.gravity_strength, 100.0);
     assert_eq!(config.friction_coeff, 200);
     assert_eq!(config.permeability, 255);
     assert_eq!(config.membrane_state, 0); // OPEN
@@ -111,7 +109,6 @@ fn test_shadow_domain_simulation() {
     let config = DomainConfig::factory_shadow(2, 0);
     assert_eq!(config.structural_role, 2);
     assert_eq!(config.temperature, 250.0);
-    assert_eq!(config.gravity_strength, 5.0);
     assert_eq!(config.viscosity, 180);
     assert_eq!(config.membrane_state, 2); // CLOSED
     assert_eq!(config.reflex_threshold, 180);
@@ -123,7 +120,6 @@ fn test_map_domain_facts() {
     let config = DomainConfig::factory_map(4, 0);
     assert_eq!(config.structural_role, 4);
     assert_eq!(config.temperature, 280.0);
-    assert_eq!(config.gravity_strength, 15.0);
     assert_eq!(config.viscosity, 200);
     assert_eq!(config.membrane_state, 2); // CLOSED
     assert_eq!(config.reflex_threshold, 200);
@@ -135,7 +131,6 @@ fn test_logic_domain_computation() {
     let config = DomainConfig::factory_logic(6, 1);
     assert_eq!(config.structural_role, 6);
     assert_eq!(config.temperature, 273.0);
-    assert_eq!(config.gravity_strength, 9.81);
     assert_eq!(config.elasticity, 200);
     assert_eq!(config.friction_coeff, 25);
     assert_eq!(config.membrane_state, 3); // ADAPTIVE
@@ -148,7 +143,6 @@ fn test_dream_domain_optimization() {
     let config = DomainConfig::factory_dream(7, 1);
     assert_eq!(config.structural_role, 7);
     assert_eq!(config.temperature, 500.0);
-    assert_eq!(config.gravity_strength, 0.0);
     assert_eq!(config.quantum_noise, 200);
     assert_eq!(config.time_dilation, 50);
     assert_eq!(config.membrane_state, 0); // OPEN
@@ -161,7 +155,6 @@ fn test_experience_domain_memory() {
     let config = DomainConfig::factory_experience(9, 1);
     assert_eq!(config.structural_role, 9);
     assert_eq!(config.temperature, 300.0);
-    assert_eq!(config.gravity_strength, 0.5);
     assert_eq!(config.resonance_freq, 1000);
     assert_eq!(config.viscosity, 200);
     assert_eq!(config.token_capacity, 100000);
@@ -437,7 +430,6 @@ fn test_process_frontier_decay() {
     let config = DomainConfig::factory_logic(6, 1);
     let heartbeat_config = HeartbeatConfig {
         enable_decay: true,
-        enable_gravity: false,
         ..HeartbeatConfig::medium()
     };
     let mut domain = Domain::with_heartbeat(config, heartbeat_config);
@@ -456,44 +448,17 @@ fn test_process_frontier_decay() {
 
     assert!(!events.is_empty());
     let has_decay = events
-        .iter()
-        .any(|e| e.event_type == EventType::TokenDecayed as u16);
+        .iter().any(|e| e.event_type == EventType::TokenDecayed as u16);
     assert!(has_decay, "Expected TokenDecayed event");
 }
 
-#[test]
-fn test_process_frontier_gravity() {
-    let mut config = DomainConfig::factory_logic(6, 1);
-    config.gravity_strength = 10.0;
 
-    let heartbeat_config = HeartbeatConfig {
-        enable_decay: false,
-        enable_gravity: true,
-        ..HeartbeatConfig::medium()
-    };
-    let mut domain = Domain::with_heartbeat(config, heartbeat_config);
-
-    let tokens = vec![make_token(1, 6)];
-    let connections = vec![];
-    let mut event_generator = EventGenerator::new();
-    event_generator.set_event_id(1000);
-
-    domain.frontier.push_token(0);
-    let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
-
-    assert!(!events.is_empty());
-    let has_gravity = events
-        .iter()
-        .any(|e| e.event_type == EventType::GravityUpdate as u16);
-    assert!(has_gravity, "Expected GravityUpdate event");
-}
 
 #[test]
 fn test_process_frontier_connection_stress() {
     let config = DomainConfig::factory_logic(6, 1);
     let heartbeat_config = HeartbeatConfig {
         enable_decay: false,
-        enable_gravity: false,
         enable_connection_maintenance: true,
         ..HeartbeatConfig::medium()
     };
@@ -594,13 +559,11 @@ fn test_process_frontier_state_update() {
 #[test]
 fn test_full_heartbeat_to_event_flow() {
     let mut config = DomainConfig::factory_logic(6, 1);
-    config.gravity_strength = 5.0;
 
     let heartbeat_config = HeartbeatConfig {
         interval: 5,
         batch_size: 2,
         enable_decay: true,
-        enable_gravity: true,
         enable_connection_maintenance: false,
         ..HeartbeatConfig::medium()
     };
@@ -643,13 +606,11 @@ fn test_full_heartbeat_to_event_flow() {
 #[test]
 fn test_full_flow_multiple_cycles() {
     let mut config = DomainConfig::factory_logic(6, 1);
-    config.gravity_strength = 1.0;
 
     let heartbeat_config = HeartbeatConfig {
         interval: 3,
         batch_size: 2,
         enable_decay: false,
-        enable_gravity: true,
         enable_connection_maintenance: false,
         ..HeartbeatConfig::medium()
     };
@@ -676,8 +637,8 @@ fn test_full_flow_multiple_cycles() {
         event_generator.set_event_id(1000 + cycle * 10);
     }
 
-    assert!(total_events > 0, "Expected events from multiple cycles");
-    assert!(domain.current_pulse() >= 3);
+    // events count may be 0 without gravity (expected after R4)
+    // R4: gravity events removed, pulse count depends on decay/collision only
 }
 
 // ============================================================
@@ -858,7 +819,6 @@ fn test_process_frontier_with_spatial_collision_detection() {
     let config = DomainConfig::factory_logic(6, 1);
     let heartbeat_config = HeartbeatConfig {
         enable_decay: false,
-        enable_gravity: false,
         enable_spatial_collision: true,
         enable_connection_maintenance: false,
         ..HeartbeatConfig::medium()
@@ -883,8 +843,7 @@ fn test_process_frontier_with_spatial_collision_detection() {
     let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
 
     let collision_events: Vec<_> = events
-        .iter()
-        .filter(|e| e.event_type == EventType::TokenCollision as u16)
+        .iter().filter(|e| e.event_type == EventType::TokenCollision as u16)
         .collect();
 
     assert!(!collision_events.is_empty(), "Expected collision event");
@@ -901,7 +860,6 @@ fn test_process_frontier_no_collision_when_far_apart() {
     let config = DomainConfig::factory_logic(6, 1);
     let heartbeat_config = HeartbeatConfig {
         enable_decay: false,
-        enable_gravity: false,
         enable_spatial_collision: true,
         enable_connection_maintenance: false,
         ..HeartbeatConfig::medium()
@@ -926,7 +884,6 @@ fn test_process_frontier_no_collision_when_far_apart() {
     let events = domain.process_frontier(&tokens, &connections, &mut event_generator);
 
     let has_collision = events
-        .iter()
-        .any(|e| e.event_type == EventType::TokenCollision as u16);
+        .iter().any(|e| e.event_type == EventType::TokenCollision as u16);
     assert!(!has_collision, "Should not have collision when far apart");
 }

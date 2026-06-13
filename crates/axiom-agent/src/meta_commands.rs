@@ -1076,7 +1076,6 @@ pub fn handle_meta_read(
                     )
                     .unwrap();
                     writeln!(out, "  temperature:      {:.1}", cfg.temperature).unwrap();
-                    writeln!(out, "  gravity_strength: {:.2}", cfg.gravity_strength).unwrap();
                     writeln!(out, "  ── arbiter ────────────────────────────").unwrap();
                     writeln!(out, "  reflex_threshold: {}", cfg.reflex_threshold).unwrap();
                     writeln!(out, "  assoc_threshold:  {}", cfg.association_threshold).unwrap();

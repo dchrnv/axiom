@@ -155,13 +155,6 @@ impl Domain {
                             }
                         }
 
-                        // Гравитация
-                        if self.heartbeat_config.enable_gravity
-                            && self.config.gravity_strength.abs() > 0.01
-                        {
-                            let event = event_generator.generate_gravity_update(token);
-                            generated_events.push(event);
-                        }
 
                         // SPACE V6.0: столкновения через spatial hash
                         if self.heartbeat_config.enable_spatial_collision
