@@ -1,7 +1,7 @@
 # Axiom Development Guide
 
-**Версия:** 3.6  
-**Дата:** 2026-06-12
+**Версия:** 3.7  
+**Дата:** 2026-06-14
 
 ---
 
@@ -31,8 +31,13 @@ Axiom/
 │   ├── axiom-experience/  # FatigueStore, SubsystemFatigue — семантические хранилища
 │   ├── axiom-broadcasting/ # WS/SSE рассылка: BroadcastingConfig, DropStrategy, BroadcastHandle
 │   ├── axiom-neural/      # Neural Integration Этап 1: ReactivationDepthModel, FftFrontend, ConfidenceCalibrator
+│   ├── axiom-seed/        # Crystal Layout Seed Compiler + C1 биграммные семена
+│   │   ├── layout/crystal.rs   # CrystalLayout (полярный веер, 8 слоёв d-оси)
+│   │   ├── layout/collision.rs # CollisionChecker
+│   │   └── compiler.rs         # SeedCompiler → seeds/crystal_c0.yaml
 
-│   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors (TextPerceptor, L0VisionPerceptor)
+│   ├── axiom-agent/       # CLI, tick_loop, External Adapters, Perceptors, FileIngester
+│   │   └── src/ingester/       # FileIngester (.md/.axiom.yaml → UCL), C1 seeds
 │   ├── axiom-corpus/      # Детерминированный генератор текстов для тестирования движка
 │   ├── axiom-observe/     # ObsRunner, OBS-01: автоматизация прогонов, MetricsCollector, report.md
 │   ├── axiom-bench/       # Criterion бенчмарки
@@ -47,7 +52,11 @@ Axiom/
 │   ├── genome.yaml        # Конституция системы (должна совпадать с Genome::default_ashti_core())
 │   ├── axiom.yaml         # Основная конфигурация
 │   ├── anchors/           # Семантические якоря (axes/, layers/, domains/)
+│   ├── charsets/          # ru_en_base.yaml (107 графем для Crystal C0)
 │   └── presets/           # Пресеты DomainConfig
+├── seeds/
+│   └── crystal_c0.yaml    # 107 C0 графемных якорей, origin=[26500,26500,26500]
+│   crystal_region.yaml    # Конфиг региона кристалла (в config/)
 ├── docs/
 │   ├── spec/              # Спецификации (канон)
 │   │   └── Weaver/        # Over-Domain Layer, FrameWeaver
@@ -120,7 +129,7 @@ Axiom/
 
 ```bash
 # Сборка и тесты
-cargo test --workspace          # 1538 тестов (all features: --features telegram,opensearch,serde,adapters)
+cargo test --workspace          # 1797 тестов (all features: --features telegram,opensearch,serde,adapters)
 cargo build --release
 
 # Запуск одной командой

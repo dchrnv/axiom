@@ -2,7 +2,7 @@
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
 **Обновлено:** 2026-06-13  
-**Тесты:** 1779 (all features), TEST-TD-01 (DEFERRED)
+**Тесты:** 1797 (all features), TEST-TD-01 (DEFERRED)
 
 ---
 
@@ -24,10 +24,12 @@ axiom-experience — AxialStore, SutraDepthStore, InterpretationProfileStore, Em
                    EvaluationLevel (8 уровней);
                    MetaSubsystemId (0x1001–0x1007), MetaActivation, MetaStore (CR-V6 Фаза C)
 axiom-frontier   — CausalFrontier V2.0, Storm Control, BatchToken/BatchConnection
-axiom-config     — DomainConfig, AnchorSet (get_subsystem, match_text, perceptual_anchors),
-                   ConfigWatcher, HeartbeatConfig, JsonSchema;
-                   ВАЖНО: match_text() исключает L0-якоря (и из perceptual, и из subsystems);
-                   abstraction_raw — layer: L0 → не матчится в тексте (PRIM-TD-05)
+axiom-config     — DomainConfig, AnchorSet (get_subsystem, match_text, perceptual_anchors,
+                   crystal_position, crystal_bigrams), ConfigWatcher, HeartbeatConfig, JsonSchema;
+                   AnchorSet.crystal: Vec<Anchor> — загружается из seeds/crystal_c0.yaml при load();
+                   crystal_position(text): char→centroid, НЕ subsystem detection, Path 3 TextPerceptor;
+                   crystal_bigrams(text): биграммы → C1 позиции (centroid+200z), только алфавитные пары;
+                   ВАЖНО: match_text() исключает crystal и L0-якоря; abstraction_raw layer:L0 → не матчится
 axiom-space      — SpatialHashGrid, apply_gravity_batch (SIMD-ready, feature "simd")
 axiom-shell      — ShellProfile=[u8;8], SemanticContributionTable, compute_shell;
                    link_types: 0x08 syntactic, 0x09 composition,
@@ -63,7 +65,7 @@ axiom-broadcasting — BroadcastHandle (sensorium_live, update_sensorium(), late
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>>
-axiom-seed       — Crystal Layout Seed Compiler (17 тестов; Foundation Фаза 1 C1–C5);
+axiom-seed       — Crystal Layout Seed Compiler (17 тестов; Foundation Фаза 1 C1–C6);
                    charset.rs: GraphemeClass (25 классов), Grapheme, CharsetFile;
                    layout/crystal.rs: CrystalLayout — полярный веер (θ=природа, r=частота),
                      8 слоёв d-оси (C0=поверхность), детерминизм charset+region→позиции;
@@ -71,7 +73,8 @@ axiom-seed       — Crystal Layout Seed Compiler (17 тестов; Foundation �
                    compiler.rs: SeedCompiler::compile → Vec<Anchor>, anchors_to_yaml;
                    CLI: axiom-seed compile --charset --region [--anchors-dir] [--output];
                    seeds/crystal_c0.yaml: 107 якорей C0, origin=[26500,26500,26500] size=[4000,4000,1600];
-                   Теги: ["crystal","C0",class] (БЕЗ "writing" — crystal не влияет на subsystem detection)
+                   Теги: ["crystal","C0",class] (БЕЗ "writing" — crystal не влияет на subsystem detection);
+                   C1 слой: offset +200 ед. по z, 1600/8=200 ед/слой (8 слоёв GUARDIAN)
 axiom-neural     — Neural Integration Этап 1 (26 тестов);
                    ReactivationDepthModel: Conv1D(9→32,k=3)→Conv1D(32→64,k=5)→GAP→
                    Linear(64→32)→Linear(32→8)+Linear(32→1)+Sigmoid;
@@ -80,12 +83,18 @@ axiom-neural     — Neural Integration Этап 1 (26 тестов);
                    нет alloc в infer(); AdvisorMode {Rule, Neural};
                    ConfidenceCalibrator (реализован, не подключён — NEURAL-TD-03);
                    extract_features_from_onehot(short_oh,mid_oh,long_oh) — консистентный вход
-axiom-agent      — TextPerceptor (2-path detect_subsystem + perceive_and_bond),
+axiom-agent      — TextPerceptor (4-path: слово→AnchorMatchTable→crystal(0.75)→FNV(0.80)),
+                   detect_subsystem: Path1+Path2 (crystal НЕ участвует в subsystem detection);
                    text_stable_id (0x4000_0001+, бит 30);
                    L0VisionPerceptor (V7-E2): vision_anchor_stable_id (0x2000_0001+, бит 29);
-                   TemporalPerceptor (PRIM-TD-04): temporal_anchor_stable_id (0x1000_0001+, бит 28),
-                     7 якорей (time_before..time_horizon), word+aliases case-insensitive,
-                     new(anchor_set.get_subsystem("time")) → perceive(text) → InjectToken SUTRA;
+                   TemporalPerceptor (PRIM-TD-04): temporal_anchor_stable_id (0x1000_0001+, бит 28);
+                   ingester/: FileIngester (load_md/load_dataset/dry_run_md → Vec<UclCommand>);
+                     dataset.rs: AxiomDataset (.axiom.yaml), InjectMode {Grow, Anchor}, Chunk;
+                     markdown.rs: parse_markdown() → секции+абзацы, COMPOSITION bonds;
+                     C1 seeds: crystal_bigrams() → bigram_stable_id (0x4800_0001+, бит 30+27),
+                       token_type=1, mass=120, temp=200, C1_z=C0_z+200;
+                   :ingest [dry] <path> — CLI команда (в handle_meta_mutate);
+                   process_command(InjectToken) = SUTRA только; process_and_observe = полный Arbiter путь;
                    MessageEffector, CliChannel, meta_commands, tick_loop,
                    AdapterCommand, ServerMessage,
                    External Adapters 0A–5 + telegram (feature), opensearch (feature)

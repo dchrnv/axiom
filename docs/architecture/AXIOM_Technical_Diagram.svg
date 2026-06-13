@@ -330,6 +330,12 @@
   <rect x="616" y="1042" width="180" height="56" rx="9" fill="#FAFAF8" stroke="#B8B4A8" stroke-width="1.4"/>
   <text x="632" y="1064" fill="#2C2C30" font-weight="600">tray · grafana · cli</text>
   <text x="632" y="1082" fill="#6E6E74" font-size="10">/metrics · dashboards</text>
+
+  <rect x="808" y="1042" width="200" height="70" rx="9" fill="#EFF7F0" stroke="#7DB87D" stroke-width="1.5"/>
+  <text x="824" y="1058" fill="#2C2C30" font-weight="600">axiom-seed ●</text>
+  <text x="824" y="1073" fill="#6E6E74" font-size="10">Crystal C0 (107 графем)</text>
+  <text x="824" y="1086" fill="#6E6E74" font-size="10">C1 биграммы · FileIngester</text>
+  <text x="824" y="1099" fill="#9A9488" font-size="9.5">seeds/crystal_c0.yaml · ingester/</text>
 </g>
 <path d="M130,1018 L130,1040" stroke="#C9A961" stroke-width="1.6" marker-end="url(#y)"/>
 <path d="M650,1018 C650,1030 320,1030 322,1040" stroke="#C9A961" stroke-width="1.4" marker-end="url(#y)" fill="none"/>

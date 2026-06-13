@@ -535,3 +535,23 @@ config/anchors/
 - R3: `axes.yaml` → словарь параметрических шкал; осевые токены не инжектируются в SUTRA; все отрицательные координаты доменных/слойных якорей сдвинуты в положительные (+20500, clamp 32767)
 - R4: глобальная гравитация к (0,0,0) удалена (`ANCHOR_X/Y/Z`, `GravityModel`, `apply_gravity_batch*`, `enable_gravity`, `gravity_strength`, `GravityUpdate`) — это был мёртвый код
 - R5: `dream_interval` default 0; idle-путь (`DreamScheduler`) — единственный боевой триггер
+
+---
+
+## 18. Инварианты Crystal C0/C1 и Seed Injection (Foundation, 2026-06-14)
+
+| ID | Правило | Статус |
+|----|---------|--------|
+| **CR1** | Crystal регион: `origin=[26500,26500,26500]`, `size=[4000,4000,1600]`. 8 слоёв по 200 ед. (1600/8). Слой C0 на поверхности (d≈0, z≈26600), C1 = C0+200, ..., C7 = C0+1400. | **HARD** |
+| **CR2** | Crystal якоря НЕ участвуют в `match_text()` и subsystem detection. Только position fallback (Path 3 TextPerceptor). | **HARD** |
+| **CR3** | Crystal загружается из `seeds/crystal_c0.yaml` при `AnchorSet::load()`. НЕ инжектируются как живые токены — только позиционный справочник. | soft |
+| **CR4** | C1 биграммный seed: `token_type=1`, `mass=120`, `temperature=200`, `semantic_weight=0.65`. `stable_id` в диапазоне `0x4800_0001+` (бит 30+27). | soft |
+| **CR5** | Биграммы — только алфавитные пары (пробелы/пунктуация разрывают биграмму). Дубликаты объединяются (centroid). | soft |
+| **CR6** | `process_command(InjectToken)` = токен в SUTRA без Arbiter routing. Experience накапливается только через `process_and_observe`. Для FileIngester InjectToken всегда идёт через `process_and_observe`. | **HARD** |
+
+**Что сделано (Foundation Фазы 1–2, 2026-06-13/14):**
+- C0: 107 фиксированных графем в crystal регионе, детерминированная геометрия
+- SEED-TD-01: TextPerceptor Path 3 (crystal_position, char→centroid, semantic_weight=0.75)
+- INGEST-01: FileIngester (.md→секции, .axiom.yaml датасет, grow=дефолт, :ingest CLI)
+- C1: crystal_bigrams() → C1_z=C0_z+200, InjectToken через process_and_observe
+- Проверено на «Стихи 2025.md»: 971 traces, 98.7% match, 8.4× рост vs C0-only
