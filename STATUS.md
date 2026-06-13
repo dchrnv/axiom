@@ -9,7 +9,7 @@
 
 **1779 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
 
-Foundation Фаза 1 — Кристалл ✅ (2026-06-13): axiom-seed крейт (C1–C5).
+Foundation Фаза 1 — Кристалл ✅ (2026-06-13): C1–C6 завершены.
   C3: FrameComposition::C5Plus → C5/C6Meta/C7Reserve (8 слоёв жёстко, GUARDIAN).
   C2: axiom-seed — Crystal Layout бэкенд Seed Compiler (layout/crystal.rs, collision.rs, compiler.rs).
     Формулы: d-ось = слои абстракции (C0=поверхность), полярный веер (θ=природа, r=частота).
@@ -17,8 +17,11 @@ Foundation Фаза 1 — Кристалл ✅ (2026-06-13): axiom-seed крей
   C4: Регион origin=[26500,26500,26500] size=[4000,4000,1600] — чистая зона (>21000 от ближ. якоря).
   C5: seeds/crystal_c0.yaml — 107 якорей, 206 существующих якорей проверено, коллизий нет.
   Charset: config/charsets/ru_en_base.yaml (107 графем: кириллица+латиница+цифры+пунктуация).
-  Region: config/crystal_region.yaml.
-  Boot-инъекция отложена в DEFERRED (SEEd-TD-01): TextPerceptor 2-path нужен для интеграции.
+  SEED-TD-01: TextPerceptor Path 3 — crystal_position() (char→центроид).
+    AnchorSet.crystal: Vec<Anchor>, загружается из seeds/ при load(). Не участвует в subsystem detection.
+    Порядок путей: слово > AnchorMatchTable > графема(0.75) > FNV(0.80).
+    5 новых тестов в anchor.rs.
+  C6: OBS showcase 19/19 × 100% с crystal (107 графем загружены). Baseline не сломан.
 
 Neural Integration Этап 1 ✅ (2026-06-12): axiom-neural крейт + ReactivationDepthModel (1D-CNN, 13K params,
   pure Rust: rustfft+ndarray) + training_data.jsonl в OBS (каждые 200 тиков) + NeuralReactivationDepthAdvisor

@@ -21,12 +21,6 @@ axiom-corpus       axiom-neural   axiom-seed        ↑
 
 ## Следующие задачи
 
-### Foundation Фаза 1 (продолжение)
-
-- **SEED-TD-01** — TextPerceptor 2-path: интеграция кристаллических якорей для позиционирования.
-  Детали в DEFERRED.md. После реализации — boot-инъекция crystal_c0.yaml.
-- **C6** — OBS-прогон кристалла: матчинг графем, секторная раскладка, co-activation C0→C1.
-  После SEED-TD-01.
 
 ### Store Optimization (ожидает завершения Foundation)
 
