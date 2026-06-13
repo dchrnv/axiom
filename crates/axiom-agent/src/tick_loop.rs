@@ -306,7 +306,7 @@ pub(crate) fn process_adapter_command(
 
         AdapterPayload::MetaMutate { cmd } => {
             let cli_cfg = make_cli_config(config);
-            let result = handle_meta_mutate(&cmd, engine, auto_saver, &cli_cfg);
+            let result = handle_meta_mutate(&cmd, engine, auto_saver, &cli_cfg, anchor_set.clone());
             match result.action {
                 MetaAction::Quit => CommandResponse::Quit,
                 MetaAction::EngineReplaced => {

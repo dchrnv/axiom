@@ -1032,7 +1032,7 @@ impl CliChannel {
 
         if is_mutating {
             let result =
-                handle_meta_mutate(line, &mut self.engine, &mut self.auto_saver, &self.config);
+                handle_meta_mutate(line, &mut self.engine, &mut self.auto_saver, &self.config, self.anchor_set.clone());
             print!("{}", result.output);
             match result.action {
                 MetaAction::Quit => return false,

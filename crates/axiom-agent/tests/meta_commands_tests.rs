@@ -65,7 +65,7 @@ fn test_handle_meta_mutate_quit_returns_quit_action() {
     let mut engine = make_engine();
     let mut saver = make_saver();
     let config = CliConfig::default();
-    let result = handle_meta_mutate(":quit", &mut engine, &mut saver, &config);
+    let result = handle_meta_mutate(":quit", &mut engine, &mut saver, &config, None);
     assert!(matches!(result.action, MetaAction::Quit));
     assert!(result.output.contains("Завершение"));
 }
@@ -76,7 +76,7 @@ fn test_handle_meta_mutate_tick_advances_engine() {
     let mut saver = make_saver();
     let config = CliConfig::default();
     let before = engine.tick_count;
-    handle_meta_mutate(":tick 5", &mut engine, &mut saver, &config);
+    handle_meta_mutate(":tick 5", &mut engine, &mut saver, &config, None);
     assert_eq!(engine.tick_count, before + 5);
 }
 
@@ -88,7 +88,7 @@ fn test_handle_meta_mutate_save_creates_file() {
     let mut saver = make_saver();
     let config = CliConfig::default();
     let line = format!(":save {}", dir_str);
-    let result = handle_meta_mutate(&line, &mut engine, &mut saver, &config);
+    let result = handle_meta_mutate(&line, &mut engine, &mut saver, &config, None);
     assert!(
         result.output.contains("saved"),
         "expected 'saved' in output"
@@ -109,6 +109,7 @@ fn test_handle_meta_mutate_load_replaces_engine() {
         &mut engine,
         &mut saver,
         &config,
+        None,
     );
 
     // Теперь загружаем
@@ -117,6 +118,7 @@ fn test_handle_meta_mutate_load_replaces_engine() {
         &mut engine,
         &mut saver,
         &config,
+        None,
     );
     assert!(
         matches!(result.action, MetaAction::EngineReplaced),

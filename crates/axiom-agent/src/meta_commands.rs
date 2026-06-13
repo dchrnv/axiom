@@ -1120,6 +1120,7 @@ pub fn handle_meta_mutate(
     engine: &mut AxiomEngine,
     auto_saver: &mut AutoSaver,
     config: &CliConfig,
+    anchor_set: Option<std::sync::Arc<axiom_config::AnchorSet>>,
 ) -> MetaMutateResult {
     let parts: Vec<&str> = line.splitn(3, ' ').collect();
     let mut output = String::new();
@@ -1275,6 +1276,58 @@ pub fn handle_meta_mutate(
                 MetaAction::None
             }
 
+            ":ingest" => {
+                // :ingest <path>      — инжектировать файл (.md / .axiom.yaml)
+                // :ingest dry <path>  — preview без инъекции
+                use crate::ingester::FileIngester;
+                let (dry, path_str) = match parts.get(1).copied() {
+                    Some("dry") => (true, parts.get(2).copied().unwrap_or("")),
+                    Some(p) => (false, p),
+                    None => {
+                        writeln!(output, "  Usage: :ingest [dry] <path.md|path.axiom.yaml>").unwrap();
+                        return MetaMutateResult { output, action: MetaAction::None };
+                    }
+                };
+                let path = std::path::Path::new(path_str);
+                let ingester = match anchor_set {
+                    Some(arc) => FileIngester::with_anchors(arc),
+                    None => FileIngester::new(),
+                };
+                if dry {
+                    match ingester.dry_run_md(path) {
+                        Ok(report) => write!(output, "{report}").unwrap(),
+                        Err(e) => writeln!(output, "  ingest dry failed: {e}").unwrap(),
+                    }
+                } else {
+                    let result = if path_str.ends_with(".axiom.yaml") {
+                        ingester.load_dataset(path)
+                    } else {
+                        ingester.load_md(path)
+                    };
+                    match result {
+                        Ok((cmds, info)) => {
+                            let cmd_count = cmds.len();
+                            for cmd in cmds {
+                                engine.process_command(&cmd);
+                            }
+                            writeln!(
+                                output,
+                                "  ingested {} chunks → {} commands processed",
+                                info.chunks_total, cmd_count
+                            ).unwrap();
+                            if !info.hints_mismatch.is_empty() {
+                                writeln!(output, "  subsystem hint mismatches:").unwrap();
+                                for m in &info.hints_mismatch {
+                                    writeln!(output, "    {m}").unwrap();
+                                }
+                            }
+                        }
+                        Err(e) => writeln!(output, "  ingest failed: {e}").unwrap(),
+                    }
+                }
+                MetaAction::None
+            }
+
             _ => MetaAction::None,
         };
     MetaMutateResult { output, action }
@@ -1360,5 +1413,7 @@ pub(crate) const HELP_TEXT: &str = "\
   :autosave [on N|off]  — автосохранение
   :export [traces|skills] [path]
   :import [traces|skills] [path]
+  :ingest <path.md|path.axiom.yaml>  — загрузить файл и инжектировать в движок (grow-режим)
+  :ingest dry <path>                 — preview без инъекции (чанки, секции, подсистемы)
   :help [cmd]           — справка по команде
   :quit                 — завершить";

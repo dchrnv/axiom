@@ -38,3 +38,5 @@ pub mod telegram;
 pub mod tick_loop;
 /// WebSocket-адаптер (Phase 1)
 pub mod ws;
+/// FileIngester — загрузка .md и .axiom.yaml в UCL команды (INGEST V1.0)
+pub mod ingester;
