@@ -17,7 +17,7 @@ fn main() {
         PathBuf::from("obs_out")
     });
     let anchors_dir = args.get(3).map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from("config/anchors")
+        PathBuf::from("config")
     });
 
     // Load corpus
@@ -39,7 +39,7 @@ fn main() {
     let anchors_arg = if anchors_dir.exists() {
         Some(anchors_dir.as_path())
     } else {
-        eprintln!("[observe] anchors dir not found — running without anchors");
+        eprintln!("[observe] config dir not found — running without anchors");
         None
     };
 

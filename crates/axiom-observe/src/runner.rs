@@ -29,22 +29,25 @@ pub struct ObsRunner {
 }
 
 impl ObsRunner {
-    pub fn new(anchors_dir: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+    /// Создать ObsRunner с загрузкой якорей из config_dir (например "config/").
+    ///
+    /// Использует AnchorSet::load_or_empty — загружает subsystem-якоря И crystal C0
+    /// из seeds/crystal_c0.yaml (рядом с config_dir). Crystal доступен TextPerceptor Path 3.
+    pub fn new(config_dir: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
         let genome = Arc::new(Genome::default_ashti_core());
         let mut engine = AxiomEngine::try_new(genome)
             .map_err(|e| -> Box<dyn std::error::Error> { format!("{e}").into() })?;
 
-        let anchor_set = match anchors_dir {
-            Some(dir) => match AnchorSet::load_dir(dir) {
-                Ok(set) => {
-                    eprintln!("[observe] loaded anchors from {}", dir.display());
-                    Some(Arc::new(set))
-                }
-                Err(e) => {
-                    eprintln!("[observe] anchor load failed: {e} — using FNV fallback");
-                    None
-                }
-            },
+        let anchor_set = match config_dir {
+            Some(dir) => {
+                let set = AnchorSet::load_or_empty(dir);
+                eprintln!(
+                    "[observe] loaded anchors from {} (crystal: {} graphemes)",
+                    dir.display(),
+                    set.crystal.len()
+                );
+                Some(Arc::new(set))
+            }
             None => None,
         };
 
@@ -54,14 +57,11 @@ impl ObsRunner {
             eprintln!("[observe] injected {n} anchor tokens");
         }
 
-        // Load SubsystemDependencies from config/ (parent of anchors/) for DilemmaDetector.
-        if let Some(dir) = anchors_dir {
-            if let Some(config_dir) = dir.parent() {
-                let deps =
-                    axiom_config::SubsystemDependencies::load_or_empty(config_dir);
-                engine.context_recognizer.set_subsystem_dependencies(deps);
-                eprintln!("[observe] subsystem_dependencies loaded from {}", config_dir.display());
-            }
+        // SubsystemDependencies из config_dir.
+        if let Some(dir) = config_dir {
+            let deps = axiom_config::SubsystemDependencies::load_or_empty(dir);
+            engine.context_recognizer.set_subsystem_dependencies(deps);
+            eprintln!("[observe] subsystem_dependencies loaded from {}", dir.display());
         }
 
         // Load MetaDetector
