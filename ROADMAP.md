@@ -1,7 +1,7 @@
 # Axiom Roadmap
 
-**Версия:** 79.0
-**Дата:** 2026-06-12
+**Версия:** 80.0
+**Дата:** 2026-06-13
 
 ---
 
@@ -13,11 +13,25 @@ axiom-core → axiom-arbiter → axiom-domain → axiom-runtime
 axiom-config → axiom-genome → axiom-frontier    axiom-persist
 axiom-space → axiom-shell → axiom-heartbeat         ↑
 axiom-ucl → axiom-upo                          axiom-agent (axiom-cli)
-axiom-corpus       axiom-neural                     ↑
+axiom-corpus       axiom-neural   axiom-seed        ↑
                                                axiom-broadcasting
 ```
 
-**1538 тестов (all features), TEST-TD-01 (DEFERRED).**
+**1545 тестов (all features), TEST-TD-01 (DEFERRED).**
+
+## Следующие задачи
+
+### Foundation Фаза 1 (продолжение)
+
+- **SEED-TD-01** — TextPerceptor 2-path: интеграция кристаллических якорей для позиционирования.
+  Детали в DEFERRED.md. После реализации — boot-инъекция crystal_c0.yaml.
+- **C6** — OBS-прогон кристалла: матчинг графем, секторная раскладка, co-activation C0→C1.
+  После SEED-TD-01.
+
+### Foundation Фаза 2 (следующая)
+
+- **Seed Injection V1.0** — спека + реализация: grow-семена C1 (слоги) на слой C1,
+  composition bonds C0→C1, пара аккумулятор→генератор.
 
 ---
 

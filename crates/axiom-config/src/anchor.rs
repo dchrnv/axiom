@@ -461,6 +461,11 @@ impl AnchorSet {
         self.total_count() == 0
     }
 
+    /// Собрать позиции всех якорей (для collision-check при компиляции кристалла).
+    pub fn all_positions(&self) -> Vec<[i16; 3]> {
+        self.all_anchors().map(|a| a.position).collect()
+    }
+
     // ─── Text matching ────────────────────────────────────────────────────────
 
     /// Найти якоря, совпадающие с текстом.

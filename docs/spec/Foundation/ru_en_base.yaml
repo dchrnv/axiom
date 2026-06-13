@@ -1,0 +1,454 @@
+# ru_en_base.yaml — стартовая графемная палитра Anchor Crystal V1
+# Регистр: одна графема (а=А). Частота: общая шкала rank (0=частейшее).
+# Классы дробные → секторы веера θ. Сложность геометрией не кодируется.
+# Автогенерация + ручная правка рангов по вкусу.
+# rank → радиус r (частое в ядре слоя). class → угол θ. subsystem → принадлежность.
+
+charset:
+  layer: 0          # все графемы — слой C0 (поверхность кристалла)
+  total: 107
+  graphemes:
+    - char: "о"
+      rank: 0
+      class: vowel_cyr
+      subsystem: writing
+    - char: "e"
+      rank: 1
+      class: vowel_lat
+      subsystem: writing
+    - char: "е"
+      rank: 2
+      class: vowel_cyr
+      subsystem: writing
+    - char: "t"
+      rank: 3
+      class: consonant_lat
+      subsystem: writing
+    - char: "а"
+      rank: 4
+      class: vowel_cyr
+      subsystem: writing
+    - char: "a"
+      rank: 5
+      class: vowel_lat
+      subsystem: writing
+    - char: "и"
+      rank: 6
+      class: vowel_cyr
+      subsystem: writing
+    - char: "o"
+      rank: 7
+      class: vowel_lat
+      subsystem: writing
+    - char: "н"
+      rank: 8
+      class: consonant_cyr
+      subsystem: writing
+    - char: "i"
+      rank: 9
+      class: vowel_lat
+      subsystem: writing
+    - char: "т"
+      rank: 10
+      class: consonant_cyr
+      subsystem: writing
+    - char: "n"
+      rank: 11
+      class: consonant_lat
+      subsystem: writing
+    - char: "с"
+      rank: 12
+      class: consonant_cyr
+      subsystem: writing
+    - char: "s"
+      rank: 13
+      class: consonant_lat
+      subsystem: writing
+    - char: "р"
+      rank: 14
+      class: consonant_cyr
+      subsystem: writing
+    - char: "h"
+      rank: 15
+      class: consonant_lat
+      subsystem: writing
+    - char: "в"
+      rank: 16
+      class: consonant_cyr
+      subsystem: writing
+    - char: "r"
+      rank: 17
+      class: consonant_lat
+      subsystem: writing
+    - char: "л"
+      rank: 18
+      class: consonant_cyr
+      subsystem: writing
+    - char: "d"
+      rank: 19
+      class: consonant_lat
+      subsystem: writing
+    - char: "к"
+      rank: 20
+      class: consonant_cyr
+      subsystem: writing
+    - char: "l"
+      rank: 21
+      class: consonant_lat
+      subsystem: writing
+    - char: "м"
+      rank: 22
+      class: consonant_cyr
+      subsystem: writing
+    - char: "c"
+      rank: 23
+      class: consonant_lat
+      subsystem: writing
+    - char: "д"
+      rank: 24
+      class: consonant_cyr
+      subsystem: writing
+    - char: "u"
+      rank: 25
+      class: vowel_lat
+      subsystem: writing
+    - char: "п"
+      rank: 26
+      class: consonant_cyr
+      subsystem: writing
+    - char: "m"
+      rank: 27
+      class: consonant_lat
+      subsystem: writing
+    - char: "у"
+      rank: 28
+      class: vowel_cyr
+      subsystem: writing
+    - char: "w"
+      rank: 29
+      class: consonant_lat
+      subsystem: writing
+    - char: "я"
+      rank: 30
+      class: vowel_cyr
+      subsystem: writing
+    - char: "f"
+      rank: 31
+      class: consonant_lat
+      subsystem: writing
+    - char: "ы"
+      rank: 32
+      class: vowel_cyr
+      subsystem: writing
+    - char: "g"
+      rank: 33
+      class: consonant_lat
+      subsystem: writing
+    - char: "ь"
+      rank: 34
+      class: consonant_cyr
+      subsystem: writing
+    - char: "y"
+      rank: 35
+      class: consonant_lat
+      subsystem: writing
+    - char: "г"
+      rank: 36
+      class: consonant_cyr
+      subsystem: writing
+    - char: "p"
+      rank: 37
+      class: consonant_lat
+      subsystem: writing
+    - char: "з"
+      rank: 38
+      class: consonant_cyr
+      subsystem: writing
+    - char: "b"
+      rank: 39
+      class: consonant_lat
+      subsystem: writing
+    - char: "б"
+      rank: 40
+      class: consonant_cyr
+      subsystem: writing
+    - char: "v"
+      rank: 41
+      class: consonant_lat
+      subsystem: writing
+    - char: "ч"
+      rank: 42
+      class: consonant_cyr
+      subsystem: writing
+    - char: "k"
+      rank: 43
+      class: consonant_lat
+      subsystem: writing
+    - char: "й"
+      rank: 44
+      class: consonant_cyr
+      subsystem: writing
+    - char: "j"
+      rank: 45
+      class: consonant_lat
+      subsystem: writing
+    - char: "х"
+      rank: 46
+      class: consonant_cyr
+      subsystem: writing
+    - char: "x"
+      rank: 47
+      class: consonant_lat
+      subsystem: writing
+    - char: "ж"
+      rank: 48
+      class: consonant_cyr
+      subsystem: writing
+    - char: "q"
+      rank: 49
+      class: consonant_lat
+      subsystem: writing
+    - char: "ш"
+      rank: 50
+      class: consonant_cyr
+      subsystem: writing
+    - char: "z"
+      rank: 51
+      class: consonant_lat
+      subsystem: writing
+    - char: "ю"
+      rank: 52
+      class: vowel_cyr
+      subsystem: writing
+    - char: "ц"
+      rank: 53
+      class: consonant_cyr
+      subsystem: writing
+    - char: "щ"
+      rank: 54
+      class: consonant_cyr
+      subsystem: writing
+    - char: "э"
+      rank: 55
+      class: vowel_cyr
+      subsystem: writing
+    - char: "ф"
+      rank: 56
+      class: consonant_cyr
+      subsystem: writing
+    - char: "ъ"
+      rank: 57
+      class: consonant_cyr
+      subsystem: writing
+    - char: "ё"
+      rank: 58
+      class: vowel_cyr
+      subsystem: writing
+    - char: "1"
+      rank: 59
+      class: digit
+      subsystem: mathematics
+    - char: "0"
+      rank: 60
+      class: digit
+      subsystem: mathematics
+    - char: "2"
+      rank: 61
+      class: digit
+      subsystem: mathematics
+    - char: "3"
+      rank: 62
+      class: digit
+      subsystem: mathematics
+    - char: "5"
+      rank: 63
+      class: digit
+      subsystem: mathematics
+    - char: "4"
+      rank: 64
+      class: digit
+      subsystem: mathematics
+    - char: "9"
+      rank: 65
+      class: digit
+      subsystem: mathematics
+    - char: "8"
+      rank: 66
+      class: digit
+      subsystem: mathematics
+    - char: "6"
+      rank: 67
+      class: digit
+      subsystem: mathematics
+    - char: "7"
+      rank: 68
+      class: digit
+      subsystem: mathematics
+    - char: "."
+      rank: 69
+      class: period
+      subsystem: writing
+    - char: ","
+      rank: 70
+      class: comma
+      subsystem: writing
+    - char: ";"
+      rank: 71
+      class: semicolon
+      subsystem: writing
+    - char: ":"
+      rank: 72
+      class: colon
+      subsystem: writing
+    - char: "!"
+      rank: 73
+      class: exclaim
+      subsystem: writing
+    - char: "?"
+      rank: 74
+      class: question
+      subsystem: writing
+    - char: "-"
+      rank: 75
+      class: dash
+      subsystem: writing
+    - char: "—"
+      rank: 76
+      class: dash
+      subsystem: writing
+    - char: "–"
+      rank: 77
+      class: dash
+      subsystem: writing
+    - char: '"'
+      rank: 78
+      class: quote
+      subsystem: writing
+    - char: "'"
+      rank: 79
+      class: quote
+      subsystem: writing
+    - char: "«"
+      rank: 80
+      class: quote
+      subsystem: writing
+    - char: "»"
+      rank: 81
+      class: quote
+      subsystem: writing
+    - char: "…"
+      rank: 82
+      class: ellipsis
+      subsystem: writing
+    - char: "("
+      rank: 83
+      class: bracket_open
+      subsystem: writing
+    - char: "["
+      rank: 84
+      class: bracket_open
+      subsystem: writing
+    - char: "{"
+      rank: 85
+      class: bracket_open
+      subsystem: writing
+    - char: ")"
+      rank: 86
+      class: bracket_close
+      subsystem: writing
+    - char: "]"
+      rank: 87
+      class: bracket_close
+      subsystem: writing
+    - char: "}"
+      rank: 88
+      class: bracket_close
+      subsystem: writing
+    - char: "+"
+      rank: 89
+      class: op_arith
+      subsystem: mathematics
+    - char: "*"
+      rank: 90
+      class: op_arith
+      subsystem: mathematics
+    - char: "/"
+      rank: 91
+      class: op_arith
+      subsystem: mathematics
+    - char: "="
+      rank: 92
+      class: op_arith
+      subsystem: mathematics
+    - char: "<"
+      rank: 93
+      class: op_compare
+      subsystem: mathematics
+    - char: ">"
+      rank: 94
+      class: op_compare
+      subsystem: mathematics
+    - char: "%"
+      rank: 95
+      class: op_misc
+      subsystem: mathematics
+    - char: "^"
+      rank: 96
+      class: op_misc
+      subsystem: mathematics
+    - char: "&"
+      rank: 97
+      class: op_misc
+      subsystem: mathematics
+    - char: "|"
+      rank: 98
+      class: op_misc
+      subsystem: mathematics
+    - char: "~"
+      rank: 99
+      class: op_misc
+      subsystem: mathematics
+    - char: ' '
+      rank: 100
+      class: space
+      subsystem: writing
+    - char: "_"
+      rank: 101
+      class: underscore
+      subsystem: writing
+    - char: "@"
+      rank: 102
+      class: at
+      subsystem: logic
+    - char: "#"
+      rank: 103
+      class: hash
+      subsystem: logic
+    - char: "$"
+      rank: 104
+      class: dollar
+      subsystem: logic
+    - char: "\\"
+      rank: 105
+      class: slash_back
+      subsystem: logic
+    - char: "&"
+      rank: 106
+      class: amp
+      subsystem: logic
+
+# === ЗАДЕЛ V2 (вселенский кристалл) — пустые секции, дозаполнить ===
+# Структура готова, наполнение — когда дойдём до V2.
+reserved_v2:
+  greek: []        # θ-сектор/слой назначить при наполнении
+  diacritics_latin: []        # θ-сектор/слой назначить при наполнении
+  arrows: []        # θ-сектор/слой назначить при наполнении
+  math_symbols_ext: []        # θ-сектор/слой назначить при наполнении
+  currency: []        # θ-сектор/слой назначить при наполнении
+  emoji: []        # θ-сектор/слой назначить при наполнении
+  cjk_radicals: []        # θ-сектор/слой назначить при наполнении
+  cuneiform: []        # θ-сектор/слой назначить при наполнении
+  hieroglyphs: []        # θ-сектор/слой назначить при наполнении
+  syllabic_kana: []        # θ-сектор/слой назначить при наполнении
+  runic: []        # θ-сектор/слой назначить при наполнении
+  glagolitic: []        # θ-сектор/слой назначить при наполнении

@@ -98,7 +98,9 @@ impl FrameCompositionStore {
             1 => FrameComposition::C2Molecule,
             2..=3 => FrameComposition::C3Structure,
             4..=7 => FrameComposition::C4Composition,
-            _ => FrameComposition::C5Plus,
+            8..=15 => FrameComposition::C5,
+            16..=31 => FrameComposition::C6Meta,
+            _ => FrameComposition::C7Reserve,
         }
     }
 

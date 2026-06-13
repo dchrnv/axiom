@@ -1,7 +1,7 @@
 # Axiom — Отложенные задачи
 
-**Версия:** 84.0
-**Обновлён:** 2026-06-12
+**Версия:** 85.0
+**Обновлён:** 2026-06-13
 
 ---
 
@@ -274,3 +274,26 @@ tension=0 на синтетическом корпусе — нормально.
 Инфраструктура: `current_stress` на Connection ✅, `cross_modal.allow_revocation` в genome ✅.
 
 **Когда:** после накопления cross-modal bonds в реальной работе (требует Vision pipeline + реальные данные).
+
+---
+
+## axiom-seed
+
+### SEED-TD-01 — Boot-инъекция кристалла: TextPerceptor 2-path
+
+**Где:** `crates/axiom-agent/src/perceptors/`, `crates/axiom-config/src/anchor.rs`
+
+Кристальные якоря (seeds/crystal_c0.yaml) нельзя напрямую класть в config/anchors/:
+кратчайшие Exact-матчи на "—", ".", "," дают crystal → "writing" или crystal → "" в
+`dominant_subsystem_of()` и создают регрессии в subsystem detection.
+
+Нужна TextPerceptor 2-path архитектура:
+- Path 1 (текущая): match_text → позиция + subsystem (семантические якоря, без crystal)
+- Path 2 (новая): crystal_match_text → fallback позиция ТОЛЬКО когда path 1 не даёт матча
+  (приоритет: словарный > графемный, per spec §5)
+- Crystal якоря НЕ участвуют в subsystem detection — только в position fallback
+
+Реализация: отдельный `CrystalAnchorSet` или флаг `skip_subsystem: bool` на Anchor.
+Либо: отдельный файл не в subsystems[], а в `AnchorSet::crystal: Vec<Anchor>`.
+
+**Когда:** Foundation Фаза 1 C6 (OBS-прогон кристалла). После SEED-TD-01 — boot-инъекция.

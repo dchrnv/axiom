@@ -1,0 +1,2416 @@
+description: Crystal C0 grapheme anchors — Anchor Crystal V1.0
+version: '1.0'
+anchors:
+- id: crys_U043E
+  word: о
+  aliases:
+  - О
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28500
+  - 28500
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: о (vowel_cyr, rank 0)'
+  layer: L1
+- id: crys_U0065
+  word: e
+  aliases:
+  - E
+  tags:
+  - crystal
+  - C0
+  - vowel_lat
+  position:
+  - 28507
+  - 28515
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: e (vowel_lat, rank 1)'
+  layer: L1
+- id: crys_U0435
+  word: е
+  aliases:
+  - Е
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28532
+  - 28503
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: е (vowel_cyr, rank 2)'
+  layer: L1
+- id: crys_U0074
+  word: t
+  aliases:
+  - T
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28454
+  - 28488
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: t (consonant_lat, rank 3)'
+  layer: L1
+- id: crys_U0430
+  word: а
+  aliases:
+  - А
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28563
+  - 28514
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: а (vowel_cyr, rank 4)'
+  layer: L1
+- id: crys_U0061
+  word: a
+  aliases:
+  - A
+  tags:
+  - crystal
+  - C0
+  - vowel_lat
+  position:
+  - 28516
+  - 28579
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: a (vowel_lat, rank 5)'
+  layer: L1
+- id: crys_U0438
+  word: и
+  aliases:
+  - И
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28591
+  - 28530
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: и (vowel_cyr, rank 6)'
+  layer: L1
+- id: crys_U006F
+  word: o
+  aliases:
+  - O
+  tags:
+  - crystal
+  - C0
+  - vowel_lat
+  position:
+  - 28495
+  - 28612
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: o (vowel_lat, rank 7)'
+  layer: L1
+- id: crys_U043D
+  word: н
+  aliases:
+  - Н
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28418
+  - 28598
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: н (consonant_cyr, rank 8)'
+  layer: L1
+- id: crys_U0069
+  word: i
+  aliases:
+  - I
+  tags:
+  - crystal
+  - C0
+  - vowel_lat
+  position:
+  - 28460
+  - 28639
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: i (vowel_lat, rank 9)'
+  layer: L1
+- id: crys_U0442
+  word: т
+  aliases:
+  - Т
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28392
+  - 28618
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: т (consonant_cyr, rank 10)'
+  layer: L1
+- id: crys_U006E
+  word: n
+  aliases:
+  - N
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28332
+  - 28446
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: n (consonant_lat, rank 11)'
+  layer: L1
+- id: crys_U0441
+  word: с
+  aliases:
+  - С
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28364
+  - 28636
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: с (consonant_cyr, rank 12)'
+  layer: L1
+- id: crys_U0073
+  word: s
+  aliases:
+  - S
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28305
+  - 28427
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: s (consonant_lat, rank 13)'
+  layer: L1
+- id: crys_U0440
+  word: р
+  aliases:
+  - Р
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28334
+  - 28652
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: р (consonant_cyr, rank 14)'
+  layer: L1
+- id: crys_U0068
+  word: h
+  aliases:
+  - H
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28279
+  - 28405
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: h (consonant_lat, rank 15)'
+  layer: L1
+- id: crys_U0432
+  word: в
+  aliases:
+  - В
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28303
+  - 28665
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: в (consonant_cyr, rank 16)'
+  layer: L1
+- id: crys_U0072
+  word: r
+  aliases:
+  - R
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28255
+  - 28380
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: r (consonant_lat, rank 17)'
+  layer: L1
+- id: crys_U043B
+  word: л
+  aliases:
+  - Л
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28271
+  - 28676
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: л (consonant_cyr, rank 18)'
+  layer: L1
+- id: crys_U0064
+  word: d
+  aliases:
+  - D
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28233
+  - 28353
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: d (consonant_lat, rank 19)'
+  layer: L1
+- id: crys_U043A
+  word: к
+  aliases:
+  - К
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28237
+  - 28684
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: к (consonant_cyr, rank 20)'
+  layer: L1
+- id: crys_U006C
+  word: l
+  aliases:
+  - L
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28213
+  - 28324
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: l (consonant_lat, rank 21)'
+  layer: L1
+- id: crys_U043C
+  word: м
+  aliases:
+  - М
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28202
+  - 28690
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: м (consonant_cyr, rank 22)'
+  layer: L1
+- id: crys_U0063
+  word: c
+  aliases:
+  - C
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28195
+  - 28292
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: c (consonant_lat, rank 23)'
+  layer: L1
+- id: crys_U0434
+  word: д
+  aliases:
+  - Д
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28167
+  - 28692
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: д (consonant_cyr, rank 24)'
+  layer: L1
+- id: crys_U0075
+  word: u
+  aliases:
+  - U
+  tags:
+  - crystal
+  - C0
+  - vowel_lat
+  position:
+  - 28300
+  - 28847
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: u (vowel_lat, rank 25)'
+  layer: L1
+- id: crys_U043F
+  word: п
+  aliases:
+  - П
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28130
+  - 28693
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: п (consonant_cyr, rank 26)'
+  layer: L1
+- id: crys_U006D
+  word: m
+  aliases:
+  - M
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28154
+  - 28239
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: m (consonant_lat, rank 27)'
+  layer: L1
+- id: crys_U0443
+  word: у
+  aliases:
+  - У
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28909
+  - 28686
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: у (vowel_cyr, rank 28)'
+  layer: L1
+- id: crys_U0077
+  word: w
+  aliases:
+  - W
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28142
+  - 28203
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: w (consonant_lat, rank 29)'
+  layer: L1
+- id: crys_U044F
+  word: я
+  aliases:
+  - Я
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28914
+  - 28745
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: я (vowel_cyr, rank 30)'
+  layer: L1
+- id: crys_U0066
+  word: f
+  aliases:
+  - F
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28133
+  - 28164
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: f (consonant_lat, rank 31)'
+  layer: L1
+- id: crys_U044B
+  word: ы
+  aliases:
+  - Ы
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 28912
+  - 28806
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ы (vowel_cyr, rank 32)'
+  layer: L1
+- id: crys_U0067
+  word: g
+  aliases:
+  - G
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28127
+  - 28124
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: g (consonant_lat, rank 33)'
+  layer: L1
+- id: crys_U044C
+  word: ь
+  aliases:
+  - Ь
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 28006
+  - 28730
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ь (consonant_cyr, rank 34)'
+  layer: L1
+- id: crys_U0079
+  word: y
+  aliases:
+  - Y
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28124
+  - 28083
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: y (consonant_lat, rank 35)'
+  layer: L1
+- id: crys_U0433
+  word: г
+  aliases:
+  - Г
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27967
+  - 28721
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: г (consonant_cyr, rank 36)'
+  layer: L1
+- id: crys_U0070
+  word: p
+  aliases:
+  - P
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28125
+  - 28040
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: p (consonant_lat, rank 37)'
+  layer: L1
+- id: crys_U0437
+  word: з
+  aliases:
+  - З
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27927
+  - 28708
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: з (consonant_cyr, rank 38)'
+  layer: L1
+- id: crys_U0062
+  word: b
+  aliases:
+  - B
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28128
+  - 27997
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: b (consonant_lat, rank 39)'
+  layer: L1
+- id: crys_U0431
+  word: б
+  aliases:
+  - Б
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27888
+  - 28693
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: б (consonant_cyr, rank 40)'
+  layer: L1
+- id: crys_U0076
+  word: v
+  aliases:
+  - V
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28135
+  - 27953
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: v (consonant_lat, rank 41)'
+  layer: L1
+- id: crys_U0447
+  word: ч
+  aliases:
+  - Ч
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27849
+  - 28674
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ч (consonant_cyr, rank 42)'
+  layer: L1
+- id: crys_U006B
+  word: k
+  aliases:
+  - K
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28145
+  - 27909
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: k (consonant_lat, rank 43)'
+  layer: L1
+- id: crys_U0439
+  word: й
+  aliases:
+  - Й
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27811
+  - 28653
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: й (consonant_cyr, rank 44)'
+  layer: L1
+- id: crys_U006A
+  word: j
+  aliases:
+  - J
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28158
+  - 27864
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: j (consonant_lat, rank 45)'
+  layer: L1
+- id: crys_U0445
+  word: х
+  aliases:
+  - Х
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27773
+  - 28628
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: х (consonant_cyr, rank 46)'
+  layer: L1
+- id: crys_U0078
+  word: x
+  aliases:
+  - X
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28175
+  - 27820
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: x (consonant_lat, rank 47)'
+  layer: L1
+- id: crys_U0436
+  word: ж
+  aliases:
+  - Ж
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27737
+  - 28600
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ж (consonant_cyr, rank 48)'
+  layer: L1
+- id: crys_U0071
+  word: q
+  aliases:
+  - Q
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28196
+  - 27775
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: q (consonant_lat, rank 49)'
+  layer: L1
+- id: crys_U0448
+  word: ш
+  aliases:
+  - Ш
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27701
+  - 28570
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ш (consonant_cyr, rank 50)'
+  layer: L1
+- id: crys_U007A
+  word: z
+  aliases:
+  - Z
+  tags:
+  - crystal
+  - C0
+  - consonant_lat
+  position:
+  - 28220
+  - 27731
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: z (consonant_lat, rank 51)'
+  layer: L1
+- id: crys_U044E
+  word: ю
+  aliases:
+  - Ю
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 29112
+  - 29066
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ю (vowel_cyr, rank 52)'
+  layer: L1
+- id: crys_U0446
+  word: ц
+  aliases:
+  - Ц
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27651
+  - 28537
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ц (consonant_cyr, rank 53)'
+  layer: L1
+- id: crys_U0449
+  word: щ
+  aliases:
+  - Щ
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27634
+  - 28500
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: щ (consonant_cyr, rank 54)'
+  layer: L1
+- id: crys_U044D
+  word: э
+  aliases:
+  - Э
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 29080
+  - 29165
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: э (vowel_cyr, rank 55)'
+  layer: L1
+- id: crys_U0444
+  word: ф
+  aliases:
+  - Ф
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27603
+  - 28461
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ф (consonant_cyr, rank 56)'
+  layer: L1
+- id: crys_U044A
+  word: ъ
+  aliases:
+  - Ъ
+  tags:
+  - crystal
+  - C0
+  - consonant_cyr
+  position:
+  - 27589
+  - 28420
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ъ (consonant_cyr, rank 57)'
+  layer: L1
+- id: crys_U0451
+  word: ё
+  aliases:
+  - Ё
+  tags:
+  - crystal
+  - C0
+  - vowel_cyr
+  position:
+  - 29034
+  - 29262
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ё (vowel_cyr, rank 58)'
+  layer: L1
+- id: crys_U0031
+  word: '1'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28418
+  - 27557
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 1 (digit, rank 59)'
+  layer: L1
+- id: crys_U0030
+  word: '0'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28472
+  - 27538
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 0 (digit, rank 60)'
+  layer: L1
+- id: crys_U0032
+  word: '2'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28528
+  - 27522
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 2 (digit, rank 61)'
+  layer: L1
+- id: crys_U0033
+  word: '3'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28587
+  - 27509
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 3 (digit, rank 62)'
+  layer: L1
+- id: crys_U0035
+  word: '5'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28646
+  - 27500
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 5 (digit, rank 63)'
+  layer: L1
+- id: crys_U0034
+  word: '4'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28708
+  - 27495
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 4 (digit, rank 64)'
+  layer: L1
+- id: crys_U0039
+  word: '9'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28770
+  - 27493
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 9 (digit, rank 65)'
+  layer: L1
+- id: crys_U0038
+  word: '8'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28833
+  - 27495
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 8 (digit, rank 66)'
+  layer: L1
+- id: crys_U0036
+  word: '6'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28897
+  - 27501
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 6 (digit, rank 67)'
+  layer: L1
+- id: crys_U0037
+  word: '7'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - digit
+  position:
+  - 28961
+  - 27512
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: 7 (digit, rank 68)'
+  layer: L1
+- id: crys_U002E
+  word: .
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - period
+  position:
+  - 29248
+  - 27684
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: . (period, rank 69)'
+  layer: L1
+- id: crys_U002C
+  word: ','
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - comma
+  position:
+  - 29258
+  - 27672
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: , (comma, rank 70)'
+  layer: L1
+- id: crys_U003B
+  word: ;
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - semicolon
+  position:
+  - 29269
+  - 27660
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ; (semicolon, rank 71)'
+  layer: L1
+- id: crys_U003A
+  word: ':'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - colon
+  position:
+  - 29280
+  - 27649
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: : (colon, rank 72)'
+  layer: L1
+- id: crys_U0021
+  word: '!'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - exclaim
+  position:
+  - 29459
+  - 27828
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ! (exclaim, rank 73)'
+  layer: L1
+- id: crys_U003F
+  word: '?'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - question
+  position:
+  - 29472
+  - 27819
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ? (question, rank 74)'
+  layer: L1
+- id: crys_U002D
+  word: '-'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - dash
+  position:
+  - 29542
+  - 27899
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: - (dash, rank 75)'
+  layer: L1
+- id: crys_U2014
+  word: —
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - dash
+  position:
+  - 29591
+  - 27956
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: — (dash, rank 76)'
+  layer: L1
+- id: crys_U2013
+  word: –
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - dash
+  position:
+  - 29637
+  - 28017
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: – (dash, rank 77)'
+  layer: L1
+- id: crys_U0022
+  word: '"'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - quote
+  position:
+  - 29652
+  - 28011
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: " (quote, rank 78)'
+  layer: L1
+- id: crys_U0027
+  word: ''''
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - quote
+  position:
+  - 29677
+  - 28032
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: '' (quote, rank 79)'
+  layer: L1
+- id: crys_U00AB
+  word: «
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - quote
+  position:
+  - 29703
+  - 28054
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: « (quote, rank 80)'
+  layer: L1
+- id: crys_U00BB
+  word: »
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - quote
+  position:
+  - 29728
+  - 28077
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: » (quote, rank 81)'
+  layer: L1
+- id: crys_U2026
+  word: …
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - ellipsis
+  position:
+  - 29754
+  - 28105
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: … (ellipsis, rank 82)'
+  layer: L1
+- id: crys_U0028
+  word: (
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_open
+  position:
+  - 29780
+  - 28133
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ( (bracket_open, rank 83)'
+  layer: L1
+- id: crys_U005B
+  word: '['
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_open
+  position:
+  - 29810
+  - 28186
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: [ (bracket_open, rank 84)'
+  layer: L1
+- id: crys_U007B
+  word: '{'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_open
+  position:
+  - 29838
+  - 28240
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: { (bracket_open, rank 85)'
+  layer: L1
+- id: crys_U0029
+  word: )
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_close
+  position:
+  - 29826
+  - 28120
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ) (bracket_close, rank 86)'
+  layer: L1
+- id: crys_U005D
+  word: ']'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_close
+  position:
+  - 29857
+  - 28174
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ] (bracket_close, rank 87)'
+  layer: L1
+- id: crys_U007D
+  word: '}'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - bracket_close
+  position:
+  - 29885
+  - 28231
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: } (bracket_close, rank 88)'
+  layer: L1
+- id: crys_U002B
+  word: +
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_arith
+  position:
+  - 29901
+  - 28228
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: + (op_arith, rank 89)'
+  layer: L1
+- id: crys_U002A
+  word: '*'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_arith
+  position:
+  - 29923
+  - 28258
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: * (op_arith, rank 90)'
+  layer: L1
+- id: crys_U002F
+  word: /
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_arith
+  position:
+  - 29944
+  - 28288
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: / (op_arith, rank 91)'
+  layer: L1
+- id: crys_U003D
+  word: =
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_arith
+  position:
+  - 29964
+  - 28320
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: = (op_arith, rank 92)'
+  layer: L1
+- id: crys_U003C
+  word: <
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_compare
+  position:
+  - 29980
+  - 28318
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: < (op_compare, rank 93)'
+  layer: L1
+- id: crys_U003E
+  word: '>'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_compare
+  position:
+  - 30004
+  - 28395
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: > (op_compare, rank 94)'
+  layer: L1
+- id: crys_U0025
+  word: '%'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_misc
+  position:
+  - 30020
+  - 28394
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: % (op_misc, rank 95)'
+  layer: L1
+- id: crys_U005E
+  word: ^
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_misc
+  position:
+  - 30037
+  - 28413
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ^ (op_misc, rank 96)'
+  layer: L1
+- id: crys_U0026
+  word: '&'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_misc
+  position:
+  - 30054
+  - 28432
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: & (op_misc, rank 97)'
+  layer: L1
+- id: crys_U007C
+  word: '|'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_misc
+  position:
+  - 30071
+  - 28452
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: | (op_misc, rank 98)'
+  layer: L1
+- id: crys_U007E
+  word: '~'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - op_misc
+  position:
+  - 30087
+  - 28472
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: ~ (op_misc, rank 99)'
+  layer: L1
+- id: crys_U0020
+  word: ' '
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - space
+  position:
+  - 30104
+  - 28486
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme:   (space, rank 100)'
+  layer: L1
+- id: crys_U005F
+  word: _
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - underscore
+  position:
+  - 30120
+  - 28486
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: _ (underscore, rank 101)'
+  layer: L1
+- id: crys_U0040
+  word: '@'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - at
+  position:
+  - 30136
+  - 28486
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: @ (at, rank 102)'
+  layer: L1
+- id: crys_U0023
+  word: '#'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - hash
+  position:
+  - 30152
+  - 28486
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: # (hash, rank 103)'
+  layer: L1
+- id: crys_U0024
+  word: $
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - dollar
+  position:
+  - 30168
+  - 28485
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: $ (dollar, rank 104)'
+  layer: L1
+- id: crys_U005C
+  word: \
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - slash_back
+  position:
+  - 30184
+  - 28485
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: \ (slash_back, rank 105)'
+  layer: L1
+- id: crys_U0026
+  word: '&'
+  aliases: []
+  tags:
+  - crystal
+  - C0
+  - amp
+  position:
+  - 30198
+  - 28426
+  - 26600
+  shell:
+  - 160
+  - 40
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  description: 'Crystal C0 grapheme: & (amp, rank 106)'
+  layer: L1

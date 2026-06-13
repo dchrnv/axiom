@@ -1,8 +1,8 @@
 # AXIOM — Technical Blueprint
 
 **Назначение:** Плотный технический контекст для AI-ассистента. Не документация для людей.  
-**Обновлено:** 2026-06-12  
-**Тесты:** 1538, TEST-TD-01 (DEFERRED)
+**Обновлено:** 2026-06-13  
+**Тесты:** 1545 (all features), TEST-TD-01 (DEFERRED)
 
 ---
 
@@ -63,6 +63,15 @@ axiom-broadcasting — BroadcastHandle (sensorium_live, update_sensorium(), late
                    subscribe_events() → broadcast::Receiver<EngineMessage>;
                    latest_snapshot() → Option<SystemSnapshot>;
                    snapshot_live: RwLock<Option<SystemSnapshot>>
+axiom-seed       — Crystal Layout Seed Compiler (17 тестов; Foundation Фаза 1 C1–C5);
+                   charset.rs: GraphemeClass (25 классов), Grapheme, CharsetFile;
+                   layout/crystal.rs: CrystalLayout — полярный веер (θ=природа, r=частота),
+                     8 слоёв d-оси (C0=поверхность), детерминизм charset+region→позиции;
+                   layout/collision.rs: CollisionChecker (мин. дистанция до существующих якорей);
+                   compiler.rs: SeedCompiler::compile → Vec<Anchor>, anchors_to_yaml;
+                   CLI: axiom-seed compile --charset --region [--anchors-dir] [--output];
+                   seeds/crystal_c0.yaml: 107 якорей C0, origin=[26500,26500,26500] size=[4000,4000,1600];
+                   Теги: ["crystal","C0",class] (БЕЗ "writing" — crystal не влияет на subsystem detection)
 axiom-neural     — Neural Integration Этап 1 (26 тестов);
                    ReactivationDepthModel: Conv1D(9→32,k=3)→Conv1D(32→64,k=5)→GAP→
                    Linear(64→32)→Linear(32→8)+Linear(32→1)+Sigmoid;

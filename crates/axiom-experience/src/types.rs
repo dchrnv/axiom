@@ -209,21 +209,27 @@ impl SubsystemId {
 /// Уровень композиции Frame (глубина структуры, не SutraDepth).
 ///
 /// Источник: `docs/architecture/ContextRecognizer_V5_0.md §9.3`
+/// Слой (ГДЕ по абстракции) ≠ SutraDepth (насколько вросло) — разные оси.
+/// C0–C7: 8 слоёв жёстко (GUARDIAN). Глубже C7 нет.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FrameComposition {
-    /// Якорь-примитив в SUTRA (dot, vline, element, …)
+    /// Якорь-примитив в SUTRA (dot, vline, element, графема)
     C0Primitive,
-    /// Frame из примитивов (буква, символ)
+    /// Frame из примитивов (буква, символ, слог)
     C1Atom,
-    /// Frame из Atoms (слово)
+    /// Frame из Atoms (слово, аккорд)
     C2Molecule,
     /// Frame из Molecules (фраза, выражение)
     C3Structure,
     /// Frame из Structures (предложение, формула)
     C4Composition,
-    /// Высшие композиции (текст, теорема)
-    C5Plus,
+    /// Высшие композиции (текст, теорема, произведение)
+    C5,
+    /// Мета-уровень: Calculus, Rhythm, формулы над формулами, мета-режимы
+    C6Meta,
+    /// Резерв для самостоятельного погружения (DREAM-промоция)
+    C7Reserve,
 }
 
 /// Снимок контекста в момент создания/реактивации Frame.

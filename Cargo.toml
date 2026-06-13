@@ -28,6 +28,7 @@ members = [
     "crates/axiom-observe",
     "crates/axiom-corpus",
     "crates/axiom-neural",
+    "crates/axiom-seed",
 ]
 
 [workspace.package]

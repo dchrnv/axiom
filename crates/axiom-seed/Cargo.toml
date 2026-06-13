@@ -1,0 +1,15 @@
+[package]
+name = "axiom-seed"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "axiom-seed"
+path = "src/main.rs"
+
+[dependencies]
+axiom-config = { path = "../axiom-config" }
+serde.workspace = true
+serde_yaml.workspace = true
