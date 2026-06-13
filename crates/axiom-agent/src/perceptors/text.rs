@@ -5,8 +5,9 @@
 //
 // Порядок позиционирования:
 //   1. word-level match_text (AnchorSet, exact/alias/substring)
-//   2. char/word-level AnchorMatchTable (E1 путь А: OBS-01_Errata_Instructions.md §2)
-//   3. FNV-1a fallback
+//   2. char/word-level AnchorMatchTable (E1 путь А)
+//   3. crystal C0 графемный fallback (Anchor Crystal V1.0 §5, SEED-TD-01)
+//   4. FNV-1a fallback
 //
 // Payload layout (сверено с parse_inject_token_payload):
 //   [0..2]   target_domain_id  u16 LE
@@ -131,7 +132,24 @@ impl TextPerceptor {
             }
         }
 
-        // Путь 3: FNV-1a fallback
+        // Путь 3: crystal C0 графемный fallback (Anchor Crystal V1.0 §5).
+        // Приоритет: словарный > AnchorMatchTable > графемный > FNV.
+        // Не участвует в subsystem detection — только позиционирование.
+        if let Some(ref anchors) = self.anchor_set {
+            if let Some(pos) = anchors.crystal_position(text) {
+                return build_inject_token_command(
+                    SUTRA_DOMAIN_ID,
+                    pos[0],
+                    pos[1],
+                    pos[2],
+                    mass,
+                    temperature,
+                    0.75,
+                );
+            }
+        }
+
+        // Путь 4: FNV-1a fallback
         let hash = fnv1a_hash(bytes);
         let x = (hash & 0x7FFF) as f32;
         let y = ((hash >> 16) & 0x7FFF) as f32;

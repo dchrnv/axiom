@@ -148,7 +148,7 @@ fn default_version() -> String {
 
 // ─── AnchorSet ────────────────────────────────────────────────────────────────
 
-/// Полный набор якорей: осевые + слоевые + доменные + октанты + семцентры + подсистемы + L0.
+/// Полный набор якорей: осевые + слоевые + доменные + октанты + семцентры + подсистемы + L0 + crystal.
 ///
 /// Загружается из `config/anchors/`:
 ///   axes.yaml                — 6 осевых якорей (±30000, исключение из правила +only)
@@ -158,6 +158,8 @@ fn default_version() -> String {
 ///   domains/D{n}_*.yaml      — якоря ASHTI-доменов D1..D8
 ///   perceptual/*.yaml        — L0 перцептивные примитивы (visual, spatial, causal)
 ///   {name}/*.yaml            — L1 подсистемы знания (writing, mathematics, ...)
+/// Crystal якоря загружаются из `seeds/crystal_c0.yaml` (рядом с `config/`).
+///   НЕ участвуют в match_text()/subsystem detection — только position fallback.
 pub struct AnchorSet {
     /// 6 осевых якорей (X+/X-/Y+/Y-/Z+/Z-)
     pub axes: Vec<Anchor>,
@@ -172,6 +174,10 @@ pub struct AnchorSet {
     /// L0 перцептивные примитивы (visual, spatial, causal).
     /// НЕ участвуют в match_text() — только для VisionPerceptor и аналогов.
     pub perceptual: Vec<Anchor>,
+    /// Crystal C0 графемные якоря (seeds/crystal_c0.yaml).
+    /// НЕ участвуют в match_text()/subsystem detection.
+    /// Используются TextPerceptor как position fallback (Path 3): символьный уровень.
+    pub crystal: Vec<Anchor>,
     /// Подсистемы знания: "writing" → примитивы письма, "mathematics" → мат. примитивы, ...
     pub subsystems: HashMap<String, Vec<Anchor>>,
     /// Версии загруженных подсистем (V7-D1): "writing" → "1.0", ...
@@ -190,10 +196,54 @@ impl AnchorSet {
             octants: Vec::new(),
             semantic_centers: Vec::new(),
             perceptual: Vec::new(),
+            crystal: Vec::new(),
             subsystems: HashMap::new(),
             subsystem_versions: HashMap::new(),
             subsystem_dependencies: crate::SubsystemDependencies::default(),
         }
+    }
+
+    /// Получить crystal C0 графемные якоря.
+    pub fn crystal_anchors(&self) -> &[Anchor] {
+        &self.crystal
+    }
+
+    /// Вычислить позицию текста через crystal C0 графемные якоря (Path 3 TextPerceptor).
+    ///
+    /// Для каждого символа текста ищет совпадающий crystal-якорь (word или alias).
+    /// Возвращает центроид позиций совпавших символов, или None если совпадений нет.
+    ///
+    /// НЕ используется для subsystem detection — только для позиционирования.
+    pub fn crystal_position(&self, text: &str) -> Option<[f32; 3]> {
+        if self.crystal.is_empty() {
+            return None;
+        }
+        let mut sum = [0f64; 3];
+        let mut count = 0u32;
+        for ch in text.chars() {
+            let ch_lo = ch.to_lowercase().next().unwrap_or(ch).to_string();
+            let ch_s = ch.to_string();
+            for anchor in &self.crystal {
+                if anchor.word == ch_lo
+                    || anchor.word == ch_s
+                    || anchor.aliases.iter().any(|a| *a == ch_lo || *a == ch_s)
+                {
+                    sum[0] += anchor.position[0] as f64;
+                    sum[1] += anchor.position[1] as f64;
+                    sum[2] += anchor.position[2] as f64;
+                    count += 1;
+                    break;
+                }
+            }
+        }
+        if count == 0 {
+            return None;
+        }
+        Some([
+            (sum[0] / count as f64) as f32,
+            (sum[1] / count as f64) as f32,
+            (sum[2] / count as f64) as f32,
+        ])
     }
 
     /// Получить L0 перцептивные примитивы.
@@ -262,7 +312,7 @@ impl AnchorSet {
         let semantic_centers = Self::load_flat(&anchors_dir.join("semantic_centers.yaml"))?;
         let perceptual = Self::load_perceptual(anchors_dir)?;
         let (subsystems, subsystem_versions) = Self::load_subsystems(anchors_dir)?;
-        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, subsystems, subsystem_versions, subsystem_dependencies: crate::SubsystemDependencies::default() })
+        Ok(Self { axes, layers, domains, octants, semantic_centers, perceptual, crystal: Vec::new(), subsystems, subsystem_versions, subsystem_dependencies: crate::SubsystemDependencies::default() })
     }
 
     /// Загрузить из `config_dir/anchors/`. Возвращает ошибку при YAML-синтаксических проблемах.
@@ -302,6 +352,10 @@ impl AnchorSet {
         let (subsystems, subsystem_versions) = Self::load_subsystems(&anchors_dir)?;
         let subsystem_dependencies = crate::SubsystemDependencies::load_or_empty(config_dir);
 
+        // Crystal якоря из seeds/ рядом с config/
+        let seeds_dir = config_dir.parent().unwrap_or(Path::new(".")).join("seeds");
+        let crystal = Self::load_flat(&seeds_dir.join("crystal_c0.yaml")).unwrap_or_default();
+
         Ok(Self {
             axes,
             layers,
@@ -309,6 +363,7 @@ impl AnchorSet {
             octants,
             semantic_centers,
             perceptual,
+            crystal,
             subsystems,
             subsystem_versions,
             subsystem_dependencies,
@@ -930,5 +985,48 @@ shell: [0, 0, 0, 0, 0, 0, 0, 0]
         s.perceptual.push(make_anchor("p2", &[], [0; 3]));
         s.axes.push(make_anchor("axis", &[], [0; 3]));
         assert_eq!(s.total_count(), 3);
+    }
+
+    #[test]
+    fn test_crystal_position_matches_chars() {
+        let mut s = AnchorSet::empty();
+        // Добавляем два графемных якоря
+        s.crystal.push(make_anchor("а", &["А"], [1000, 2000, 3000]));
+        s.crystal.push(make_anchor("б", &["Б"], [3000, 4000, 5000]));
+        // "аб" → центроид двух якорей
+        let pos = s.crystal_position("аб").unwrap();
+        assert!((pos[0] - 2000.0).abs() < 1.0, "x centroid");
+        assert!((pos[1] - 3000.0).abs() < 1.0, "y centroid");
+        assert!((pos[2] - 4000.0).abs() < 1.0, "z centroid");
+    }
+
+    #[test]
+    fn test_crystal_position_case_insensitive() {
+        let mut s = AnchorSet::empty();
+        s.crystal.push(make_anchor("а", &["А"], [1000, 0, 0]));
+        // Заглавная "А" через alias
+        assert!(s.crystal_position("А").is_some());
+    }
+
+    #[test]
+    fn test_crystal_position_no_match_returns_none() {
+        let mut s = AnchorSet::empty();
+        s.crystal.push(make_anchor("а", &[], [1000, 0, 0]));
+        // Символ не в crystal — None
+        assert!(s.crystal_position("z").is_none());
+    }
+
+    #[test]
+    fn test_crystal_position_empty_crystal_returns_none() {
+        let s = AnchorSet::empty();
+        assert!(s.crystal_position("тест").is_none());
+    }
+
+    #[test]
+    fn test_crystal_not_in_match_text() {
+        // crystal якоря НЕ участвуют в match_text()
+        let mut s = AnchorSet::empty();
+        s.crystal.push(make_anchor("слово", &[], [1000, 0, 0]));
+        assert!(s.match_text("слово").is_empty(), "crystal не должен матчиться в match_text");
     }
 }
