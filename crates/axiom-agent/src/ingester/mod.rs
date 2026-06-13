@@ -28,6 +28,8 @@ pub struct IngestResult {
     pub chunks_total: usize,
     /// Количество UCL команд сгенерировано
     pub commands_total: usize,
+    /// Количество C1 биграммных семян
+    pub c1_seeds_total: usize,
     /// Предупреждения (расхождения subsystem_hint vs детекция)
     pub hints_mismatch: Vec<String>,
 }
@@ -35,17 +37,21 @@ pub struct IngestResult {
 /// Загрузчик файлов в AXIOM.
 ///
 /// Читает .md или .axiom.yaml → чанки → UCL команды через TextPerceptor.
+/// При наличии AnchorSet с crystal-якорями также генерирует C1 биграммные семена.
 pub struct FileIngester {
     perceptor: TextPerceptor,
+    /// Хранится отдельно для доступа к crystal_bigrams().
+    anchor_set: Option<Arc<AnchorSet>>,
 }
 
 impl FileIngester {
     pub fn new() -> Self {
-        Self { perceptor: TextPerceptor::new() }
+        Self { perceptor: TextPerceptor::new(), anchor_set: None }
     }
 
     pub fn with_anchors(anchors: Arc<AnchorSet>) -> Self {
-        Self { perceptor: TextPerceptor::with_anchors(anchors) }
+        let perceptor = TextPerceptor::with_anchors(Arc::clone(&anchors));
+        Self { perceptor, anchor_set: Some(anchors) }
     }
 
     /// Загрузить .md файл и конвертировать в UCL команды.
@@ -149,6 +155,22 @@ impl FileIngester {
 
             result.commands_total += cmds.len();
             commands.extend(cmds);
+
+            // C1 биграммные семена (Seed Injection V1.0)
+            // Для каждой буквенной биграммы в чанке — InjectToken на C1 позиции.
+            // C1_z = centroid(C0_a, C0_b).z + 200 (один слой глубже C0).
+            // stable_id биграммы детерминирован → повтор = подкрепление.
+            if let Some(ref anchors) = self.anchor_set {
+                if !anchors.crystal.is_empty() {
+                    let bigrams = anchors.crystal_bigrams(&chunk.content);
+                    for (bigram, pos) in &bigrams {
+                        let c1_cmd = build_c1_seed_command(bigram, pos);
+                        result.c1_seeds_total += 1;
+                        result.commands_total += 1;
+                        commands.push(c1_cmd);
+                    }
+                }
+            }
         }
 
         (commands, result)
@@ -176,6 +198,48 @@ impl Default for FileIngester {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Собрать UCL InjectToken для C1 биграммного семени.
+///
+/// C1 позиция: centroid двух C0 + 200 по z (один слой глубже).
+/// mass = 120 (меньше чем C0=160, больше чем шум).
+/// temperature = 200 (высокая пластичность нового паттерна).
+/// semantic_weight = 0.65 (ниже чем словарный матч).
+fn build_c1_seed_command(bigram: &str, pos: &[f32; 3]) -> axiom_ucl::UclCommand {
+    use axiom_ucl::{OpCode, UclCommand};
+
+    const SUTRA_DOMAIN_ID: u16 = 100;
+    let mass: f32 = 120.0;
+    let temperature: f32 = 200.0;
+    let semantic_weight: f32 = 0.65;
+
+    let mut cmd = UclCommand::new(OpCode::InjectToken, SUTRA_DOMAIN_ID as u32, 100, 0);
+    cmd.payload[0..2].copy_from_slice(&SUTRA_DOMAIN_ID.to_le_bytes());
+    cmd.payload[2] = 1; // token_type = 1 (C1 seed, отличается от text=0)
+    cmd.payload[4..8].copy_from_slice(&mass.to_le_bytes());
+    cmd.payload[8..12].copy_from_slice(&pos[0].to_le_bytes());
+    cmd.payload[12..16].copy_from_slice(&pos[1].to_le_bytes());
+    cmd.payload[16..20].copy_from_slice(&pos[2].to_le_bytes());
+    cmd.payload[20..32].fill(0); // velocity = 0
+    cmd.payload[32..36].copy_from_slice(&semantic_weight.to_le_bytes());
+    cmd.payload[36..40].copy_from_slice(&temperature.to_le_bytes());
+    // Записываем stable_id биграммы в reserved[0..4] для отслеживания
+    let bg_id = bigram_stable_id(bigram);
+    cmd.payload[40..44].copy_from_slice(&bg_id.to_le_bytes());
+    cmd
+}
+
+/// Детерминированный stable_id для C1 биграммного семени.
+/// Диапазон: 0x4800_0001+ (бит 30 + бит 27 = C1 маркер).
+fn bigram_stable_id(bigram: &str) -> u32 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in bigram.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    let id = (h & 0x07FF_FFFF) as u32; // 27 бит
+    (id | 0x4800_0000).max(0x4800_0001) // бит 30 + бит 27
 }
 
 /// FNV-1a для stable_id (зеркало text.rs).

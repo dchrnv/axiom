@@ -246,6 +246,77 @@ impl AnchorSet {
         ])
     }
 
+    /// Биграммы из текста с C1 позициями (Seed Injection V1.0 — C1 слой).
+    ///
+    /// Для каждой пары соседних символов (a, b) где оба есть в crystal C0:
+    ///   C1_pos = centroid(pos_a, pos_b) + [0, 0, C1_LAYER_OFFSET] (один слой глубже).
+    ///
+    /// Возвращает: Vec<(bigram_string, c1_position)>.
+    /// Дубликаты bigram внутри текста объединяются (centroid позиций их вхождений).
+    /// Только уникальные пары — для подкрепления одного и того же C1-семени.
+    pub fn crystal_bigrams(&self, text: &str) -> Vec<(String, [f32; 3])> {
+        const C1_LAYER_OFFSET: f32 = 200.0; // 1600 глубины / 8 слоёв = 200 ед/слой
+
+        if self.crystal.is_empty() {
+            return Vec::new();
+        }
+
+        let find_pos = |ch: char| -> Option<[f32; 3]> {
+            let ch_lo = ch.to_lowercase().next().unwrap_or(ch).to_string();
+            let ch_s = ch.to_string();
+            for anchor in &self.crystal {
+                if anchor.word == ch_lo
+                    || anchor.word == ch_s
+                    || anchor.aliases.iter().any(|a| *a == ch_lo || *a == ch_s)
+                {
+                    return Some([
+                        anchor.position[0] as f32,
+                        anchor.position[1] as f32,
+                        anchor.position[2] as f32,
+                    ]);
+                }
+            }
+            None
+        };
+
+        // Накапливаем суммы позиций по биграмме (для усреднения дубликатов)
+        let mut bigram_sums: std::collections::HashMap<String, ([f64; 3], u32)> =
+            std::collections::HashMap::new();
+
+        let chars: Vec<char> = text.chars().collect();
+        for i in 0..chars.len().saturating_sub(1) {
+            let a = chars[i];
+            let b = chars[i + 1];
+            // Пропускаем пробелы и знаки препинания как границы биграмм
+            if a.is_whitespace() || b.is_whitespace() || !a.is_alphabetic() || !b.is_alphabetic() {
+                continue;
+            }
+            if let (Some(pa), Some(pb)) = (find_pos(a), find_pos(b)) {
+                let key = format!("{a}{b}");
+                let c1_x = (pa[0] + pb[0]) / 2.0;
+                let c1_y = (pa[1] + pb[1]) / 2.0;
+                let c1_z = (pa[2] + pb[2]) / 2.0 + C1_LAYER_OFFSET;
+                let entry = bigram_sums.entry(key).or_insert(([0.0; 3], 0));
+                entry.0[0] += c1_x as f64;
+                entry.0[1] += c1_y as f64;
+                entry.0[2] += c1_z as f64;
+                entry.1 += 1;
+            }
+        }
+
+        bigram_sums
+            .into_iter()
+            .map(|(bg, (sum, cnt))| {
+                let pos = [
+                    (sum[0] / cnt as f64) as f32,
+                    (sum[1] / cnt as f64) as f32,
+                    (sum[2] / cnt as f64) as f32,
+                ];
+                (bg, pos)
+            })
+            .collect()
+    }
+
     /// Получить L0 перцептивные примитивы.
     /// В отличие от subsystem-якорей, L0 не участвует в match_text().
     pub fn perceptual_anchors(&self) -> &[Anchor] {

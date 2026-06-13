@@ -9,6 +9,15 @@
 
 **1797 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
 
+Seed Injection C1 ✅ (2026-06-14): биграммные семена поверх C0 кристалла.
+  AnchorSet::crystal_bigrams(text): для каждой буквенной пары обоих символов в crystal →
+    C1_pos = centroid(C0_a, C0_b) + [0,0,200] (один слой глубже, 200 ед/слой).
+    Уникальные биграммы объединяются (centroid вхождений). Только алфавитные пары.
+  FileIngester: после основных команд чанка эмитирует C1 InjectToken (mass=120, temp=200).
+    token_type=1 (C1 маркер), stable_id детерминирован → повтор = подкрепление.
+  Тест на «Стихи 2025.md»: 5197 C1 биграмм/раунд, 971 Experience traces (vs 116 без C1).
+    Matched 958/971 = 98.7% к раунду 200. 8x рост паттернов через C1.
+
 INGEST-01 ✅ (2026-06-13): FileIngester + AxiomDataset + :ingest CLI.
   ingester/dataset.rs: AxiomDataset (.axiom.yaml), InjectMode {Grow(дефолт)/Anchor}, Chunk.
   ingester/markdown.rs: parse_markdown() → секции+абзацы, COMPOSITION bonds заголовок↔абзацы.

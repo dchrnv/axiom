@@ -51,11 +51,6 @@ axiom-corpus       axiom-neural   axiom-seed        ↑
 - **Дубликаты** = подкрепление (stable_id детерминирован), не баг.
 - **SubsystemGravity** не различает источник — нет «импортированного» в SUTRA.
 
-### Foundation Фаза 2b (после INGEST-01)
-
-- **Seed Injection V1.0** — grow-семена C1 (слоги/биграммы) на слой C1,
-  composition bonds C0→C1. Ждёт FileIngester для реального текстового потока.
-  Детали: FOUND-TD-02 в DEFERRED.
 
 ---
 

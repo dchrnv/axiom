@@ -45,6 +45,7 @@ fn test_ingest_poetry_repeated() {
     println!("=== КОМАНДЫ ===");
     println!("  чанков: {}", info.chunks_total);
     println!("  UCL команд: {}", commands.len());
+    println!("  C1 биграмм: {}", info.c1_seeds_total);
     if !info.hints_mismatch.is_empty() {
         println!("  hint расхождений: {}", info.hints_mismatch.len());
         for m in &info.hints_mismatch[..info.hints_mismatch.len().min(3)] {
