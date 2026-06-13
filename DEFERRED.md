@@ -314,3 +314,66 @@ tension=0 на синтетическом корпусе — нормально.
 рядом с `standard: [Option<MetaActivation>; 7]`. activate/get/iter объединить оба источника.
 
 **Когда:** только если появится реальный use-case для пользовательских мета-режимов.
+
+## Документация и синхронизация
+
+### DOCS-TD-01 — Синхронизировать workspace-документацию после Foundation Фазы 1
+
+**Где:** `DEVELOPMENT_GUIDE.md`, `docs/architecture/AXIOM_Technical_Diagram.svg`, `docs/BLUEPRINT.md`
+
+После Foundation Фазы 1 (axiom-seed, crystal C0, SEED-TD-01, C6) не обновлены:
+- `DEVELOPMENT_GUIDE.md §Структура репозитория` — axiom-seed не упомянут
+- `AXIOM_Technical_Diagram.svg` — axiom-seed не добавлен, FrameComposition C5Plus → C5/C6Meta/C7Reserve
+- `DEVELOPMENT_GUIDE.md §Быстрый старт` — счётчик тестов устарел
+
+**Когда:** перед следующей публичной демонстрацией или PR.
+
+---
+
+## Архитектурный долг — Foundation
+
+### FOUND-TD-01 — L0→C0 composition bonds (суб-графемный уровень)
+
+**Где:** `crates/axiom-agent/src/perceptors/`, `seeds/crystal_c0.yaml`, `config/anchors/writing/primitives.yaml`
+
+Пропущен уровень абстракции: L0 (штрихи: dot/vline/hline/dslash/bslash/hook/arc) → C0 графемы.
+Буква "А" собирается из двух диагоналей и горизонтали — это composition bonds L0→C0.
+Crystal spec §2.5 это признаёт: "Связь графема↔штрихи — через composition bonds, не через геометрию."
+
+Когда/если понадобится: добавить в axiom-seed компилятор composition bonds L0→C0.
+Источник L0 позиций: config/anchors/writing/primitives.yaml (prim_dot, prim_vline, ...).
+
+**Когда:** Seed Injection V1.1 или отдельный этап перед C2 визуальным перцептором.
+
+### FOUND-TD-02 — Seed Injection V1.0: биграммная co-activation (C1 слой)
+
+**Где:** `crates/axiom-agent/src/perceptors/text.rs`, `crates/axiom-config/src/anchor.rs`
+
+Foundation Фаза 2 (генератор): grow-семена C1 (слоги/биграммы) на слое C1.
+Механизм: когда два C0-символа встречаются рядом в тексте → инъекция токена C1
+на позиции centroid(C0_a, C0_b) + смещение на глубину слоя C1.
+Composition bond C0_a → C1_ab ← C0_b.
+
+Ждёт: реализации FileIngester (INGEST-TD-01) для получения реального текстового потока
+для тестирования биграммной плотности.
+
+**Когда:** после INGEST-01 (файловый ввод), как Фаза 2b.
+
+---
+
+## Ввод данных и форматы
+
+### INGEST-TD-01 — FileIngester + AxiomDataset формат
+
+**Где:** `crates/axiom-agent/src/` (новый модуль `ingester/`), `docs/spec/`
+
+Подробное описание: `docs/spec/Ingestion/INGESTION_V1_0.md` (нужно написать).
+Краткое: см. `docs/spec/Ingestion/INGESTION_CONCEPT.md`.
+
+Три независимых компонента:
+1. AxiomDataset формат (.axiom.yaml) — схема для массовой инъекции
+2. .md ридер — парсинг Markdown → чанки → TextPerceptor
+3. CLI интеграция — команда `:load file.md` в axiom-agent
+.pdf/.docx — optional features, отдельный этап (INGEST-TD-02).
+
+**Когда:** следующий активный этап после записи этого долга.
