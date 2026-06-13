@@ -1,6 +1,6 @@
 # Axiom Roadmap
 
-**Версия:** 80.0
+**Версия:** 81.0
 **Дата:** 2026-06-13
 
 ---
@@ -35,10 +35,27 @@ axiom-corpus       axiom-neural   axiom-seed        ↑
   InterpretationProfileStore + ModalityStore + shell_registry в один `HashMap<u32, SutraRecord>`.
   Делать после OPT-01 (когда weights уже массив).
 
-### Foundation Фаза 2 (следующая)
+### INGEST-01 — FileIngester + AxiomDataset (следующая активная задача)
 
-- **Seed Injection V1.0** — спека + реализация: grow-семена C1 (слоги) на слой C1,
-  composition bonds C0→C1, пара аккумулятор→генератор.
+Решения согласованы с Opus (2026-06-13). Спека: `docs/spec/Ingestion/INGEST_V1_0.md`.
+
+- **FileIngester в axiom-agent** — .md → чанки по секциям → TextPerceptor → UCL команды.
+  Чанкинг: Вариант Б (секции, заголовок + COMPOSITION bonds к абзацам).
+- **AxiomDataset формат** (`.axiom.yaml`) — entries с id/content/tags, inject_mode: grow|anchor.
+  grow = дефолт (книги, через MAYA, может забыться).
+  anchor = только осознанно (фундамент, boot/DREAMING, инвариант 11).
+- **Seed Compiler в axiom-seed** — FileIngester → Seed Compiler (уже спроектирован).
+  Не строить второй путь в SUTRA.
+- **CLI команда `:load file.md`** в axiom-agent.
+- **subsystem_hint** = проверочный (не директивный) в grow-режиме; лог расхождений.
+- **Дубликаты** = подкрепление (stable_id детерминирован), не баг.
+- **SubsystemGravity** не различает источник — нет «импортированного» в SUTRA.
+
+### Foundation Фаза 2b (после INGEST-01)
+
+- **Seed Injection V1.0** — grow-семена C1 (слоги/биграммы) на слой C1,
+  composition bonds C0→C1. Ждёт FileIngester для реального текстового потока.
+  Детали: FOUND-TD-02 в DEFERRED.
 
 ---
 

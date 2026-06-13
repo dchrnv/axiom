@@ -377,3 +377,17 @@ Composition bond C0_a → C1_ab ← C0_b.
 .pdf/.docx — optional features, отдельный этап (INGEST-TD-02).
 
 **Когда:** следующий активный этап после записи этого долга.
+
+### FOUND-TD-03 — Composition Rules V1.0 (абстракции и слои через формулы)
+
+**Где:** `crates/axiom-runtime/` (ContextRecognizer или новый OverDomain компонент), `config/`
+
+Абстракции не детектируются лексически — вычисляются структурно по глубине Frame.
+Идея (chrnv + Opus, 2026-06-13): декларативные правила укладки C(n)→C(n+1) в конфиге:
+  «если Frame composed_of N элементов глубины ≥ C(k) из разных подсистем → C(k+1)»
+Один механизм на: абстракции, composite subsystems (Calculus=Math+Time), C6-мету.
+
+Согласуется с: FrameCompositionStore, composite suspects (CR V6), кристальные слои C0–C7.
+Спека: «Composition Rules V1.0». Не проектировать до FileIngester + Seed Injection C1.
+
+**Когда:** после INGEST-01 и FOUND-TD-02 (когда система реально строит C1+ структуры).
