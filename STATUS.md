@@ -7,7 +7,15 @@
 
 ## Текущее состояние
 
-**1779 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
+**1797 тестов (all features), TEST-TD-01 — pre-existing (DEFERRED)**
+
+INGEST-01 ✅ (2026-06-13): FileIngester + AxiomDataset + :ingest CLI.
+  ingester/dataset.rs: AxiomDataset (.axiom.yaml), InjectMode {Grow(дефолт)/Anchor}, Chunk.
+  ingester/markdown.rs: parse_markdown() → секции+абзацы, COMPOSITION bonds заголовок↔абзацы.
+  ingester/mod.rs: FileIngester::load_md/load_dataset/dry_run_md → Vec<UclCommand>.
+  :ingest [dry] <path.md|path.axiom.yaml> в axiom-agent CLI.
+  Принципы (per Opus): grow=дефолт, дубликат=подкрепление, нет второго пути в SUTRA.
+  13 новых тестов. Seed Compiler (axiom-seed) подключается в INGEST-02 (Seed Injection C1).
 
 Foundation Фаза 1 — Кристалл ✅ (2026-06-13): C1–C6 завершены.
   C3: FrameComposition::C5Plus → C5/C6Meta/C7Reserve (8 слоёв жёстко, GUARDIAN).
