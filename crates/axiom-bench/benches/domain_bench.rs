@@ -20,12 +20,6 @@ fn bench_check_decay(c: &mut Criterion) {
     });
 }
 
-    let gen = EventGenerator::new();
-    let token = Token::new(42, 7, [100, 200, 300], 1);
-
-    });
-}
-
 fn bench_generate_collision(c: &mut Criterion) {
     let gen = EventGenerator::new();
     let t1 = Token::new(10, 6, [0, 0, 0], 1);

@@ -139,31 +139,41 @@ Active: 3 · Dominant: **meta_synthesis**
 
 ## Benchmark Results
 
-All measurements: release build, Criterion 0.5, Freedesktop SDK 25.08 (Flatpak runtime), x86_64.
+All measurements: release build, Criterion 0.5, AMD Ryzen 5 3500U, x86_64. **v14 · 2026-06-13**
 
 ### Hot Path Regression (TickForward / 50 tokens)
 
 ```
-                        time:   [24.098 µs 24.249 µs 24.411 µs]
-                        change: [-15.135% -12.198% -8.9379%] (p = 0.00 < 0.05)
+time:   [21.266 µs 21.403 µs 21.550 µs]   change: -11.7%   ↑ Performance has improved.
 ```
 
-### Over-Domain Layer (V7 pipeline)
+### Integration throughput (100K ticks)
+
+| Config | Time | Throughput | Δ |
+|--------|------|-----------|---|
+| empty engine | 2.16 s | **46.4K tick/s** | +44% ↑ |
+| 50 tokens | 2.22 s | **45.1K tick/s** | +36% ↑ |
+| 50tok + 100 traces | 2.26 s | **44.2K tick/s** | +33% ↑ |
+| 50tok max_schedule | 2.84 s | **35.2K tick/s** | +27% ↑ |
+
+### Sustained stress (realistic_engine_50tok)
 
 ```
-                        time:   [245.42 µs 261.97 µs 280.69 µs]
-                        change: [+48.971% +61.000% +73.232%] (p = 0.00 < 0.05)
-                        time:   [218.57 µs 234.82 µs 253.07 µs]
-                        change: [+19.264% +29.733% +41.613%] (p = 0.00 < 0.05)
-                        time:   [227.19 µs 243.62 µs 261.64 µs]
-                        change: [+25.972% +35.789% +46.924%] (p = 0.00 < 0.05)
-                        time:   [167.95 µs 175.14 µs 183.13 µs]
-                        change: [+3.0866% +8.8236% +15.215%] (p = 0.00 < 0.05)
-                        time:   [81.916 µs 86.665 µs 92.034 µs]
-                        change: [+8.1807% +21.344% +34.248%] (p = 0.00 < 0.05)
-                        time:   [74.077 µs 76.326 µs 79.020 µs]
-                        change: [+9.2763% +14.667% +19.733%] (p = 0.00 < 0.05)
+time:   [21.274 ms 21.328 ms 21.385 ms]   thrpt: 46.9K tick/s   change: +57% thrpt ↑
 ```
+
+### Key operation timings
+
+| Operation | Time | Δ |
+|-----------|------|---|
+| TickForward / 50 tok | **21.4 µs** | -12% ↑ |
+| InjectToken | **16.9 µs** | -63% ↑ |
+| AxiomEngine::new | **438 µs** | -59% ↑ |
+| resonance_search / 1K traces | **13.9 µs** | -72% ↑ |
+| Arbiter::route_token | **6.6 µs** | -66% ↑ |
+| FrameWeaver / 20 MAYA patterns | **46.8 µs** | -30% ↑ |
+| Token::new | **17.8 ns** | -75% ↑ |
+| SpatialHashGrid::rebuild / 1M | **7.93 ms** | -22% ↑ |
 
 ---
 
@@ -179,6 +189,7 @@ All measurements: release build, Criterion 0.5, Freedesktop SDK 25.08 (Flatpak r
 | Avg coherence | 0.250 (diverse membrane profiles, expected) |
 | **Per-text accuracy** | **100.0% (7600/7600)** |
 | Emergent octants | O7 ★ 33200 · O8 ★ 4310 |
+| **Hot path (bench v14)** | **TickForward/50tok: 21.4 µs · 46.4K tick/s (100K empty)** |
 
 Criterion HTML reports: `target/criterion/`  
 Raw bench logs: `showcase/bench_out/`  

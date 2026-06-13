@@ -103,10 +103,8 @@ pub struct AnchorMatch<'a> {
 
 // ─── YAML-обёртки для парсинга файлов ────────────────────────────────────────
 
-#[derive(Debug, Deserialize)]
-struct AxesFile {
-    axes: Vec<Anchor>,
-}
+// AxesFile удалён: R3 (REPAIR-01) — axes.yaml переформатирован в словарь шкал,
+// осевые якоря больше не парсятся из файла.
 
 #[derive(Debug, Deserialize)]
 struct LayerFile {

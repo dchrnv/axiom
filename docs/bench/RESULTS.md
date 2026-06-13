@@ -1,250 +1,200 @@
 # Axiom Benchmark Results
 
-**v13 · 2026-06-05** · AMD Ryzen 5 3500U · 8t · Linux x86-64 · criterion 0.5 · `release`
+**v14 · 2026-06-13** · AMD Ryzen 5 3500U · 8t · Linux x86-64 · criterion 0.5 · `release`
 
 ---
 
 ## Быстрая справка — ключевые числа
 
-| Операция | Время | Δ vs v12 |
+| Операция | Время | Δ vs v13 |
 |----------|-------|----------|
-| `TickForward` (50 tok, hot path) | **24.8 µs** | ≈ v12 (−0.9 µs, фикс domain_summaries Pulse→State) |
-| `TickForward` (warm, 50 tok) | **68–80 µs** | ≈ v12 |
-| `TickForward` (loaded, 50 tok) | **83–103 µs** | ≈ v12 |
-| Throughput 1000 тиков / 50 tok | **~27 µs/тик** | ≈ v12 |
-| `AxiomEngine::new` | **1.60 ms** | +700 µs (Sensorium V2.0 + SubsystemGravity) |
-| `resonance_search` | **~20 µs** | ≈ (shell_registry path: нейтраль без данных) |
-| `apply_subsystem_gravity` 500 tok | **35 µs** | NEW (PRIM-TD-03) |
-| `apply_gravity_batch` AVX2 (1M tok) | **11.0 ms** | ≈ |
-| `SpatialHashGrid::rebuild` (1M tok) | **10.8 ms** | ≈ |
-| `Token::new` | **69 ns** | ≈ |
-
-> **Sensorium V2.0 overhead:** SensoriumState.collect() каждый тик, domain_summaries (11 доменов),
-> pre-compute всех полей BroadcastSnapshot → +5–7 µs на тик. Цена убрана из BroadcastSnapshot.
-> AxiomEngine::new вырос из-за SubsystemGravityRule boot-time init и расширенного SensoriumView.
+| TickForward / 50 токенов (hot path) | **21.4 µs** | -11.7% |
+| InjectToken (engine) | **16.9 µs** | -63% |
+| AxiomEngine::new | **438 µs** | -59% |
+| resonance_search / 1000 traces | **13.9 µs** | -72% |
+| Arbiter::route_token | **6.6 µs** | -66% |
+| 100K ticks / пустой движок | **2.16 s** → 46.4K tick/s | +44% thrpt |
+| 1M ticks / пустой движок | **23.3 s** → 43.0K tick/s | +28% thrpt |
+| Sustained / 50 tok realistic | **21.3 ms/1Kt** → 46.9K tick/s | +57% thrpt |
+| SpatialHashGrid::rebuild / 1M | **7.93 ms** | -22% |
+| apply_subsystem_gravity / 10K | **75.8 µs** | -11% |
 
 ---
 
-## v13 — текущие результаты (2026-06-05)
+## core_bench
 
-### Over-Domain Bench (V7 pipeline + Sensorium V2.0)
-
-| Сценарий | Токены | Время |
-|----------|--------|-------|
-| Холодный тик | 0 | 156 µs |
-| Холодный тик | 10–50 | 144–155 µs |
-| Холодный тик | 200 | 173 µs |
-| Warm тик (100 тиков) | 0 | 81 µs |
-| Warm тик (100 тиков) | 10–50 | **71–79 µs** |
-| Warm тик (100 тиков) | 200 | 78 µs |
-| Loaded тик (1000 тиков) | 50 | **98 µs** |
-| Loaded тик (1000 тиков) | 200 | 93 µs |
-| Loaded тик (1000 тиков) | 500 | 118 µs |
-| Throughput 1000 тиков | 50 | 31.0 ms (31 µs/тик) |
-| Throughput 1000 тиков | 200 | 31.2 ms (31 µs/тик) |
-| Инжекция (loaded, 200 токенов) | — | 48 µs |
-
-Прогрев → **71–80 µs/тик** (production-число).
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| Token::new | 17.8 ns | -75% ↑ |
+| Token copy (Copy trait) | 24.6 ns | -69% ↑ |
+| Token::compute_resonance | 7.7 ns | ~ |
+| Event::new | 19.3 ns | -72% ↑ |
+| Connection::default | 16.5 ns | -76% ↑ |
+| struct_sizes/Token 64B | 665 ps | -76% ↑ |
+| struct_sizes/Connection 64B | 664 ps | -76% ↑ |
+| struct_sizes/Event 64B | 666 ps | -75% ↑ |
 
 ---
 
-### Hot Path Regression
+## domain_bench
 
-| Сценарий | Время |
-|----------|-------|
-| `TickForward` / 50 токенов в LOGIC | **24.8 µs** |
-
-*≈ v12 (25.7 µs). Фикс domain_summaries Pulse→State вернул hot path к норме.
-v13 interim (до фикса): 31.3 µs (+5.6 µs spec drift). После фикса: −0.9 µs vs v12.*
-
----
-
-### Stress Bench (v13)
-
-#### apply_gravity_batch (scalar)
-
-| N токенов | Время | ns/tok |
-|-----------|-------|--------|
-| 10K | 342 µs | 34 ns |
-| 100K | 3.59 ms | 36 ns |
-| 1M | **33.9 ms** | 34 ns |
-| 10M | 439 ms | 44 ns |
-
-#### apply_gravity_batch (AVX2)
-
-| N токенов | Время | ns/tok |
-|-----------|-------|--------|
-| 10K | ~140 µs | 14 ns |
-| 100K | **865 µs** | 8.7 ns |
-| 1M | **11.0 ms** | 11 ns |
-
-AVX2 **3–4x** против scalar при 100K–1M. Разрыв снизился с v12 (4–5x) из-за измерений на другом состоянии системы.
-
-#### apply_subsystem_gravity (NEW — PRIM-TD-03)
-
-4 правила: val_beneficial pull, val_harmful push, abstraction_theory/constructor pull(radius=8000).
-
-| N токенов | Время | ns/tok |
-|-----------|-------|--------|
-| 100 | 8.6 µs | 86 ns |
-| 500 | **35 µs** | 70 ns |
-| 1K | **81 µs** | 81 ns |
-
-> Бенч с N=5K/10K даёт ~80 µs — столько же, что и 1K, т.к. `DomainConfig::default()` ограничивает ёмкость домена 1000 токенов. Реальный hot-path: N ≤ 1000 ток → ~80 µs/проход, раз в 500 тиков (не каждый тик). Амортизированный overhead: **< 0.2 µs/тик**.
-
-#### SpatialHashGrid::rebuild
-
-| N токенов | Время | ns/tok |
-|-----------|-------|--------|
-| 10K | 77 µs | 7.7 ns |
-| 50K | 478 µs | 9.6 ns |
-| 100K | 809 µs | 8.1 ns |
-| 500K | 5.2 ms | 10 ns |
-| 1M | **10.8 ms** | 10.8 ns |
-
-#### resonance_search (с shell_registry)
-
-Shell-TD-02: shell_cosine() добавляет 15%-модификатор к score. Без данных в registry → нейтральный путь (≈ baseline).
-
-| N трейсов | Время |
-|-----------|-------|
-| 1K | **20 µs** |
-| 5K | **21.6 µs** |
-| 10K | **20.6 µs** |
-| 50K | ~30 µs (high variance) |
-
-O(1)-поведение сохранилось — Grid-хэш Phase 1 эффективен.
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| EventGenerator::check_decay | 99.9 ns | -70% ↑ |
+| EventGenerator::generate_collision | 18.3 ns | -78% ↑ |
+| Experience::resonance_search / 0 | 194 ns | -72% ↑ |
+| Experience::resonance_search / 10 | 395 ns | -69% ↑ |
+| Experience::resonance_search / 100 | 1.62 µs | -75% ↑ |
+| Experience::resonance_search / 500 | 6.97 µs | -73% ↑ |
+| Experience::resonance_search / 1000 | 13.9 µs | -72% ↑ |
+| Arbiter::route_token / strict_200_180 | 6.6 µs | -66% ↑ |
+| Arbiter::route_token / loose_50_30 | 6.7 µs | -59% ↑ |
 
 ---
 
-### AxiomEngine::new (v13)
+## engine_bench
 
-| Сценарий | Время |
-|----------|-------|
-| `AxiomEngine::new` (full) | **1.60 ms** |
-| `AshtiCore::new` only | **1.01 ms** |
-
-+700 µs vs v12 (914 µs). Причины:
-- SubsystemGravityRule init (boot-time) — minor
-- Sensorium V2.0 инициализация + расширенный SensoriumView pre-alloc
-- AshtiCore::new вырос: rayon thread pool + speculative grids + Shell-TD-02 registry setup
-
----
-
-### AxiomEngine: TickForward detail
-
-| N токенов | Время |
-|-----------|-------|
-| 0 | 44.5 µs |
-| 10 | 48.5 µs |
-| 50 | **48.2 µs** |
-| 100 | 51.0 µs |
-
-Разница между 0 и 50 токенов — ~4 µs. Доминирует Sensorium collect + OD-компоненты.
-
----
-
-### FrameWeaver overhead (v13)
-
-| Сценарий | Время |
-|---------|-------|
-| Disabled (drain only) | **31.4 µs** |
-| Active, MAYA empty | **31.4 µs** |
-| Active, 5 паттернов | **41.4 µs** |
-| Active, 20 паттернов | **63.9 µs** |
-| `scan_state` isolated / 0 паттернов | 18 ns |
-| `scan_state` isolated / 5 паттернов | 3.5 µs |
-| `scan_state` isolated / 20 паттернов | 16.5 µs |
-| `scan_state` isolated / 50 паттернов | 41.8 µs |
-
-Disabled overhead вырос с 441 ns (v11) до ~31 µs — теперь baseline включает Sensorium V2.0 collect().
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| AxiomEngine::new / full | 438 µs | -59% ↑ |
+| AxiomEngine::new / AshtiCore only | 300 µs | -63% ↑ |
+| AxiomEngine: InjectToken | 16.9 µs | -63% ↑ |
+| AxiomEngine: TickForward / 0 tok | 21.8 µs | -46% ↑ |
+| AxiomEngine: TickForward / 10 tok | 21.7 µs | -52% ↑ |
+| AxiomEngine: TickForward / 50 tok | 22.4 µs | -52% ↑ |
+| AxiomEngine: TickForward / 100 tok | 22.1 µs | -19% ↑ |
+| AxiomEngine: snapshot / 0 tok | 7.19 µs | -68% ↑ |
+| AxiomEngine: snapshot / 100 tok | 14.5 µs | -49% ↑ |
+| AxiomEngine: restore_from / 0 tok | 564 µs | -58% ↑ |
+| AxiomEngine: restore_from / 100 tok | 591 µs | -54% ↑ |
+| AshtiCore: full pipeline / 0 traces | 50 µs | ~ |
+| AshtiCore: full pipeline / 100 traces | 57.3 µs | -33% ↑ |
+| AxiomEngine: run_adaptation / 0 | 29 µs | -55% ↑ |
+| AxiomEngine: causal_horizon | 38 ns | -62% ↑ |
+| AxiomEngine: export_skills | 8.7 ns | -72% ↑ |
+| Gateway: process_channel / 50 cmds | 1.09 ms | -46% ↑ |
+| domain_detail_snapshot / t10_c50 | 3.8 µs | **+46% ↓** |
+| domain_detail_snapshot / t50_c250 | 16.8 µs | -54% ↑ |
+| domain_detail_snapshot / t200_c2000 | 55.9 µs | -53% ↑ |
 
 ---
 
-### Phase C coordinator overhead (v13)
+## hot_path_regression
 
-| Сценарий | Время |
-|---------|-------|
-| Базовый (t%1) | **41 µs** |
-| AE on_tick (t%5) | **141 µs** |
-| CR on_tick (t%7) | **103 µs** |
-| AE + CR (t%35) | **118 µs** |
-| AE + CR + NA (t%385) | **99 µs** |
-
-Phase C добавляет 60–100 µs на периодических тиках. Базовый тик вырос с 23.5 µs (v11) до 41 µs — Sensorium V2.0.
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| TickForward / 50 tok (regression guard) | **21.4 µs** | **-11.7% ↑** |
 
 ---
 
-### Integration bench (v13)
+## integration_bench
 
-| Операция | N | Время | µs/тик |
-|----------|---|-------|--------|
-| `1M_ticks` / hot only | — | 29.7 s | **29.7 µs** |
-| `1M_ticks` / default schedule | 50 tok | 30.8 s | **30.8 µs** |
-| `100k_ticks` / default schedule | 50 tok | 3.02 s | **30.2 µs** |
-| `100k_ticks` / max schedule | 50 tok | 3.60 s | **36.0 µs** |
-| `reconcile_all` | 50 tok | 36 µs | — |
-| `reconcile_all` | 200 tok, 500 conn | 43 µs | — |
-
----
-
-### Frontier bench (v13)
-
-| Операция | Время |
-|----------|-------|
-| `push_pop` 100 событий | 1.96 µs (~20 ns/событие) |
-| `begin_end` overhead | 485 ps |
-| `batch_pop` 1000 storm | **12.0 µs** |
-| `normal_pop` 1000 | **16.9 µs** |
-
-batch_pop на 29% быстрее normal_pop (v12: 35%).
+| Benchmark | Время | Throughput | Δ |
+|-----------|-------|-----------|---|
+| 100K ticks / empty | 2.16 s | 46.4K tick/s | +44% ↑ |
+| 100K ticks / 50 tokens | 2.22 s | 45.1K tick/s | +36% ↑ |
+| 100K ticks / 50tok+100tr default | 2.26 s | 44.2K tick/s | +33% ↑ |
+| 100K ticks / 50tok max_schedule | 2.84 s | 35.2K tick/s | +27% ↑ |
+| 1M ticks / empty | 23.3 s | 43.0K tick/s | +28% ↑ |
+| 1M ticks / 50tok hot_only | 24.2 s | 41.2K tick/s | +27% ↑ |
+| 1M ticks / 50tok default_schedule | 25.7 s | 38.9K tick/s | +18% ↑ |
+| inject_tick_reconcile cycle | 101 µs | ~ | ~ |
+| 1000 ticks then snapshot | 24.9 ms | -22% ↑ |
 
 ---
 
-### axiom-core (v13 / stable)
+## frameweaver_overhead
 
-| Операция | Время |
-|----------|-------|
-| `Token::new` | **69 ns** |
-| `Token::compute_resonance` | 20 ns |
-| `Token copy` | 90 ns |
-| `Event::new` | 79 ns |
-| `Connection::default` | 61 ns |
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| A: disabled / 0 tok | 21.9 µs | -31% ↑ |
+| A: disabled / 50 tok | 22.4 µs | -25% ↑ |
+| B: active, MAYA empty / 50 tok | 22.2 µs | -32% ↑ |
+| C: active, 5 MAYA patterns / 50 tok | 27.4 µs | -34% ↑ |
+| D: active, 20 MAYA patterns / 50 tok | 46.8 µs | -30% ↑ |
+| scan_state / 0 patterns | 11.1 ns | -38% ↑ |
+| scan_state / 5 patterns | 2.33 µs | -34% ↑ |
+| scan_state / 20 patterns | 10.7 µs | -30% ↑ |
+| scan_state / 50 patterns | 30.4 µs | -34% ↑ |
+
+---
+
+## over_domain_bench
+
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| tick_cold / 0 tok | 144 µs | ~ |
+| tick_cold / 50 tok | 145 µs | -16% ↑ |
+| tick_cold / 200 tok | 136 µs | -12% ↑ |
+| tick_warm_100 / 0 tok | 54.5 µs | -35% ↑ |
+| tick_warm_100 / 50 tok | 54.8 µs | -22% ↑ |
+| tick_warm_100 / 200 tok | 56.6 µs | -29% ↑ |
+| tick_loaded_1000 / 50 tok | 73.4 µs | -12% ↑ |
+| tick_loaded_1000 / 200 tok | 92.0 µs | -9% ↑ |
+| throughput / 1000t / 50 tok | 21.9 ms | -21% ↑ |
+| throughput / 1000t / 200 tok | 22.7 ms | -15% ↑ |
+| inject_loaded / after_1000t_200tok | 41.3 µs | **+26% ↓** |
+
+---
+
+## stress_bench (sustained)
+
+| Benchmark | Время | Throughput | Δ |
+|-----------|-------|-----------|---|
+| realistic / 50tok | 21.3 ms/1Kt | **46.9K tick/s** | +57% ↑ |
+| heavy / 200tok max_schedule | 36.2 ms/1Kt | **27.6K tick/s** | +44% ↑ |
+| baseline hot_only / 50tok | 21.3 ms/1Kt | **47.0K tick/s** | +45% ↑ |
+| SpatialHashGrid::rebuild / 10K | 60.4 µs | -23% ↑ |
+| SpatialHashGrid::rebuild / 500K | 3.90 ms | -21% ↑ |
+| SpatialHashGrid::rebuild / 1M | 7.93 ms | -22% ↑ |
+| resonance_search / 1K | 15.8 µs | -14% ↑ |
+| resonance_search / 10K | 16.2 µs | -19% ↑ |
+| apply_subsystem_gravity / 100 | 7.81 µs | -8% ↑ |
+| apply_subsystem_gravity / 5K | 59.0 µs | -24% ↑ |
+| apply_subsystem_gravity / 10K | 75.8 µs | -11% ↑ |
+
+---
+
+## shell_bench
+
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| compute_shell / 0 conn | 10.7 ns | ~ |
+| compute_shell / 20 conn | 238 ns | -18% ↑ |
+| compute_shell / 100 conn | 1.29 µs | -11% ↑ |
+| incremental_update / 50 tok | 1.83 µs | -19% ↑ |
+| incremental_update / 100 tok | 3.68 µs | **+5% ↓** |
+| reconcile_batch / 10 | 732 ns | **+9% ↓** |
+| reconcile_batch / 50 | 1.87 µs | -8% ↑ |
+
+---
+
+## space_bench
+
+| Benchmark | Время | Δ |
+|-----------|-------|---|
+| SpatialHashGrid::rebuild / 1K | 10.6 µs | -26% ↑ |
+| SpatialHashGrid::rebuild / 5K | 31.3 µs | -27% ↑ |
+| find_neighbors / 100 | 211 ns | -22% ↑ |
+| find_neighbors / 1K | 1.33 µs | ~ |
+| distance2 | 4.06 ns | ~ |
+
+---
+
+## Регрессии (требуют наблюдения)
+
+| Benchmark | Δ | Вероятная причина |
+|-----------|---|-------------------|
+| domain_detail_snapshot/t10_c50 | +46% | аномалия измерения (outliers), реальный t50_c250 улучшился -54% |
+| over_domain/inject_loaded/after_1000t_200tok | +26% | нагруженное состояние + новые мембранные трансформы |
+| Shell::reconcile_batch/10 | +9% | в пределах noise threshold |
+| Shell::incremental_update/100 | +5% | в пределах noise threshold |
 
 ---
 
 ## История версий
 
-| Версия | Дата | Ключевое изменение | `TickForward` (50 tok) |
-|--------|------|--------------------|------------------------|
-| v1–v3 | 2026-03-27 | baseline: core/space/domain/shell | 31–35 ns |
-| v4–v5 | 2026-03-29 | FractalChain, стресс 10K→10M | 32 ns |
-| v6 | 2026-04-03 | integration_bench, 1M тиков | 96.5 ns/тик (1M) |
-| v7 | 2026-04-11 | D-01/D-02/D-03: u16 domain_id | 96.5 ns/тик (1M) |
-| v8 | 2026-04-12 | CLI Extended V1.0 | ~320 ns/тик |
-| v9 | 2026-04-20 | Adapters 0A-5 | ~350 ns/тик |
-| v9.1 | 2026-04-27 | FrameWeaver overhead bench | — |
-| v10 | 2026-05-17 | Phase C (AE/CR/NA) в Engine | 353 ns/тик |
-| v11 | 2026-05-17 | Phase I координатор + полный перезамер | 348 ns/тик |
-| v12 | 2026-05-29 | V7 полный: TransitionMatrix, FatigueStore, L0, rayon, STATE_SLEEPING | **25.7 µs/тик** |
-| **v13** | **2026-06-05** | **Shell-TD-02 (shell_cosine в resonance), PRIM-TD-03 (SubsystemGravity, NEW bench), SEN-TD-01 V2.0 (Sensorium градиент частот §4: domain_summaries→State level)** | **24.8 µs/тик** |
-
-**Ключевые изменения v13 vs v12:**
-- `TickForward` (50 tok): 25.7 µs → **24.8 µs** (−0.9 µs) — Sensorium V2.0 с правильным градиентом §4: domain_summaries только на State level (×8), Pulse дёшев
-- `AxiomEngine::new`: 914 µs → **1.60 ms** — расширенный boot (SubsystemGravityRule + SensoriumView alloc)
-- `resonance_search`: аналогично v12 — shell_cosine добавляет нейтральный overhead без данных в registry
-- `apply_subsystem_gravity` **NEW**: 35 µs @ 500 tokens, раз в 500 тиков → < 0.2 µs/тик амортизировано
-- `apply_gravity_batch` AVX2: ≈ v12 (11 ms @ 1M)
-- `SpatialHashGrid::rebuild`: ≈ v12 (10.8 ms @ 1M)
-
-**Потолки throughput (v13):**
-
-| Компонент | Throughput |
-|-----------|-----------|
-| `apply_gravity_batch` AVX2 (100K, L3) | ~115M tok/s |
-| `apply_gravity_batch` AVX2 (1M, RAM) | ~91M tok/s |
-| `SpatialHashGrid::rebuild` (10K) | ~130M tok/s |
-| `resonance_search` | **O(1)**, ~20 µs до 50K трейсов |
-| `apply_subsystem_gravity` (1K tok, reconcile) | ~12M tok/s |
-
-*Полная история v1–v12 с детальными таблицами — в git log.*
+| v | Дата | Ключевые изменения |
+|---|------|-------------------|
+| v14 | 2026-06-13 | REPAIR-01 (-1229 строк гравитации), dream_interval=0, мембранные профили, OBS-ACC |
+| v13 | 2026-06-05 | SEN-TD-01 (BroadcastSnapshot→SensoriumState), DIL-TD-01, compute_confidence ±8 |

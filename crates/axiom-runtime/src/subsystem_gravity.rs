@@ -15,7 +15,6 @@
 
 use axiom_config::AnchorSet;
 use axiom_domain::DomainState;
-use axiom_space::distance2;
 
 /// Правило subsystem-гравитации: один якорь как аттрактор или репеллер.
 ///
@@ -179,6 +178,7 @@ mod tests {
     use super::*;
     use axiom_config::DomainConfig;
     use axiom_core::{Token, STATE_ACTIVE};
+    use axiom_space::distance2;
 
     fn make_token(pos: [i16; 3]) -> Token {
         let mut t = Token::new(1, 110, pos, 1);

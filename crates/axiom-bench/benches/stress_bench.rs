@@ -27,58 +27,7 @@ fn make_pos_tuples(n: usize) -> Vec<(i16, i16, i16)> {
         .collect()
 }
 
-// ─── 1. apply_gravity_batch: 10K → 10M ───────────────────────────────────────
-
-fn bench_gravity_stress(c: &mut Criterion) {
-    let mut group = c.benchmark_group("stress/apply_gravity_batch");
-    group.measurement_time(Duration::from_secs(10));
-    group.sample_size(10);
-
-    for &n in &[10_000usize, 100_000, 1_000_000, 10_000_000] {
-        let positions = make_positions(n);
-        let masses = make_masses(n);
-
-        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
-            b.iter(|| {
-                black_box(apply_gravity_batch(
-                    black_box(&positions),
-                    black_box(&masses),
-                    24,
-                    GravityModel::Linear,
-                ))
-            })
-        });
-    }
-    group.finish();
-}
-
-// ─── 1b. apply_gravity_batch_avx2: shift=8, 10K → 1M ────────────────────────
-// Реальная нагрузка: shift=8 даёт ненулевые силы, AVX2 path активен.
-
-fn bench_gravity_avx2_stress(c: &mut Criterion) {
-    let mut group = c.benchmark_group("stress/apply_gravity_batch_avx2");
-    group.measurement_time(Duration::from_secs(10));
-    group.sample_size(10);
-
-    for &n in &[10_000usize, 100_000, 1_000_000] {
-        let positions = make_positions(n);
-        let masses = make_masses(n);
-
-        group.bench_with_input(BenchmarkId::new("tokens", n), &n, |b, _| {
-            b.iter(|| {
-                black_box(apply_gravity_batch_avx2(
-                    black_box(&positions),
-                    black_box(&masses),
-                    8,
-                    GravityModel::Linear,
-                ))
-            })
-        });
-    }
-    group.finish();
-}
-
-// ─── 2. SpatialHashGrid::rebuild: 10K → 1M ───────────────────────────────────
+// ─── 1. SpatialHashGrid::rebuild: 10K → 1M ───────────────────────────────────
 
 fn bench_grid_stress(c: &mut Criterion) {
     let mut group = c.benchmark_group("stress/SpatialHashGrid::rebuild");
