@@ -28,6 +28,19 @@ axiom-corpus       axiom-neural   axiom-seed        ↑
 - **C6** — OBS-прогон кристалла: матчинг графем, секторная раскладка, co-activation C0→C1.
   После SEED-TD-01.
 
+### Store Optimization (ожидает завершения Foundation)
+
+- **STORE-OPT-01** — HashMap→массив для bounded-хранилищ (axiom-experience):
+  - `SubsystemId::index()` + `ALL_SUBSYSTEMS` в types.rs (фундамент)
+  - `FatigueStore`: `HashMap<SubsystemId, SubsystemFatigue>` → `[SubsystemFatigue; 9]`
+  - `InterpretationProfile.weights`: `HashMap<SubsystemId, u8>` → `[u8; 9]`
+  - `MetaStore`: `HashMap<MetaSubsystemId, MetaActivation>` → `[Option<MetaActivation>; 7]`
+  - Обновить `apply_to_weights` сигнатуру под новый тип weights.
+  - Custom MetaSubsystemId (0x1100+) — в DEFERRED (STORE-TD-01).
+- **STORE-OPT-02** — per-sutra консолидация: объединить AxialStore + SutraDepthStore +
+  InterpretationProfileStore + ModalityStore + shell_registry в один `HashMap<u32, SutraRecord>`.
+  Делать после OPT-01 (когда weights уже массив).
+
 ### Foundation Фаза 2 (следующая)
 
 - **Seed Injection V1.0** — спека + реализация: grow-семена C1 (слоги) на слой C1,

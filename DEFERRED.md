@@ -297,3 +297,20 @@ tension=0 на синтетическом корпусе — нормально.
 Либо: отдельный файл не в subsystems[], а в `AnchorSet::crystal: Vec<Anchor>`.
 
 **Когда:** Foundation Фаза 1 C6 (OBS-прогон кристалла). После SEED-TD-01 — boot-инъекция.
+
+## axiom-experience (Store Optimization)
+
+### STORE-TD-01 — Custom MetaSubsystemId (0x1100+)
+
+**Где:** `crates/axiom-experience/src/meta_store.rs`
+
+После STORE-OPT-01 MetaStore будет `[Option<MetaActivation>; 7]` (индекс = id.0 - 0x1001).
+Это покрывает только стандартные мета-режимы 0x1001–0x1007.
+
+Комментарий в коде "Пользовательские мета-режимы: 0x1100+" — архитектурный задел,
+не реализованный и не запланированный нигде кроме этого комментария.
+
+Когда/если понадобятся custom ID: добавить `custom: HashMap<MetaSubsystemId, MetaActivation>`
+рядом с `standard: [Option<MetaActivation>; 7]`. activate/get/iter объединить оба источника.
+
+**Когда:** только если появится реальный use-case для пользовательских мета-режимов.
